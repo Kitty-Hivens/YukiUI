@@ -76,6 +76,30 @@ Singleton {
     // never load. monitors.lua in the hypr root is already wired up as the slot
     // for generated monitor config and is the only one that takes effect.
     readonly property string monitorsConfigPath: `${root.configDir}/hypr/monitors.lua`
+
+    // The VRR mode (off/on/fullscreen) lives only in the config: hyprctl reports
+    // vrr as a bool of the current state, not the setting. Parsed per output so
+    // the selector opens on the saved choice.
+    property var vrrConfig: ({})
+    // Global, not per-monitor: Hyprland has no per-output tearing.
+    property bool tearing: false
+
+    FileView {
+        id: monitorsFile
+        path: root.monitorsConfigPath
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            const parsed = ({});
+            for (const line of text().split("\n")) {
+                const name = line.match(/output\s*=\s*"([^"]+)"/);
+                const vrr = line.match(/vrr\s*=\s*(\d+)/);
+                if (name && vrr)
+                    parsed[name[1]] = parseInt(vrr[1]);
+            }
+            root.vrrConfig = parsed;
+        }
+    }
     readonly property string scriptDir: `${root.configDir}/quickshell/ii/scripts/displays`
 
     signal applyFailed(string reason)
@@ -85,7 +109,35 @@ Singleton {
     function reload() {
         getMonitors.running = true;
         readCapabilities.running = true;
+        readTearing.running = true;
     }
+
+    Process {
+        id: readTearing
+        command: ["hyprctl", "getoption", "general:allow_tearing", "-j"]
+        stdout: StdioCollector {
+            id: tearingOut
+            onStreamFinished: {
+                try {
+                    root.tearing = JSON.parse(tearingOut.text).int === 1;
+                } catch (e) {}
+            }
+        }
+    }
+
+    // Global. Applied live and written to a managed line in monitors.lua so it
+    // survives a restart; it sits outside the per-output region. keyword refuses
+    // a Lua config, so the live apply goes through eval.
+    function setTearing(on) {
+        root.tearing = on;
+        Quickshell.execDetached(["hyprctl", "eval",
+            `hl.config({ general = { allow_tearing = ${on ? "true" : "false"} } })`]);
+        setTearingProc.command = ["python3", `${root.scriptDir}/tearing_write.py`,
+            root.monitorsConfigPath, on ? "1" : "0"];
+        setTearingProc.running = true;
+    }
+
+    Process { id: setTearingProc }
 
     function hdrCapable(name) {
         return root.capabilities[name]?.hdr === true;
@@ -153,12 +205,7 @@ Singleton {
             y: output.y,
             scale: output.scale,
             transform: output.transform,
-            vrr: output.vrr ? 1 : 0,
-            // Written only once the user has actually touched the switch. Taken
-            // from the compositor it would read false whenever nothing is
-            // fullscreen, and pinning that per output silently overrides the
-            // global policy the user set.
-            vrrOverride: false,
+            vrr: root.vrrConfig[output.name] ?? 0,
             sdrMaxLuminance: root.sdrBaseline[output.name]?.sdrMaxLuminance ?? output.sdrMaxLuminance ?? 80,
             sdrSaturation: root.sdrBaseline[output.name]?.sdrSaturation ?? output.sdrSaturation ?? 1.0,
             bitdepth: (output.currentFormat ?? "").indexOf("2101010") !== -1 ? 10 : 8,
@@ -216,7 +263,7 @@ Singleton {
             + `position = "${entry.x}x${entry.y}", `
             + `scale = ${entry.scale}, `
             + `transform = ${entry.transform}, `
-            + (entry.vrrOverride ? `vrr = ${entry.vrr ? 1 : 0}, ` : "")
+            + `vrr = ${entry.vrr ?? 0}, `
             + `bitdepth = ${entry.bitdepth === 10 ? 10 : 8}, `
             + `cm = "${entry.cm}", `
             + `sdr_max_luminance = ${entry.sdrMaxLuminance ?? 80}, `

@@ -394,16 +394,33 @@ Item {
                             }
                         }
 
+                        ContentSubsection {
+                            title: "VRR"
+                            tooltip: Translation.tr("Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause.")
+                            ConfigSelectionArray {
+                                currentValue: root.selected?.vrr ?? 0
+                                options: [
+                                    { displayName: Translation.tr("Off"), value: 0 },
+                                    { displayName: Translation.tr("On"), value: 1 },
+                                    { displayName: Translation.tr("Fullscreen"), value: 2 }
+                                ]
+                                onSelected: newValue => {
+                                    if (root.selected)
+                                        root.patch(root.selected.name, { vrr: newValue });
+                                }
+                            }
+                        }
+
                         ConfigSwitch {
-                            text: "VRR"
-                            buttonIcon: "monitor_heart"
-                            checked: (root.selected?.vrr ?? 0) !== 0
+                            text: Translation.tr("Allow tearing")
+                            buttonIcon: "align_horizontal_left"
+                            checked: Displays.tearing
                             onCheckedChanged: {
-                                if (root.selected && (checked ? 1 : 0) !== root.selected.vrr)
-                                    root.patch(root.selected.name, { vrr: checked ? 1 : 0, vrrOverride: true });
+                                if (checked !== Displays.tearing)
+                                    Displays.setTearing(checked);
                             }
                             StyledToolTip {
-                                text: Translation.tr("Left alone, this display follows the global setting.\nSwitching it here pins the choice for this display only.")
+                                text: Translation.tr("Session-wide, not per display. Lets a game present without waiting for the refresh, trading a possible tear for lower latency.")
                             }
                         }
 

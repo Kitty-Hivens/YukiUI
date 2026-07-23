@@ -835,5 +835,9 @@
   "Colour depth": "Глубина цвета",
   "Panel": "Матрица",
   "Gamut": "Гамут",
-  "HDR": "HDR"
+  "HDR": "HDR",
+  "Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause.": "Переменная частота обновления. «Полноэкранно» ограничивает её полноэкранным окном, что убирает мерцание от некоторых простаивающих приложений.",
+  "Fullscreen": "Полноэкранно",
+  "Allow tearing": "Разрешить tearing",
+  "Session-wide, not per display. Lets a game present without waiting for the refresh, trading a possible tear for lower latency.": "На всю сессию, не по экранам. Позволяет игре выводить кадр не дожидаясь развёртки: возможный разрыв в обмен на меньшую задержку."
 }
