@@ -826,5 +826,14 @@
   "Input source": "Источник сигнала",
   "OSD language": "Язык меню",
   "The monitor did not accept the change: %1": "Монитор не принял изменение: %1",
-  "Gamma": "Гамма"
+  "Gamma": "Гамма",
+  "About this display": "Об экране",
+  "Model": "Модель",
+  "Made by": "Производитель",
+  "Made": "Выпущен",
+  "Size": "Размер",
+  "Colour depth": "Глубина цвета",
+  "Panel": "Матрица",
+  "Gamut": "Гамут",
+  "HDR": "HDR"
 }

@@ -62,11 +62,42 @@ Singleton {
         return root.featuresFor(connector).length > 0;
     }
 
+    // connector -> [ { key, value } ], read from EDID. Every panel answers,
+    // including ones that expose nothing over DDC.
+    property var info: ({})
+
+    function infoFor(connector) {
+        return root.info[connector] ?? [];
+    }
+
     function reload() {
+        edidProbe.running = true;
         if (root.probing)
             return;
         root.probing = true;
         probe.running = true;
+    }
+
+    Process {
+        id: edidProbe
+        command: ["python3", `${root.scriptDir}/edid_info.py`]
+        stdout: StdioCollector {
+            id: edidOut
+            onStreamFinished: {
+                const found = ({});
+                for (const line of edidOut.text.trim().split("\n")) {
+                    if (line.length === 0)
+                        continue;
+                    const cols = line.split("\t");
+                    if (cols.length < 3)
+                        continue;
+                    if (!found[cols[0]])
+                        found[cols[0]] = [];
+                    found[cols[0]].push({ key: cols[1], value: cols[2] });
+                }
+                root.info = found;
+            }
+        }
     }
 
     Process {

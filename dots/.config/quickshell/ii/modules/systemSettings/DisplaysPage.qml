@@ -624,6 +624,48 @@ Item {
                                 }
                             }
                         }
+
+                        // Read straight from the panel's EDID, so it fills in for
+                        // whatever is connected -- including a screen that offers
+                        // no DDC controls at all. Facts, not settings.
+                        ContentSubsection {
+                            visible: MonitorDdc.infoFor(root.selectedName).length > 0
+                            title: Translation.tr("About this display")
+
+                            readonly property var infoLabels: ({
+                                "model": Translation.tr("Model"),
+                                "vendor": Translation.tr("Made by"),
+                                "made": Translation.tr("Made"),
+                                "size": Translation.tr("Size"),
+                                "depth": Translation.tr("Colour depth"),
+                                "panel": Translation.tr("Panel"),
+                                "gamut": Translation.tr("Gamut"),
+                                "hdr": Translation.tr("HDR")
+                            })
+
+                            Repeater {
+                                model: MonitorDdc.infoFor(root.selectedName)
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    StyledText {
+                                        text: infoLabels[modelData.key] ?? modelData.key
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colSubtext
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    StyledText {
+                                        Layout.maximumWidth: parent.width * 0.62
+                                        horizontalAlignment: Text.AlignRight
+                                        elide: Text.ElideRight
+                                        text: modelData.value
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: Appearance.colors.colOnLayer2
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
