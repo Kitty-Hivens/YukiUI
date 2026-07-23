@@ -40,7 +40,7 @@ Item {
                 entry.width, entry.height, Math.round(entry.refreshRate),
                 entry.scale, entry.transform, entry.bitdepth, entry.cm,
                 entry.vrrOverride ? entry.vrr : null,
-                entry.sdrBrightness, entry.sdrSaturation
+                entry.sdrMaxLuminance, entry.sdrSaturation
             ])
             .sort((a, b) => a[0] < b[0] ? -1 : 1));
     }
@@ -98,7 +98,7 @@ Item {
             return;
         root.patch(root.selected.name, changes);
         const entry = root.draft.find(item => item.name === root.selectedName);
-        Displays.previewSdr(entry.name, entry.sdrBrightness, entry.sdrSaturation);
+        Displays.previewSdr(entry.name, entry.sdrMaxLuminance, entry.sdrSaturation);
     }
 
     function patch(name, changes) {
@@ -442,26 +442,32 @@ Item {
                                 // chose. Previewed live, since judging these by
                                 // eye is the only way to set them.
                                 ConfigSlider {
-                                    id: sdrBrightnessSlider
+                                    id: sdrLuminanceSlider
                                     valueAnimationDuration: 250
                                     text: Translation.tr("Brightness")
                                     buttonIcon: "brightness_6"
-                                    from: 0.5
-                                    to: 3.0
+                                    // In nits, because that is the unit the
+                                    // encoding is defined in. The multiplier it
+                                    // replaces sat on top of an unshown default,
+                                    // so the same picture could be described by
+                                    // two numbers neither of which meant much.
+                                    from: 50
+                                    to: 600
+                                    stepSize: 5
                                     // Restated so the control still follows the
                                     // model after it has been dragged: dragging
                                     // writes the property and drops the binding,
                                     // which is why discarding a preview left the
                                     // handle sitting where it had been left.
                                     Binding {
-                                        target: sdrBrightnessSlider
+                                        target: sdrLuminanceSlider
                                         property: "value"
-                                        value: root.selected?.sdrBrightness ?? 1.0
+                                        value: root.selected?.sdrMaxLuminance ?? 80
                                         restoreMode: Binding.RestoreBindingOrValue
                                     }
                                     usePercentTooltip: false
-                                    tooltipContent: `${(root.selected?.sdrBrightness ?? 1.0).toFixed(2)}x`
-                                    onMoved: root.tuneSdr({ sdrBrightness: root.round2(value) })
+                                    tooltipContent: `${Math.round(root.selected?.sdrMaxLuminance ?? 80)} nit`
+                                    onMoved: root.tuneSdr({ sdrMaxLuminance: Math.round(value) })
                                 }
                                 ConfigSlider {
                                     id: sdrSaturationSlider

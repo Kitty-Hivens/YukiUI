@@ -813,7 +813,7 @@
   "Saved settings live in ~/.config/hypr/monitors.lua, which Hyprland reads on startup.": "Сохранённые настройки лежат в ~/.config/hypr/monitors.lua, который Hyprland читает при запуске.",
   "No display is reporting a usable mode": "Ни один экран не сообщает рабочего режима",
   "SDR content in HDR": "SDR-контент в HDR",
-  "How bright and how saturated ordinary content looks while the display is in HDR.": "Насколько ярким и насыщенным выглядит обычный контент, пока экран в режиме HDR.",
+  "How bright and how saturated ordinary content looks while the display is in HDR.": "Насколько ярким (в нитах) и насыщенным выглядит обычный контент, пока экран в режиме HDR.",
   "Saturation": "Насыщенность",
   "Left alone, this display follows the global setting.\nSwitching it here pins the choice for this display only.": "Без изменений экран следует общей настройке.\nПереключение здесь закрепляет выбор только для него."
 }

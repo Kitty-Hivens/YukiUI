@@ -54,8 +54,12 @@ def monitor_line(entry, disabled=False):
         + 
         f'bitdepth = {10 if int(entry.get("bitdepth", 8)) == 10 else 8}, '
         f'cm = "{entry.get("cm") or "srgb"}", '
-        f'sdrbrightness = {float(entry.get("sdrBrightness", 1.0)):g}, '
-        f'sdrsaturation = {float(entry.get("sdrSaturation", 1.0)):g} }})'
+        f'sdr_max_luminance = {float(entry.get("sdrMaxLuminance", 80)):g}, '
+        f'sdrsaturation = {float(entry.get("sdrSaturation", 1.0)):g}, '
+        # Stated explicitly: the flag is sticky, so an output that was switched
+        # off once stays off through every reload, and a config that merely omits
+        # it has no way of bringing it back.
+        f'disabled = false }})'
     )
 
 

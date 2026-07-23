@@ -20,6 +20,7 @@ RowLayout {
     property real textWidth: 120
     property alias tooltipContent: slider.tooltipContent
     property alias valueAnimationDuration: slider.valueAnimationDuration
+    property alias stepSize: slider.stepSize
 
     // Forwarded so a caller can react to dragging alone. Binding to value also
     // fires when the value is written back, which makes a two way control fight

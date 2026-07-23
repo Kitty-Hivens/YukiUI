@@ -118,7 +118,7 @@ Singleton {
             // fullscreen, and pinning that per output silently overrides the
             // global policy the user set.
             vrrOverride: false,
-            sdrBrightness: root.sdrBaseline[output.name]?.sdrBrightness ?? output.sdrBrightness ?? 1.0,
+            sdrMaxLuminance: root.sdrBaseline[output.name]?.sdrMaxLuminance ?? output.sdrMaxLuminance ?? 80,
             sdrSaturation: root.sdrBaseline[output.name]?.sdrSaturation ?? output.sdrSaturation ?? 1.0,
             bitdepth: (output.currentFormat ?? "").indexOf("2101010") !== -1 ? 10 : 8,
             cm: output.colorManagementPreset && output.colorManagementPreset.length > 0
@@ -178,8 +178,9 @@ Singleton {
             + (entry.vrrOverride ? `vrr = ${entry.vrr ? 1 : 0}, ` : "")
             + `bitdepth = ${entry.bitdepth === 10 ? 10 : 8}, `
             + `cm = "${entry.cm}", `
-            + `sdrbrightness = ${entry.sdrBrightness ?? 1.0}, `
-            + `sdrsaturation = ${entry.sdrSaturation ?? 1.0} })`;
+            + `sdr_max_luminance = ${entry.sdrMaxLuminance ?? 80}, `
+            + `sdrsaturation = ${entry.sdrSaturation ?? 1.0}, `
+            + `disabled = false })`;
     }
 
     function luaFor(plan, separator) {
@@ -203,7 +204,7 @@ Singleton {
      */
     property var pendingPreview: null
 
-    function previewSdr(name, brightness, saturation) {
+    function previewSdr(name, luminance, saturation) {
         // Nothing to return to means discard cannot work, so a preview does not
         // begin until there is a recorded starting point.
         if (!root.sdrBaseline[name]) {
@@ -212,13 +213,13 @@ Singleton {
                 return;
             const captured = root.sdrBaseline;
             captured[name] = {
-                sdrBrightness: live.sdrBrightness ?? 1.0,
+                sdrMaxLuminance: live.sdrMaxLuminance ?? 80,
                 sdrSaturation: live.sdrSaturation ?? 1.0
             };
             root.sdrBaseline = captured;
         }
 
-        root.pendingPreview = { name: name, brightness: brightness, saturation: saturation };
+        root.pendingPreview = { name: name, luminance: luminance, saturation: saturation };
         if (!previewProc.running)
             root.flushPreview();
     }
@@ -229,7 +230,7 @@ Singleton {
             return;
         root.pendingPreview = null;
         previewProc.command = ["hyprctl", "eval",
-            `hl.monitor({ output = "${next.name}", sdrbrightness = ${next.brightness}, sdrsaturation = ${next.saturation} })`];
+            `hl.monitor({ output = "${next.name}", sdr_max_luminance = ${next.luminance}, sdrsaturation = ${next.saturation} })`];
         previewProc.running = true;
     }
 
@@ -247,7 +248,7 @@ Singleton {
         for (const name in root.sdrBaseline) {
             const base = root.sdrBaseline[name];
             Quickshell.execDetached(["hyprctl", "eval",
-                `hl.monitor({ output = "${name}", sdrbrightness = ${base.sdrBrightness}, sdrsaturation = ${base.sdrSaturation} })`]);
+                `hl.monitor({ output = "${name}", sdr_max_luminance = ${base.sdrMaxLuminance}, sdrsaturation = ${base.sdrSaturation} })`]);
         }
     }
 
@@ -449,7 +450,7 @@ Singleton {
                 const fingerprint = JSON.stringify(parsed.map(output => [output.name, output.width, output.height,
                     Math.round(output.refreshRate), output.x, output.y, output.scale, output.transform,
                     output.vrr, output.disabled, output.currentFormat, output.colorManagementPreset,
-                    output.sdrBrightness, output.sdrSaturation]));
+                    output.sdrMaxLuminance, output.sdrSaturation]));
                 if (fingerprint !== root.outputsJson) {
                     root.outputsJson = fingerprint;
                     root.outputs = parsed;
