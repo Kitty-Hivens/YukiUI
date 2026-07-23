@@ -9,7 +9,16 @@ import Quickshell.Hyprland
 
 Item {
     id: root
-    readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.QsWindow.window?.screen)
+    // Depends on the monitor list as well as the screen: Hyprland replaces the
+    // monitor object when an output is reconfigured, while the screen object
+    // stays the same. Without naming the list here the binding never
+    // re-evaluates, and this keeps pointing at an object that no longer receives
+    // updates -- the workspace indicator freezes while everything fed from
+    // elsewhere carries on.
+    readonly property HyprlandMonitor monitor: {
+        Hyprland.monitors.values;
+        return Hyprland.monitorFor(root.QsWindow.window?.screen);
+    }
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
     property string activeWindowAddress: `0x${activeWindow?.HyprlandToplevel?.address}`
