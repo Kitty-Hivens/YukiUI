@@ -20,6 +20,10 @@ Item {
 
     readonly property var selected: root.draft.find(entry => entry.name === root.selectedName) ?? null
     readonly property var selectedOutput: Displays.outputs.find(output => output.name === root.selectedName) ?? null
+    // The panel's backlight, which is what brightness means to anyone not
+    // thinking about colour encodings. Driven over DDC for an external display
+    // and through the kernel for the built-in one.
+    readonly property var backlight: Brightness.monitors.find(monitor => monitor.screen?.name === root.selectedName) ?? null
     readonly property bool dirty: root.userEdited
         && root.planSignature(root.draft) !== root.planSignature(Displays.currentPlan())
 
@@ -397,6 +401,28 @@ Item {
                         }
 
                         ContentSubsection {
+                            visible: root.backlight !== null
+                            title: Translation.tr("Backlight")
+
+                            ConfigSlider {
+                                id: backlightSlider
+                                text: Translation.tr("Brightness")
+                                buttonIcon: "brightness_6"
+                                from: 0.05
+                                to: 1.0
+                                valueAnimationDuration: 250
+                                Binding {
+                                    target: backlightSlider
+                                    property: "value"
+                                    value: root.backlight?.brightness ?? 1.0
+                                    restoreMode: Binding.RestoreBindingOrValue
+                                }
+                                tooltipContent: `${Math.round((root.backlight?.brightness ?? 1) * 100)}%`
+                                onMoved: root.backlight?.setBrightness(value)
+                            }
+                        }
+
+                        ContentSubsection {
                             title: Translation.tr("Colour")
                             tooltip: Translation.tr("Saved settings live in ~/.config/hypr/monitors.lua, which Hyprland reads on startup.")
 
@@ -413,12 +439,20 @@ Item {
                             }
                             ConfigSelectionArray {
                                 currentValue: root.selected?.cm ?? "srgb"
-                                options: [
-                                    { displayName: "sRGB", value: "srgb" },
-                                    { displayName: Translation.tr("Wide"), value: "wide" },
-                                    { displayName: "HDR", value: "hdr" },
-                                    { displayName: Translation.tr("From EDID"), value: "hdredid" }
-                                ]
+                                // Filtered by what the panel advertises. A display
+                                // that reports neither PQ nor BT.2020 cannot be
+                                // sent either, and offering the choice only
+                                // produces a signal it has to guess at.
+                                options: {
+                                    const list = [{ displayName: "sRGB", value: "srgb" }];
+                                    if (Displays.capabilities[root.selectedName]?.wideGamut)
+                                        list.push({ displayName: Translation.tr("Wide"), value: "wide" });
+                                    if (Displays.hdrCapable(root.selectedName)) {
+                                        list.push({ displayName: "HDR", value: "hdr" });
+                                        list.push({ displayName: Translation.tr("From EDID"), value: "hdredid" });
+                                    }
+                                    return list;
+                                }
                                 onSelected: newValue => {
                                     if (root.selected)
                                         root.patch(root.selected.name, { cm: newValue });
@@ -432,7 +466,7 @@ Item {
                             // make for the display.
                             ContentSubsection {
                                 visible: (root.selected?.cm ?? "srgb") !== "srgb"
-                                title: Translation.tr("SDR content in HDR")
+                                title: Translation.tr("Mapping of ordinary content")
                                 tooltip: Translation.tr("How bright and how saturated ordinary content looks while the display is in HDR.")
 
                                 // Driven from onMoved, not onValueChanged: the
@@ -444,15 +478,16 @@ Item {
                                 ConfigSlider {
                                     id: sdrLuminanceSlider
                                     valueAnimationDuration: 250
-                                    text: Translation.tr("Brightness")
-                                    buttonIcon: "brightness_6"
-                                    // In nits, because that is the unit the
-                                    // encoding is defined in. The multiplier it
-                                    // replaces sat on top of an unshown default,
-                                    // so the same picture could be described by
-                                    // two numbers neither of which meant much.
+                                    text: Translation.tr("White level")
+                                    buttonIcon: "exposure"
+                                    // In nits, because HDR encodes absolute
+                                    // luminance and this decides what an ordinary
+                                    // white is worth. Bounded by the figure the
+                                    // panel itself asks content to be graded for:
+                                    // asking for more than it can emit only
+                                    // clips.
                                     from: 50
-                                    to: 600
+                                    to: Math.max(200, Displays.peakLuminance(root.selectedName))
                                     stepSize: 5
                                     // Restated so the control still follows the
                                     // model after it has been dragged: dragging

@@ -51,6 +51,15 @@ Singleton {
      */
     property var sdrBaseline: ({})
 
+    /**
+     * What each panel actually claims it can do, read from its EDID.
+     *
+     * Offering HDR to a display that cannot receive it is not a harmless extra
+     * button: it produces a mode the panel has to guess at. The laptop screen
+     * here advertises neither PQ nor BT.2020, and was being offered both.
+     */
+    property var capabilities: ({})
+
     property var outputs: []
     property string outputsJson: ""
     property var pendingPlan: null
@@ -75,6 +84,38 @@ Singleton {
 
     function reload() {
         getMonitors.running = true;
+        readCapabilities.running = true;
+    }
+
+    function hdrCapable(name) {
+        return root.capabilities[name]?.hdr === true;
+    }
+
+    /** Peak luminance the panel asks content to be graded for, in nits. */
+    function peakLuminance(name) {
+        return root.capabilities[name]?.peak ?? 0;
+    }
+
+    Process {
+        id: readCapabilities
+        command: ["sh", `${root.scriptDir}/capabilities.sh`]
+        stdout: StdioCollector {
+            id: capsOut
+            onStreamFinished: {
+                const parsed = ({});
+                for (const line of capsOut.text.trim().split("\n")) {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length < 4)
+                        continue;
+                    parsed[parts[0]] = {
+                        hdr: parts[1] !== "0",
+                        wideGamut: parts[2] !== "0",
+                        peak: Math.round(parseFloat(parts[3]) || 0)
+                    };
+                }
+                root.capabilities = parsed;
+            }
+        }
     }
 
     /**
