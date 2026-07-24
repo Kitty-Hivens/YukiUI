@@ -818,5 +818,13 @@
   "Left alone, this display follows the global setting.\nSwitching it here pins the choice for this display only.": "Без изменений экран следует общей настройке.\nПереключение здесь закрепляет выбор только для него.",
   "Backlight": "Подсветка",
   "Mapping of ordinary content": "Отображение обычного контента",
-  "White level": "Уровень белого"
+  "White level": "Уровень белого",
+  "Monitor": "Монитор",
+  "Read from the monitor itself. These are its hardware controls, applied over DDC and confirmed by reading them back.": "Считано с самого монитора. Это его аппаратные регуляторы, применяются по DDC и подтверждаются обратным чтением.",
+  "Contrast": "Контраст",
+  "Sharpness": "Резкость",
+  "Input source": "Источник сигнала",
+  "OSD language": "Язык меню",
+  "The monitor did not accept the change: %1": "Монитор не принял изменение: %1",
+  "Gamma": "Гамма"
 }

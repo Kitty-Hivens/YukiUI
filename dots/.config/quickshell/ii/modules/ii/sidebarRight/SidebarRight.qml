@@ -37,6 +37,11 @@ Scope {
         onVisibleChanged: {
             if (visible) {
                 GlobalFocusGrab.addDismissable(panelWindow);
+                // Re-read brightness and gamma each time the sidebar opens, so
+                // its sliders show what is actually set rather than a cached
+                // value another process (the display settings) may have changed.
+                Brightness.refresh();
+                Hyprsunset.fetchState();
             } else {
                 GlobalFocusGrab.removeDismissable(panelWindow);
             }

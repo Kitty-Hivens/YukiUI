@@ -14,7 +14,6 @@ import Quickshell.Hyprland
 WindowDialog {
     id: root
     property var screen: root.QsWindow.window?.screen
-    property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     backgroundHeight: 700
 
     WindowDialogTitle {
@@ -132,63 +131,10 @@ WindowDialog {
         }
     }
 
-    WindowDialogSectionHeader {
-        text: Translation.tr("Brightness")
-    }
+    // Brightness and gamma used to live here, but they are display settings, not
+    // night light, and belong with the rest of them. This dialog is night light
+    // and its anti-flashbang helper, nothing else.
 
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
-
-    Column {
-        id: brightnessColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
-
-        WindowDialogSlider {
-            anchors {
-                left: parent.left
-                right: parent.right
-                leftMargin: 4
-                rightMargin: 4
-            }
-            value: root.brightnessMonitor.brightness
-            onMoved: root.brightnessMonitor.setBrightness(value)
-        }
-    }
-
-    WindowDialogSectionHeader {
-        text: Translation.tr("Gamma")
-    }
-
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
-
-    Column {
-        id: gammaColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-
-        WindowDialogSlider {
-            anchors {
-                left: parent.left
-                right: parent.right
-                leftMargin: 4
-                rightMargin: 4
-            }
-            from: Hyprsunset.gammaLowerLimit / 100
-            value: Hyprsunset.gamma / 100
-            onMoved: Hyprsunset.setGamma(value * 100)
-            tooltipContent: `${Math.round(value * 100)}%`
-        }
-    }
-    
     WindowDialogButtonRow {
         Layout.fillWidth: true
 

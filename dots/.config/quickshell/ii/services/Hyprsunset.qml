@@ -127,6 +127,23 @@ Singleton {
 
     function fetchState() {
         fetchProc.running = true;
+        fetchGammaProc.running = true;
+    }
+
+    // Gamma was set but never read back, so it drifted whenever anything else
+    // changed it -- another process, or the display settings page. Reading it on
+    // demand lets a widget show the value actually in effect.
+    Process {
+        id: fetchGammaProc
+        command: ["bash", "-c", "hyprctl hyprsunset gamma"]
+        stdout: StdioCollector {
+            id: gammaStateCollector
+            onStreamFinished: {
+                const value = parseInt(gammaStateCollector.text.trim());
+                if (!isNaN(value))
+                    root.gamma = Math.max(root.gammaLowerLimit, Math.min(100, value));
+            }
+        }
     }
 
     Process {

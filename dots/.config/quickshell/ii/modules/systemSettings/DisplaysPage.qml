@@ -24,6 +24,7 @@ Item {
     // thinking about colour encodings. Driven over DDC for an external display
     // and through the kernel for the built-in one.
     readonly property var backlight: Brightness.monitors.find(monitor => monitor.screen?.name === root.selectedName) ?? null
+
     readonly property bool dirty: root.userEdited
         && root.planSignature(root.draft) !== root.planSignature(Displays.currentPlan())
 
@@ -143,7 +144,13 @@ Item {
         return rates.sort((a, b) => b - a);
     }
 
-    Component.onCompleted: root.resetDraft()
+    Component.onCompleted: {
+        root.resetDraft();
+        MonitorDdc.reload();
+        // Separate process from the shell, so read the current gamma rather than
+        // trusting this instance's default.
+        Hyprsunset.fetchState();
+    }
 
     Connections {
         target: Displays
@@ -388,7 +395,7 @@ Item {
                         }
 
                         ConfigSwitch {
-                            text: Translation.tr("Variable refresh rate")
+                            text: "VRR"
                             buttonIcon: "monitor_heart"
                             checked: (root.selected?.vrr ?? 0) !== 0
                             onCheckedChanged: {
@@ -419,6 +426,27 @@ Item {
                                 }
                                 tooltipContent: `${Math.round((root.backlight?.brightness ?? 1) * 100)}%`
                                 onMoved: root.backlight?.setBrightness(value)
+                            }
+
+                            // Gamma is the compositor's, not the panel's, and it
+                            // applies to the whole session rather than one output.
+                            // It used to sit in the night-light widget, which is
+                            // not where anyone looks for a display setting.
+                            ConfigSlider {
+                                id: gammaSlider
+                                text: Translation.tr("Gamma")
+                                buttonIcon: "gradient"
+                                from: Hyprsunset.gammaLowerLimit / 100
+                                to: 1.0
+                                valueAnimationDuration: 250
+                                Binding {
+                                    target: gammaSlider
+                                    property: "value"
+                                    value: Hyprsunset.gamma / 100
+                                    restoreMode: Binding.RestoreBindingOrValue
+                                }
+                                tooltipContent: `${Math.round(Hyprsunset.gamma)}%`
+                                onMoved: Hyprsunset.setGamma(Math.round(value * 100))
                             }
                         }
 
@@ -523,6 +551,79 @@ Item {
                                 }
                             }
                         }
+
+                        // The monitor's own controls, read from it rather than
+                        // fixed: what a panel exposes over DDC is what shows, and
+                        // only settings the compositor cannot reach appear here,
+                        // so nothing has two owners.
+                        ContentSubsection {
+                            visible: MonitorDdc.hasControls(root.selectedName)
+                            title: Translation.tr("Monitor")
+                            tooltip: Translation.tr("Read from the monitor itself. These are its hardware controls, applied over DDC and confirmed by reading them back.")
+
+                            // Driven straight off the feature list. The read-back
+                            // that follows a write does not rebuild the control
+                            // under the pointer, because writes are coalesced in
+                            // MonitorDdc and the read is deferred until the drag
+                            // settles, so there is no churn mid-drag to lose.
+                            Repeater {
+                                model: MonitorDdc.featuresFor(root.selectedName)
+
+                                delegate: Loader {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    sourceComponent: modelData.kind === "C" ? continuousControl : listControl
+
+                                    // Value read from the separate live map, not
+                                    // from the model row, so a read-back updates
+                                    // the number without rebuilding the control and
+                                    // taking its focus.
+                                    readonly property int ddcCurrent: MonitorDdc.currentOf(root.selectedName, modelData.vcp)
+
+                                    Component {
+                                        id: continuousControl
+                                        ConfigSlider {
+                                            id: ddcSlider
+                                            text: Translation.tr(modelData.name)
+                                            buttonIcon: modelData.icon
+                                            from: 0
+                                            to: MonitorDdc.maxOf(root.selectedName, modelData.vcp)
+                                            stepSize: 1
+                                            usePercentTooltip: false
+                                            // Follows the live value when idle, the
+                                            // drag drives it directly, and the
+                                            // binding is restored once the read-back
+                                            // lands so a rejected change corrects.
+                                            Binding {
+                                                target: ddcSlider
+                                                property: "value"
+                                                value: ddcCurrent >= 0 ? ddcCurrent : 0
+                                                restoreMode: Binding.RestoreBindingOrValue
+                                            }
+                                            tooltipContent: `${Math.round(ddcSlider.value)}`
+                                            onMoved: MonitorDdc.setValue(root.selectedName, modelData.vcp, Math.round(value))
+                                        }
+                                    }
+
+                                    Component {
+                                        id: listControl
+                                        ContentSubsection {
+                                            title: Translation.tr(modelData.name)
+                                            StyledComboBox {
+                                                Layout.fillWidth: true
+                                                buttonIcon: modelData.icon
+                                                model: modelData.values.map(v => v.label)
+                                                currentIndex: modelData.values.findIndex(v => parseInt(v.code, 16) === ddcCurrent)
+                                                onActivated: index => {
+                                                    const code = parseInt(modelData.values[index].code, 16);
+                                                    MonitorDdc.setValue(root.selectedName, modelData.vcp, code);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -535,26 +636,6 @@ Item {
     // Floated over the content rather than placed in the column: appearing and
     // disappearing must not resize the canvas underneath, which would shift the
     // very displays the user is aiming at.
-    // Gated on the banner actually being on screen: the shadow is a sibling, not
-    // a child, so left ungated it keeps painting a dark strip along the bottom of
-    // the canvas after the bar has faded out.
-    // Floated over the content rather than placed in the column: appearing and
-    // disappearing must not resize the canvas underneath, which would shift the
-    // very displays the user is aiming at.
-    // Gated on the banner actually being on screen: the shadow is a sibling, not
-    // a child, so left ungated it keeps painting a dark strip along the bottom of
-    // the canvas after the bar has faded out.
-    // Anchored on the loader with the shadow's own anchors cleared, the way ii
-    // does it elsewhere: a shadow anchored to a sibling gets no geometry and
-    // paints nothing.
-    Loader {
-        anchors.fill: banner
-        active: banner.visible
-        sourceComponent: StyledRectangularShadow {
-            target: banner
-            anchors.fill: undefined
-        }
-    }
     Rectangle {
         id: banner
 
