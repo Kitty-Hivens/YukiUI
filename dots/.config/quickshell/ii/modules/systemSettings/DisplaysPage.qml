@@ -601,10 +601,10 @@ Item {
                                         id: continuousControl
                                         ConfigSlider {
                                             id: ddcSlider
-                                            text: Translation.tr(modelData.name)
-                                            buttonIcon: modelData.icon
+                                            text: Translation.tr(modelData?.name ?? "")
+                                            buttonIcon: modelData?.icon ?? ""
                                             from: 0
-                                            to: MonitorDdc.maxOf(root.selectedName, modelData.vcp)
+                                            to: MonitorDdc.maxOf(root.selectedName, modelData?.vcp ?? "")
                                             stepSize: 1
                                             usePercentTooltip: false
                                             // Follows the live value when idle, the
