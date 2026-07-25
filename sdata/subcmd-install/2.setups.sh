@@ -19,6 +19,15 @@ function setup_user_group(){
     x sudo usermod -aG video,i2c,input "$(whoami)"
   fi
 }
+function setup_vt_switch_policy(){
+  # Without this, Ctrl+Alt+Fn stops switching consoles once the session runs through uwsm.
+  # The rule file itself explains why.
+  if [[ ! -d /etc/polkit-1/rules.d ]]; then
+    printf "${STY_YELLOW}[$0]: /etc/polkit-1/rules.d not found, skipping the VT switching policy...${STY_RST}\n"
+    return
+  fi
+  x sudo install -m 644 -o root -g root sdata/files/49-vt-switch.rules /etc/polkit-1/rules.d/49-vt-switch.rules
+}
 #####################################################################################
 # These python packages are installed using uv into the venv (virtual environment). Once the folder of the venv gets deleted, they are all gone cleanly. So it's considered as setups, not dependencies.
 showfun install-python-packages
@@ -26,6 +35,9 @@ v install-python-packages
 
 showfun setup_user_group
 v setup_user_group
+
+showfun setup_vt_switch_policy
+v setup_vt_switch_policy
 
 if [[ ! -z $(systemctl --version) ]]; then
   # For Fedora, uinput is required for the virtual keyboard to function, and udev rules enable input group users to utilize it.

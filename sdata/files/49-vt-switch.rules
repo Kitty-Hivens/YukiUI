@@ -1,0 +1,11 @@
+// Hyprland started through uwsm lives in user@.service, so its processes belong
+// to no logind session. polkit then evaluates login1.chvt under allow_any rather
+// than allow_active and demands an admin password, which libseat cannot answer
+// because it calls without AllowUserInteraction -- Ctrl+Alt+Fn silently stops
+// switching consoles. Grant what an active local session would have had anyway.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.login1.chvt" &&
+        (subject.isInGroup("wheel") || subject.isInGroup("sudo"))) {
+        return polkit.Result.YES;
+    }
+});
