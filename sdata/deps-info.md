@@ -99,6 +99,8 @@ Tips:
 ## illogical-impulse-hyprland
 - `hyprland`
   - Surely needed.
+- `uwsm`
+  - The session is launched through it: `hyprland/execs.lua` runs `uwsm finalize` and starts Quickshell as `uwsm app`, so without it the shell never comes up.
 - `hyprsunset`
   - Used in Quickshell config.
 - `wl-clipboard`

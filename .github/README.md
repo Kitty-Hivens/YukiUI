@@ -49,6 +49,8 @@ cd YukiUI
 
 Every command is printed before it runs, and you can skip individual ones. Conflicting files are backed up unless you pass `--skip-backup`.
 
+The session runs under uwsm: `hyprland/execs.lua` calls `uwsm finalize` and starts the shell as a `uwsm app` unit. Pick the uwsm session in your display manager, or launch it that way from a tty -- a plain Hyprland session comes up without the shell.
+
 Useful flags:
 
 | Flag | Effect |

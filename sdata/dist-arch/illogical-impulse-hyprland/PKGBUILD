@@ -1,12 +1,13 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-hyprland
 pkgver=1.0
-pkgrel=5
+pkgrel=6
 pkgdesc='Illogical Impulse Hyprland relatated packages'
 arch=(any)
 license=(None)
 depends=(
   hyprland
+  uwsm
   hyprsunset
   wl-clipboard
   gamemode

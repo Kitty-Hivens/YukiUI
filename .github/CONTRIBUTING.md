@@ -57,7 +57,7 @@ If your changes involves using python package or script, please use the virtual 
 
 # Running
 
-- Launch Hyprland (not the "uwsm-managed" one)
+- Launch the uwsm-managed Hyprland session
 - For the shell:
   - Open `~/.config/quickshell/ii` in your code editor.
   - In a terminal run `pkill qs; qs -c ii` to start the shell in the terminal (for logs).
