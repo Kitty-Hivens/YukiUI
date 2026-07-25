@@ -14,7 +14,6 @@ import Quickshell.Hyprland
 WindowDialog {
     id: root
     property var screen: root.QsWindow.window?.screen
-    backgroundHeight: 700
 
     WindowDialogTitle {
         text: Translation.tr("Eye protection")

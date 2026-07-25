@@ -10,7 +10,7 @@ Rectangle {
 
     property bool show: false
     default property alias contentData: contentColumn.data
-    property real backgroundHeight: dialogBackground.implicitHeight
+    property real backgroundHeight: contentColumn.implicitHeight + dialogBackground.radius * 2
     property real backgroundWidth: 350
     property real backgroundAnimationMovementDistance: 60
     
@@ -32,6 +32,10 @@ Rectangle {
         dialogBackgroundHeightAnimation.easing.bezierCurve = (show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel)
         dialogBackground.implicitHeight = show ? backgroundHeight : 0
     }
+
+    // A dialog that sizes to its content only learns its real height once the
+    // layout has polished, which is after the show assignment above.
+    onBackgroundHeightChanged: if (root.show) dialogBackground.implicitHeight = root.backgroundHeight
 
     radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
 
