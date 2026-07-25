@@ -839,5 +839,9 @@
   "Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause.": "Переменная частота обновления. «Полноэкранно» ограничивает её полноэкранным окном, что убирает мерцание от некоторых простаивающих приложений.",
   "Fullscreen": "Полноэкранно",
   "Allow tearing": "Разрешить tearing",
-  "Session-wide, not per display. Lets a game present without waiting for the refresh, trading a possible tear for lower latency.": "На всю сессию, не по экранам. Позволяет игре выводить кадр не дожидаясь развёртки: возможный разрыв в обмен на меньшую задержку."
+  "Session-wide, not per display. Lets a game present without waiting for the refresh, trading a possible tear for lower latency.": "На всю сессию, не по экранам. Позволяет игре выводить кадр не дожидаясь развёртки: возможный разрыв в обмен на меньшую задержку.",
+  "Content adjustment": "Коррекция контента",
+  "Brightness adjustment": "Коррекция яркости",
+  "<b>Dims screen content</b> as needed.<br><br>Pros: Immediately responsive<br>Cons: Expensive and can hurt color accuracy<br><br><i>Uses a Hyprland screen shader</i>": "<b>Затемняет содержимое экрана</b> по мере необходимости.<br><br>Плюсы: мгновенная реакция<br>Минусы: затратно и может искажать цвета<br><br><i>Использует экранный шейдер Hyprland</i>",
+  "Adapts the <b>display (physical screen) brightness</b><br><br>Pros: Less expensive, retains colors<br>Cons: Not immediately responsive<br><br><i>Adjusts display brightness after each Hyprland IPC event</i>": "Подстраивает <b>яркость дисплея (физического экрана)</b><br><br>Плюсы: дешевле, сохраняет цвета<br>Минусы: реагирует не мгновенно<br><br><i>Меняет яркость дисплея после каждого события Hyprland IPC</i>"
 }
