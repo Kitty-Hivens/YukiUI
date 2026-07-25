@@ -79,7 +79,7 @@ ContentPage {
 
     }
     ContentSection {
-        icon: "format_paint"
+        icon: "layers"
         title: Translation.tr("Appearance")
 
         RowLayout {
@@ -87,10 +87,9 @@ ContentPage {
             spacing: 20
             Layout.topMargin: 10
             Layout.bottomMargin: 10
-            MaterialSymbol {
-                text: "format_paint"
-                iconSize: 80
-                color: Appearance.colors.colOnLayer0
+            IconImage {
+                implicitSize: 80
+                source: Quickshell.iconPath("illogical-impulse")
             }
             ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
