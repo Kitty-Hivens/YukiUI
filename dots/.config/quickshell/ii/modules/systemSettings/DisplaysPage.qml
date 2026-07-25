@@ -447,8 +447,6 @@ Item {
 
                             // Gamma is the compositor's, not the panel's, and it
                             // applies to the whole session rather than one output.
-                            // It used to sit in the night-light widget, which is
-                            // not where anyone looks for a display setting.
                             ConfigSlider {
                                 id: gammaSlider
                                 text: Translation.tr("Gamma")

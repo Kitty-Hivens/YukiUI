@@ -130,10 +130,6 @@ WindowDialog {
         }
     }
 
-    // Brightness and gamma used to live here, but they are display settings, not
-    // night light, and belong with the rest of them. This dialog is night light
-    // and its anti-flashbang helper, nothing else.
-
     WindowDialogButtonRow {
         Layout.fillWidth: true
 
