@@ -1,16 +1,34 @@
-# Meta package: pulls the official repo `quickshell` plus the extra Qt deps the ii
-# config needs (no build -- replaces the old pinned-git-commit build).
+# Builds Quickshell from our fork instead of using the repo package, because the fork
+# carries the polkit agent registration fix: upstream registers the agent for the session
+# resolved from its own cgroup, which does not exist for a process inside user@.service,
+# so under a uwsm session the agent never registers and no password prompt can appear.
+# See https://github.com/quickshell-mirror/quickshell/pull/875 -- once that merges, drop
+# this build and go back to depending on the repo `quickshell`.
 
 groups=(illogical-impulse)
+_pkgname=quickshell
 pkgname=illogical-impulse-quickshell
-pkgver=1.0
+# epoch, because this supersedes the meta package that was versioned 1.0
+epoch=1
+pkgver=0.3.0
 pkgrel=1
-pkgdesc='Official Quickshell + extra Qt deps for illogical-impulse'
-arch=(any)
-license=(None)
+_commit='f24a60f438587e460c128880ce494c03f290d585'
+pkgdesc='Quickshell built from the fork carrying the polkit session fix, plus extra Qt deps'
+arch=(x86_64 aarch64)
+url='https://github.com/Kitty-Hivens/quickshell'
+license=('LGPL-3.0-only')
 depends=(
-  quickshell
-  # Extra deps used by the ii config (repo quickshell pulls its own core deps).
+  'cpptrace'
+  'jemalloc'
+  'mesa'
+  'qt6-declarative'
+  'qt6-base'
+  'qt6-svg'
+  'libdrm'
+  'libpipewire'
+  'libxcb'
+  'wayland'
+  # NOTE: Below are custom dependencies of illogical-impulse
   qt6-5compat
   qt6-avif-image-plugin
   qt6-imageformats
@@ -27,3 +45,40 @@ depends=(
   kdialog
   syntax-highlighting
 )
+makedepends=(
+  'cli11'
+  'cmake'
+  'git'
+  'ninja'
+  'qt6-shadertools'
+  'spirv-tools'
+  'vulkan-headers'
+  'wayland'
+  'wayland-protocols'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname" "$_pkgname-git")
+
+source=("$_pkgname::git+$url.git#commit=$_commit"
+  quickshell-check.hook)
+sha256sums=('SKIP'
+  '8543e21aeaaa5441b73a679160e7601a957f16c433e8d6bd9257e80bd0e94083')
+
+build() {
+  cd "$_pkgname"
+  cmake -GNinja -B build \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration)" \
+    -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
+    -DINSTALL_QML_PREFIX=lib/qt6/qml
+
+  cmake --build build
+}
+
+package() {
+  install -Dm644 "quickshell-check.hook" -t "$pkgdir/usr/share/libalpm/hooks"
+  cd "$_pkgname"
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "LICENSE" -t "$pkgdir/usr/share/licenses/$_pkgname"
+}
