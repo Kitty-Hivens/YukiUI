@@ -26,7 +26,7 @@ See `dots/.config/quickshell/ii/translations/tools`
 - Spaces
   - Space properties and children data into meaningful groups. (but of course, don't use 2+ blanks in a row)
   - Put spaces between text and operators: `if (condition) { ... } else { ... }` instead of `if(condition){ ... }else{ ... }`
-- As you can see, it's pretty easy to use lots of nesting. There's no hard limit, end-4 himself nests a lot too, but avoid/mitigate that:
+- As you can see, it's pretty easy to use lots of nesting. There's no hard limit, and the existing code nests a lot too, but avoid/mitigate that:
   - Prefer early return: Use something like `if (!condition) return; doStuff();` instead of `if (condition) { doStuff() }`
   - If you feel it's a bother to refractor something into a new file, remember there's `component` to declare reusable components in the same file.
 
@@ -38,7 +38,7 @@ The following instruction assumes that you have an Arch(-based) Linux system.
 
 _Might not be necessary depending on what you change, but this is recommended._
 
-- [Install](https://ii.clsty.link/en/ii-qs/01setup/) the dotfiles (if you don't wanna replace your stuff completely, do it on a new user).
+- [Install](https://github.com/Kitty-Hivens/YukiUI#installation) the dotfiles (if you don't wanna replace your stuff completely, do it on a new user).
 - Make changes, copy changes to a fork, create PR.
 
 ## Partially working shell

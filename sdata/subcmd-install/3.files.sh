@@ -252,7 +252,7 @@ printf "${STY_CYAN}Press ${STY_INVERT} Ctrl+Super+T ${STY_RST}${STY_CYAN} to sel
 printf "${STY_CYAN}Press ${STY_INVERT} Super+/ ${STY_RST}${STY_CYAN} for a list of keybinds${STY_RST}\n"
 printf "\n"
 printf "${STY_CYAN}For suggestions/hints after installation:${STY_RST}\n"
-printf "${STY_CYAN}${STY_UNDERLINE} https://ii.clsty.link/en/ii-qs/01setup/#post-installation ${STY_RST}\n"
+printf "${STY_CYAN}${STY_UNDERLINE} https://github.com/Kitty-Hivens/YukiUI#configuration ${STY_RST}\n"
 printf "\n"
 
 if [[ -z "${ILLOGICAL_IMPULSE_VIRTUAL_ENV}" ]]; then

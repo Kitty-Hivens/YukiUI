@@ -34,7 +34,7 @@ ApplicationWindow {
         { name: Translation.tr("Interface"), icon: "bottom_app_bar", component: "modules/settings/InterfaceConfig.qml" },
         { name: Translation.tr("Services"), icon: "settings", component: "modules/settings/ServicesConfig.qml" },
         { name: Translation.tr("Advanced"), icon: "construction", component: "modules/settings/AdvancedConfig.qml" },
-        { name: Translation.tr("About"), icon: "info", component: "modules/settings/About.qml" }
+        { name: Translation.tr("System"), icon: "info", component: "modules/settings/About.qml" }
     ]
     readonly property var wafflePages: [
         { name: "Waffle", icon: "grid_view", component: "modules/settings/WaffleConfig.qml" }
@@ -49,7 +49,7 @@ ApplicationWindow {
     onClosing: Qt.quit()
     // Hyprland floats this window by matching the exact title (rules.lua) -- keep it
     // hardcoded, never bind to a translated string.
-    title: "YukiUI Settings"
+    title: "YukiUI Appearance"
 
     Component.onCompleted: {
         MaterialThemeLoader.reapplyTheme()
@@ -112,7 +112,7 @@ ApplicationWindow {
                 StyledText {
                     id: titleText
                     color: Appearance.colors.colOnLayer0
-                    text: Translation.tr("Settings")
+                    text: Translation.tr("Appearance")
                     font {
                         family: Appearance.font.family.title
                         pixelSize: Appearance.font.pixelSize.title

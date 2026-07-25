@@ -1,4 +1,5 @@
 {
+  "Appearance": "Внешний вид",
   "Style: Blurred": "Размытие",
   "Unknown device": "Неизв. устройство",
   "Change any time later with /dark, /light, /wallpaper in the launcher\nIf the shell's colors aren't changing:\n    1. Open the right sidebar with Super+N\n    2. Click \"Reload Hyprland & Quickshell\" in the top-right corner": "Измените позже с /dark, /light, /wallpaper в лаунчере\nЕсли цвета оболочки не меняются:\n    1. Откройте правую панель через Super+N\n    2. Нажмите «Рестарт Hyprland и Quickshell» в правом верхнем углу",

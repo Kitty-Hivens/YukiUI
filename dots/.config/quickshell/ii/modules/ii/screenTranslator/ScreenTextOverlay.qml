@@ -21,7 +21,7 @@ Item {
     property color textColor: "white"
     required property string screenshotPath
 
-    readonly property string wikiLink: "https://ii.clsty.link/en/ii-qs/02usage/#setting-it-up" // TODO: write a page for this
+    readonly property string wikiLink: "https://github.com/Kitty-Hivens/YukiUI#configuration" // TODO: write a page for this
     readonly property string textColorDetectionScriptPath: Quickshell.shellPath("scripts/images/text-color-venv.sh")
 
     property bool loading: true

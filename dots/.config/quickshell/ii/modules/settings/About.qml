@@ -79,27 +79,28 @@ ContentPage {
 
     }
     ContentSection {
-        icon: "folder_managed"
-        title: Translation.tr("Dotfiles")
+        icon: "format_paint"
+        title: Translation.tr("Appearance")
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: 20
             Layout.topMargin: 10
             Layout.bottomMargin: 10
-            IconImage {
-                implicitSize: 80
-                source: Quickshell.iconPath("illogical-impulse")
+            MaterialSymbol {
+                text: "format_paint"
+                iconSize: 80
+                color: Appearance.colors.colOnLayer0
             }
             ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
                 // spacing: 10
                 StyledText {
-                    text: Translation.tr("YukiUI (based on Illogical Impulse)")
+                    text: "YukiUI"
                     font.pixelSize: Appearance.font.pixelSize.title
                 }
                 StyledText {
-                    text: "https://github.com/end-4/dots-hyprland"
+                    text: "https://github.com/Kitty-Hivens/YukiUI"
                     font.pixelSize: Appearance.font.pixelSize.normal
                     textFormat: Text.MarkdownText
                     onLinkActivated: (link) => {
@@ -118,7 +119,7 @@ ContentPage {
                 materialIcon: "auto_stories"
                 mainText: Translation.tr("Documentation")
                 onClicked: {
-                    Qt.openUrlExternally("https://end-4.github.io/dots-hyprland-wiki/en/ii-qs/02usage/")
+                    Qt.openUrlExternally("https://github.com/Kitty-Hivens/YukiUI#readme")
                 }
             }
             RippleButtonWithIcon {
@@ -126,25 +127,9 @@ ContentPage {
                 materialIconFill: false
                 mainText: Translation.tr("Issues")
                 onClicked: {
-                    Qt.openUrlExternally("https://github.com/end-4/dots-hyprland/issues")
+                    Qt.openUrlExternally("https://github.com/Kitty-Hivens/YukiUI/issues")
                 }
             }
-            RippleButtonWithIcon {
-                materialIcon: "forum"
-                mainText: Translation.tr("Discussions")
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/end-4/dots-hyprland/discussions")
-                }
-            }
-            RippleButtonWithIcon {
-                materialIcon: "favorite"
-                mainText: Translation.tr("Donate")
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/sponsors/end-4")
-                }
-            }
-
-            
         }
     }
 }

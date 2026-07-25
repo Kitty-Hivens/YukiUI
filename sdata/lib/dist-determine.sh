@@ -23,7 +23,7 @@ function print_os_group_id_unofficial(){
     printf "${STY_PURPLE}"
     printf "===NOTICE===\n"
     printf "The support for your distro is provided by the community.\n"
-    printf "It is not officially supported by github:end-4/dots-hyprland .\n"
+    printf "It is not officially supported by github:Kitty-Hivens/YukiUI .\n"
     printf "${STY_BOLD}"
     printf "If you find out any problems about it, PR is welcomed if you are able to address it.\n"
     printf "Or, create a discussion about it, but please do not submit issue, \n"

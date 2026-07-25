@@ -22,7 +22,7 @@ Item {
     id: root
     property int sidebarWidth: Appearance.sizes.sidebarWidth
     property int sidebarPadding: 10
-    property string settingsQmlPath: Quickshell.shellPath("settings.qml")
+    property string settingsQmlPath: Quickshell.shellPath("appearanceSettings.qml")
     property string systemSettingsQmlPath: Quickshell.shellPath("systemSettings.qml")
     property bool showAudioOutputDialog: false
     property bool showAudioInputDialog: false
@@ -305,7 +305,7 @@ Item {
                     Quickshell.execDetached(["qs", "-p", root.settingsQmlPath]);
                 }
                 StyledToolTip {
-                    text: Translation.tr("Settings")
+                    text: Translation.tr("Appearance")
                 }
             }
             QuickToggleButton {

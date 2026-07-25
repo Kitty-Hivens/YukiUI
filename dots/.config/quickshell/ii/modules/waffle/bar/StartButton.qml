@@ -46,9 +46,9 @@ AppButton {
                 }
             },
             {
-                text: Translation.tr("Settings"),
+                text: Translation.tr("Appearance"),
                 action: () => {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("appearanceSettings.qml")]);
                 }
             },
             {

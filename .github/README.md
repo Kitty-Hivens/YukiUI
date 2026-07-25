@@ -1,14 +1,14 @@
 <div align="center">
-    <h1>【 end_4's Hyprland dotfiles 】</h1>
-    <h3>Personal fork — upstream: <a href="https://github.com/end-4/dots-hyprland">end-4/dots-hyprland</a></h3>
+    <h1>YukiUI</h1>
+    <h3>A Hyprland desktop shell, built on Quickshell</h3>
+    <h4>Fork of <a href="https://github.com/end-4/dots-hyprland">Illogical Impulse</a></h4>
 </div>
 
-<div align="center"> 
+<div align="center">
 
-![](https://img.shields.io/github/last-commit/Kitty-Hivens/dots-hyprland?&style=for-the-badge&color=8ad7eb&logo=git&logoColor=D9E0EE&labelColor=1E202B)
-![](https://img.shields.io/github/stars/Kitty-Hivens/dots-hyprland?style=for-the-badge&logo=andela&color=86dbd7&logoColor=D9E0EE&labelColor=1E202B)
-![](https://img.shields.io/github/repo-size/Kitty-Hivens/dots-hyprland?color=86dbce&label=SIZE&logo=protondrive&style=for-the-badge&logoColor=D9E0EE&labelColor=1E202B)
-<a href="https://discord.gg/GtdRBXgMwq"> <img alt="Dynamic JSON Badge" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscordapp.com%2Fapi%2Finvites%2FGtdRBXgMwq%3Fwith_counts%3Dtrue&query=approximate_member_count&style=for-the-badge&logo=discord&logoColor=D9E0EE&label=discord&labelColor=%231E202B&color=86dbc0&link=https%3A%2F%2Fdiscord.gg%2FGtdRBXgMwq"> </a>
+![](https://img.shields.io/github/last-commit/Kitty-Hivens/YukiUI?&style=for-the-badge&color=8ad7eb&logo=git&logoColor=D9E0EE&labelColor=1E202B)
+![](https://img.shields.io/github/stars/Kitty-Hivens/YukiUI?style=for-the-badge&logo=andela&color=86dbd7&logoColor=D9E0EE&labelColor=1E202B)
+![](https://img.shields.io/github/repo-size/Kitty-Hivens/YukiUI?color=86dbce&label=SIZE&logo=protondrive&style=for-the-badge&logoColor=D9E0EE&labelColor=1E202B)
 
 </div>
 
@@ -17,69 +17,78 @@
     <h3></h3>
 </div>
 
-> [!WARNING]  
-> Hyprland 0.55 update:
-> If your distro has not shipped Hyprland 0.55 and/or you're not ready for it, you should switch to the Pre-Hyprland Luaification release (or not update yet, if you're going to do that). See the wiki for more info: [Install](https://ii.clsty.link/en/ii-qs/01setup/#automated-installation) | [Update](https://ii.clsty.link/en/ii-qs/01setup/#updating)
-
-<details> 
+<details>
   <summary>What this is/isn't</summary>
 
   - Technically, configuration files
   - Realistically, mostly the custom graphical shell
   - NOT a system setup script: no graphic drivers, no zram setup, etc.
-  
+
 </details>
 
-<details> 
+<details>
   <summary>Notable features</summary>
-     
+
   - **Overview**: Shows open apps with live previews
   - **AI**: Gemini, Ollama, and more
   - **QoL**: screen translation, anti-flashbang, Google Lens
   - **Material themes**: Choose your wallpaper, done, enjoy
   - **Transparent installation**: Every command is shown before it's run
-</details>
-
-<details> 
-  <summary>Installation</summary>
-
-   - **IMPORTANT: Hyprland 0.55 Update**: If your distro has not shipped Hyprland 0.55 and/or you're not ready for it, you should switch to the Pre-Hyprland Luaification release. See [the wiki](https://ii.clsty.link/en/ii-qs/01setup/) for more info
-   - Clone this repo and run `./setup install`
-     - See the [upstream wiki](https://ii.clsty.link/en/ii-qs/01setup/) for general setup details
-   - **Keybinds**: Should be somewhat familiar to Windows or GNOME users. Important ones:
-     - `Super`+`/` = keybind list
-     - `Super`+`Enter` = terminal
-
 
 </details>
 
-<details>
-  <summary>Software overview</summary>
+## Installation
 
-  | Software | Purpose |
-  | ------------- | ------------- |
-  | [Hyprland](https://github.com/hyprwm/hyprland) | The compositor (manages and renders windows) |
-  | [Quickshell](https://quickshell.outfoxxed.me/) | A QtQuick-based widget system, used for the status bar, sidebars, etc. |
-  | Others | See [deps-info.md](https://github.com/Kitty-Hivens/dots-hyprland/blob/main/sdata/deps-info.md) |
+Supported distros are Arch-based and NixOS. Anything else is on you.
 
-</details>
+```sh
+git clone https://github.com/Kitty-Hivens/YukiUI.git
+cd YukiUI
+./setup install
+```
 
-<details>
-    <summary>Discord</summary>
-        <a href="https://discord.gg/GtdRBXgMwq"> Server link</a> | I hope this provides a friendlier environment for support without needing me to personally accept every friend request/DM. For real issues, prefer GitHub
+Every command is printed before it runs, and you can skip individual ones. Conflicting files are backed up unless you pass `--skip-backup`.
 
-</details>
+Useful flags:
+
+| Flag | Effect |
+| ---- | ------ |
+| `--core` | Shell and compositor only, no fish/fontconfig/misc configs |
+| `-s`, `--skip-sysupdate` | Don't run the system package upgrade |
+| `--via-nix` | Pull dependencies through Nix and home-manager (work in progress) |
+| `--fontset <set>` | Pick a predefined font set, see `dots-extra/fontsets` |
+
+`./setup --help` lists every subcommand and flag. To remove it again, `./setup uninstall`.
+
+Dependencies are listed in [deps-info.md](https://github.com/Kitty-Hivens/YukiUI/blob/main/sdata/deps-info.md).
+
+## Configuration
+
+Settings live in two apps, both reachable from the right sidebar (`Super`+`N`):
+
+- **Appearance** — everything about the shell itself: bar, background, interface, services
+- **System** — distro info and links
+
+The underlying config file is `~/.config/illogical-impulse/config.json`; the Appearance app opens it directly through the button in its navigation rail. Hyprland is configured in Lua under `~/.config/hypr/hyprland/`.
+
+Keybinds should feel familiar if you've used Windows or GNOME. The important ones:
+
+- `Super`+`/` — full keybind list
+- `Super`+`Enter` — terminal
+- `Super`+`N` — right sidebar
+
+## Software overview
+
+| Software | Purpose |
+| ------------- | ------------- |
+| [Hyprland](https://github.com/hyprwm/hyprland) | The compositor (manages and renders windows) |
+| [Quickshell](https://quickshell.outfoxxed.me/) | A QtQuick-based widget system, used for the status bar, sidebars, etc. |
+| Others | See [deps-info.md](https://github.com/Kitty-Hivens/YukiUI/blob/main/sdata/deps-info.md) |
 
 <div align="center">
     <h2>• screenshots •</h2>
     <h3></h3>
 </div>
-
-<div align="center">
-    <img src="assets/illogical-impulse.svg" alt="illogical-impulse logo" style="float:left; width:400;">
-</div>
-
-Widget system: Quickshell | Support: Yes
 
 [Showcase video](https://www.youtube.com/watch?v=RPwovTInagE)
 
@@ -97,7 +106,7 @@ Widget system: Quickshell | Support: Yes
  - [@end-4](https://github.com/end-4) for the original dotfiles this is forked from
  - [@clsty](https://github.com/clsty) for making the dotfiles accessible by taking care of the install script and many other things
  - [@midn8hustlr](https://github.com/midn8hustlr) for greatly improving the color generation system
- - [@outfoxxed](https://github.com/outfoxxed/) for being extremely supportive in my Quickshell journey
+ - [@outfoxxed](https://github.com/outfoxxed/) for being extremely supportive in the Quickshell journey
  - Quickshell: [Soramane](https://github.com/caelestia-dots/shell/), [FridayFaerie](https://github.com/FridayFaerie/quickshell), [nydragon](https://github.com/nydragon/nysh)
  - AGS: [Aylur](https://github.com/Aylur/dotfiles/tree/ags-pre-ts), [kotontrion](https://github.com/kotontrion/dotfiles)
  - EWW: [fufexan](https://github.com/fufexan/dotfiles)
