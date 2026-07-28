@@ -67,7 +67,7 @@ Tips:
 - `darkly-bin`
   - Qt widget style (`kdeglobals` `widgetStyle=Darkly`).
 - `eza`
-  - Used in Fish config: `alias ls 'eza --icons'`
+  - Used in Fish config: `alias ls 'eza --icons=auto'`
 - `fish`
   - Widely used.
 - `fontconfig`
