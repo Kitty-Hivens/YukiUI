@@ -1,3 +1,7 @@
+# User-local binaries. The Hyprland session PATH omits ~/.local/bin,
+# so add it here for every fish session (interactive and `fish -c`).
+fish_add_path ~/.local/bin
+
 # Commands to run in interactive sessions can go here
 if status is-interactive
     # No greeting
