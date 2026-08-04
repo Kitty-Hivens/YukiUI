@@ -26,6 +26,7 @@ ColumnLayout {
     // takes every stream back the moment it is moved. What it plays through is
     // stated instead, and the choice appears again once it plays out directly.
     readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
+    readonly property var endpoint: root.throughProcessor ? Audio.endpointOf(root.currentDevice) : null
 
     PwObjectTracker {
         objects: [root.node]
@@ -130,7 +131,11 @@ ColumnLayout {
         Layout.topMargin: 6
         Layout.leftMargin: 4
         visible: root.throughProcessor
-        text: Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
+        // Both halves of the answer: what it is processed by, and what it comes
+        // out of once it has been.
+        text: root.endpoint
+            ? `${Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))} → ${Audio.friendlyDeviceName(root.endpoint)}`
+            : Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
         elide: Text.ElideRight
         font.pixelSize: Appearance.font.pixelSize.smallie
         color: Appearance.colors.colSubtext

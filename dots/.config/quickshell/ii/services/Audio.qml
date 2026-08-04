@@ -129,6 +129,32 @@ Singleton {
         return groups.find(group => group.target?.id === node.id)?.source ?? null;
     }
 
+    /**
+     * The hardware at the end of the line, following the graph through whatever
+     * a processor put in between.
+     *
+     * An application landing in a processor's sink is only half the answer:
+     * what a person wants to know is which speakers it eventually comes out of,
+     * and the links are the only place that says so.
+     */
+    function endpointOf(node) {
+        const groups = Pipewire.linkGroups.values;
+        let current = node;
+        const seen = [];
+        for (let step = 0; step < 8; step++) {
+            if (!current)
+                return null;
+            if (root.isHardware(current))
+                return current;
+            seen.push(current.id);
+            const next = groups.find(group => group.source?.id === current.id && seen.indexOf(group.target?.id) === -1)?.target;
+            if (!next)
+                return null;
+            current = next;
+        }
+        return null;
+    }
+
     readonly property list<var> outputAppNodes: root.appNodes(true)
     readonly property list<var> inputAppNodes: root.appNodes(false)
     readonly property list<var> outputDevices: root.devices(true)

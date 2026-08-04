@@ -188,6 +188,18 @@ Item {
                                     font.pixelSize: Appearance.font.pixelSize.smallie
                                     color: Appearance.colors.colSubtext
                                 }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    // Where it hands the sound on, followed
+                                    // through the graph rather than assumed
+                                    // from whatever the default device is.
+                                    readonly property var endpoint: Audio.endpointOf(processorEntry.modelData)
+                                    visible: endpoint !== null
+                                    text: Translation.tr("Plays into %1").arg(Audio.friendlyDeviceName(endpoint))
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                    color: Appearance.colors.colOnLayer2
+                                }
                             }
                         }
                     }

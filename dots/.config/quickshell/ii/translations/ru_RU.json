@@ -873,5 +873,6 @@
   "Sound passes through EasyEffects": "Звук проходит через EasyEffects",
   "Processing": "Обработка",
   "Created by a program rather than by hardware": "Создано программой, а не оборудованием",
-  "Through %1": "Через %1"
+  "Through %1": "Через %1",
+  "Plays into %1": "Выводит в %1"
 }
