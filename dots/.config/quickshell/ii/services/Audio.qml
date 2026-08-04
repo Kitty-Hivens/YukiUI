@@ -40,6 +40,21 @@ Singleton {
             return root.correctType(node, isSink) && !node.isStream
         })
     }
+    /**
+     * The device one application is currently playing into, or recording from.
+     *
+     * Read from the links rather than from the default device: a stream can be
+     * sent somewhere else, and after that the default says nothing about it.
+     */
+    function deviceOfStream(node) {
+        if (!node)
+            return null;
+        const groups = Pipewire.linkGroups.values;
+        if (node.isSink)
+            return groups.find(group => group.source?.id === node.id)?.target ?? null;
+        return groups.find(group => group.target?.id === node.id)?.source ?? null;
+    }
+
     readonly property list<var> outputAppNodes: root.appNodes(true)
     readonly property list<var> inputAppNodes: root.appNodes(false)
     readonly property list<var> outputDevices: root.devices(true)
