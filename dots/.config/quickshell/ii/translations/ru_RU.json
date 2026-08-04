@@ -839,6 +839,7 @@
   "HDR": "HDR",
   "Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause; the last one narrows that to video and games, leaving an idle fullscreen window alone.": "Переменная частота обновления. «Полноэкранно» ограничивает её полноэкранным окном, что убирает мерцание от некоторых простаивающих приложений; последний вариант сужает это до видео и игр, не трогая простаивающее полноэкранное окно.",
   "Video and games": "Видео и игры",
+  "Could not save the tearing setting: %1": "Не удалось сохранить настройку тиринга: %1",
   "Fullscreen": "Полноэкранно",
   "Allow tearing": "Разрешить tearing",
   "Session-wide, not per display. Lets a game present without waiting for the refresh, trading a possible tear for lower latency.": "На всю сессию, не по экранам. Позволяет игре выводить кадр не дожидаясь развёртки: возможный разрыв в обмен на меньшую задержку.",

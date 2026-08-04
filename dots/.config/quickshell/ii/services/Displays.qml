@@ -155,7 +155,19 @@ Singleton {
         setTearingProc.running = true;
     }
 
-    Process { id: setTearingProc }
+    Process {
+        id: setTearingProc
+        stderr: StdioCollector { id: setTearingErr }
+        onExited: exitCode => {
+            // The live setting did change, so the toggle is not wrong about
+            // this session. What failed is the part that outlives it, and a
+            // switch that quietly forgets itself on restart is worth saying.
+            if (exitCode === 0)
+                return;
+            root.lastError = Translation.tr("Could not save the tearing setting: %1").arg(setTearingErr.text.trim());
+            root.applyFailed(root.lastError);
+        }
+    }
 
     function hdrCapable(name) {
         return root.capabilities[name]?.hdr === true;
