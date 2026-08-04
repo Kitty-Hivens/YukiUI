@@ -11,11 +11,13 @@ Usage: monitors_write.py <config path> <plan json>
 
 import json
 import os
+import re
 import shutil
 import sys
 
 BEGIN = "-- >>> yukiui:outputs"
 END = "-- <<< yukiui:outputs"
+OUTPUT_RE = re.compile(r'output\s*=\s*"([^"]+)"')
 
 HEADER = [
     "-- Output settings live in the marked region below and are written by the YukiUI",
@@ -93,7 +95,25 @@ def park_disabled(plan):
     return parked
 
 
-def replace_region(lines, generated):
+def carried_over(region, planned):
+    """Existing lines for outputs the plan says nothing about.
+
+    The plan only ever describes outputs that were reporting a mode when it was
+    built. An output that had none at that moment -- freshly plugged in, still
+    negotiating -- is not a decision to forget it: regenerating the region from
+    the plan alone dropped its geometry, scale and colour settings, and its
+    disabled flag with them. Its own line is kept exactly as it was, so nothing
+    has to be invented for a display nobody was asked about.
+    """
+    kept = []
+    for line in region:
+        match = OUTPUT_RE.search(line)
+        if match and match.group(1) not in planned:
+            kept.append(line)
+    return kept
+
+
+def replace_region(lines, generated, planned):
     # Matched after stripping: a stray trailing space would otherwise hide the
     # markers, and the file would get a second region while the stale one below
     # kept overriding it.
@@ -113,7 +133,7 @@ def replace_region(lines, generated):
 
     if end < start:
         raise SystemExit("markers are out of order")
-    return lines[:start + 1] + generated + lines[end:]
+    return lines[:start + 1] + generated + carried_over(lines[start + 1:end], planned) + lines[end:]
 
 
 def main():
@@ -137,7 +157,7 @@ def main():
 
     generated = [monitor_line(entry) for entry in plan if entry.get("enabled", True)]
     generated += [monitor_line(entry, disabled=True) for entry in park_disabled(plan)]
-    result = replace_region(lines, generated)
+    result = replace_region(lines, generated, {entry["name"] for entry in plan})
 
     temp = path + ".tmp"
     with open(temp, "w", encoding="utf-8") as handle:
