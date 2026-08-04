@@ -114,7 +114,9 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignTop
+                        // Centred against the facts beside it, which are taller:
+                        // top aligned, the machine's name sat alone above a gap.
+                        Layout.alignment: Qt.AlignVCenter
                         spacing: 16
 
                         IconImage {
