@@ -22,9 +22,8 @@ ColumnLayout {
     readonly property list<var> devices: Audio.hardwareDevices(root.node?.isSink ?? true)
     readonly property var currentDevice: Audio.deviceOfStream(root.node)
     readonly property bool muted: root.node?.audio?.muted ?? false
-    // Inside a processor the choice is not this panel's to make: the processor
-    // takes every stream back the moment it is moved. What it plays through is
-    // stated instead, and the choice appears again once it plays out directly.
+    // Named on the picker's own button, so an application playing through a
+    // processor says so before the list is opened.
     readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
     // Processors first: for an application they are the "with effects" choice,
     // and the hardware below is "straight out of this instead".

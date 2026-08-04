@@ -34,14 +34,6 @@ Singleton {
     property var sinkPorts: ({})
     property var sourcePorts: ({})
 
-    function profilesFor(cardName) {
-        return root.cards.find(card => card.name === cardName)?.profiles ?? [];
-    }
-
-    function activeProfileFor(cardName) {
-        return root.cards.find(card => card.name === cardName)?.activeProfile ?? "";
-    }
-
     function portsFor(node) {
         if (!node)
             return [];
@@ -52,20 +44,6 @@ Singleton {
         if (!node)
             return "";
         return (node.isSink ? root.sinkPorts[node.name] : root.sourcePorts[node.name])?.activePort ?? "";
-    }
-
-    /**
-     * The card a device belongs to, so a device can offer its own profiles.
-     *
-     * Matched on the PipeWire object id: pactl's own card reference comes back
-     * empty under pipewire-pulse, and its index is the serial rather than the
-     * id a device names its card by.
-     */
-    function cardOf(node) {
-        const deviceId = node?.properties?.["device.id"] ?? "";
-        if (deviceId.length === 0)
-            return null;
-        return root.cards.find(card => card.objectId === deviceId) ?? null;
     }
 
     function setCardProfile(cardName, profileName) {
@@ -149,7 +127,6 @@ Singleton {
                 root.cards = (parsed.cards ?? []).map(card => ({
                     name: card.name,
                     description: card.properties?.["device.description"] ?? card.name,
-                    objectId: card.properties?.["object.id"] ?? "",
                     activeProfile: card.active_profile ?? "",
                     profiles: Object.keys(card.profiles ?? {}).map(name => ({
                         name: name,

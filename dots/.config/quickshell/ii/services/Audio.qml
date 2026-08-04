@@ -93,10 +93,6 @@ Singleton {
         return (isSink ? root.outputDevices : root.inputDevices).filter(node => !root.isHardware(node));
     }
 
-    function selectableDevices(isSink) {
-        return root.hardwareDevices(isSink);
-    }
-
     /** Whether a processor sits between applications and the hardware. */
     readonly property bool processorInPath: root.outputDevices.some(node => root.managedByProcessor(node))
 

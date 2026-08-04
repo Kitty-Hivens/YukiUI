@@ -20,9 +20,6 @@ ColumnLayout {
 
     readonly property var ports: AudioRouting.portsFor(root.node)
     readonly property bool muted: root.node?.audio?.muted ?? false
-    // A processor's own device: listed, adjustable, but not something to hand
-    // the default over to by hand.
-    readonly property bool managed: Audio.managedByProcessor(root.node)
 
     // Without this the volume and the mute of a device nobody is playing to
     // are never delivered, and the row shows zero.
@@ -40,7 +37,6 @@ ColumnLayout {
             implicitWidth: 38
             implicitHeight: 38
             buttonRadius: Appearance.rounding.full
-            enabled: !root.managed
             onClicked: {
                 if (root.node?.audio)
                     root.node.audio.muted = !root.node.audio.muted;
@@ -74,11 +70,7 @@ ColumnLayout {
             StyledText {
                 Layout.fillWidth: true
                 visible: text.length > 0 && text !== Audio.friendlyDeviceName(root.node)
-                // A device nothing here can change is worth a sentence rather
-                // than a description of hardware it is not.
-                text: root.managed
-                    ? Translation.tr("Applications play through it, and its own level changes nothing")
-                    : (root.node?.description ?? "")
+                text: root.node?.description ?? ""
                 elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smallie
                 color: Appearance.colors.colSubtext
@@ -86,7 +78,6 @@ ColumnLayout {
         }
 
         StyledText {
-            visible: !root.managed
             text: `${Math.round((root.node?.audio?.volume ?? 0) * 100)}%`
             font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.colors.colSubtext
@@ -96,20 +87,18 @@ ColumnLayout {
             implicitWidth: 38
             implicitHeight: 38
             buttonRadius: Appearance.rounding.full
-            enabled: !root.isDefault && !root.managed
+            enabled: !root.isDefault
             onClicked: root.defaultRequested()
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
                 horizontalAlignment: Text.AlignHCenter
-                text: root.managed ? "auto_mode" : root.isDefault ? "check_circle" : "radio_button_unchecked"
+                text: root.isDefault ? "check_circle" : "radio_button_unchecked"
                 fill: root.isDefault ? 1 : 0
                 iconSize: 22
                 color: root.isDefault ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
             }
             StyledToolTip {
-                text: root.managed ? Translation.tr("EasyEffects decides this one")
-                    : root.isDefault ? Translation.tr("Sound goes here")
-                    : Translation.tr("Send sound here")
+                text: root.isDefault ? Translation.tr("Sound goes here") : Translation.tr("Send sound here")
             }
         }
     }
@@ -118,9 +107,6 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4
         Layout.rightMargin: 4
-        // Offering a handle that moves and does nothing is worse than offering
-        // none: see Audio.selectableDevices for why this one cannot work.
-        visible: !root.managed
         configuration: StyledSlider.Configuration.S
         from: 0
         to: 1
