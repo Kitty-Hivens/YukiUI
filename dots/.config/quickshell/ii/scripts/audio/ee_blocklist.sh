@@ -23,14 +23,28 @@ case "$kind" in
     *) exit 2 ;;
 esac
 
-db="$HOME/.config/easyeffects/db/easyeffectsrc"
+# A flatpak EasyEffects keeps its own home and is not on PATH, so the same
+# question has two sets of paths and two ways to ask it to reload.
+if command -v easyeffects > /dev/null 2>&1; then
+    flavour=native
+    config=${XDG_CONFIG_HOME:-$HOME/.config}
+    data=${XDG_DATA_HOME:-$HOME/.local/share}
+elif flatpak info com.github.wwmm.easyeffects > /dev/null 2>&1; then
+    flavour=flatpak
+    config="$HOME/.var/app/com.github.wwmm.easyeffects/config"
+    data="$HOME/.var/app/com.github.wwmm.easyeffects/data"
+else
+    exit 1
+fi
+
+db="$config/easyeffects/db/easyeffectsrc"
 key="lastLoadedOutputPreset"
 [ "$kind" = "input" ] && key="lastLoadedInputPreset"
 
 preset=$(sed -n "s/^$key=//p" "$db" 2>/dev/null)
 [ -z "$preset" ] && exit 1
 
-file="$HOME/.local/share/easyeffects/$kind/$preset.json"
+file="$data/easyeffects/$kind/$preset.json"
 [ -f "$file" ] || exit 1
 
 tmp="$file.yuki-tmp"
@@ -43,4 +57,8 @@ else
 fi
 mv "$tmp" "$file" || exit 1
 
-easyeffects --load-preset "$preset" >/dev/null 2>&1
+if [ "$flavour" = "flatpak" ]; then
+    flatpak run com.github.wwmm.easyeffects --load-preset "$preset" >/dev/null 2>&1
+else
+    easyeffects --load-preset "$preset" >/dev/null 2>&1
+fi
