@@ -57,6 +57,20 @@ Singleton {
     }
 
     function resolve() {
+        // A pid that stopped playing is not coming back as the same program.
+        // Kept around, its name and icon would be handed to whatever process
+        // the kernel next hands the number to.
+        const known = ({});
+        let dropped = false;
+        for (const pid of Object.keys(root.tokens)) {
+            if (root.pids.indexOf(pid) === -1)
+                dropped = true;
+            else
+                known[pid] = root.tokens[pid];
+        }
+        if (dropped)
+            root.tokens = known;
+
         const unknown = root.pids.filter(pid => root.tokens[pid] === undefined);
         if (unknown.length === 0)
             return;
@@ -145,10 +159,11 @@ Singleton {
                     resolved[fields[0]] = root.tokenFrom(fields[1], fields[2] ?? "");
                 }
                 // A pid that resolved to nothing still counts as answered, so it
-                // is not asked about again on every list change.
-                const merged = Object.assign({}, root.tokens);
+                // is not asked about again on every list change. Only the pids
+                // still playing are carried over: see resolve().
+                const merged = ({});
                 for (const pid of root.pids)
-                    merged[pid] = resolved[pid] ?? "";
+                    merged[pid] = resolved[pid] ?? root.tokens[pid] ?? "";
                 root.tokens = merged;
             }
         }
