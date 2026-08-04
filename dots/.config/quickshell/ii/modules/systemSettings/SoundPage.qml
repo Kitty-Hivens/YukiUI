@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell.Services.Pipewire
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -97,7 +96,10 @@ Item {
                         AudioDeviceRow {
                             Layout.fillWidth: true
                             node: parent.modelData
-                            isDefault: parent.modelData.id === Pipewire.defaultAudioSink?.id
+                            // Against the hardware the default reaches, not
+                            // against the default itself: a processor holding
+                            // it still ends up playing out of one of these.
+                            isDefault: parent.modelData.id === Audio.defaultSinkEndpoint?.id
                             onDefaultRequested: Audio.setDefaultSink(parent.modelData)
                         }
                     }
@@ -126,7 +128,7 @@ Item {
                         AudioDeviceRow {
                             Layout.fillWidth: true
                             node: parent.modelData
-                            isDefault: parent.modelData.id === Pipewire.defaultAudioSource?.id
+                            isDefault: parent.modelData.id === Audio.defaultSourceEndpoint?.id
                             onDefaultRequested: Audio.setDefaultSource(parent.modelData)
                         }
                     }

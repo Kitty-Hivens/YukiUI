@@ -5,7 +5,6 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Services.Pipewire
 
 ColumnLayout {
     id: root
@@ -14,9 +13,12 @@ ColumnLayout {
     // A processor's own sink is not a choice: it cannot be adjusted and it is
     // not this panel's to hand the default to. Said in a line below instead,
     // because it is still where the sound goes.
-    readonly property list<var> devices: Audio.selectableDevices(root.isSink)
+    readonly property list<var> devices: Audio.hardwareDevices(root.isSink)
     readonly property bool hasApps: appPwNodes.length > 0
     readonly property var currentDevice: root.isSink ? Audio.sink : Audio.source
+    // The hardware at the end of the chain, so a processor holding the default
+    // does not leave the picker showing nothing selected.
+    readonly property var defaultEndpoint: root.isSink ? Audio.defaultSinkEndpoint : Audio.defaultSourceEndpoint
     readonly property bool deviceMuted: root.currentDevice?.audio?.muted ?? false
     spacing: 16
 
@@ -106,15 +108,8 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.bottomMargin: 6
         model: root.devices.map(node => Audio.friendlyDeviceName(node))
-        currentIndex: root.devices.findIndex(item => {
-            if (root.isSink) {
-                return item.id === Pipewire.defaultAudioSink?.id
-            } else {
-                return item.id === Pipewire.defaultAudioSource?.id
-            }
-        })
+        currentIndex: root.devices.findIndex(item => item.id === root.defaultEndpoint?.id)
         onActivated: (index) => {
-            print(index)
             const item = root.devices[index]
             if (root.isSink) {
                 Audio.setDefaultSink(item)

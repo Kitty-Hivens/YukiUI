@@ -135,10 +135,13 @@ Singleton {
      *
      * An application landing in a processor's sink is only half the answer:
      * what a person wants to know is which speakers it eventually comes out of,
-     * and the links are the only place that says so.
+     * and the links are the only place that says so. Followed against the flow
+     * on the input side, where the hardware is what feeds the chain rather than
+     * what it feeds.
      */
     function endpointOf(node) {
         const groups = Pipewire.linkGroups.values;
+        const downstream = node?.isSink ?? true;
         let current = node;
         const seen = [];
         for (let step = 0; step < 8; step++) {
@@ -147,13 +150,23 @@ Singleton {
             if (root.isHardware(current))
                 return current;
             seen.push(current.id);
-            const next = groups.find(group => group.source?.id === current.id && seen.indexOf(group.target?.id) === -1)?.target;
+            const next = downstream
+                ? groups.find(group => group.source?.id === current.id && seen.indexOf(group.target?.id) === -1)?.target
+                : groups.find(group => group.target?.id === current.id && seen.indexOf(group.source?.id) === -1)?.source;
             if (!next)
                 return null;
             current = next;
         }
         return null;
     }
+
+    /**
+     * The hardware new sound actually reaches, which is not always the default
+     * device: a processor made default hands it on, and "sound goes here" is a
+     * statement about the far end of that, not about the chain's first link.
+     */
+    readonly property var defaultSinkEndpoint: root.endpointOf(Pipewire.defaultAudioSink)
+    readonly property var defaultSourceEndpoint: root.endpointOf(Pipewire.defaultAudioSource)
 
     readonly property list<var> outputAppNodes: root.appNodes(true)
     readonly property list<var> inputAppNodes: root.appNodes(false)
