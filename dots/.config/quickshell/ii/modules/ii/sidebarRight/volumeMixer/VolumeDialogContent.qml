@@ -11,7 +11,10 @@ ColumnLayout {
     id: root
     required property bool isSink
     readonly property list<var> appPwNodes: isSink ? Audio.outputAppNodes : Audio.inputAppNodes
-    readonly property list<var> devices: isSink ? Audio.outputDevices : Audio.inputDevices
+    // A processor's own sink is not a choice: it cannot be adjusted and it is
+    // not this panel's to hand the default to. Said in a line below instead,
+    // because it is still where the sound goes.
+    readonly property list<var> devices: Audio.selectableDevices(root.isSink)
     readonly property bool hasApps: appPwNodes.length > 0
     readonly property var currentDevice: root.isSink ? Audio.sink : Audio.source
     readonly property bool deviceMuted: root.currentDevice?.audio?.muted ?? false
@@ -47,10 +50,20 @@ ColumnLayout {
 
     // The device's own level, which the mixer never offered: every slider above
     // is a share of this one, and the way to it was another window.
+    StyledText {
+        Layout.fillWidth: true
+        Layout.leftMargin: 4
+        visible: root.isSink && Audio.processorInPath
+        text: Translation.tr("Sound passes through EasyEffects")
+        elide: Text.ElideRight
+        font.pixelSize: Appearance.font.pixelSize.smallie
+        color: Appearance.colors.colSubtext
+    }
+
     RowLayout {
         Layout.fillWidth: true
         spacing: 6
-        visible: root.currentDevice !== null
+        visible: root.currentDevice !== null && !Audio.managedByProcessor(root.currentDevice)
 
         RippleButton {
             implicitWidth: 32

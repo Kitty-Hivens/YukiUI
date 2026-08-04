@@ -63,6 +63,21 @@ Singleton {
         return (node?.name ?? "").startsWith("easyeffects_");
     }
 
+    /**
+     * Devices worth offering as a choice.
+     *
+     * A processor's own device is not one: EasyEffects reads what applications
+     * play from the monitor of its sink, and a monitor carries the signal from
+     * before the sink's own volume. Its level and its mute therefore change
+     * nothing at all, and the default is EasyEffects' to set.
+     */
+    function selectableDevices(isSink) {
+        return (isSink ? root.outputDevices : root.inputDevices).filter(node => !root.managedByProcessor(node));
+    }
+
+    /** Whether a processor sits between applications and the hardware. */
+    readonly property bool processorInPath: root.outputDevices.some(node => root.managedByProcessor(node))
+
     // Lists
     function correctType(node, isSink) {
         return (node.isSink === isSink) && node.audio

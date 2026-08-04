@@ -40,6 +40,7 @@ ColumnLayout {
             implicitWidth: 38
             implicitHeight: 38
             buttonRadius: Appearance.rounding.full
+            enabled: !root.managed
             onClicked: {
                 if (root.node?.audio)
                     root.node.audio.muted = !root.node.audio.muted;
@@ -73,7 +74,11 @@ ColumnLayout {
             StyledText {
                 Layout.fillWidth: true
                 visible: text.length > 0 && text !== Audio.friendlyDeviceName(root.node)
-                text: root.node?.description ?? ""
+                // A device nothing here can change is worth a sentence rather
+                // than a description of hardware it is not.
+                text: root.managed
+                    ? Translation.tr("Applications play through it, and its own level changes nothing")
+                    : (root.node?.description ?? "")
                 elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smallie
                 color: Appearance.colors.colSubtext
@@ -81,6 +86,7 @@ ColumnLayout {
         }
 
         StyledText {
+            visible: !root.managed
             text: `${Math.round((root.node?.audio?.volume ?? 0) * 100)}%`
             font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.colors.colSubtext
@@ -112,6 +118,9 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 4
         Layout.rightMargin: 4
+        // Offering a handle that moves and does nothing is worse than offering
+        // none: see Audio.selectableDevices for why this one cannot work.
+        visible: !root.managed
         configuration: StyledSlider.Configuration.S
         from: 0
         to: 1
