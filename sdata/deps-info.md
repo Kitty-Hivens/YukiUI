@@ -61,9 +61,8 @@ Tips:
   - Used in Quickshell config.
 - `breeze`
   - Breeze base for Qt; referenced by kdeglobals.
-- `breeze-plus`
-  - [source](https://github.com/mjkim0727/breeze-plus)
-  - Qt/tray icon theme (`kdeglobals` `Theme=breeze-plus-dark`), resolved by the KDE icon-engine.
+- `breeze-icons`
+  - Qt/tray icon theme (`kdeglobals` `Theme=breeze-dark`), resolved by the KDE icon-engine. Any theme named there has to be installed: the engine does not fall back to another one, it returns nothing, and every Qt application ends up with no icons at all.
 - `darkly-bin`
   - Qt widget style (`kdeglobals` `widgetStyle=Darkly`).
 - `eza`
