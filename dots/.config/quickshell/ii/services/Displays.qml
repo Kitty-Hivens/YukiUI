@@ -578,6 +578,11 @@ Singleton {
                 } catch (error) {
                     return;
                 }
+                // Well formed and still not a list of outputs is an answer this
+                // cannot read, and reading it anyway throws where nothing is
+                // watching for it.
+                if (!Array.isArray(parsed))
+                    return;
                 const fingerprint = JSON.stringify(parsed.map(output => [output.name, output.width, output.height,
                     Math.round(output.refreshRate), output.x, output.y, output.scale, output.transform,
                     output.vrr, output.disabled, output.currentFormat, output.colorManagementPreset,
