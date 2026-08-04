@@ -20,7 +20,10 @@ ApplicationWindow {
 
     readonly property var groups: SystemPages.groups
     readonly property var pages: SystemPages.pages
-    property string currentComponent: SystemPages.homeComponent
+    // Opened from elsewhere in the shell, the window can be asked to start on
+    // the page that button is about. Anything unrecognised lands on the home
+    // page, which is where opening the app by itself belongs.
+    property string currentComponent: SystemPages.componentFor(Quickshell.env("YUKIUI_SETTINGS_PAGE"))
     readonly property var currentPageData: root.pages.find(page => page.component === root.currentComponent) ?? null
 
     visible: true

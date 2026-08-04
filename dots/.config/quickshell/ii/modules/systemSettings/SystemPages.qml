@@ -75,6 +75,21 @@ Singleton {
         }
     ]
 
+    /**
+     * The page a caller asked for by name, so a button elsewhere in the shell
+     * can open the window where it means rather than at the front door.
+     */
+    function componentFor(key) {
+        switch ((key ?? "").toLowerCase()) {
+        case "sound":
+            return root.soundComponent;
+        case "displays":
+            return root.displaysComponent;
+        default:
+            return root.homeComponent;
+        }
+    }
+
     readonly property var pages: {
         const all = [];
         for (const group of root.groups)
