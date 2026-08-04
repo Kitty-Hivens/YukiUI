@@ -81,6 +81,10 @@ Singleton {
     // vrr as a bool of the current state, not the setting. Parsed per output so
     // the selector opens on the saved choice.
     property var vrrConfig: ({})
+    // What an output runs at when it has no choice of its own. Without it the
+    // selector opened on "off" for every output the config says nothing about,
+    // which is a claim about the machine rather than an absence of one.
+    property int globalVrr: 0
     // Global, not per-monitor: Hyprland has no per-output tearing.
     property bool tearing: false
 
@@ -110,6 +114,7 @@ Singleton {
         getMonitors.running = true;
         readCapabilities.running = true;
         readTearing.running = true;
+        readVrr.running = true;
     }
 
     Process {
@@ -120,6 +125,19 @@ Singleton {
             onStreamFinished: {
                 try {
                     root.tearing = JSON.parse(tearingOut.text).int === 1;
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: readVrr
+        command: ["hyprctl", "getoption", "misc:vrr", "-j"]
+        stdout: StdioCollector {
+            id: vrrOut
+            onStreamFinished: {
+                try {
+                    root.globalVrr = JSON.parse(vrrOut.text).int ?? 0;
                 } catch (e) {}
             }
         }
@@ -205,7 +223,11 @@ Singleton {
             y: output.y,
             scale: output.scale,
             transform: output.transform,
-            vrr: root.vrrConfig[output.name] ?? 0,
+            // An output only carries a VRR mode of its own once one has been
+            // chosen for it; otherwise it follows the global setting and the
+            // saved config stays silent about it.
+            vrr: root.vrrConfig[output.name] ?? root.globalVrr,
+            vrrOverride: root.vrrConfig[output.name] !== undefined,
             sdrMaxLuminance: root.sdrBaseline[output.name]?.sdrMaxLuminance ?? output.sdrMaxLuminance ?? 80,
             sdrSaturation: root.sdrBaseline[output.name]?.sdrSaturation ?? output.sdrSaturation ?? 1.0,
             bitdepth: (output.currentFormat ?? "").indexOf("2101010") !== -1 ? 10 : 8,
@@ -258,12 +280,16 @@ Singleton {
     function luaCallFor(entry) {
         if (!entry.enabled)
             return `hl.monitor({ output = "${entry.name}", disabled = true })`;
+        // Sent only for an output that has a mode of its own. Sent every time,
+        // it pinned every output to a value the saved config never carried, so
+        // applying any layout silently overrode misc:vrr until the next reload.
+        const vrr = entry.vrrOverride ? `vrr = ${entry.vrr ?? 0}, ` : "";
         return `hl.monitor({ output = "${entry.name}", `
             + `mode = "${entry.width}x${entry.height}@${entry.refreshRate}", `
             + `position = "${entry.x}x${entry.y}", `
             + `scale = ${entry.scale}, `
             + `transform = ${entry.transform}, `
-            + `vrr = ${entry.vrr ?? 0}, `
+            + vrr
             + `bitdepth = ${entry.bitdepth === 10 ? 10 : 8}, `
             + `cm = "${entry.cm}", `
             + `sdr_max_luminance = ${entry.sdrMaxLuminance ?? 80}, `

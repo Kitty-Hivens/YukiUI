@@ -396,17 +396,22 @@ Item {
 
                         ContentSubsection {
                             title: "VRR"
-                            tooltip: Translation.tr("Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause.")
+                            tooltip: Translation.tr("Variable refresh rate. Fullscreen limits it to a fullscreen window, which avoids flicker some idle apps cause; the last one narrows that to video and games, leaving an idle fullscreen window alone.")
                             ConfigSelectionArray {
                                 currentValue: root.selected?.vrr ?? 0
                                 options: [
                                     { displayName: Translation.tr("Off"), value: 0 },
                                     { displayName: Translation.tr("On"), value: 1 },
-                                    { displayName: Translation.tr("Fullscreen"), value: 2 }
+                                    { displayName: Translation.tr("Fullscreen"), value: 2 },
+                                    { displayName: Translation.tr("Video and games"), value: 3 }
                                 ]
                                 onSelected: newValue => {
+                                    // Marked as this output's own choice: without
+                                    // it the value reads as the global setting
+                                    // showing through, which is neither saved nor
+                                    // counted as something to apply.
                                     if (root.selected)
-                                        root.patch(root.selected.name, { vrr: newValue });
+                                        root.patch(root.selected.name, { vrr: newValue, vrrOverride: true });
                                 }
                             }
                         }

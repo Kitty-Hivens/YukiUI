@@ -50,8 +50,10 @@ def monitor_line(entry, disabled=False):
         f'position = "{entry["x"]}x{entry["y"]}", '
         f'scale = {format_scale(entry.get("scale", 1))}, '
         f'transform = {int(entry.get("transform", 0))}, '
-        + (f'vrr = {1 if entry.get("vrr") else 0}, ' if entry.get("vrrOverride") else "")
-        + 
+        # Written as the mode it is. Reduced to on or off, "fullscreen" and
+        # "video and games" would both be saved as plain on.
+        + (f'vrr = {int(entry.get("vrr", 0))}, ' if entry.get("vrrOverride") else "")
+        +
         f'bitdepth = {10 if int(entry.get("bitdepth", 8)) == 10 else 8}, '
         f'cm = "{entry.get("cm") or "srgb"}", '
         f'sdr_max_luminance = {float(entry.get("sdrMaxLuminance", 80)):g}, '
