@@ -158,7 +158,10 @@ Singleton {
                 property string taskManager: "resources"
                 property string terminal: "kitty -1" // This is only for shell actions
                 property string update: "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
-                property string volumeMixer: `~/.config/hypr/hyprland/scripts/launch_first_available.sh "pavucontrol"`
+                // The shell's own sound settings, opened on the page this
+                // button means. pavucontrol stays a one line change away for
+                // anyone who wants it back.
+                property string volumeMixer: `YUKIUI_SETTINGS_PAGE=sound qs -p ${Quickshell.shellPath("systemSettings.qml")}`
             }
 
             property JsonObject background: JsonObject {

@@ -97,6 +97,16 @@ Singleton {
         Audio.sink.audio.volume -= step;
     }
 
+    /**
+     * Sends one application to a device of its own.
+     *
+     * Lives here so callers have a single place to reach for audio, even though
+     * the move itself is one of the things the PipeWire binding cannot do.
+     */
+    function sendStreamTo(stream, device) {
+        return AudioRouting.moveStream(stream, device);
+    }
+
     function setDefaultSink(node) {
         Pipewire.preferredDefaultAudioSink = node;
     }
