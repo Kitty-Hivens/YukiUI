@@ -195,7 +195,10 @@ Item {
                                     // from whatever the default device is.
                                     readonly property var endpoint: Audio.endpointOf(processorEntry.modelData)
                                     visible: endpoint !== null
-                                    text: Translation.tr("Plays into %1").arg(Audio.friendlyDeviceName(endpoint))
+                                    // Names the control that changes it, since
+                                    // this line is not one: the processor
+                                    // follows whatever plays sound by default.
+                                    text: `${Translation.tr("Plays into %1").arg(Audio.friendlyDeviceName(endpoint))} · ${Translation.tr("follows the device chosen above")}`
                                     elide: Text.ElideRight
                                     font.pixelSize: Appearance.font.pixelSize.smallie
                                     color: Appearance.colors.colOnLayer2

@@ -131,11 +131,9 @@ ColumnLayout {
         Layout.topMargin: 6
         Layout.leftMargin: 4
         visible: root.throughProcessor
-        // Both halves of the answer: what it is processed by, and what it comes
-        // out of once it has been.
-        text: root.endpoint
-            ? `${Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))} → ${Audio.friendlyDeviceName(root.endpoint)}`
-            : Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
+        // Only what holds the stream. Where that hands the sound on is stated
+        // once, in the section about the processor, a few lines above.
+        text: Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
         elide: Text.ElideRight
         font.pixelSize: Appearance.font.pixelSize.smallie
         color: Appearance.colors.colSubtext
