@@ -60,6 +60,11 @@ Item {
                     anchors.fill: parent
                     visible: false
                     source: {
+                        // The application's own icon first: a stream carrying
+                        // "chromium-browser" is describing the runtime.
+                        const own = StreamApps.iconFor(root.node);
+                        if (AppSearch.iconExists(own))
+                            return Quickshell.iconPath(own, "image-missing");
                         let icon;
                         icon = AppSearch.guessIcon(root.node?.properties["application.icon-name"] ?? "");
                         if (AppSearch.iconExists(icon))
@@ -107,10 +112,9 @@ Item {
                     color: Appearance.colors.colSubtext
                     elide: Text.ElideRight
                     text: {
-                        // application.name -> description -> name
                         const app = Audio.appNodeDisplayName(root.node);
-                        const media = root.node.properties["media.name"];
-                        return media != undefined ? `${app} • ${media}` : app;
+                        const context = Audio.appNodeContext(root.node);
+                        return context.length > 0 ? `${app} • ${context}` : app;
                     }
                 }
 

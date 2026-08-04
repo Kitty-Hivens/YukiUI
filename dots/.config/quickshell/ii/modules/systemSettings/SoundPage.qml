@@ -23,9 +23,16 @@ Item {
     readonly property list<var> outputStreams: Audio.outputAppNodes
     readonly property list<var> inputStreams: Audio.inputAppNodes
 
-    // Cards, ports and stream targets are only read while they are on screen.
-    Component.onCompleted: AudioRouting.subscribers++
-    Component.onDestruction: AudioRouting.subscribers--
+    // Cards, ports and the name behind a stream's process are only read while
+    // they are on screen.
+    Component.onCompleted: {
+        AudioRouting.subscribers++;
+        StreamApps.subscribers++;
+    }
+    Component.onDestruction: {
+        AudioRouting.subscribers--;
+        StreamApps.subscribers--;
+    }
 
     component Heading: StyledText {
         Layout.fillWidth: true

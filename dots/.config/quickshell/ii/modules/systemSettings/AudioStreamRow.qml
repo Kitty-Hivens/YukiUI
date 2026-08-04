@@ -51,6 +51,11 @@ ColumnLayout {
                     height: 24
                     opacity: root.muted ? 0.4 : 1
                     source: {
+                        // The application's own icon first: a stream carrying
+                        // "chromium-browser" is describing the runtime.
+                        const own = StreamApps.iconFor(root.node);
+                        if (AppSearch.iconExists(own))
+                            return Quickshell.iconPath(own, "image-missing");
                         const named = AppSearch.guessIcon(root.node?.properties["application.icon-name"] ?? "");
                         if (AppSearch.iconExists(named))
                             return Quickshell.iconPath(named, "image-missing");
@@ -87,7 +92,7 @@ ColumnLayout {
                 // What is playing, when the application says so: two Firefox
                 // tabs are otherwise the same entry twice.
                 visible: text.length > 0
-                text: root.node?.properties["media.name"] ?? ""
+                text: Audio.appNodeContext(root.node)
                 elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smallie
                 color: Appearance.colors.colSubtext

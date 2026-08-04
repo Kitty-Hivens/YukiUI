@@ -22,8 +22,32 @@ Singleton {
     function friendlyDeviceName(node) {
         return (node.nickname || node.description || Translation.tr("Unknown"));
     }
+    /**
+     * The program, not the runtime that happens to carry it.
+     *
+     * An Electron application reports itself as "Chromium", so the name of the
+     * desktop entry behind the process wins when one was found. See
+     * [StreamApps] -- it only looks while something is displaying the answer,
+     * and falls back to what the stream says about itself.
+     */
     function appNodeDisplayName(node) {
-        return (node.properties["application.name"] || node.description || node.name)
+        return (StreamApps.nameFor(node) || node.properties["application.name"] || node.description || node.name)
+    }
+
+    // Names a stream gives itself when it has nothing to say: repeating them
+    // after the application's name fills a line without adding to it.
+    readonly property var uninformativeStreamNames: [/^playback( stream)?$/i, /^audio stream/i, /^simple dsp stream$/i, /^recording( stream)?$/i, /^capture$/i]
+
+    /** What the application is playing, when it says something worth showing. */
+    function appNodeContext(node) {
+        const media = node?.properties?.["media.name"] ?? "";
+        if (media.length === 0)
+            return "";
+        for (const pattern of root.uninformativeStreamNames) {
+            if (pattern.test(media))
+                return "";
+        }
+        return media;
     }
 
     /**
