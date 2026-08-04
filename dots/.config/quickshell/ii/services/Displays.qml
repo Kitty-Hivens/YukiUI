@@ -382,7 +382,10 @@ Singleton {
     }
 
     function apply(plan) {
-        if (root.busy || root.state === root.stateConfirming)
+        // Reverting counts as occupied: the revert finishing clears the plan
+        // fields out from under an apply started while it was in flight, and
+        // the apply then walks into a state it has no plan for.
+        if (root.busy || root.state === root.stateConfirming || root.state === root.stateReverting)
             return false;
 
         root.lastError = "";
@@ -480,6 +483,13 @@ Singleton {
                 // waiting for whoever next asks for one.
                 root.revertPlan = null;
                 root.applyFailed(root.lastError);
+                return;
+            }
+            // Nothing left to apply means something else finished the sequence
+            // while this was checking. Going on from here builds a command out
+            // of a plan that is gone and leaves the service stuck on applying.
+            if (!root.pendingPlan) {
+                root.state = root.stateIdle;
                 return;
             }
             root.state = root.stateApplying;
