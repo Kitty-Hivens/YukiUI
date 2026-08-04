@@ -19,7 +19,14 @@ for pid in "$@"; do
             *--type=*) : ;;
             *) break ;;
         esac
-        ppid=$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null)
+        # The second field is the command name in brackets and may hold spaces
+        # -- Firefox names a content process "Web Content" -- so the fields
+        # after it are counted from the closing bracket, not from the start.
+        stat=$(cat "/proc/$p/stat" 2>/dev/null)
+        [ -z "$stat" ] && break
+        ppid=${stat##*") "}
+        ppid=${ppid#* }
+        ppid=${ppid%% *}
         case "$ppid" in
             '' | 0 | 1) break ;;
         esac
