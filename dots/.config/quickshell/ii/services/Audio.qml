@@ -190,35 +190,44 @@ Singleton {
      * Lives here so callers have a single place to reach for audio, even though
      * the move itself is one of the things the PipeWire binding cannot do.
      */
-    property var pendingMove: null
+    // Moves waiting on an exclusion, oldest first, paired one to one with the
+    // requests EasyEffects is working through. See the Connections below.
+    property var pendingMoves: []
 
     function sendStreamTo(stream, device) {
-        const current = root.deviceOfStream(stream);
-        const heldByProcessor = current !== null && !root.isHardware(current);
-        const targetIsProcessor = device !== null && !root.isHardware(device);
+        // Only EasyEffects claims streams back; another program's sink is just
+        // a place to play into, and asking EasyEffects about it would hold the
+        // move behind an exclusion list that has nothing to say.
+        const heldByProcessor = root.managedByProcessor(root.deviceOfStream(stream));
+        const targetIsProcessor = root.managedByProcessor(device);
 
         // A processor takes every stream it is allowed to take, so moving one
         // out of it only holds once it has been told to leave that application
         // alone. Putting it back means withdrawing that.
         if (targetIsProcessor || heldByProcessor) {
-            root.pendingMove = {
-                stream: stream,
-                device: device
-            };
+            root.pendingMoves = root.pendingMoves.concat([
+                {
+                    stream: stream,
+                    device: device
+                }
+            ]);
             if (EasyEffects.setExcluded(stream, !targetIsProcessor))
                 return true;
-            root.pendingMove = null;
+            root.pendingMoves = root.pendingMoves.slice(0, -1);
         }
         return AudioRouting.moveStream(stream, device);
     }
 
     // The move waits for the exclusion to be in place: done the other way round
-    // the stream is back where it started before the list has been read.
+    // the stream is back where it started before the list has been read. It is
+    // made even when the list could not be written -- the processor then takes
+    // the stream back the next time it starts, which is still more than a
+    // choice that visibly does nothing.
     Connections {
         target: EasyEffects
-        function onBlocklistChanged(excluded) {
-            const pending = root.pendingMove;
-            root.pendingMove = null;
+        function onBlocklistSettled(ok) {
+            const pending = root.pendingMoves[0];
+            root.pendingMoves = root.pendingMoves.slice(1);
             if (pending)
                 AudioRouting.moveStream(pending.stream, pending.device);
         }

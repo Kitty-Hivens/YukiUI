@@ -24,28 +24,51 @@ Singleton {
      * exclusion list does exactly that, and the list is read when a preset
      * loads -- both are handled by the script, which finishes before whatever
      * the caller wanted to do with the stream.
+     *
+     * Reported whether the list could be written or not: a caller waiting on
+     * this before it moves a stream still has to move it when the answer is no.
+     * Requests are answered in the order they were made.
      */
-    signal blocklistChanged(bool excluded)
+    signal blocklistSettled(bool ok)
+
+    // One request at a time. The script rewrites a preset file and reloads it,
+    // so two of them overlapping would race over the same file, and a caller
+    // waiting on an answer has to hear about its own request rather than about
+    // whichever one happened to finish first.
+    property var blocklistQueue: []
 
     function setExcluded(node, excluded) {
         const nodeName = node?.properties?.["node.name"] ?? "";
         if (nodeName.length === 0)
             return false;
-        blocklistProc.excluded = excluded;
-        blocklistProc.command = ["sh", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/audio/ee_blocklist.sh")),
-            excluded ? "add" : "remove", nodeName, node.isSink ? "output" : "input"];
-        blocklistProc.running = true;
+        root.blocklistQueue = root.blocklistQueue.concat([
+            {
+                name: nodeName,
+                excluded: excluded,
+                kind: node.isSink ? "output" : "input"
+            }
+        ]);
+        root.runNextBlocklistRequest();
         return true;
+    }
+
+    function runNextBlocklistRequest() {
+        if (blocklistProc.running || root.blocklistQueue.length === 0)
+            return;
+        const request = root.blocklistQueue[0];
+        blocklistProc.command = ["sh", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/audio/ee_blocklist.sh")),
+            request.excluded ? "add" : "remove", request.name, request.kind];
+        blocklistProc.running = true;
     }
 
     Process {
         id: blocklistProc
-        property bool excluded: false
         onExited: exitCode => {
-            if (exitCode === 0)
-                root.blocklistChanged(blocklistProc.excluded);
-            else
+            root.blocklistQueue = root.blocklistQueue.slice(1);
+            if (exitCode !== 0)
                 console.log("[EasyEffects] could not change the exclusion list, exit", exitCode);
+            root.blocklistSettled(exitCode === 0);
+            root.runNextBlocklistRequest();
         }
     }
 
