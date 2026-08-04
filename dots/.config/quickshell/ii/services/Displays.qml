@@ -406,7 +406,10 @@ Singleton {
         }
 
         root.pendingPlan = normalized;
-        root.revertPlan = root.currentPlan();
+        // Filtered the same way the plan being applied is. Carrying the outputs
+        // that are not driving would have the safety net send a mode they are
+        // not on, and switch on an output that was only ever plugged in.
+        root.revertPlan = root.currentPlan().filter(entry => entry.usable !== false);
         root.state = root.statePreflight;
         // Written out rather than piped: piping made the exit status the pipe's,
         // and an empty temp path would have had Hyprland validate its own default
