@@ -29,10 +29,12 @@ ApplicationWindow {
     visible: true
     // The countdown that puts a rejected layout back runs in this process, so
     // closing the window mid-confirmation would leave the session on a
-    // configuration nobody agreed to and never write it down either.
+    // configuration nobody agreed to and never write it down either. The same
+    // holds from the moment a layout is sent: a window closed while it is being
+    // applied or checked takes the only thing that could undo it. Asked for
+    // unconditionally, since it does nothing when there is nothing to undo.
     onClosing: {
-        if (Displays.awaitingConfirmation)
-            Displays.revertDetached();
+        Displays.revertDetached();
         // A preview only ever existed to be looked at. Walking away from it is a
         // refusal, not a decision to keep it.
         Displays.discardSdrPreview();

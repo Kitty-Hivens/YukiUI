@@ -475,6 +475,10 @@ Singleton {
                     ? Translation.tr("Hyprland rejected the configuration: %1").arg(text)
                     : Translation.tr("Hyprland rejected the configuration");
                 root.pendingPlan = null;
+                // Nothing reached the compositor, so there is nothing to undo.
+                // Left behind, it is an undo of a change that never happened,
+                // waiting for whoever next asks for one.
+                root.revertPlan = null;
                 root.applyFailed(root.lastError);
                 return;
             }
