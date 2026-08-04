@@ -20,6 +20,9 @@ ColumnLayout {
 
     readonly property var ports: AudioRouting.portsFor(root.node)
     readonly property bool muted: root.node?.audio?.muted ?? false
+    // A processor's own device: listed, adjustable, but not something to hand
+    // the default over to by hand.
+    readonly property bool managed: Audio.managedByProcessor(root.node)
 
     // Without this the volume and the mute of a device nobody is playing to
     // are never delivered, and the row shows zero.
@@ -87,18 +90,20 @@ ColumnLayout {
             implicitWidth: 38
             implicitHeight: 38
             buttonRadius: Appearance.rounding.full
-            enabled: !root.isDefault
+            enabled: !root.isDefault && !root.managed
             onClicked: root.defaultRequested()
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
                 horizontalAlignment: Text.AlignHCenter
-                text: root.isDefault ? "check_circle" : "radio_button_unchecked"
+                text: root.managed ? "auto_mode" : root.isDefault ? "check_circle" : "radio_button_unchecked"
                 fill: root.isDefault ? 1 : 0
                 iconSize: 22
                 color: root.isDefault ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
             }
             StyledToolTip {
-                text: root.isDefault ? Translation.tr("Sound goes here") : Translation.tr("Send sound here")
+                text: root.managed ? Translation.tr("EasyEffects decides this one")
+                    : root.isDefault ? Translation.tr("Sound goes here")
+                    : Translation.tr("Send sound here")
             }
         }
     }

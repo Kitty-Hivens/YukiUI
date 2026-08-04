@@ -26,6 +26,19 @@ Singleton {
         return (node.properties["application.name"] || node.description || node.name)
     }
 
+    /**
+     * A device that exists because a processor put it there, not because it is
+     * hardware.
+     *
+     * EasyEffects creates its own sink and source and decides itself which of
+     * them is the default; picking one by hand fights that and ends with sound
+     * going into a chain nobody is listening to. It stays listed, because it is
+     * where applications actually play, but it is not offered as a choice.
+     */
+    function managedByProcessor(node) {
+        return (node?.name ?? "").startsWith("easyeffects_");
+    }
+
     // Lists
     function correctType(node, isSink) {
         return (node.isSink === isSink) && node.audio

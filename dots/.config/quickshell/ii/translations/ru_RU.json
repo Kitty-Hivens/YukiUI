@@ -865,5 +865,6 @@
   "Unmute": "Вернуть звук",
   "Sound goes here": "Звук идёт сюда",
   "Send sound here": "Направить звук сюда",
-  "not plugged in": "не подключено"
+  "not plugged in": "не подключено",
+  "EasyEffects decides this one": "Этим управляет EasyEffects"
 }
