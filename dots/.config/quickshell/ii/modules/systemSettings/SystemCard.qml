@@ -18,10 +18,14 @@ Rectangle {
 
     ColumnLayout {
         id: cardColumn
+        // Bound to the bottom as well, so a card the layout has made shorter
+        // than its content passes that shortage on. Without it the column kept
+        // its full height and simply drew past the card it lives in.
         anchors {
             left: parent.left
             right: parent.right
             top: parent.top
+            bottom: parent.bottom
             margins: 16
         }
         spacing: 10
@@ -59,9 +63,12 @@ Rectangle {
             }
         }
 
+        // Takes what the title row leaves, so content that scrolls gets a
+        // height to scroll within rather than one it computed from itself.
         ColumnLayout {
             id: cardContent
             Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 6
         }
     }
