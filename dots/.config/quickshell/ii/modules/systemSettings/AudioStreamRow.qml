@@ -26,7 +26,9 @@ ColumnLayout {
     // takes every stream back the moment it is moved. What it plays through is
     // stated instead, and the choice appears again once it plays out directly.
     readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
-    readonly property var endpoint: root.throughProcessor ? Audio.endpointOf(root.currentDevice) : null
+    // Processors first: for an application they are the "with effects" choice,
+    // and the hardware below is "straight out of this instead".
+    readonly property list<var> targets: Audio.virtualDevices(root.node?.isSink ?? true).concat(root.devices)
 
     PwObjectTracker {
         objects: [root.node]
@@ -126,26 +128,17 @@ ColumnLayout {
         }
     }
 
-    StyledText {
-        Layout.fillWidth: true
-        Layout.topMargin: 6
-        Layout.leftMargin: 4
-        visible: root.throughProcessor
-        // Only what holds the stream. Where that hands the sound on is stated
-        // once, in the section about the processor, a few lines above.
-        text: Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
-        elide: Text.ElideRight
-        font.pixelSize: Appearance.font.pixelSize.smallie
-        color: Appearance.colors.colSubtext
-    }
-
+    // Both answers in one list, because for one application they are one
+    // question: play through the processor, or straight out of a device.
     StyledComboBox {
         Layout.fillWidth: true
         Layout.topMargin: 6
-        visible: !root.throughProcessor && root.devices.length > 1
-        buttonIcon: root.node?.isSink ? "speaker" : "mic_external_on"
-        model: root.devices.map(device => Audio.friendlyDeviceName(device))
-        currentIndex: root.devices.findIndex(device => device.id === root.currentDevice?.id)
-        onActivated: index => AudioRouting.moveStream(root.node, root.devices[index])
+        visible: root.targets.length > 1
+        buttonIcon: root.throughProcessor ? "graphic_eq" : (root.node?.isSink ? "speaker" : "mic_external_on")
+        model: root.targets.map(target => Audio.isHardware(target)
+            ? Audio.friendlyDeviceName(target)
+            : Translation.tr("Through %1").arg(Audio.friendlyDeviceName(target)))
+        currentIndex: root.targets.findIndex(target => target.id === root.currentDevice?.id)
+        onActivated: index => Audio.sendStreamTo(root.node, root.targets[index])
     }
 }

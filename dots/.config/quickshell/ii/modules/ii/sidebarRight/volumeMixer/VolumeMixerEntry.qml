@@ -23,6 +23,9 @@ Item {
     // A stream a processor holds cannot be sent anywhere from here: it is taken
     // straight back. The panel says where sound goes instead.
     readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
+    // What this application can be sent to: through a processor, or straight
+    // out of a device.
+    readonly property list<var> targets: Audio.virtualDevices(root.node?.isSink ?? true).concat(root.devices)
 
     PwObjectTracker {
         objects: [root.node]
@@ -134,12 +137,12 @@ Item {
                 implicitHeight: 32
                 buttonRadius: Appearance.rounding.full
                 toggled: root.choosingDevice
-                visible: !root.throughProcessor && root.devices.length > 1
+                visible: root.targets.length > 1
                 onClicked: root.choosingDevice = !root.choosingDevice
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     horizontalAlignment: Text.AlignHCenter
-                    text: root.node?.isSink ? "speaker" : "mic_external_on"
+                    text: root.throughProcessor ? "graphic_eq" : (root.node?.isSink ? "speaker" : "mic_external_on")
                     iconSize: 19
                     color: root.choosingDevice ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
                 }
@@ -161,7 +164,7 @@ Item {
                 spacing: 2
 
                 Repeater {
-                    model: root.devices
+                    model: root.targets
 
                     delegate: RippleButton {
                         id: deviceButton
@@ -194,7 +197,9 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.rightMargin: 8
                                 horizontalAlignment: Text.AlignLeft
-                                text: Audio.friendlyDeviceName(deviceButton.modelData)
+                                text: Audio.isHardware(deviceButton.modelData)
+                                    ? Audio.friendlyDeviceName(deviceButton.modelData)
+                                    : Translation.tr("Through %1").arg(Audio.friendlyDeviceName(deviceButton.modelData))
                                 elide: Text.ElideRight
                                 font.pixelSize: Appearance.font.pixelSize.smallie
                                 color: deviceButton.current ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1

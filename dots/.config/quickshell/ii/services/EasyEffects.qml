@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -14,6 +15,39 @@ Singleton {
 
     property bool available: false
     property bool active: false
+
+    /**
+     * Take one application out of processing, or put it back.
+     *
+     * EasyEffects grabs every stream, so a device chosen for one application
+     * cannot hold until EasyEffects has been told to leave it alone. Its own
+     * exclusion list does exactly that, and the list is read when a preset
+     * loads -- both are handled by the script, which finishes before whatever
+     * the caller wanted to do with the stream.
+     */
+    signal blocklistChanged(bool excluded)
+
+    function setExcluded(node, excluded) {
+        const nodeName = node?.properties?.["node.name"] ?? "";
+        if (nodeName.length === 0)
+            return false;
+        blocklistProc.excluded = excluded;
+        blocklistProc.command = ["sh", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/audio/ee_blocklist.sh")),
+            excluded ? "add" : "remove", nodeName, node.isSink ? "output" : "input"];
+        blocklistProc.running = true;
+        return true;
+    }
+
+    Process {
+        id: blocklistProc
+        property bool excluded: false
+        onExited: exitCode => {
+            if (exitCode === 0)
+                root.blocklistChanged(blocklistProc.excluded);
+            else
+                console.log("[EasyEffects] could not change the exclusion list, exit", exitCode);
+        }
+    }
 
     function fetchAvailability() {
         fetchAvailabilityProc.running = true

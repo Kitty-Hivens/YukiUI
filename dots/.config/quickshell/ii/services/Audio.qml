@@ -190,8 +190,38 @@ Singleton {
      * Lives here so callers have a single place to reach for audio, even though
      * the move itself is one of the things the PipeWire binding cannot do.
      */
+    property var pendingMove: null
+
     function sendStreamTo(stream, device) {
+        const current = root.deviceOfStream(stream);
+        const heldByProcessor = current !== null && !root.isHardware(current);
+        const targetIsProcessor = device !== null && !root.isHardware(device);
+
+        // A processor takes every stream it is allowed to take, so moving one
+        // out of it only holds once it has been told to leave that application
+        // alone. Putting it back means withdrawing that.
+        if (targetIsProcessor || heldByProcessor) {
+            root.pendingMove = {
+                stream: stream,
+                device: device
+            };
+            if (EasyEffects.setExcluded(stream, !targetIsProcessor))
+                return true;
+            root.pendingMove = null;
+        }
         return AudioRouting.moveStream(stream, device);
+    }
+
+    // The move waits for the exclusion to be in place: done the other way round
+    // the stream is back where it started before the list has been read.
+    Connections {
+        target: EasyEffects
+        function onBlocklistChanged(excluded) {
+            const pending = root.pendingMove;
+            root.pendingMove = null;
+            if (pending)
+                AudioRouting.moveStream(pending.stream, pending.device);
+        }
     }
 
     function setDefaultSink(node) {
