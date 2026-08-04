@@ -18,16 +18,9 @@ ApplicationWindow {
     id: root
     property real contentPadding: 8
 
-    readonly property var groups: [
-        {
-            name: Translation.tr("Hardware"),
-            pages: [
-                { name: Translation.tr("Displays"), icon: "monitor", description: Translation.tr("Arrangement, modes, colour"), component: "modules/systemSettings/DisplaysPage.qml" }
-            ]
-        }
-    ]
-    readonly property var pages: root.groups.reduce((all, group) => all.concat(group.pages), [])
-    property string currentComponent: "modules/systemSettings/DisplaysPage.qml"
+    readonly property var groups: SystemPages.groups
+    readonly property var pages: SystemPages.pages
+    property string currentComponent: SystemPages.homeComponent
     readonly property var currentPageData: root.pages.find(page => page.component === root.currentComponent) ?? null
 
     visible: true
@@ -206,6 +199,17 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         active: Config.ready
                         source: root.currentPageData?.component ?? ""
+                    }
+
+                    // The home page lists the other sections, but which one is
+                    // open stays the window's decision. Kept outside the loader,
+                    // whose default property takes a component, not this.
+                    Connections {
+                        target: pageLoader.item
+                        ignoreUnknownSignals: true
+                        function onNavigate(component) {
+                            root.currentComponent = component;
+                        }
                     }
                 }
             }

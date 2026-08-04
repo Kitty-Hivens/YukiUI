@@ -38,7 +38,10 @@ Rectangle {
         if (query.length === 0) {
             const out = [];
             for (const group of root.groups) {
-                out.push({ section: true, name: group.name });
+                // An unnamed group is a plain run of entries, not a section:
+                // the way into the settings needs no heading over one row.
+                if (group.name.length > 0)
+                    out.push({ section: true, name: group.name });
                 for (const page of group.pages)
                     out.push({ section: false, name: page.name, icon: page.icon, component: page.component });
             }
