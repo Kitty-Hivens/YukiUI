@@ -126,11 +126,14 @@ Singleton {
             LANG: "C",
             LC_ALL: "C"
         })
+        // Each list falls back to an empty one of its own. Substituted straight
+        // into the object, a single list pactl refused to write left the whole
+        // thing unparseable and blanked the other two along with it.
         command: ["bash", "-c",
-            `printf '{"cards":%s,"sinks":%s,"sources":%s}' `
-            + `"$(pactl -f json list cards 2>/dev/null)" `
-            + `"$(pactl -f json list sinks 2>/dev/null)" `
-            + `"$(pactl -f json list sources 2>/dev/null)"`]
+            `cards=$(pactl -f json list cards 2>/dev/null); `
+            + `sinks=$(pactl -f json list sinks 2>/dev/null); `
+            + `sources=$(pactl -f json list sources 2>/dev/null); `
+            + `printf '{"cards":%s,"sinks":%s,"sources":%s}' "\${cards:-[]}" "\${sinks:-[]}" "\${sources:-[]}"`]
         stdout: StdioCollector {
             id: readCollector
             onStreamFinished: {
