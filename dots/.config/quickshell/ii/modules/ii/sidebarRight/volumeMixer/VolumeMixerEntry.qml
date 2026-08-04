@@ -124,32 +124,42 @@ Item {
                     }
                 }
 
-                StyledSlider {
-                    id: slider
-                    value: root.node?.audio.volume ?? 0
-                    onMoved: root.node.audio.volume = value
-                    configuration: StyledSlider.Configuration.S
-                }
-            }
+                // The button belongs beside the slider, not beside the whole
+                // entry: centred against name and slider together it sat a line
+                // above the control it works with.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
 
-            RippleButton {
-                implicitWidth: 32
-                implicitHeight: 32
-                buttonRadius: Appearance.rounding.full
-                toggled: root.choosingDevice
-                visible: root.targets.length > 1
-                onClicked: root.choosingDevice = !root.choosingDevice
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.throughProcessor ? "graphic_eq" : (root.node?.isSink ? "speaker" : "mic_external_on")
-                    iconSize: 19
-                    color: root.choosingDevice ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
-                }
-                StyledToolTip {
-                    text: root.currentDevice
-                        ? Translation.tr("Playing on %1").arg(Audio.friendlyDeviceName(root.currentDevice))
-                        : Translation.tr("Choose a device")
+                    StyledSlider {
+                        id: slider
+                        Layout.fillWidth: true
+                        value: root.node?.audio.volume ?? 0
+                        onMoved: root.node.audio.volume = value
+                        configuration: StyledSlider.Configuration.S
+                    }
+
+                    RippleButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        buttonRadius: Appearance.rounding.full
+                        toggled: root.choosingDevice
+                        visible: root.targets.length > 1
+                        onClicked: root.choosingDevice = !root.choosingDevice
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            text: root.throughProcessor ? "graphic_eq" : (root.node?.isSink ? "speaker" : "mic_external_on")
+                            iconSize: 19
+                            color: root.choosingDevice ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSubtext
+                        }
+                        StyledToolTip {
+                            text: root.currentDevice
+                                ? Translation.tr("Playing on %1").arg(Audio.friendlyDeviceName(root.currentDevice))
+                                : Translation.tr("Choose a device")
+                        }
+                    }
                 }
             }
         }
