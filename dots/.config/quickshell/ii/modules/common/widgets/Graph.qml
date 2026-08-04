@@ -29,6 +29,8 @@ Canvas {
         ctx.fillStyle = ColorUtils.transparentize(root.color, 1 - root.fillOpacity)
         ctx.lineWidth = 2
         ctx.beginPath()
+        var firstX = -1
+        var lastX = 0
         for (var i = 0; i < n; ++i) {
             var valueIndex = (root.alignment === Graph.Alignment.Right) ? root.values.length - n + i : i
             if (valueIndex < 0 || valueIndex >= root.values.length) {
@@ -37,15 +39,23 @@ Canvas {
             var x = i * dx
             var norm = root.values[valueIndex] // already in 0-1 range
             var y = height - norm * height
-            if (valueIndex === 0) {
-                ctx.moveTo(x, height)
-                ctx.lineTo(x, y)
+            if (firstX < 0) {
+                firstX = x
+                ctx.moveTo(x, y)
             } else {
                 ctx.lineTo(x, y)
             }
+            lastX = x
         }
+        if (firstX < 0)
+            return
+        // Only the readings are stroked. Dropping to the baseline before the
+        // stroke drew a hard vertical line wherever the data began, which reads
+        // as a measurement rather than as the edge of the drawing.
         ctx.stroke()
-        ctx.lineTo(width, height)
+        ctx.lineTo(lastX, height)
+        ctx.lineTo(firstX, height)
+        ctx.closePath()
         ctx.fill()
     }
 }
