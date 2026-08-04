@@ -17,6 +17,7 @@ Singleton {
 
     readonly property string homeComponent: "modules/systemSettings/HomePage.qml"
     readonly property string displaysComponent: "modules/systemSettings/DisplaysPage.qml"
+    readonly property string soundComponent: "modules/systemSettings/SoundPage.qml"
 
     /**
      * A line of live state per page.
@@ -33,6 +34,11 @@ Singleton {
             return Translation.tr("%1 connected").arg(active.length);
         return "";
     }
+
+    // The device sound currently goes to. Deliberately not the volume as well:
+    // that changes on every scroll of the wheel, and the whole page list is
+    // rebuilt whenever a status does.
+    readonly property string soundStatus: Audio.sink ? Audio.friendlyDeviceName(Audio.sink) : ""
 
     readonly property var groups: [
         {
@@ -57,6 +63,13 @@ Singleton {
                     description: Translation.tr("Arrangement, modes, colour"),
                     component: root.displaysComponent,
                     status: root.displaysStatus
+                },
+                {
+                    name: Translation.tr("Sound"),
+                    icon: "volume_up",
+                    description: Translation.tr("Devices, applications and profiles"),
+                    component: root.soundComponent,
+                    status: root.soundStatus
                 }
             ]
         }

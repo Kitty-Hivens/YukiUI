@@ -853,5 +853,17 @@
   "Uptime": "Аптайм",
   "Threads: %1": "Потоков: %1",
   "Not configured": "Не настроен",
-  "Storage": "Накопитель"
+  "Storage": "Накопитель",
+  "Sound": "Звук",
+  "Devices, applications and profiles": "Устройства, приложения и профили",
+  "Playing": "Воспроизведение",
+  "Recording": "Запись",
+  "Nothing is playing": "Ничего не воспроизводится",
+  "Nothing is recording": "Ничего не записывается",
+  "No sound cards were found": "Звуковых карт не найдено",
+  "Mute": "Приглушить",
+  "Unmute": "Вернуть звук",
+  "Sound goes here": "Звук идёт сюда",
+  "Send sound here": "Направить звук сюда",
+  "not plugged in": "не подключено"
 }
