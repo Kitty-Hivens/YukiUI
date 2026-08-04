@@ -67,6 +67,13 @@ hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, floa
 hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, pin = true})
 hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, move = {"(monitor_w*.5-window_w*.5)", "(monitor_h-window_h-12)"} })
 
+-- Games
+-- A vsynced client only draws on frame callbacks, and the compositor stops sending those
+-- once the workspace is hidden. osu! reads the resulting gap as a freeze and blocks score
+-- submission, so keep drawing it at misc:render_unfocused_fps while it sits in the background.
+-- Wine reports the executable basename as the class, so this covers every Windows app.
+hl.window_rule({match = {class = "(?i).*\\.exe" },                           render_unfocused = true})
+
 -- No shadow for tiled windows
 hl.window_rule({match = {float = 0 }, no_shadow = true})
 
