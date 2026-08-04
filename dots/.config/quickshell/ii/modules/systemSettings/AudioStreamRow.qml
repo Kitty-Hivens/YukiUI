@@ -19,9 +19,13 @@ ColumnLayout {
     id: root
     required property PwNode node
 
-    readonly property list<var> devices: root.node?.isSink ? Audio.outputDevices : Audio.inputDevices
+    readonly property list<var> devices: Audio.hardwareDevices(root.node?.isSink ?? true)
     readonly property var currentDevice: Audio.deviceOfStream(root.node)
     readonly property bool muted: root.node?.audio?.muted ?? false
+    // Inside a processor the choice is not this panel's to make: the processor
+    // takes every stream back the moment it is moved. What it plays through is
+    // stated instead, and the choice appears again once it plays out directly.
+    readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
 
     PwObjectTracker {
         objects: [root.node]
@@ -121,10 +125,21 @@ ColumnLayout {
         }
     }
 
+    StyledText {
+        Layout.fillWidth: true
+        Layout.topMargin: 6
+        Layout.leftMargin: 4
+        visible: root.throughProcessor
+        text: Translation.tr("Through %1").arg(Audio.friendlyDeviceName(root.currentDevice))
+        elide: Text.ElideRight
+        font.pixelSize: Appearance.font.pixelSize.smallie
+        color: Appearance.colors.colSubtext
+    }
+
     StyledComboBox {
         Layout.fillWidth: true
         Layout.topMargin: 6
-        visible: root.devices.length > 1
+        visible: !root.throughProcessor && root.devices.length > 1
         buttonIcon: root.node?.isSink ? "speaker" : "mic_external_on"
         model: root.devices.map(device => Audio.friendlyDeviceName(device))
         currentIndex: root.devices.findIndex(device => device.id === root.currentDevice?.id)

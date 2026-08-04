@@ -870,5 +870,8 @@
   "Playing on %1": "Играет через %1",
   "Choose a device": "Выбрать устройство",
   "Applications play through it, and its own level changes nothing": "Приложения играют через него, но его собственная громкость ни на что не влияет",
-  "Sound passes through EasyEffects": "Звук проходит через EasyEffects"
+  "Sound passes through EasyEffects": "Звук проходит через EasyEffects",
+  "Processing": "Обработка",
+  "Created by a program rather than by hardware": "Создано программой, а не оборудованием",
+  "Through %1": "Через %1"
 }

@@ -22,6 +22,7 @@ Item {
 
     readonly property list<var> outputStreams: Audio.outputAppNodes
     readonly property list<var> inputStreams: Audio.inputAppNodes
+    readonly property list<var> processors: Audio.virtualDevices(true).concat(Audio.virtualDevices(false))
 
     // Cards, ports and the name behind a stream's process are only read while
     // they are on screen.
@@ -82,7 +83,7 @@ Item {
                 Layout.fillWidth: true
 
                 Repeater {
-                    model: Audio.outputDevices
+                    model: Audio.hardwareDevices(true)
 
                     delegate: ColumnLayout {
                         required property var modelData
@@ -111,7 +112,7 @@ Item {
                 Layout.fillWidth: true
 
                 Repeater {
-                    model: Audio.inputDevices
+                    model: Audio.hardwareDevices(false)
 
                     delegate: ColumnLayout {
                         required property var modelData
@@ -127,6 +128,67 @@ Item {
                             node: parent.modelData
                             isDefault: parent.modelData.id === Pipewire.defaultAudioSource?.id
                             onDefaultRequested: Audio.setDefaultSource(parent.modelData)
+                        }
+                    }
+                }
+            }
+
+            Heading {
+                visible: root.processors.length > 0
+                text: Translation.tr("Processing")
+            }
+
+            // Not devices and not listed among them: these answer "through
+            // what", which is a different question from "out of what".
+            SystemCard {
+                Layout.fillWidth: true
+                visible: root.processors.length > 0
+
+                Repeater {
+                    model: root.processors
+
+                    delegate: ColumnLayout {
+                        id: processorEntry
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Divider {
+                            visible: processorEntry.index > 0
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            MaterialSymbol {
+                                text: "graphic_eq"
+                                iconSize: Appearance.font.pixelSize.hugeass
+                                color: Appearance.colors.colSubtext
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: Audio.friendlyDeviceName(processorEntry.modelData)
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.normal
+                                    font.weight: Font.Medium
+                                    color: Appearance.colors.colOnLayer2
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: Audio.managedByProcessor(processorEntry.modelData)
+                                        ? Translation.tr("Applications play through it, and its own level changes nothing")
+                                        : Translation.tr("Created by a program rather than by hardware")
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                    color: Appearance.colors.colSubtext
+                                }
+                            }
                         }
                     }
                 }

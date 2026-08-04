@@ -18,8 +18,11 @@ Item {
     required property PwNode node
     property bool choosingDevice: false
 
-    readonly property list<var> devices: root.node?.isSink ? Audio.outputDevices : Audio.inputDevices
+    readonly property list<var> devices: Audio.hardwareDevices(root.node?.isSink ?? true)
     readonly property var currentDevice: Audio.deviceOfStream(root.node)
+    // A stream a processor holds cannot be sent anywhere from here: it is taken
+    // straight back. The panel says where sound goes instead.
+    readonly property bool throughProcessor: root.currentDevice !== null && !Audio.isHardware(root.currentDevice)
 
     PwObjectTracker {
         objects: [root.node]
@@ -131,7 +134,7 @@ Item {
                 implicitHeight: 32
                 buttonRadius: Appearance.rounding.full
                 toggled: root.choosingDevice
-                visible: root.devices.length > 1
+                visible: !root.throughProcessor && root.devices.length > 1
                 onClicked: root.choosingDevice = !root.choosingDevice
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent

@@ -20,7 +20,9 @@ Singleton {
     property real value: sink?.audio.volume ?? 0
     
     function friendlyDeviceName(node) {
-        return (node.nickname || node.description || Translation.tr("Unknown"));
+        // Callers ask about a device that may not be resolved yet, and a name is
+        // wanted for the binding either way.
+        return (node?.nickname || node?.description || Translation.tr("Unknown"));
     }
     /**
      * The program, not the runtime that happens to carry it.
@@ -64,15 +66,35 @@ Singleton {
     }
 
     /**
-     * Devices worth offering as a choice.
-     *
-     * A processor's own device is not one: EasyEffects reads what applications
-     * play from the monitor of its sink, and a monitor carries the signal from
-     * before the sink's own volume. Its level and its mute therefore change
-     * nothing at all, and the default is EasyEffects' to set.
+     * Whether a node is a piece of hardware rather than something a program
+     * created. Hardware is announced by a device; a virtual sink has none.
      */
+    function isHardware(node) {
+        if ((node?.properties?.["device.id"] ?? "").length > 0)
+            return true;
+        // A node's properties only arrive once something tracks it, and this
+        // question is asked before that -- a device left untracked would be
+        // filed as virtual for as long as nobody looked at it. The driver's own
+        // naming answers the same question and is there from the start.
+        return /^(alsa|bluez)_(input|output)\./.test(node?.name ?? "");
+    }
+
+    /**
+     * Where sound comes out. Only hardware belongs on this list: a processor's
+     * sink answers "through what", which is a different question and does not
+     * belong in the same menu as a pair of headphones.
+     */
+    function hardwareDevices(isSink) {
+        return (isSink ? root.outputDevices : root.inputDevices).filter(node => root.isHardware(node));
+    }
+
+    /** Sinks and sources a program put there: processors, loopbacks, nulls. */
+    function virtualDevices(isSink) {
+        return (isSink ? root.outputDevices : root.inputDevices).filter(node => !root.isHardware(node));
+    }
+
     function selectableDevices(isSink) {
-        return (isSink ? root.outputDevices : root.inputDevices).filter(node => !root.managedByProcessor(node));
+        return root.hardwareDevices(isSink);
     }
 
     /** Whether a processor sits between applications and the hardware. */
