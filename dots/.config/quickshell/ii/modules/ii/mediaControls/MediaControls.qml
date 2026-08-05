@@ -37,7 +37,13 @@ Scope {
             // Find duplicates by trackTitle prefix
             for (let j = i + 1; j < players.length; ++j) {
                 let p2 = players[j];
-                if (p1.trackTitle && p2.trackTitle && (p1.trackTitle.includes(p2.trackTitle) || p2.trackTitle.includes(p1.trackTitle)) || (Math.abs(p1.position - p2.position) <= 2 && Math.abs(p1.length - p2.length) <= 2)) {
+                // Matching times only mean anything once both players have a track:
+                // one with nothing loaded reports zero for position and length alike,
+                // so any two idle players looked like the same one and only the first
+                // of them was ever shown.
+                const sameTitle = p1.trackTitle && p2.trackTitle && (p1.trackTitle.includes(p2.trackTitle) || p2.trackTitle.includes(p1.trackTitle));
+                const sameProgress = p1.length > 0 && p2.length > 0 && Math.abs(p1.position - p2.position) <= 2 && Math.abs(p1.length - p2.length) <= 2;
+                if (sameTitle || sameProgress) {
                     group.push(j);
                 }
             }
