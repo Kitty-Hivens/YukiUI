@@ -30,12 +30,15 @@ MouseArea {
     acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
     onPressed: (event) => {
+        // Through the controller, which checks there is a player and that it takes the
+        // command: this widget is on the bar whether anything is playing or not, so
+        // these reached straight into nothing whenever the bus was empty.
         if (event.button === Qt.MiddleButton) {
-            activePlayer.togglePlaying();
+            MprisController.togglePlaying();
         } else if (event.button === Qt.BackButton) {
-            activePlayer.previous();
+            MprisController.previous();
         } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
-            activePlayer.next();
+            MprisController.next();
         } else if (event.button === Qt.LeftButton) {
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
         }
