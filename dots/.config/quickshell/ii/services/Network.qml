@@ -87,6 +87,9 @@ Singleton {
     function changePassword(network: WifiAccessPoint, password: string, username = ""): void {
         // TODO: enterprise wifi with username
         network.askingPassword = false;
+        // The retry below runs the connect process again without going through
+        // connectToWifiNetwork, so the network it is for has to be named here.
+        root.wifiConnectTarget = network;
         changePasswordProc.exec({
             "environment": {
                 "PASSWORD": password,
@@ -115,13 +118,18 @@ Singleton {
         stderr: SplitParser {
             onRead: line => {
                 // print("err:", line)
-                if (line.includes("Secrets were required")) {
+                if (line.includes("Secrets were required") && root.wifiConnectTarget) {
                     root.wifiConnectTarget.askingPassword = true
                 }
             }
         }
+        // Nothing to report back to once the attempt is over, and the access point
+        // can also go out from under us: the list is rebuilt while connecting, and
+        // an entry is replaced whenever the strongest transmitter for its name
+        // changes -- which is exactly what joining it does.
         onExited: (exitCode, exitStatus) => {
-            root.wifiConnectTarget.askingPassword = (exitCode !== 0)
+            if (root.wifiConnectTarget)
+                root.wifiConnectTarget.askingPassword = (exitCode !== 0)
             root.wifiConnectTarget = null
         }
     }
