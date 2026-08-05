@@ -8,13 +8,23 @@ import Quickshell.Wayland
 Singleton {
     id: root
 
+    // Compared without regard to case. The taskbar identifies an application by the
+    // class its windows carry, lowercased, while the configuration holds whatever
+    // spelling the application or the person editing it used -- so a pin written as
+    // org.gnome.Nautilus was never recognised as the one behind org.gnome.nautilus.
+    // It read as unpinned, pinning it again added the lowercase spelling beside the
+    // original, and the next attempt removed only that addition: the entry could not
+    // be unpinned at all.
     function isPinned(appId) {
-        return Config.options.dock.pinnedApps.indexOf(appId) !== -1;
+        const wanted = (appId ?? "").toLowerCase();
+        return Config.options.dock.pinnedApps.some(id => id.toLowerCase() === wanted);
     }
 
     function togglePin(appId) {
+        const wanted = (appId ?? "").toLowerCase();
         if (root.isPinned(appId)) {
-            Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.filter(id => id !== appId)
+            // Every spelling of it, not just the one that was asked about.
+            Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.filter(id => id.toLowerCase() !== wanted)
         } else {
             Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.concat([appId])
         }
