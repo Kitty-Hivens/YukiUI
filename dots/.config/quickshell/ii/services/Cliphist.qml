@@ -16,10 +16,28 @@ Singleton {
     property bool sloppySearch: Config.options?.search.sloppy ?? false
     property real scoreThreshold: 0.2
     property list<string> entries: []
-    readonly property var preparedEntries: entries.map(a => ({
-        name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
-        entry: a
-    }))
+
+    /**
+     * The search index, built when something searches and not before.
+     *
+     * As a binding on the list it was rebuilt on every copy, whether or not
+     * anyone had the clipboard search open -- several milliseconds of work per
+     * copy for an answer usually nobody asked for. Dropped when the list
+     * changes, and paid for by the first query after that.
+     */
+    property var preparedCache: null
+    onEntriesChanged: root.preparedCache = null
+
+    function preparedEntries() {
+        if (!root.preparedCache) {
+            root.preparedCache = root.entries.map(a => ({
+                name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
+                entry: a
+            }));
+        }
+        return root.preparedCache;
+    }
+
     function fuzzyQuery(search: string): var {
         if (search.trim() === "") {
             return entries;
@@ -34,7 +52,7 @@ Singleton {
                 .map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preparedEntries, {
+        return Fuzzy.go(search, root.preparedEntries(), {
             all: true,
             key: "name"
         }).map(r => {
