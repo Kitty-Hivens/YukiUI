@@ -158,6 +158,12 @@ hl.layer_rule({ match = { namespace = "quickshell:session" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, ignore_alpha = 0})
 hl.layer_rule({ match = { namespace = "quickshell:sidebarRight" }, animation = "slide right"})
 hl.layer_rule({ match = { namespace = "quickshell:sidebarLeft" }, animation = "slide left"})
+-- The sidebars draw an opaque background, so the blur under them is only ever
+-- seen while they fade away -- and what it shows there is the wallpaper smeared
+-- into an even wash instead of the picture behind the panel. Measured with the
+-- panel open, switching it off changes nothing at all.
+hl.layer_rule({ match = { namespace = "quickshell:sidebarRight" }, blur = false})
+hl.layer_rule({ match = { namespace = "quickshell:sidebarLeft" }, blur = false})
 hl.layer_rule({ match = { namespace = "quickshell:verticalBar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, order = -1})
 -- Quickshell: waffles
