@@ -11,7 +11,9 @@ fi
 # Prompt for password if not provided
 if [[ -z "${UNLOCK_PASSWORD}" ]]; then
     echo -n 'Login password: ' >&2
-    read -s UNLOCK_PASSWORD || return
+    # Not "return": this is a script, not a function, and bash refuses it there
+    # -- so a read that gave nothing carried on to unlock with an empty password.
+    read -s UNLOCK_PASSWORD || exit 1
 fi
 
 # Unlock
