@@ -18,7 +18,9 @@ Singleton {
 	id: root;
 	property list<MprisPlayer> players: Mpris.players.values.filter(player => isRealPlayer(player));
 	property MprisPlayer trackedPlayer: null;
-	property MprisPlayer activePlayer: trackedPlayer ?? Mpris.players.values[0] ?? null;
+	// Falls back within the filtered list. Reaching into the full one handed the
+	// place to a bus that the filter exists to hide.
+	property MprisPlayer activePlayer: trackedPlayer ?? root.players[0] ?? null;
 	signal trackChanged(reverse: bool);
 
 	property bool __reverse: false;
@@ -49,7 +51,13 @@ Singleton {
 			required property MprisPlayer modelData;
 			target: modelData;
 
+			// The buses the filter turns away are copies of the others, and one of them
+			// follows every player there is. Left able to take the tracking, it answered
+			// each play and pause a moment after the player that caused it, so the active
+			// player ended up being the very bus meant to stay out of sight -- reporting
+			// the browser as the application while a music player was the one playing.
 			Component.onCompleted: {
+				if (!root.isRealPlayer(modelData)) return;
 				if (root.trackedPlayer == null || modelData.isPlaying) {
 					root.trackedPlayer = modelData;
 				}
@@ -57,20 +65,21 @@ Singleton {
 
 			Component.onDestruction: {
 				if (root.trackedPlayer == null || !root.trackedPlayer.isPlaying) {
-					for (const player of Mpris.players.values) {
+					for (const player of root.players) {
 						if (player.isPlaying) {
 							root.trackedPlayer = player;
 							break;
 						}
 					}
 
-					if (trackedPlayer == null && Mpris.players.values.length != 0) {
-						trackedPlayer = Mpris.players.values[0];
+					if (root.trackedPlayer == null && root.players.length != 0) {
+						root.trackedPlayer = root.players[0];
 					}
 				}
 			}
 
 			function onPlaybackStateChanged() {
+				if (!root.isRealPlayer(modelData)) return;
 				if (root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
 			}
 		}
