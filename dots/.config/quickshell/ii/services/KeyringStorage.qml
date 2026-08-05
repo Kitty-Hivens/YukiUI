@@ -18,6 +18,14 @@ Singleton {
     signal dataChanged()
 
     property bool loaded: false
+    /**
+     * Set when the stored value came back and could not be read.
+     *
+     * Retrying does not help, since the bytes will not change on their own, and
+     * writing over them would destroy whatever is really there. The shell stops
+     * asking and refuses to save instead.
+     */
+    property bool unreadable: false
     property var keyringData: ({})
     
     property var properties: {
@@ -64,8 +72,10 @@ Singleton {
     }
 
     function fetchKeyringData() {
-        // console.log("[KeyringStorage] Fetching keyring data...");
-        // console.log("[KeyringStorage] getData command:'" + getData.command.join("' '") + "'");
+        // Asking again cannot turn unreadable contents into readable ones, and
+        // every caller asks on a schedule of its own.
+        if (root.unreadable)
+            return;
         getData.running = true;
     }
 
@@ -97,28 +107,31 @@ Singleton {
         ]
         stdout: StdioCollector {
             id: keyringDataOutputCollector
-            onStreamFinished: {
-                const data = keyringDataOutputCollector.text;
-                if (data.length === 0 || !data.startsWith("{")) return;
-                try {
-                    root.keyringData = JSON.parse(data);
-                    // console.log("[KeyringStorage] Keyring data fetched:", JSON.stringify(root.keyringData));
-                } catch (e) {
-                    console.error("[KeyringStorage] Failed to get keyring data, reinitializing.");
-                    root.keyringData = {};
-                    saveKeyringData()
-                }
-            }
         }
+        // The exit code says which of the three answers this is, so the decision
+        // is made here rather than by guessing from the text. What was collected
+        // is already in hand: a stream ends before its process is reported gone.
         onExited: (exitCode, exitStatus) => {
-            // console.log("[KeyringStorage] Keyring data fetch process exited with code:", exitCode);
-            if (exitCode === 1) {
-                console.error("[KeyringStorage] Entry not found, initializing.");
+            // A locked keyring still holds everything and reads once it is
+            // unlocked, so nothing is concluded and nothing is marked loaded.
+            if (exitCode === 2)
+                return;
+            if (exitCode !== 0) {
+                // Nothing stored yet. The entry appears when the first value is
+                // saved, rather than being created empty from here.
                 root.keyringData = {};
-                saveKeyringData()
-            }
-            if (exitCode !== 2) {
                 root.loaded = true;
+                return;
+            }
+            try {
+                root.keyringData = JSON.parse(keyringDataOutputCollector.text);
+                root.loaded = true;
+            } catch (e) {
+                // Left exactly as it is. This is the only copy of every key the
+                // shell holds, and a read it cannot make sense of is not a
+                // reason to replace it with an empty one.
+                console.error("[KeyringStorage] stored data could not be read, leaving it untouched:", e);
+                root.unreadable = true;
             }
         }
     }
