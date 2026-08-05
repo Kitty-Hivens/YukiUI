@@ -137,6 +137,22 @@ Singleton {
         return StringUtils.stringListContainsSubstring(entry.toLowerCase(), unsafeKeywords);
     }
 
+    /**
+     * Whether an image was copied next to a link worth hiding it for.
+     *
+     * Neighbours in the history, not in whatever the search has left on screen.
+     * Judged from the filtered results, an image stopped being hidden the moment
+     * a query separated it from the link it was copied alongside -- which is to
+     * say as soon as anything was typed.
+     */
+    function hasUnsafeNeighbour(entry) {
+        const history = Cliphist.entries;
+        const index = history.indexOf(entry);
+        if (index === -1)
+            return false;
+        return root.containsUnsafeLink(history[index - 1]) || root.containsUnsafeLink(history[index + 1]);
+    }
+
     Timer {
         id: nonAppResultsTimer
         interval: Config.options.search.nonAppResultDelay
@@ -174,12 +190,10 @@ Singleton {
         if (root.query.startsWith(Config.options.search.prefix.clipboard)) {
             // Clipboard
             const searchString = StringUtils.cleanPrefix(root.query, Config.options.search.prefix.clipboard);
-            return Cliphist.fuzzyQuery(searchString).map((entry, index, array) => {
-                const mightBlurImage = Cliphist.entryIsImage(entry) && root.clipboardWorkSafetyActive;
-                let shouldBlurImage = mightBlurImage;
-                if (mightBlurImage) {
-                    shouldBlurImage = shouldBlurImage && (root.containsUnsafeLink(array[index - 1]) || root.containsUnsafeLink(array[index + 1]));
-                }
+            return Cliphist.fuzzyQuery(searchString).map(entry => {
+                const shouldBlurImage = Cliphist.entryIsImage(entry)
+                    && root.clipboardWorkSafetyActive
+                    && root.hasUnsafeNeighbour(entry);
                 const type = `#${entry.match(/^\s*(\S+)/)?.[1] || ""}`;
                 return resultComp.createObject(null, {
                     rawValue: entry,
