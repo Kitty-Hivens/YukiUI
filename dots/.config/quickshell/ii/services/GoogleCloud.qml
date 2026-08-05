@@ -57,10 +57,11 @@ Singleton {
             return;
         }
         tokenProc.runSequence([(() => { // prep token fetcher
+                // The key is handed over in the environment and read there.
+                // Expanded into an argument, as it was, it landed in a command
+                // line that every local user can read out of /proc.
                 tokenProc.environment.SERVICE_KEY_CONTENT = JSON.stringify(root.keyContent);
-                tokenProc.command = [ //
-                    "bash", "-c" //
-                    , `${tokenForKeyScriptPath} "$SERVICE_KEY_CONTENT"`];
+                tokenProc.command = [root.tokenForKeyScriptPath];
             }), //
             [], // run token fetcher
             ((out) => {

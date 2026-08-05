@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import calendar
+import os
 import sys
 import json
 import google.auth.transport.requests
@@ -31,8 +32,13 @@ def get_token(json_str):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.stderr.write("Usage: python3 get_token.py '<json_string>'\n")
+    # Taken from the environment, never from an argument. A command line is
+    # world readable through /proc, so passing a service account key that way
+    # hands its private key to every local user for as long as this runs; the
+    # environment of a process can only be read by its owner.
+    key_json = os.environ.get("SERVICE_KEY_CONTENT", "")
+    if not key_json:
+        sys.stderr.write("SERVICE_KEY_CONTENT is not set\n")
         sys.exit(1)
-    
-    get_token(sys.argv[1])
+
+    get_token(key_json)
