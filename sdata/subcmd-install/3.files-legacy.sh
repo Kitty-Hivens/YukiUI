@@ -8,7 +8,11 @@
 case "${SKIP_MISCCONF}" in
   true) true;;
   *)
-    for i in $(find dots/.config/ -mindepth 1 -maxdepth 1 ! -name 'quickshell' ! -name 'fish' ! -name 'hypr' ! -name 'fontconfig' -exec basename {} \;); do
+    # One name at a time: split on whitespace, a name carrying a space would arrive
+    # as several and each half would be copied to a destination of its own.
+    misc_conf_names=()
+    readarray -d '' -t misc_conf_names < <(find dots/.config/ -mindepth 1 -maxdepth 1 ! -name 'quickshell' ! -name 'fish' ! -name 'hypr' ! -name 'fontconfig' -printf '%f\0')
+    for i in "${misc_conf_names[@]}"; do
 #      i="dots/.config/$i"
       echo "[$0]: Found target: dots/.config/$i"
       if [ -d "dots/.config/$i" ];then install_dir__sync "dots/.config/$i" "$XDG_CONFIG_HOME/$i"

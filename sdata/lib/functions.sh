@@ -355,8 +355,14 @@ function backup_clashing_targets(){
 
   # Find clash dirs/files, save as clash_list
   local clash_list=()
-  local source_list=($(ls -A "$source_dir"))
-  local target_list=($(ls -A "$target_dir"))
+  # Read one name at a time rather than splitting a listing on whitespace: a name
+  # carrying a space arrived as several, so a directory present on both sides was
+  # not recognised as clashing and went unsaved -- right before the copy that
+  # removes whatever the dotfiles do not carry.
+  local source_list=()
+  local target_list=()
+  readarray -d '' -t source_list < <(find "$source_dir" -mindepth 1 -maxdepth 1 -printf '%f\0')
+  readarray -d '' -t target_list < <(find "$target_dir" -mindepth 1 -maxdepth 1 -printf '%f\0')
   local -A target_map
   for i in "${target_list[@]}"; do
     target_map["$i"]=1
