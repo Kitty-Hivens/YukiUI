@@ -195,6 +195,7 @@ Singleton {
                 "time": Date.now(),
             });
 			root.list = [...root.list, newNotifObject];
+            root.trimToKeepLimit();
 
             // Popup
             if (!root.popupInhibited) {
@@ -211,6 +212,22 @@ Singleton {
             // console.log(notifToString(newNotifObject));
             notifFileView.setText(stringifyList(root.list));
         }
+    }
+
+    /**
+     * Drops the oldest once there are more than the configured number.
+     *
+     * The list had no ceiling, and every new notification rewrites the whole of
+     * it to disk, so a machine nobody clears notifications on wrote a steadily
+     * larger file on every one that arrived.
+     */
+    function trimToKeepLimit() {
+        const keep = Config?.options.notifications.keep ?? 200;
+        if (keep <= 0 || root.list.length <= keep)
+            return;
+        const dropped = root.list.slice(0, root.list.length - keep);
+        root.list = root.list.slice(root.list.length - keep);
+        dropped.forEach((notif) => notif?.dispose());
     }
 
     function markAllRead() {
@@ -325,6 +342,8 @@ Singleton {
 
             console.log("[Notifications] File loaded")
             root.idOffset = maxId
+            // Applies the ceiling to a file written before there was one.
+            root.trimToKeepLimit()
             root.initDone()
         }
         onLoadFailed: (error) => {
