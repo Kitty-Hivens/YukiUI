@@ -7,6 +7,7 @@ import QtQuick
 import QtPositioning
 
 import qs.modules.common
+import qs.modules.common.functions
 
 Singleton {
     id: root
@@ -81,25 +82,21 @@ Singleton {
     }
 
     function getData() {
-        let command = "curl -s wttr.in";
+        // Two decimals is about a kilometre, which is finer than a forecast can
+        // tell apart and as much as a service on the other side of the internet
+        // has any business being handed. Full precision from the receiver is a
+        // track of where its owner sits, sent every few minutes.
+        const place = (root.gpsActive && root.location.valid)
+            ? `${root.location.lat.toFixed(2)},${root.location.long.toFixed(2)}`
+            : formatCityName(root.city);
 
-        if (root.gpsActive && root.location.valid) {
-            // Two decimals is about a kilometre, which is finer than a forecast
-            // can tell apart and as much as a service on the other side of the
-            // internet has any business being handed. Full precision from the
-            // receiver is a track of where its owner sits, sent every few
-            // minutes.
-            command += `/${root.location.lat.toFixed(2)},${root.location.long.toFixed(2)}`;
-        } else {
-            command += `/${formatCityName(root.city)}`;
-        }
-
-        // format as json
-        command += "?format=j1";
-        command += " | ";
-        // only take the current weather, location, asytronmy data
-        command += "jq '{current: .current_condition[0], location: .nearest_area[0], astronomy: .weather[0].astronomy[0]}'";
-        fetcher.command[2] = command;
+        // Quoted, because the city is whatever was typed into the settings, and
+        // a real one can carry an apostrophe -- N'Djamena, Val-d'Or -- which
+        // unbalances the command it used to be pasted into raw.
+        const url = StringUtils.shellSingleQuoteEscape(`wttr.in/${place}?format=j1`);
+        // only take the current weather, location, astronomy data
+        fetcher.command[2] = `curl -s '${url}'`
+            + ` | jq '{current: .current_condition[0], location: .nearest_area[0], astronomy: .weather[0].astronomy[0]}'`;
         fetcher.running = true;
     }
 
