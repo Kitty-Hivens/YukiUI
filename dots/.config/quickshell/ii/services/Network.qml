@@ -295,15 +295,22 @@ Singleton {
                 const rep = new RegExp("\\\\:", "g");
                 const rep2 = new RegExp(PLACEHOLDER, "g");
 
-                const allNetworks = text.trim().split("\n").map(n => {
+                // No networks at all is empty output, which splits into one empty
+                // line and used to become a nameless access point in the list.
+                const allNetworks = text.trim().split("\n").filter(n => n.length > 0).map(n => {
                     const net = n.replace(rep, PLACEHOLDER).split(":");
                     return {
                         active: net[0] === "yes",
                         strength: parseInt(net[1]),
+                        // Every field the placeholder can reach has to be put back,
+                        // not only the address: an SSID carrying a colon kept the
+                        // placeholder, and since that string is what goes into
+                        // `nmcli dev wifi connect` and its siblings, such a network
+                        // could be neither joined nor left from here.
                         frequency: parseInt(net[2]),
-                        ssid: net[3],
+                        ssid: net[3]?.replace(rep2, ":") ?? "",
                         bssid: net[4]?.replace(rep2, ":") ?? "",
-                        security: net[5] || ""
+                        security: net[5]?.replace(rep2, ":") ?? ""
                     };
                 }).filter(n => n.ssid && n.ssid.length > 0);
 
