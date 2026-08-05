@@ -24,12 +24,17 @@ Singleton {
         return cleanedInputPrompt || (usePasswordChars ? Translation.tr("Password") : Translation.tr("Input"))
     }
 
+    // A request that finished while the dialog was still on screen leaves
+    // nothing to answer, and the answer arrives anyway when a key was already
+    // on its way down.
     function cancel() {
-        root.flow.cancelAuthenticationRequest()
+        root.flow?.cancelAuthenticationRequest()
     }
 
-    function submit(string) {
-        root.flow.submit(string)
+    function submit(response) {
+        if (!root.flow)
+            return;
+        root.flow.submit(response)
         root.interactionAvailable = false
     }
 
