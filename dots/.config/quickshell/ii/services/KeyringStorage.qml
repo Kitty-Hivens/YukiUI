@@ -28,9 +28,21 @@ Singleton {
     property bool unreadable: false
     property var keyringData: ({})
     
-    property var properties: {
+    /**
+     * What the entry is filed under. Constant, and deliberately not translated.
+     *
+     * These are what the keyring matches an item by, so they are identity, not
+     * writing. Translated, the explanation changed with the interface language:
+     * storing then no longer replaced the existing item, it added a second one
+     * beside it, and a lookup by application alone came back with whichever of
+     * the two it felt like -- so a set of keys could simply stop being there.
+     *
+     * The sentence a person reads is the label below, which is free to be
+     * translated because nothing matches on it.
+     */
+    readonly property var properties: {
         "application": "illogical-impulse",
-        "explanation": Translation.tr("For storing API keys and other sensitive information"),
+        "explanation": "For storing API keys and other sensitive information",
     }
     property var propertiesAsArgs: Object.keys(root.properties).reduce(
         function(arr, key) {
