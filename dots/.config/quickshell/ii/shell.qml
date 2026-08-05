@@ -32,6 +32,7 @@ ShellRoot {
         Updates.load()
         GameMode.load()
         Idle.load()
+        HyprlandConfig.load()
     }
 
 
