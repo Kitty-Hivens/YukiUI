@@ -75,7 +75,9 @@ Singleton {
         const id = root.entryId(entry);
         if (id.length === 0)
             return;
-        Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${id} | wl-copy && wl-paste`]);
+        // Pressing the keys is what pastes. Reading the clipboard back out, as
+        // this used to, only prints it to a stream nobody is holding.
+        Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${id} | wl-copy; ${root.pressPasteCommand}`]);
     }
 
     function superpaste(count, isImage = false) {
