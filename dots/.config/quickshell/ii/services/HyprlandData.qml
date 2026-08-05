@@ -83,13 +83,57 @@ Singleton {
         updateAll();
     }
 
+    /**
+     * Which lists an event can actually have changed.
+     *
+     * Everything used to be re-read for every event: five processes and about
+     * thirteen kilobytes of JSON to answer a window changing its title, which
+     * cannot move a monitor or open a layer. A title that animates -- a spinner
+     * in a terminal, an unread count in a chat window -- is several events a
+     * second, and each of them asked for all of it.
+     *
+     * Layers were the other way round: the only two events that change them
+     * were the ones skipped, so the layer list was only ever refreshed as a side
+     * effect of something unrelated happening afterwards.
+     */
+    readonly property var clientEvents: ["activewindow", "activewindowv2", "openwindow", "closewindow",
+        "movewindow", "movewindowv2", "windowtitle", "windowtitlev2", "changefloatingmode", "fullscreen",
+        "urgent", "minimized", "pin", "togglegroup", "moveintogroup", "moveoutofgroup"]
+    readonly property var workspaceEvents: ["workspace", "workspacev2", "createworkspace", "createworkspacev2",
+        "destroyworkspace", "destroyworkspacev2", "moveworkspace", "moveworkspacev2", "renameworkspace",
+        "activespecial", "activespecialv2"]
+    readonly property var monitorEvents: ["monitoradded", "monitoraddedv2", "monitorremoved", "focusedmon", "focusedmonv2"]
+    readonly property var layerEvents: ["openlayer", "closelayer"]
+
     Connections {
         target: Hyprland
 
         function onRawEvent(event) {
-            // console.log("Hyprland raw event:", event.name);
-            if (["openlayer", "closelayer", "screencast"].includes(event.name)) return;
-            updateAll()
+            const name = event.name;
+            // A reload can change anything, and a window opening, closing or
+            // moving changes which workspace holds what as well as the window
+            // itself.
+            if (name === "configreloaded") {
+                root.updateAll();
+                return;
+            }
+            if (root.clientEvents.includes(name)) {
+                root.updateWindowList();
+                if (["openwindow", "closewindow", "movewindow", "movewindowv2"].includes(name))
+                    root.updateWorkspaces();
+                return;
+            }
+            if (root.workspaceEvents.includes(name)) {
+                root.updateWorkspaces();
+                return;
+            }
+            if (root.monitorEvents.includes(name)) {
+                root.updateMonitors();
+                root.updateWorkspaces();
+                return;
+            }
+            if (root.layerEvents.includes(name))
+                root.updateLayers();
         }
     }
 
