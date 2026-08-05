@@ -45,10 +45,16 @@ Scope {
                 if (!GlobalStates.overviewOpen) {
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
+                    // Asked for here rather than after the grab is dropped, so
+                    // the wait stays the one the service keeps and does not
+                    // become two of them back to back.
+                    if (GlobalStates.overviewFocusHandled)
+                        FocusReturn.discard("overview");
+                    else
+                        FocusReturn.restore("overview");
                 } else {
                     GlobalStates.overviewFocusHandled = false;
-                    const addr = ToplevelManager.activeToplevel?.HyprlandToplevel?.address;
-                    GlobalStates.overviewReturnAddress = addr ? `0x${addr}` : "";
+                    FocusReturn.remember("overview");
                     if (!overviewScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
                     }
@@ -72,15 +78,7 @@ Scope {
         Timer {
             id: delayedGrabTimer
             interval: Appearance.animation.elementMoveFast.duration
-            onTriggered: {
-                grab.active = GlobalStates.overviewOpen;
-                // no_focus_fallback keeps the game unfocused after dismiss, so its pointer lock
-                // never re-arms. Refocus the toplevel we took over from -- unless the overview
-                // itself directed focus to a window or workspace.
-                if (!GlobalStates.overviewOpen && !GlobalStates.overviewFocusHandled && GlobalStates.overviewReturnAddress) {
-                    Hyprland.dispatch(`hl.dsp.focus({ window = "address:${GlobalStates.overviewReturnAddress}" })`);
-                }
-            }
+            onTriggered: grab.active = GlobalStates.overviewOpen
         }
         implicitWidth: columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight

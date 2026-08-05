@@ -20,7 +20,6 @@ Singleton {
     property var oskWindow: null
     property bool overlayOpen: false
     property bool overviewOpen: false
-    property string overviewReturnAddress: ""
     property bool overviewFocusHandled: false
     property bool regionSelectorOpen: false
     property bool screenSharePickerOpen: false

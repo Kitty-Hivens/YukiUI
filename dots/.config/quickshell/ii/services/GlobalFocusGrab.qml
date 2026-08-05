@@ -1,9 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
-import qs.modules.common
 import QtQuick
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Hyprland
 
 /**
@@ -19,13 +17,10 @@ Singleton {
     property list<var> persistent: []
     property list<var> dismissable: []
 
-    // Toplevel the grab took focus from, restored on dismiss. See refocusTimer.
-    property string returnAddress: ""
-
     function dismiss() {
         root.dismissable = [];
         root.dismissed();
-        refocusTimer.restart();
+        FocusReturn.restore("focusGrab");
     }
 
     Component.onCompleted: {
@@ -73,27 +68,10 @@ Singleton {
         onActiveChanged: {
             if (!grab.active)
                 return;
-            const address = ToplevelManager.activeToplevel?.HyprlandToplevel?.address;
-            root.returnAddress = address ? `0x${address}` : "";
+            FocusReturn.remember("focusGrab");
         }
         onCleared: () => {
             root.dismiss();
-        }
-    }
-
-    // With no_focus_fallback nothing takes focus once the grab lifts, so a fullscreen game
-    // never re-arms its pointer lock and reads the dead input as a freeze. Skip the restore
-    // when a panel handed focus to some other window -- that window earned it.
-    Timer {
-        id: refocusTimer
-        interval: Appearance.animation.elementMoveFast.duration
-        onTriggered: {
-            const address = ToplevelManager.activeToplevel?.HyprlandToplevel?.address;
-            const focusVacated = !address || `0x${address}` === root.returnAddress;
-            if (root.returnAddress && focusVacated) {
-                Hyprland.dispatch(`hl.dsp.focus({ window = "address:${root.returnAddress}" })`);
-            }
-            root.returnAddress = "";
         }
     }
 }
