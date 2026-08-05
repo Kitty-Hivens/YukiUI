@@ -48,7 +48,11 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "quickshell:regionSelector"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Taken, not asked for on demand. A fullscreen window does not give focus up
+    // to a layer that only asks when clicked, and while it keeps focus it keeps
+    // the pointer locked to itself, so the click that would hand focus over
+    // never reaches here.
+    WlrLayershell.keyboardFocus: root.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
     anchors {
         left: true
@@ -83,8 +87,17 @@ PanelWindow {
     onPreparationDoneChanged: {
         if (!preparationDone)
             return;
+        // Noted before the window goes up, while the window it is being taken
+        // from is still the one holding focus.
+        FocusReturn.remember(root.focusOwner);
         root.visible = true;
     }
+
+    // One panel per screen, each taking focus, so each gives it back under a
+    // name of its own; otherwise the first to go hands focus back while the
+    // others still cover their screens.
+    readonly property string focusOwner: `wRegionSelector:${root.screen.name}`
+    Component.onDestruction: FocusReturn.restore(root.focusOwner)
 
     function getScreenshotAction() {
         switch (root.mediaType) {

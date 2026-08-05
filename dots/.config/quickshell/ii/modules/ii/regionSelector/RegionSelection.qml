@@ -18,7 +18,12 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "quickshell:regionSelector"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Taken, not asked for on demand. A fullscreen window does not give focus up
+    // to a layer that only asks when clicked, and while it keeps focus it keeps
+    // the pointer locked to itself, so the click that would hand focus over
+    // never reaches here: the selection could only be made after leaving the
+    // workspace. Escape was unreachable for the same reason.
+    WlrLayershell.keyboardFocus: root.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
     anchors {
         left: true
@@ -215,8 +220,17 @@ PanelWindow {
             root.dismiss();
             return;
         }
+        // Noted before the window goes up, while the window it is being taken
+        // from is still the one holding focus.
+        FocusReturn.remember(root.focusOwner);
         root.visible = true;
     }
+
+    // One selector exists per screen, and each takes focus, so each has to give
+    // it back under a name of its own -- otherwise the first one to go would
+    // hand focus back while the others are still covering their screens.
+    readonly property string focusOwner: `regionSelector:${root.screen.name}`
+    Component.onDestruction: FocusReturn.restore(root.focusOwner)
 
     Process {
         id: imageDetectionProcess
