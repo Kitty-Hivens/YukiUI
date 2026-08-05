@@ -128,7 +128,17 @@ hl.layer_rule({ match = { namespace = "osk[0-9]*" }, ignore_alpha = 0.6})
 -- Quickshell
 -- Quickshell: illogical-impulse
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur_popups = true})
-hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur = true})
+-- Off by default, on for the ones that ask for it below.
+--
+-- A panel's background is only see-through when appearance.transparency.enable
+-- is set, and it is off by default -- so for most people blurring every panel
+-- is work whose result is covered by the panel drawn over it. The one moment it
+-- shows is while a panel fades away, and what it shows there is the wallpaper
+-- smeared into an even wash rather than the desktop behind: on the sidebars,
+-- the cheatsheet, the on-screen keyboard, every panel that fades.
+--
+-- Turning transparency on wants this turned back on with it.
+hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur = false})
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, ignore_alpha = 0.79})
 hl.layer_rule({ match = { namespace = "quickshell:bar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:actionCenter" }, no_anim = true})
@@ -158,12 +168,6 @@ hl.layer_rule({ match = { namespace = "quickshell:session" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, ignore_alpha = 0})
 hl.layer_rule({ match = { namespace = "quickshell:sidebarRight" }, animation = "slide right"})
 hl.layer_rule({ match = { namespace = "quickshell:sidebarLeft" }, animation = "slide left"})
--- The sidebars draw an opaque background, so the blur under them is only ever
--- seen while they fade away -- and what it shows there is the wallpaper smeared
--- into an even wash instead of the picture behind the panel. Measured with the
--- panel open, switching it off changes nothing at all.
-hl.layer_rule({ match = { namespace = "quickshell:sidebarRight" }, blur = false})
-hl.layer_rule({ match = { namespace = "quickshell:sidebarLeft" }, blur = false})
 hl.layer_rule({ match = { namespace = "quickshell:verticalBar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, order = -1})
 -- Quickshell: waffles
