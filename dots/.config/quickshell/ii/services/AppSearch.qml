@@ -107,6 +107,32 @@ Singleton {
         return root.iconPathCached(root.guessIcon(appClass));
     }
 
+    /**
+     * The desktop entry a window class belongs to, guessed the same way its icon is.
+     *
+     * Quickshell's own lookup goes by file name and by the class an entry declares it
+     * starts windows under, and a great many entries declare neither -- GitHub Desktop
+     * puts its windows under a class that matches its readable name and nothing else,
+     * so asking for its entry came back with nothing while its icon was found without
+     * trouble. That left the taskbar showing an application it could not launch.
+     */
+    function entryFor(appClass) {
+        if (!appClass || appClass.length == 0) return null;
+
+        const guesses = [
+            appClass,
+            root.getKebabNormalizedAppName(appClass),
+            root.getUndescoreToKebabAppName(appClass),
+            root.getReverseDomainNameAppName(appClass)
+        ];
+        for (const guess of guesses) {
+            const entry = DesktopEntries.byId(guess);
+            if (entry) return entry;
+        }
+
+        return DesktopEntries.heuristicLookup(appClass);
+    }
+
     function guessIcon(str) {
         if (!str || str.length == 0) return "image-missing";
 

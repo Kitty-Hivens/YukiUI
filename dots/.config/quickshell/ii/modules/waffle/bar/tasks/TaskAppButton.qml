@@ -12,7 +12,7 @@ AppButton {
 
     required property var appEntry
     readonly property bool isSeparator: appEntry.appId === "SEPARATOR"
-    property var desktopEntry: DesktopEntries.heuristicLookup(appEntry.appId)
+    property var desktopEntry: AppSearch.entryFor(appEntry.appId)
 
     Timer {
         // Retry looking up the desktop entry if it failed (e.g. database not loaded yet)
@@ -22,7 +22,7 @@ AppButton {
         repeat: true
         onTriggered: {
             retryCount--;
-            root.desktopEntry = DesktopEntries.heuristicLookup(root.appEntry.appId);
+            root.desktopEntry = AppSearch.entryFor(root.appEntry.appId);
         }
     }
 
