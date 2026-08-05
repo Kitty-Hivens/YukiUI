@@ -128,17 +128,32 @@ hl.layer_rule({ match = { namespace = "osk[0-9]*" }, ignore_alpha = 0.6})
 -- Quickshell
 -- Quickshell: illogical-impulse
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur_popups = true})
--- Off by default, on for the ones that ask for it below.
+-- Blur follows the shell's own transparency setting, rather than being on for
+-- everything.
 --
 -- A panel's background is only see-through when appearance.transparency.enable
--- is set, and it is off by default -- so for most people blurring every panel
--- is work whose result is covered by the panel drawn over it. The one moment it
--- shows is while a panel fades away, and what it shows there is the wallpaper
--- smeared into an even wash rather than the desktop behind: on the sidebars,
--- the cheatsheet, the on-screen keyboard, every panel that fades.
+-- is set. With it off the panel is drawn over its own blur, so the work is
+-- thrown away -- and the one moment any of it shows is while a panel fades,
+-- where what appears is the wallpaper smeared into an even wash rather than the
+-- desktop behind it. That was every panel that fades: the sidebars, the
+-- cheatsheet, the on-screen keyboard. With it on the panel really is see-through
+-- and the blur is the point, so it is asked for.
 --
--- Turning transparency on wants this turned back on with it.
-hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur = false})
+-- Read from the shell's config rather than written down twice, so the two cannot
+-- disagree. The file is JSON, so this looks for the flag inside the transparency
+-- block instead of pretending to parse it, and anything it cannot read means no.
+-- Same idea as monitors.lua deciding on the laptop panel from /sys. Takes effect
+-- on the next config reload.
+local function shellPanelsAreSeeThrough()
+    local handle = io.open(os.getenv("HOME") .. "/.config/illogical-impulse/config.json", "r")
+    if not handle then return false end
+    local contents = handle:read("*a")
+    handle:close()
+    local block = contents:match('"transparency"%s*:%s*(%b{})')
+    return block ~= nil and block:match('"enable"%s*:%s*true') ~= nil
+end
+
+hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur = shellPanelsAreSeeThrough()})
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, ignore_alpha = 0.79})
 hl.layer_rule({ match = { namespace = "quickshell:bar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:actionCenter" }, no_anim = true})
