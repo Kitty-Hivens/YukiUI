@@ -84,7 +84,12 @@ Singleton {
         let command = "curl -s wttr.in";
 
         if (root.gpsActive && root.location.valid) {
-            command += `/${root.location.lat},${root.location.long}`;
+            // Two decimals is about a kilometre, which is finer than a forecast
+            // can tell apart and as much as a service on the other side of the
+            // internet has any business being handed. Full precision from the
+            // receiver is a track of where its owner sits, sent every few
+            // minutes.
+            command += `/${root.location.lat.toFixed(2)},${root.location.long.toFixed(2)}`;
         } else {
             command += `/${formatCityName(root.city)}`;
         }
