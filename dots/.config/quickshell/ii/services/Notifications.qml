@@ -169,7 +169,6 @@ Singleton {
     // Quickshell's notification IDs starts at 1 on each run, while saved notifications
     // can already contain higher IDs. This is for avoiding id collisions
     property int idOffset
-    signal initDone();
     signal notify(notification: var);
     signal discard(id: int);
     signal discardAll();
@@ -355,7 +354,6 @@ Singleton {
             root.idOffset = maxId
             // Applies the ceiling to a file written before there was one.
             root.trimToKeepLimit()
-            root.initDone()
         }
         onLoadFailed: (error) => {
             if(error == FileViewError.FileNotFound) {
