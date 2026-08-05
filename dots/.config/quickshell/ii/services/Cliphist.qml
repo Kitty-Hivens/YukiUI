@@ -93,24 +93,42 @@ Singleton {
         Quickshell.execDetached(["bash", "-c", pasteCommands.join(` && sleep ${root.pasteDelay} && `)]);
     }
 
-    Process {
-        id: deleteProc
-        property string entry: ""
-        // The number alone is enough on standard input. Given as an argument it
-        // is accepted, reports success and deletes nothing.
-        command: ["bash", "-c", `echo '${root.entryId(deleteProc.entry)}' | ${root.cliphistBinary} delete`]
-        function deleteEntry(entry) {
-            deleteProc.entry = entry;
-            deleteProc.running = true;
-            deleteProc.entry = "";
-        }
-        onExited: (exitCode, exitStatus) => {
-            root.refresh();
-        }
-    }
+    /**
+     * Deletions wait their turn.
+     *
+     * Asked for while one was running, the command was rebuilt and emptied
+     * before the waiting run ever got to use it, so the entry it named quietly
+     * survived and came straight back in the refreshed list.
+     */
+    property var deleteQueue: []
 
     function deleteEntry(entry) {
-        deleteProc.deleteEntry(entry);
+        const id = root.entryId(entry);
+        if (id.length === 0)
+            return;
+        root.deleteQueue = root.deleteQueue.concat([id]);
+        root.runNextDelete();
+    }
+
+    function runNextDelete() {
+        if (deleteProc.running || root.deleteQueue.length === 0)
+            return;
+        // The number alone is enough on standard input. Given as an argument it
+        // is accepted, reports success and deletes nothing.
+        deleteProc.command = ["bash", "-c", `echo '${root.deleteQueue[0]}' | ${root.cliphistBinary} delete`];
+        deleteProc.running = true;
+    }
+
+    Process {
+        id: deleteProc
+        onExited: (exitCode, exitStatus) => {
+            root.deleteQueue = root.deleteQueue.slice(1);
+            if (root.deleteQueue.length > 0) {
+                root.runNextDelete();
+                return;
+            }
+            root.refresh();
+        }
     }
 
     Process {
