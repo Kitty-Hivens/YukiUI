@@ -11,11 +11,22 @@ function warning_overwrite(){
 }
 function auto_backup_configs(){
   local backup=false
+  # A directory of its own for every run. The copy below merges rather than
+  # replaces, so running twice into one place wrote the files just installed over
+  # the untouched originals saved the first time -- the only copy worth keeping.
+  local run_dir="${BACKUP_DIR}/$(date +%Y-%m-%d_%H-%M-%S)"
   case $ask in
-    false) if [[ ! -d "$BACKUP_DIR" ]]; then local backup=true;fi;;
+    # There is nobody to ask, so the safe answer is taken. It used to depend on
+    # whether a backup directory happened to exist already, which meant every run
+    # after the first went without one, and without a word to that effect -- while
+    # the step this guards still removed whatever the dotfiles do not carry.
+    false)
+      local backup=true
+      printf "${STY_BLUE}Backing up clashing dirs/files to \"$run_dir\"...${STY_RST}\n"
+      ;;
     *)
       printf "${STY_RED}"
-      printf "Would you like to backup clashing dirs/files to \"$BACKUP_DIR\"?\n"
+      printf "Would you like to backup clashing dirs/files to \"$run_dir\"?\n"
       printf "${STY_RST}"
       while true;do
         echo "  y = Yes, backup"
@@ -32,9 +43,15 @@ function auto_backup_configs(){
       ;;
   esac
   if $backup;then
-    backup_clashing_targets dots/.config $XDG_CONFIG_HOME "${BACKUP_DIR}/.config"
-    backup_clashing_targets dots/.local/share $XDG_DATA_HOME "${BACKUP_DIR}/.local/share"
-    printf "${STY_BLUE}Backup into \"${BACKUP_DIR}\" finished.${STY_RST}\n"
+    backup_clashing_targets dots/.config "$XDG_CONFIG_HOME" "${run_dir}/.config"
+    backup_clashing_targets dots/.local/share "$XDG_DATA_HOME" "${run_dir}/.local/share"
+    printf "${STY_BLUE}Backup into \"${run_dir}\" finished.${STY_RST}\n"
+  else
+    printf "${STY_YELLOW}"
+    printf "No backup is being made. Copying config files replaces what is already there,\n"
+    printf "and for the directories it keeps in step with the dotfiles it also removes files\n"
+    printf "those do not carry.\n"
+    printf "${STY_RST}"
   fi
 }
 function gen_firstrun(){
