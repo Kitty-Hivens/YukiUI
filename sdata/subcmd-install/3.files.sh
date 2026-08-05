@@ -72,14 +72,14 @@ rsync_dir(){
   x mkdir -p "$2"
   local dest="$(realpath -se $2)"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
-  rsync -a --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf d "/" $0 "\n" }' >> "${INSTALLED_LISTFILE}"
+  rsync -a --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
 }
 rsync_dir__ignore_existing(){
   # NOTE: This function is only for using in other functions
   x mkdir -p "$2"
   local dest="$(realpath -se $2)"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
-  rsync -a --ignore-existing --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf d "/" $0 "\n" }' >> "${INSTALLED_LISTFILE}"
+  rsync -a --ignore-existing --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
 }
 rsync_dir__sync(){
   # NOTE: This function is only for using in other functions
@@ -89,7 +89,7 @@ rsync_dir__sync(){
   x mkdir -p "$2"
   local dest="$(realpath -se $2)"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
-  rsync -a --delete --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf d "/" $0 "\n" }' >> "${INSTALLED_LISTFILE}"
+  rsync -a --delete --out-format='%i %n' "$1"/ "$2"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
 }
 rsync_dir__sync_exclude(){
   # NOTE: This function is only for using in other functions
@@ -105,7 +105,7 @@ rsync_dir__sync_exclude(){
   x mkdir -p "$dest_dir"
   local dest="$(realpath -se $dest_dir)"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
-  rsync -a --delete "${excludes[@]}" --out-format='%i %n' "$src"/ "$dest_dir"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf d "/" $0 "\n" }' >> "${INSTALLED_LISTFILE}"
+  rsync -a --delete "${excludes[@]}" --out-format='%i %n' "$src"/ "$dest_dir"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
 }
 function install_file(){
   # NOTE: Do not add prefix `v` or `x` when using this function
