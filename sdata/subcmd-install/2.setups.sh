@@ -61,7 +61,18 @@ if [[ ! -z $(systemctl --version) ]]; then
   fi
   v sudo systemctl enable bluetooth --now
 elif [[ ! -z $(openrc --version) ]]; then
-  v bash -c "echo 'modules=i2c-dev' | sudo tee -a /etc/conf.d/modules"
+  # Added once, and never on top of a setting that is already there: this file is
+  # read as shell, where the last assignment is the one that counts, so a second
+  # line would have quietly dropped every module already listed. Appending on each
+  # run did exactly that.
+  v bash -c "
+    if grep -qE '^[[:space:]]*modules=' /etc/conf.d/modules; then
+      if ! grep -qE '^[[:space:]]*modules=.*i2c-dev' /etc/conf.d/modules; then
+        printf 'A modules= line is already present in /etc/conf.d/modules. Add i2c-dev to it by hand.\n'
+      fi
+    else
+      echo 'modules=i2c-dev' | sudo tee -a /etc/conf.d/modules
+    fi"
   v sudo rc-update add modules boot
   v sudo rc-update add ydotool default
   v sudo rc-update add bluetooth default
