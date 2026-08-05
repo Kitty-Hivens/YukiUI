@@ -48,7 +48,10 @@ Singleton {
             if (minutes > 0 || !formatted)
                 formatted += `${formatted ? ", " : ""}${minutes}m`;
             uptime = formatted;
-            interval = Config.options?.resources?.updateInterval ?? 3000;
+            // Settles at a minute, which is the finest this string distinguishes.
+            // At the resource poll it re-read /proc and rebuilt the same text
+            // twenty times for each change it could actually show.
+            interval = 60000;
         }
     }
 
