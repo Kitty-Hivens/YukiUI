@@ -60,7 +60,6 @@ Singleton {
     }
 
     function refresh() {
-        readProc.buffer = []
         readProc.running = true
     }
 
@@ -164,6 +163,13 @@ Singleton {
         property list<string> buffer: []
 
         command: [root.cliphistBinary, "list"]
+
+        // Emptied as this run begins, not when a refresh is asked for. Cleared
+        // on request, it was cleared under a read already in progress: that read
+        // then reported a list missing everything collected before the clear,
+        // and the run queued behind it appended to the remains, listing entries
+        // twice.
+        onStarted: readProc.buffer = []
 
         stdout: SplitParser {
             onRead: (line) => {
