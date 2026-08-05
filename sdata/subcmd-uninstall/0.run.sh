@@ -104,15 +104,78 @@ function deletion_prompt(){
   done
 }
 
+function delete_empty_dirs(){
+  local listfile="$1"
+  local targets=()
+  readarray -t targets < "$listfile"
+  # Deepest first, and refused rather than forced. A directory that stopped being
+  # empty between the listing and now is left where it is instead of being taken
+  # with everything inside it, and working from the deepest up lets a parent fall
+  # away in the same pass once its last child is gone.
+  local sorted=()
+  readarray -t sorted < <(printf '%s\n' "${targets[@]}" | awk -F/ 'NF{print NF"\t"$0}' | sort -rn | cut -f2-)
+  for path in "${sorted[@]}"; do
+    if [[ ! -d "$path" ]]; then
+      continue
+    elif [[ "$path" != "$HOME"/* ]]; then
+      printf "${STY_YELLOW}Leaving \"$path\": it is not under \$HOME.${STY_RST}\n"
+      continue
+    fi
+    if rmdir -- "$path" 2>/dev/null; then
+      printf "${STY_BLUE}Removed empty directory \"$path\".${STY_RST}\n"
+    fi
+  done
+}
+
+function empty_deletion_prompt(){
+  local listfile="$1"
+  while true; do
+    printf "Each directory listed in \"$listfile\" will be removed if it is empty by then. Ones still holding something are left alone.\n"
+    printf "Please choose:\nv=View the list\ne=Edit the list\nq=Quit\ny=Remove the empty ones now\n"
+    read -n1 -p "> " choice < /dev/tty
+    echo
+    case "$choice" in
+      q|Q)
+        printf "Quiting...\n"
+        break
+        ;;
+      y|Y)
+        delete_empty_dirs "$listfile"
+        break
+        ;;
+      v|V)
+        view_listfile "$listfile"
+        ;;
+      e|E)
+        edit_listfile "$listfile"
+        ;;
+      *)
+        ;;
+    esac
+  done
+}
+
 deletion_prompt "${INSTALLED_LISTFILE}"
 
+# Directories the install itself put files into, and nothing else. Sweeping the
+# whole config tree for empty directories offered up every one on the machine --
+# hundreds belonging to other applications against a handful belonging here -- and
+# they were all under $HOME, so a single answer removed the lot without another
+# word. The list of installed files is the only record of what actually came from
+# here, so the directories are taken from it.
 empty_dir_listfile=$(mktemp)
-scan_paths=(${XDG_CONFIG_HOME} "${XDG_DATA_HOME}"/konsole)
-for dir in "${scan_paths[@]}"; do
-  find "$dir" -type d -empty -print >> $empty_dir_listfile
-done
+if [[ -f "${INSTALLED_LISTFILE}" ]]; then
+  while IFS= read -r installed_path; do
+    [[ -z "$installed_path" ]] && continue
+    parent_dir="$(dirname -- "$installed_path")"
+    while [[ "$parent_dir" == "$HOME"/* ]]; do
+      printf '%s\n' "$parent_dir" >> "$empty_dir_listfile"
+      parent_dir="$(dirname -- "$parent_dir")"
+    done
+  done < "${INSTALLED_LISTFILE}"
+fi
 x dedup_and_sort_listfile "$empty_dir_listfile" "$empty_dir_listfile"
-deletion_prompt "$empty_dir_listfile"
+empty_deletion_prompt "$empty_dir_listfile"
 
 ##############################################################################################################################
 
