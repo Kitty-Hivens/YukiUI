@@ -4,9 +4,13 @@ import argparse
 import cv2
 import json
 import numpy as np
+import os
 import sys
 
-DEFAULT_IMAGE_PATH = '/tmp/quickshell/media/screenshot/image'
+# Only a fallback -- the caller passes --image -- but it follows the shell's own
+# scratch space, which sits in the runtime directory rather than in shared /tmp.
+DEFAULT_IMAGE_PATH = os.path.join(
+    os.environ.get('XDG_RUNTIME_DIR', '/tmp'), 'quickshell/media/screenshot/image')
 
 def iou(boxA, boxB):
     # Compute intersection over union for two boxes

@@ -320,7 +320,9 @@ Singleton {
         }
     }
 
-    property string requestScriptFilePath: "/tmp/quickshell/ai/request.sh"
+    // Carries the whole conversation being sent, so it does not belong anywhere
+    // another account on the machine can read it.
+    property string requestScriptFilePath: `${Directories.temp}/ai/request.sh`
     property string pendingFilePath: ""
 
     Component.onCompleted: {

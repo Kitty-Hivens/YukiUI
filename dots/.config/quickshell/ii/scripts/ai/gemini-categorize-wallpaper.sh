@@ -11,11 +11,13 @@ SOURCE_IMG_PATH="$1"
 MODEL="${2:-${GEMINI_WALLPAPER_MODEL:-gemini-2.5-flash}}" # We use the flash variant so it's fast
 WALLPAPER_NAME="$(basename "$SOURCE_IMG_PATH")"
 PROMPT="${3:-${GEMINI_WALLPAPER_PROMPT:-Categorize the wallpaper. Its file name is $WALLPAPER_NAME}}"
-RESIZED_IMG_PATH="/tmp/quickshell/ai/wallpaper.jpg"
+# The runtime directory rather than /tmp: a copy of the wallpaper is still a
+# picture off this user's machine, and /tmp is readable by every account on it.
+RESIZED_IMG_PATH="${XDG_RUNTIME_DIR:-/tmp}/quickshell/ai/wallpaper.jpg"
 
 # Resize image for speed. Never hand a video to magick -- it decodes every frame into
 # RAM (tens of GB on a 4K clip); pull a single frame with ffmpeg instead.
-mkdir -p "$(dirname "$RESIZED_IMG_PATH")"
+mkdir -p -m 700 "$(dirname "$RESIZED_IMG_PATH")"
 case "${SOURCE_IMG_PATH,,}" in
     *.mp4|*.webm|*.mkv|*.avi|*.mov)
         ffmpeg -y -i "$SOURCE_IMG_PATH" -frames:v 1 -vf "scale=200:-1" "$RESIZED_IMG_PATH" 2>/dev/null ;;

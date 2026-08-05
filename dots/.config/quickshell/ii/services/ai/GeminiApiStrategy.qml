@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 import qs.modules.common.functions as CF
 
 ApiStrategy {
@@ -207,8 +208,8 @@ ApiStrategy {
         content += `IMAGE_PATH='${CF.StringUtils.shellSingleQuoteEscape(trimmedFilePath)}'\n`;
         content += `${fileMimeTypeVarName}=$(file -b --mime-type "$IMAGE_PATH")\n`;
         content += 'NUM_BYTES=$(wc -c < "${IMAGE_PATH}")\n';
-        content += 'tmp_header_file="/tmp/quickshell/ai/upload-header.tmp"\n';
-        content += 'tmp_file_info_file="/tmp/quickshell/ai/file-info.json.tmp"\n';
+        content += `tmp_header_file="${Directories.temp}/ai/upload-header.tmp"\n`;
+        content += `tmp_file_info_file="${Directories.temp}/ai/file-info.json.tmp"\n`;
 
         // Initial resumable request defining metadata.
         // The upload url is in the response headers dump them to a file.
