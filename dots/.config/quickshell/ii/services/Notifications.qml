@@ -35,6 +35,28 @@ Singleton {
         property string urgency: notification?.urgency.toString() ?? "normal"
         property Timer timer
 
+        /**
+         * The timer belongs to the popup, not to the notification.
+         *
+         * It only ever destroyed itself when it fired, so one stopped early --
+         * by a pointer resting on the popup, or by the popup being dismissed --
+         * was left running or left behind. Whichever way the popup goes away,
+         * it goes with it.
+         */
+        function clearTimer() {
+            if (!wrapper.timer)
+                return;
+            wrapper.timer.stop();
+            wrapper.timer.destroy();
+            wrapper.timer = null;
+        }
+
+        /** Everything this notification owns goes when it does. */
+        function dispose() {
+            wrapper.clearTimer();
+            wrapper.destroy();
+        }
+
         onNotificationChanged: {
             if (notification === null) {
                 root.discardNotification(notificationId);
@@ -64,12 +86,18 @@ Singleton {
         interval: 7000
         running: true
         onTriggered: () => {
-            const index = root.list.findIndex((notif) => notif.notificationId === notificationId);
-            const notifObject = root.list[index];
-            print("[Notifications] Notification timer triggered for ID: " + notificationId + ", transient: " + notifObject?.isTransient);
+            const notifObject = root.list.find((notif) => notif.notificationId === notificationId);
+            // Gone already, dismissed by hand before this came round. There is
+            // nothing left to time out, and reaching into it anyway is what
+            // used to throw here -- taking the line that tidied this timer up
+            // with it.
+            if (!notifObject) {
+                destroy();
+                return;
+            }
+            // Both of these clear the timer, so it is not destroyed twice.
             if (notifObject.isTransient) root.discardNotification(notificationId);
             else root.timeoutNotification(notificationId);
-            destroy()
         }
     }
 
@@ -190,13 +218,16 @@ Singleton {
     }
 
     function discardNotification(id) {
-        console.log("[Notifications] Discarding notification with ID: " + id);
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
         if (index !== -1) {
+            const notifObject = root.list[index];
             root.list.splice(index, 1);
             notifFileView.setText(stringifyList(root.list));
             triggerListChange()
+            // Taken off the list and then left in memory, every notification the
+            // shell had ever shown was still there at the end of the day.
+            notifObject.dispose();
         }
         if (notifServerIndex !== -1) {
             notifServer.trackedNotifications.values[notifServerIndex].dismiss()
@@ -205,25 +236,29 @@ Singleton {
     }
 
     function discardAllNotifications() {
+        const previous = root.list.slice(0);
         root.list = []
         triggerListChange()
         notifFileView.setText(stringifyList(root.list));
         notifServer.trackedNotifications.values.forEach((notif) => {
             notif.dismiss()
         })
+        previous.forEach((notif) => notif?.dispose());
         root.discardAll();
     }
 
     function cancelTimeout(id) {
-        const index = root.list.findIndex((notif) => notif.notificationId === id);
-        if (root.list[index] != null)
-            root.list[index].timer.stop();
+        // A notification that never expires has no timer to stop, and resting a
+        // pointer on one was reaching into it regardless.
+        root.list.find((notif) => notif.notificationId === id)?.timer?.stop();
     }
 
     function timeoutNotification(id) {
-        const index = root.list.findIndex((notif) => notif.notificationId === id);
-        if (root.list[index] != null)
-            root.list[index].popup = false;
+        const notifObject = root.list.find((notif) => notif.notificationId === id);
+        if (notifObject) {
+            notifObject.popup = false;
+            notifObject.clearTimer();
+        }
         root.timeout(id);
     }
 
