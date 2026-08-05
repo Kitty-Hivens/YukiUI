@@ -34,9 +34,12 @@ MouseArea {
     onPressed: mouse => {
         forceFieldFocus();
     }
-    onPositionChanged: mouse => {
-        forceFieldFocus();
-    }
+    // Moving the pointer deliberately does not take focus. One of these surfaces
+    // exists per screen and each takes focus for its own field, so the last one
+    // to ask wins and the previous one loses it. Every other place that asks
+    // settles after one go; asking on every scrap of pointer movement made two
+    // screens hand the password box back and forth for as long as the mouse
+    // moved, which is what waking with both screens on looked like.
 
     // Toolbar appearing animation
     property real toolbarScale: 0.9
