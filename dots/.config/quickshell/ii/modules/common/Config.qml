@@ -12,6 +12,22 @@ Singleton {
     property bool ready: false
     property int readWriteDelay: 50 // milliseconds
     property bool blockWrites: false
+    property bool contentsUnreadable: false
+
+    /** Empty counts as usable: that is a first run, and there is nothing to lose. */
+    function contentsAreUsable(text) {
+        if (!text || text.trim().length === 0)
+            return true;
+        try {
+            const parsed = JSON.parse(text);
+            // The adapter refuses anything that is not an object too, and
+            // refusing it here for a different reason would come to the same
+            // thing: defaults kept, then written back over the file.
+            return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
+        } catch (error) {
+            return false;
+        }
+    }
 
     function setNestedValue(nestedKey, value) {
         let keys = nestedKey.split(".");
@@ -57,6 +73,11 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
+            // Not over contents that could not be read. The options hold
+            // defaults in that case, and writing those is what turns a config
+            // damaged while the machine was off into a config that is gone.
+            if (root.contentsUnreadable)
+                return;
             configFileView.writeAdapter()
         }
     }
@@ -68,7 +89,24 @@ Singleton {
         blockWrites: root.blockWrites
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
-        onLoaded: root.ready = true
+        onLoaded: {
+            // A file that was read is not the same as a file that parsed. The
+            // read succeeding is what gets reported here; contents that are not
+            // JSON only produce a warning, and the options keep whatever they
+            // already held -- which at startup is the defaults for every one of
+            // them. The shell then comes up as though nothing had ever been
+            // configured, and the first setting changed after that writes those
+            // defaults over the file, so a config damaged while the machine was
+            // off is finished off by the next thing the user clicks.
+            //
+            // Coming up on defaults is survivable; writing them back is not, so
+            // that is what stops. Rechecked on every load, so repairing the file
+            // by hand lifts it again.
+            root.contentsUnreadable = !root.contentsAreUsable(configFileView.text());
+            if (root.contentsUnreadable)
+                console.error("[Config] the config file is not readable as JSON: running on defaults and refusing to write over it");
+            root.ready = true;
+        }
         onLoadFailed: error => {
             if (error == FileViewError.FileNotFound) {
                 writeAdapter();

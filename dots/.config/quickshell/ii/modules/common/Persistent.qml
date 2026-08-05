@@ -34,9 +34,28 @@ Singleton {
         interval: 100
         repeat: false
         onTriggered: {
+            // Not over contents that could not be read: see onLoaded below.
+            if (root.contentsUnreadable)
+                return;
             persistentStatesFileView.writeAdapter()
         }
     }
+
+    /** Empty counts as usable: that is a first run, and there is nothing to lose. */
+    function contentsAreUsable(text) {
+        if (!text || text.trim().length === 0)
+            return true;
+        try {
+            const parsed = JSON.parse(text);
+            // The adapter refuses anything that is not an object too, and
+            // refusing it here for a different reason would come to the same
+            // thing: defaults kept, then written back over the file.
+            return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
+        } catch (error) {
+            return false;
+        }
+    }
+    property bool contentsUnreadable: false
 
     FileView {
         id: persistentStatesFileView
@@ -45,7 +64,18 @@ Singleton {
         watchChanges: true
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
-        onLoaded: root.ready = true
+        onLoaded: {
+            // A read that succeeded is not contents that parsed: unusable ones
+            // only warn, and the states keep what they already had, which at
+            // startup is the default for every one. This file is then written
+            // without anyone asking -- the instance signature goes in as soon as
+            // it is ready -- so a file damaged while the machine was off is
+            // replaced by defaults before anything has been clicked.
+            root.contentsUnreadable = !root.contentsAreUsable(persistentStatesFileView.text());
+            if (root.contentsUnreadable)
+                console.error("[Persistent] the state file is not readable as JSON: keeping defaults and refusing to write over it");
+            root.ready = true;
+        }
         onLoadFailed: error => {
             console.log("Failed to load persistent states file:", error);
             if (error == FileViewError.FileNotFound) {
