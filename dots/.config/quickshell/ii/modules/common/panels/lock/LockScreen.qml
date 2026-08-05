@@ -92,9 +92,24 @@ Scope {
         surface: root.sessionLockSurface
     }
 
+    // Watched rather than fired and forgotten. Nothing checked that hyprlock
+    // had started, so where it is not installed or fails to come up, asking to
+    // lock did nothing at all and said nothing about it -- and a screen that
+    // only looks locked is the one failure this must not have.
+    Process {
+        id: hyprlockProc
+        command: ["bash", "-c", "pidof hyprlock || hyprlock"]
+        onExited: exitCode => {
+            if (exitCode === 0)
+                return;
+            console.log("[LockScreen] hyprlock did not start, exit", exitCode, "-- locking with the built-in screen instead");
+            GlobalStates.screenLocked = true;
+        }
+    }
+
     function lock() {
         if (Config.options.lock.useHyprlock) {
-            Quickshell.execDetached(["bash", "-c", "pidof hyprlock || hyprlock"]);
+            hyprlockProc.running = true;
             return;
         }
         GlobalStates.screenLocked = true;
