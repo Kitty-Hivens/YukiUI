@@ -21,4 +21,7 @@ QtObject {
     property string functionResponse
     property bool functionPending: false
     property bool visibleToUser: true
+    // Shown, never written down. A message that exists to put a secret on screen
+    // has no business in a saved chat, which is a plain file on disk.
+    property bool ephemeral: false
 }

@@ -449,7 +449,7 @@ Singleton {
         promptLoader.reload();
     }
 
-    function addMessage(message, role) {
+    function addMessage(message, role, ephemeral) {
         if (message.length === 0) return;
         const aiMessage = aiMessageComponent.createObject(root, {
             "role": role,
@@ -457,6 +457,7 @@ Singleton {
             "rawContent": message,
             "thinking": false,
             "done": true,
+            "ephemeral": ephemeral === true,
         });
         const id = idForMessage(aiMessage);
         root.messageIDs = [...root.messageIDs, id];
@@ -555,7 +556,9 @@ Singleton {
         if (model.requires_key) {
             const key = root.apiKeys[model.key_id];
             if (key) {
-                root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+                // Marked so it is not written to the saved chat: showing a key
+                // once should not copy it out of the keyring into a plain file.
+                root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole, true);
             } else {
                 root.addMessage(Translation.tr("No API key set for %1").arg(model.name), Ai.interfaceRole);
             }
@@ -836,7 +839,7 @@ Singleton {
     }
 
     function chatToJson() {
-        return root.messageIDs.map(id => {
+        return root.messageIDs.filter(id => !root.messageByID[id].ephemeral).map(id => {
             const message = root.messageByID[id]
             return ({
                 "role": message.role,
