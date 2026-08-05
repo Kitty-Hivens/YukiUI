@@ -81,9 +81,30 @@ Item { // Player instance
         id: coverArtDownloader
         property string targetFile: root.artUrl
         property string artFilePath: root.artFilePath
-        command: [ "bash", "-c", `[ -f ${artFilePath} ] || curl -4 -sSL '${targetFile}' -o '${artFilePath}'` ]
+        // The address is whatever the player put on the bus, so it is handed over as
+        // a value the shell never parses. Pasted into the command it ended the quoted
+        // argument and ran the rest of itself, and short of anyone trying, an
+        // apostrophe in an album's folder name was enough to lose the cover.
+        //
+        // Written beside the cover and moved into place only once the download is
+        // known to have worked: an error page saved under the cover's own name
+        // satisfies the check that skips downloading, so one bad fetch used to settle
+        // in as that track's artwork for good.
+        command: ["bash", "-c", `
+            if [ -s "$ART_PATH" ]; then exit 0; fi
+            if curl -4 -sSL --fail "$ART_URL" -o "$ART_PATH.part"; then
+                mv "$ART_PATH.part" "$ART_PATH"
+            else
+                rm -f "$ART_PATH.part"
+                exit 1
+            fi
+        `]
+        environment: ({
+            ART_URL: coverArtDownloader.targetFile,
+            ART_PATH: coverArtDownloader.artFilePath
+        })
         onExited: (exitCode, exitStatus) => {
-            root.downloaded = true
+            root.downloaded = (exitCode === 0)
         }
     }
 
