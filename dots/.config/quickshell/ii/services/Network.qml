@@ -154,7 +154,7 @@ Singleton {
 
     // Status update
     function update() {
-        updateConnectionType.startCheck();
+        updateConnectionType.running = true;
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
@@ -187,51 +187,60 @@ Singleton {
 
     Process {
         id: updateConnectionType
-        property string buffer
         command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
         running: true
-        function startCheck() {
-            buffer = "";
-            updateConnectionType.running = true;
-        }
-        stdout: SplitParser {
-            onRead: data => {
-                updateConnectionType.buffer += data + "\n";
-            }
-        }
-        onExited: (exitCode, exitStatus) => {
-            const lines = updateConnectionType.buffer.trim().split('\n');
-            const connectivity = lines.pop() // none, limited, full
-            let hasEthernet = false;
-            let hasWifi = false;
-            let wifiStatus = "disconnected";
-            lines.forEach(line => {
-                if (line.includes("ethernet") && line.includes("connected"))
-                    hasEthernet = true;
-                else if (line.includes("wifi:")) {
-                    if (line.includes("disconnected")) {
-                        wifiStatus = "disconnected"
+        // Collected per run rather than appended to a buffer of our own. Asking for
+        // a re-check while one was still in flight emptied that buffer under it, and
+        // the run that was already going then read whatever had arrived since --
+        // usually nothing, which parses as every device being down. The bar dropped
+        // to disconnected, and the rescan that answers a lost connection fired on a
+        // connection that had never been lost.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split('\n');
+                const connectivity = lines.pop() // none, limited, full
+                let hasEthernet = false;
+                let hasWifi = false;
+                let wifiStatus = "disconnected";
+                lines.forEach(line => {
+                    // Read as TYPE and STATE, not searched for words: "disconnected"
+                    // contains "connected", so a wired device sitting idle counted as
+                    // a live one and the bar showed a wired icon with no wifi behind
+                    // it. States carry suffixes such as "connected (externally)".
+                    const separator = line.indexOf(":");
+                    if (separator < 0)
+                        return;
+                    const type = line.slice(0, separator);
+                    const state = line.slice(separator + 1);
+                    if (type === "ethernet") {
+                        if (state.startsWith("connected"))
+                            hasEthernet = true;
                     }
-                    else if (line.includes("connected")) {
-                        hasWifi = true;
-                        wifiStatus = "connected"
+                    else if (type === "wifi") {
+                        if (state.startsWith("disconnected")) {
+                            wifiStatus = "disconnected"
+                        }
+                        else if (state.startsWith("connected")) {
+                            hasWifi = true;
+                            wifiStatus = "connected"
 
-                        if (connectivity === "limited") {
-                            hasWifi = false;
-                            wifiStatus = "limited"
+                            if (connectivity === "limited") {
+                                hasWifi = false;
+                                wifiStatus = "limited"
+                            }
+                        }
+                        else if (state.startsWith("connecting")) {
+                            wifiStatus = "connecting"
+                        }
+                        else if (state.startsWith("unavailable")) {
+                            wifiStatus = "disabled"
                         }
                     }
-                    else if (line.includes("connecting")) {
-                        wifiStatus = "connecting"
-                    }
-                    else if (line.includes("unavailable")) {
-                        wifiStatus = "disabled"
-                    }
-                }
-            });
-            root.wifiStatus = wifiStatus;
-            root.ethernet = hasEthernet;
-            root.wifi = hasWifi;
+                });
+                root.wifiStatus = wifiStatus;
+                root.ethernet = hasEthernet;
+                root.wifi = hasWifi;
+            }
         }
     }
 
