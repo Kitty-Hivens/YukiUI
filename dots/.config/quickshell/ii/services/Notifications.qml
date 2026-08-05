@@ -320,8 +320,19 @@ Singleton {
         id: notifFileView
         path: Qt.resolvedUrl(filePath)
         onLoaded: {
-            const fileContents = notifFileView.text()
-            root.list = JSON.parse(fileContents).map((notif) => {
+            let saved;
+            try {
+                saved = JSON.parse(notifFileView.text());
+            } catch (error) {
+                // A file that cannot be read is not a reason to stop halfway
+                // through loading, which is what an exception here did: the
+                // list kept whatever it had and the rest of this never ran.
+                console.error("[Notifications] stored notifications could not be read, starting empty:", error);
+                saved = [];
+            }
+            if (!Array.isArray(saved))
+                saved = [];
+            root.list = saved.map((notif) => {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,
                     "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
