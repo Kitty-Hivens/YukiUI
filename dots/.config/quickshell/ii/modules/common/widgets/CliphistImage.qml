@@ -53,9 +53,18 @@ Rectangle {
 
     Process {
         id: decodeImageProcess
+        // Written beside the target and moved into place once it is whole. The
+        // redirect created the file before anything had been decoded into it, so
+        // a failed decode left an empty one behind -- and every attempt after
+        // that saw a file already there, reported success, and drew nothing.
+        //
         // Asked for by number: the entry text carries what was copied, and a
         // command line is readable by every account on the machine.
-        command: ["bash", "-c", `[ -f '${imageDecodeFilePath}' ] || ${Cliphist.cliphistBinary} decode ${root.entryNumber} > '${imageDecodeFilePath}'`]
+        command: ["bash", "-c",
+            `if [ -f '${root.imageDecodeFilePath}' ]; then exit 0; fi; `
+            + `${Cliphist.cliphistBinary} decode ${root.entryNumber} > '${root.imageDecodeFilePath}.part' `
+            + `&& mv '${root.imageDecodeFilePath}.part' '${root.imageDecodeFilePath}' && exit 0; `
+            + `rm -f '${root.imageDecodeFilePath}.part'; exit 1`]
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 root.source = imageDecodeFilePath;
