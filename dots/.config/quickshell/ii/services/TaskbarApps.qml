@@ -49,7 +49,18 @@ Singleton {
 
         // Ignored apps
         const ignoredRegexStrings = Config.options?.dock.ignoredAppRegexes ?? [];
-        const ignoredRegexes = ignoredRegexStrings.map(pattern => new RegExp(pattern, "i"));
+        // One unusable pattern used to abandon this whole expression, leaving the
+        // taskbar showing whatever it last managed to work out -- windows opening and
+        // closing went unnoticed until the pattern was corrected, with nothing to say
+        // why beyond a line in the log.
+        const ignoredRegexes = [];
+        for (const pattern of ignoredRegexStrings) {
+            try {
+                ignoredRegexes.push(new RegExp(pattern, "i"));
+            } catch (error) {
+                console.warn("[TaskbarApps] skipping an unusable ignore pattern:", pattern, "--", error.message);
+            }
+        }
         // Open windows
         for (const toplevel of ToplevelManager.toplevels.values) {
             if (ignoredRegexes.some(re => re.test(toplevel.appId))) continue;
