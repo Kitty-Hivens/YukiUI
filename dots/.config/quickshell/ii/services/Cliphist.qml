@@ -46,36 +46,47 @@ Singleton {
         return !!(/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(entry))
     }
 
+    /**
+     * The number cliphist files an entry under, which is all it needs to act on
+     * one.
+     *
+     * Everything below asks by number and never by content. A listing carries
+     * the first hundred characters of what was copied, and passing that on a
+     * command line published it: a process command line is readable by every
+     * account on the machine, and a hundred characters is a whole password.
+     */
+    function entryId(entry) {
+        return (`${entry}`.match(/^\s*(\d+)/)?.[1]) ?? "";
+    }
+
     function refresh() {
         readProc.buffer = []
         readProc.running = true
     }
 
     function copy(entry) {
-        if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
-            Quickshell.execDetached(["bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy`]);
-        else { // Stash
-            const entryNumber = entry.split("\t")[0];
-            Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | wl-copy`]);
-        }
+        const id = root.entryId(entry);
+        if (id.length === 0)
+            return;
+        Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${id} | wl-copy`]);
     }
 
     function paste(entry) {
-        if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
-            Quickshell.execDetached(["bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy && wl-paste`]);
-        else { // Stash
-            const entryNumber = entry.split("\t")[0];
-            Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | wl-copy; ${root.pressPasteCommand}`]);
-        }
+        const id = root.entryId(entry);
+        if (id.length === 0)
+            return;
+        Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${id} | wl-copy && wl-paste`]);
     }
 
     function superpaste(count, isImage = false) {
         // Find entries
-        const targetEntries = entries.filter(entry => {
+        const ids = entries.filter(entry => {
             if (!isImage) return true;
             return entryIsImage(entry);
-        }).slice(0, count)
-        const pasteCommands = [...targetEntries].reverse().map(entry => `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy && sleep ${root.pasteDelay} && ${root.pressPasteCommand}`)
+        }).slice(0, count).map(entry => root.entryId(entry)).filter(id => id.length > 0);
+        if (ids.length === 0)
+            return;
+        const pasteCommands = [...ids].reverse().map(id => `${root.cliphistBinary} decode ${id} | wl-copy && sleep ${root.pasteDelay} && ${root.pressPasteCommand}`)
         // Act
         Quickshell.execDetached(["bash", "-c", pasteCommands.join(` && sleep ${root.pasteDelay} && `)]);
     }
@@ -83,7 +94,9 @@ Singleton {
     Process {
         id: deleteProc
         property string entry: ""
-        command: ["bash", "-c", `echo '${StringUtils.shellSingleQuoteEscape(deleteProc.entry)}' | ${root.cliphistBinary} delete`]
+        // The number alone is enough on standard input. Given as an argument it
+        // is accepted, reports success and deletes nothing.
+        command: ["bash", "-c", `echo '${root.entryId(deleteProc.entry)}' | ${root.cliphistBinary} delete`]
         function deleteEntry(entry) {
             deleteProc.entry = entry;
             deleteProc.running = true;

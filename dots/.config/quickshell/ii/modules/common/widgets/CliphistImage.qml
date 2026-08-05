@@ -53,7 +53,9 @@ Rectangle {
 
     Process {
         id: decodeImageProcess
-        command: ["bash", "-c", `[ -f ${imageDecodeFilePath} ] || echo '${StringUtils.shellSingleQuoteEscape(root.entry)}' | ${Cliphist.cliphistBinary} decode > '${imageDecodeFilePath}'`]
+        // Asked for by number: the entry text carries what was copied, and a
+        // command line is readable by every account on the machine.
+        command: ["bash", "-c", `[ -f '${imageDecodeFilePath}' ] || ${Cliphist.cliphistBinary} decode ${root.entryNumber} > '${imageDecodeFilePath}'`]
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 root.source = imageDecodeFilePath;
