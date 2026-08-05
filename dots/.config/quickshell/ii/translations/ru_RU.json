@@ -868,6 +868,7 @@
   "Send sound here": "Направить звук сюда",
   "not plugged in": "не подключено",
   "The keyring has not been read yet, so nothing was saved. Unlock it and try again.": "Связка ключей ещё не прочитана, ничего не сохранено. Разблокируйте её и попробуйте снова.",
+  "The key could not be saved to the keyring: %1": "Не удалось сохранить ключ в связку: %1",
   "Playing on %1": "Играет через %1",
   "Choose a device": "Выбрать устройство",
   "Applications play through it, and its own level changes nothing": "Приложения играют через него, но его собственная громкость ни на что не влияет",

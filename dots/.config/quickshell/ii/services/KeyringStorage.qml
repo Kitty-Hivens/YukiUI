@@ -109,19 +109,33 @@ Singleton {
         saveData.running = true;
     }
 
+    /** Reported when the store did not happen, so a caller can stop claiming it did. */
+    signal saveFailed(string reason)
+
     Process {
         id: saveData
         command: [
             "secret-tool", "store", "--label=" + keyringLabel,
             ...propertiesAsArgs,
         ]
+        stderr: StdioCollector { id: saveDataErr }
         onRunningChanged: {
             if (saveData.running) {
-                // console.log("[KeyringStorage] Saving with command: '" + saveData.command.join("' '") + "'");
                 saveData.write(JSON.stringify(root.keyringData));
                 root.dataChanged()
                 stdinEnabled = false // End input stream
             }
+        }
+        // Nothing used to look at this. A store that failed -- no secret-tool,
+        // a keyring that locked in between, a refusal from the service -- was
+        // indistinguishable from one that worked, and the sidebar went on to
+        // announce a key it had not saved anywhere.
+        onExited: exitCode => {
+            if (exitCode === 0)
+                return;
+            const reason = saveDataErr.text.trim();
+            console.error("[KeyringStorage] could not store, exit", exitCode, reason);
+            root.saveFailed(reason);
         }
     }
 

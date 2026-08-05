@@ -42,6 +42,15 @@ Singleton {
     property var messageByID: ({})
     readonly property var apiKeys: KeyringStorage.keyringData?.apiKeys ?? {}
     readonly property var apiKeysLoaded: KeyringStorage.loaded
+
+    // Saying a key was set is only true once it has been. The store happens
+    // after the message, so a failure has to come back and say so.
+    Connections {
+        target: KeyringStorage
+        function onSaveFailed(reason) {
+            root.addMessage(Translation.tr("The key could not be saved to the keyring: %1").arg(reason), Ai.interfaceRole);
+        }
+    }
     readonly property bool currentModelHasApiKey: {
         const model = models[currentModelId];
         if (!model || !model.requires_key) return true;
