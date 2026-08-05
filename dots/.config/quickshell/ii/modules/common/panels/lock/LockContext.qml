@@ -39,6 +39,8 @@ Scope {
         root.resetTargetAction();
         root.clearText();
         root.unlockInProgress = false;
+        root.fingerAttempts = 0;
+        fingerRetryTimer.stop();
         stopFingerPam();
     }
 
@@ -65,10 +67,28 @@ Scope {
         pam.start();
     }
 
+    /**
+     * A reader that is broken rather than unconvinced keeps being broken.
+     *
+     * The retry used to be immediate and unlimited, so an unplugged reader or a
+     * wedged fprintd was retried as fast as PAM could say no -- on the one
+     * screen a person is stuck behind. It waits between attempts now and gives
+     * up after a few, leaving the password to do its job. Locking again starts
+     * the count over.
+     */
+    readonly property int maxFingerAttempts: 3
+    property int fingerAttempts: 0
+
     function tryFingerUnlock() {
-        if (root.fingerprintsConfigured) {
-            fingerPam.start();
-        }
+        if (!root.fingerprintsConfigured || root.fingerAttempts >= root.maxFingerAttempts)
+            return;
+        fingerPam.start();
+    }
+
+    Timer {
+        id: fingerRetryTimer
+        interval: 1000
+        onTriggered: root.tryFingerUnlock()
     }
 
     function stopFingerPam() {
@@ -127,10 +147,12 @@ Scope {
 
         onCompleted: result => {
             if (result == PamResult.Success) {
+                root.fingerAttempts = 0;
                 root.unlocked(root.targetAction);
                 stopFingerPam();
             } else if (result == PamResult.Error) { // if timeout or etc..
-                tryFingerUnlock()
+                root.fingerAttempts += 1;
+                fingerRetryTimer.restart();
             }
         }
     }
