@@ -48,6 +48,15 @@ Scope {
         id: passwordClearTimer
         interval: 10000
         onTriggered: {
+            // Never in the middle of a check. pam_unix takes its time after a
+            // wrong password, and clearing here put the chosen action back to a
+            // plain unlock -- so a reboot asked for behind the password came
+            // back as an unlocked session -- and re-enabled the field under an
+            // answer that had not arrived. It waits its turn instead.
+            if (root.unlockInProgress) {
+                passwordClearTimer.restart();
+                return;
+            }
             root.reset();
         }
     }
