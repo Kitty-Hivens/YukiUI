@@ -248,9 +248,13 @@ Singleton {
         id: updateNetworkName
         command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
         running: true
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
+        // Collected rather than read line by line: nothing connected means no line
+        // at all, and a per-line reader is simply never called, so the name of the
+        // network last joined stayed on the bar for the rest of the session -- and
+        // stayed in the keyword check that decides whether to cover the screen.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.networkName = text.trim();
             }
         }
     }
@@ -259,9 +263,10 @@ Singleton {
         id: updateNetworkStrength
         running: true
         command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkStrength = parseInt(data);
+        // Same reason as the name above: awk prints nothing while disconnected.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.networkStrength = parseInt(text.trim()) || 0;
             }
         }
     }
