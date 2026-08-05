@@ -38,7 +38,13 @@ BodyRectangle {
         BigAppGrid {
             Layout.fillWidth: true
             columns: 8
-            desktopEntries: Config.options.launcher.pinnedApps.map(appId => DesktopEntries.byId(appId))
+            // Looked up the way a window class is, and only the ones that were found
+            // are handed on. A pin to an application that is not installed came back
+            // as nothing and went into the grid as it was, where the button that
+            // renders it reads a name and an icon off it straight away.
+            desktopEntries: Config.options.launcher.pinnedApps
+                .map(appId => AppSearch.entryFor(appId))
+                .filter(entry => entry !== null)
         }
     }
 

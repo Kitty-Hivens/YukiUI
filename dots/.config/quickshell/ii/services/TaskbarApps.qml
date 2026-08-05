@@ -36,16 +36,16 @@ Singleton {
         // Pinned apps
         const pinnedApps = Config.options?.dock.pinnedApps ?? [];
         for (const appId of pinnedApps) {
+            // A pin to an application that is not installed cannot be started and
+            // cannot be told apart from one that can, so it is left out of the view
+            // rather than holding a place that does nothing. The configuration is not
+            // touched: the pin comes back on its own once the application does.
+            if (!AppSearch.entryFor(appId)) continue;
             if (!map.has(appId.toLowerCase())) map.set(appId.toLowerCase(), ({
-                pinned: true,
                 toplevels: []
             }));
         }
-
-        // Separator
-        if (pinnedApps.length > 0) {
-            map.set("SEPARATOR", { pinned: false, toplevels: [] });
-        }
+        const pinnedCount = map.size;
 
         // Ignored apps
         const ignoredRegexStrings = Config.options?.dock.ignoredAppRegexes ?? [];
@@ -65,16 +65,24 @@ Singleton {
         for (const toplevel of ToplevelManager.toplevels.values) {
             if (ignoredRegexes.some(re => re.test(toplevel.appId))) continue;
             if (!map.has(toplevel.appId.toLowerCase())) map.set(toplevel.appId.toLowerCase(), ({
-                pinned: false,
                 toplevels: []
             }));
             map.get(toplevel.appId.toLowerCase()).toplevels.push(toplevel);
         }
 
         var values = [];
+        var index = 0;
 
         for (const [key, value] of map) {
-            values.push(appEntryComp.createObject(null, { appId: key, toplevels: value.toplevels, pinned: value.pinned }));
+            // The separator divides the pinned entries from the rest, so it belongs
+            // between them and only while both sides have something. Adding it as soon
+            // as anything was pinned left it hanging off the end whenever every open
+            // window belonged to an application that was pinned already.
+            if (pinnedCount > 0 && index === pinnedCount) {
+                values.push(appEntryComp.createObject(null, { appId: "SEPARATOR", toplevels: [], pinned: false }));
+            }
+            values.push(appEntryComp.createObject(null, { appId: key, toplevels: value.toplevels, pinned: root.isPinned(key) }));
+            index++;
         }
 
         return values;
