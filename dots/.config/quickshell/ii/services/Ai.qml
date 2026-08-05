@@ -543,7 +543,10 @@ Singleton {
             root.addApiKeyAdvice(model)
             return;
         }
-        KeyringStorage.setNestedField(["apiKeys", model.key_id], key.trim());
+        if (!KeyringStorage.setNestedField(["apiKeys", model.key_id], key.trim())) {
+            root.addMessage(Translation.tr("The keyring has not been read yet, so nothing was saved. Unlock it and try again."), Ai.interfaceRole);
+            return;
+        }
         root.addMessage(Translation.tr("API key set for %1").arg(model.name), Ai.interfaceRole);
     }
 

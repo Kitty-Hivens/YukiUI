@@ -39,7 +39,19 @@ Singleton {
     )
     property string keyringLabel: Translation.tr("%1 Safe Storage").arg("illogical-impulse")
 
+    /**
+     * Stores one value, and reports whether it could be stored at all.
+     *
+     * Refused until the stored contents are known. Everything the shell keeps
+     * lives in a single entry, so merging a field into an empty object and
+     * saving that does not add a key -- it replaces every other secret with the
+     * one being set.
+     */
     function setNestedField(path, value) {
+        if (!root.loaded) {
+            console.error("[KeyringStorage] not saving: the stored data has not been read yet");
+            return false;
+        }
         if (!root.keyringData) root.keyringData = {};
         let keys = path;
         let obj = root.keyringData;
@@ -69,6 +81,7 @@ Singleton {
         root.keyringData = Object.assign({}, root.keyringData);
 
         saveKeyringData();
+        return true;
     }
 
     function fetchKeyringData() {

@@ -43,8 +43,9 @@ Singleton {
         try {
             var keyData = JSON.parse(str)
             root.unready();
-            KeyringStorage.setNestedField(["googleCloud", "serviceAccountKey"], keyData);
-            return true;
+            // Saving into a keyring that has not been read replaces everything
+            // else in it, so a refusal is passed on rather than swallowed.
+            return KeyringStorage.setNestedField(["googleCloud", "serviceAccountKey"], keyData);
         } catch(e) {
             return false;
         }
