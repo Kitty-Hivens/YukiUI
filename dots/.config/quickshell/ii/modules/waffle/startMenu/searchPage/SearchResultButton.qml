@@ -16,6 +16,7 @@ WChoiceButton {
     property bool firstEntry: false
 
     signal requestFocus()
+    signal launched()
 
     checked: focus
     animateChoiceHighlight: false
@@ -27,7 +28,7 @@ WChoiceButton {
     }
 
     function execute() {
-        GlobalStates.searchOpen = false;
+        root.launched();
         root.entry.execute();
     }
 

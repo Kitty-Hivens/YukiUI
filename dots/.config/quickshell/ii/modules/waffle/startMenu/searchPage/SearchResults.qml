@@ -146,6 +146,9 @@ RowLayout {
             onRequestFocus: {
                 root.forceCurrentIndex(index);
             }
+            onLaunched: {
+                root.context.launched(LauncherSearch.query);
+            }
         }
     }
 

@@ -23,6 +23,20 @@ WBarAttachedPanelContent {
 
     StartMenuContext {
         id: context
+        onLaunched: query => {
+            root.rememberQuery(query);
+            GlobalStates.searchPanelOpen = false;
+        }
+    }
+
+    // Newest first, no repeats, and only so many kept.
+    property int recentQueryLimit: 8
+    function rememberQuery(query) {
+        const trimmed = (query ?? "").trim();
+        if (trimmed.length === 0)
+            return;
+        const kept = Persistent.states.search.recentQueries.filter(entry => entry !== trimmed);
+        Persistent.states.search.recentQueries = [trimmed].concat(kept).slice(0, root.recentQueryLimit);
     }
 
     Keys.onPressed: event => {
@@ -84,9 +98,11 @@ WBarAttachedPanelContent {
 
     Component {
         id: quickAccessComp
-        QuickAccess {
-            onEntryLaunched: {
-                GlobalStates.searchPanelOpen = false;
+        RecentSearches {
+            onQueryChosen: query => {
+                LauncherSearch.query = query;
+                searchBar.searchInput.cursorPosition = query.length;
+                searchBar.forceFocus();
             }
         }
     }

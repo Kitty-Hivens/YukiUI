@@ -9,6 +9,9 @@ Scope {
     id: root
 
     signal accepted
+    // Which panel put the results on screen is not the results' to know: the start
+    // menu and the search panel both show them, and each closes itself.
+    signal launched(string query)
 
     property int currentIndex: 0
     function setCurrentIndex(index) {

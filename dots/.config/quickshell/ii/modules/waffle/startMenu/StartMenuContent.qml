@@ -25,6 +25,9 @@ WBarAttachedPanelContent {
 
     StartMenuContext {
         id: context
+        onLaunched: {
+            GlobalStates.searchOpen = false;
+        }
     }
 
     Keys.onPressed: event => {

@@ -97,6 +97,10 @@ Singleton {
                 property int tabIndex: 0
             }
 
+            property JsonObject search: JsonObject {
+                property list<string> recentQueries: []
+            }
+
             property JsonObject sidebar: JsonObject {
                 property JsonObject bottomGroup: JsonObject {
                     property bool collapsed: false
