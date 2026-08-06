@@ -55,10 +55,14 @@ Button {
     signal hoverTimedOut
     property bool shouldShowTooltip: false
     ToolTip.delay: 400
+    // How long a hover has to last before the button acts on it. Tooltips wait the
+    // full tooltip delay; a taskbar button showing window previews is expected to
+    // answer sooner than that.
+    property int hoverTimeout: root.ToolTip.delay
     property Timer hoverTimer: Timer {
         id: hoverTimer
         running: root.hovered
-        interval: root.ToolTip.delay
+        interval: root.hoverTimeout
         onTriggered: {
             root.hoverTimedOut();
         }

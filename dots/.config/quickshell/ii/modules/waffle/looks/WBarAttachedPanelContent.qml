@@ -23,6 +23,12 @@ Item {
         closeAnim.start();
     }
 
+    // The part of the window the panel is actually drawn on. The window itself
+    // reaches further -- across the whole screen height for the ones anchored top
+    // and bottom, and over the margin the panel slides in from -- so a window that
+    // takes input everywhere swallows clicks aimed past the panel.
+    readonly property alias visibleArea: panelContent
+
     readonly property bool barAtBottom: Config.options.waffles.bar.bottom
 
     implicitHeight: contentItem.implicitHeight + visualMargin * 2
