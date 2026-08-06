@@ -762,12 +762,19 @@ has_new_commits() {
 }
 
 # Cleanup function for signal handling
+# Whether this run is the one holding the lock below.
+LOCK_HELD=false
+
 cleanup_on_exit() {
   local exit_code=$?
-  
-  # Remove lock file
-  rm -f "${REPO_ROOT}/.update-lock" 2>/dev/null || true
-  
+
+  # Only the run that took the lock may drop it. Removing it unconditionally meant
+  # a second run, which correctly refuses to start while a first is working, freed
+  # the lock on its way out -- and a third then started alongside the first.
+  if [[ "${LOCK_HELD:-false}" == true ]]; then
+    rm -f "${REPO_ROOT}/.update-lock" 2>/dev/null || true
+  fi
+
   if [[ $exit_code -ne 0 ]] && [[ "$DRY_RUN" != true ]]; then
     echo
     log_warning "Update interrupted or failed (exit code: $exit_code)"
@@ -794,6 +801,7 @@ fi
 # Create lock file with current PID
 if [[ "$DRY_RUN" != true ]]; then
   echo $$ > "${REPO_ROOT}/.update-lock"
+  LOCK_HELD=true
 fi
 
 # Main script starts here
