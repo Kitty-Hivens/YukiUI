@@ -37,6 +37,15 @@ Scope {
         GlobalStates.osdVolumeOpen = true;
     }
 
+    // Shows whichever indicator was last in view, the way asking for "the OSD"
+    // without naming one reads.
+    function trigger() {
+        if (root.currentIndicator === "brightness")
+            root.triggerBrightnessOsd();
+        else
+            root.triggerVolumeOSD();
+    }
+
     // Listen to brightness changes
     Connections {
         target: Brightness
@@ -85,12 +94,7 @@ Scope {
         sourceComponent: PanelWindow {
             id: panelWindow
 
-            Connections {
-                target: root
-                function onFocusedScreenChanged() {
-                    osdRoot.screen = root.focusedScreen;
-                }
-            }
+            screen: root.focusedScreen
 
             color: "transparent"
             exclusiveZone: 0
@@ -128,12 +132,12 @@ Scope {
                         // Animate close of current indicator
                         ScriptAction {
                             script: {
-                                osdIndicatorLoader.item.close();
+                                osdIndicatorLoader.item?.close();
                             }
                         }
                         // Wait for close anim
                         PauseAnimation {
-                            duration: osdIndicatorLoader.item.closeAnimDuration
+                            duration: osdIndicatorLoader.item?.closeAnimDuration ?? 0
                         }
                         PropertyAction {} // The source change happens here
                     }
@@ -145,7 +149,7 @@ Scope {
     IpcHandler {
         target: "osd"
 
-        function trigger() {
+        function trigger(): void {
             root.trigger();
         }
     }

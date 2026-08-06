@@ -76,26 +76,23 @@ Scope {
         }
     }
 
+    // The task view and the start menu are two separate panels here, unlike in the
+    // family this was adapted from, where one panel served as both. Sharing the
+    // "search" target left whichever handler registered second doing nothing.
     IpcHandler {
-        target: "search"
+        target: "overview"
 
-        function toggle() {
+        function toggle(): void {
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
-        function workspacesToggle() {
+        function workspacesToggle(): void {
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
-        function close() {
+        function close(): void {
             GlobalStates.overviewOpen = false;
         }
-        function open() {
+        function open(): void {
             GlobalStates.overviewOpen = true;
-        }
-        function toggleReleaseInterrupt() {
-            GlobalStates.superReleaseMightTrigger = false;
-        }
-        function clipboardToggle() {
-            overviewScope.toggleClipboard();
         }
     }
 

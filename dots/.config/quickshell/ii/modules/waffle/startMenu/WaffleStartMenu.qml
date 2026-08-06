@@ -86,17 +86,23 @@ Scope {
     IpcHandler {
         target: "search"
 
-        function toggle() {
+        function toggle(): void {
             GlobalStates.searchOpen = !GlobalStates.searchOpen;
         }
-        function close() {
+        function close(): void {
             GlobalStates.searchOpen = false;
         }
-        function open() {
+        function open(): void {
             GlobalStates.searchOpen = true;
         }
-        function toggleReleaseInterrupt() {
+        function toggleReleaseInterrupt(): void {
             GlobalStates.superReleaseMightTrigger = false;
+        }
+        function clipboardToggle(): void {
+            root.toggleClipboard();
+        }
+        function emojiToggle(): void {
+            root.toggleEmojis();
         }
     }
 
