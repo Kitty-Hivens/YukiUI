@@ -76,14 +76,17 @@ switch_to_merge_branch() {
     return
   fi
 
-  # check if branch exists
+  # Started from main every time. Each run records the whole configuration as one
+  # commit, so keeping the branch where the last run left it meant those snapshots
+  # piled up and every rebase replayed all of them onto the newer upstream -- the
+  # same conflict resolved again, once per run ever made. The configuration is
+  # copied fresh from the running one below, so nothing is lost by starting over.
   if git show-ref --verify --quiet "refs/heads/${MERGE_BRANCH}"; then
-    log_info "Switching to existing merge branch..."
-    git checkout "${MERGE_BRANCH}"
+    log_info "Resetting merge branch to main..."
   else
     log_info "Creating new merge branch from main..."
-    git checkout -b "${MERGE_BRANCH}"
   fi
+  git checkout -B "${MERGE_BRANCH}" main
   log_success "On branch ${MERGE_BRANCH}"
 }
 
