@@ -238,6 +238,26 @@ update_hypr_config() {
   local timestamp
   timestamp=$(date +%Y%m%d-%H%M%S)
 
+  # Held somewhere only this run can name. A path built from the clock is one
+  # anybody on the machine can work out, and between the removal below and the
+  # restore it holds the only copy of the person's own hyprland additions.
+  preserve_custom_into() {
+    local holding_dir
+    holding_dir="$(mktemp -d)" || return 1
+    if [[ -d "${user_hypr}/custom" ]]; then
+      cp -r "${user_hypr}/custom" "${holding_dir}/custom"
+    fi
+    printf '%s' "$holding_dir"
+  }
+  restore_custom_from() {
+    local holding_dir="$1"
+    if [[ -d "${holding_dir}/custom" ]]; then
+      rm -rf "${user_hypr}/custom"
+      cp -r "${holding_dir}/custom" "${user_hypr}/custom"
+    fi
+    rm -rf "${holding_dir}"
+  }
+
   if [[ ! -d "${user_hypr}" ]] || [[ ! -d "${repo_hypr}" ]]; then
     log_info "Hypr config not found, skipping"
     return
@@ -260,15 +280,11 @@ update_hypr_config() {
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY-RUN] Would update hypr"
     else
-      local temp_custom="/tmp/hypr-custom-${timestamp}"
-      [[ -d "${user_hypr}/custom" ]] && cp -r "${user_hypr}/custom" "${temp_custom}"
+      local holding_dir
+      holding_dir="$(preserve_custom_into)" || log_die "Failed to set aside the custom directory"
       rm -rf "${user_hypr}"
       cp -r "${repo_hypr}" "${user_hypr}"
-      if [[ -d "${temp_custom}" ]]; then
-        rm -rf "${user_hypr}/custom"
-        cp -r "${temp_custom}" "${user_hypr}/custom"
-        rm -rf "${temp_custom}"
-      fi
+      restore_custom_from "${holding_dir}"
       log_success "Hypr updated"
     fi
     ;;
@@ -281,15 +297,11 @@ update_hypr_config() {
       cp -r "${user_hypr}" "${BACKUP_DIR}/${backup_name}"
       log_success "Backup: ${backup_name}"
 
-      local temp_custom="/tmp/hypr-custom-${timestamp}"
-      [[ -d "${user_hypr}/custom" ]] && cp -r "${user_hypr}/custom" "${temp_custom}"
+      local holding_dir
+      holding_dir="$(preserve_custom_into)" || log_die "Failed to set aside the custom directory"
       rm -rf "${user_hypr}"
       cp -r "${repo_hypr}" "${user_hypr}"
-      if [[ -d "${temp_custom}" ]]; then
-        rm -rf "${user_hypr}/custom"
-        cp -r "${temp_custom}" "${user_hypr}/custom"
-        rm -rf "${temp_custom}"
-      fi
+      restore_custom_from "${holding_dir}"
       log_success "Hypr updated"
     fi
     ;;
