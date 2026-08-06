@@ -13,11 +13,14 @@ import qs.modules.waffle.looks
 Rectangle {
     id: root
     property AggregatedAppCategoryModel aggregatedCategory
-    property list<DesktopEntry> desktopEntries: [...DesktopEntries.applications.values.filter(app => {
+    // Sorted once by whoever holds the grids, rather than once per category: a
+    // filter keeps the order it was given.
+    property list<DesktopEntry> allEntries: [...DesktopEntries.applications.values].sort((a, b) => a.name.localeCompare(b.name))
+    property list<DesktopEntry> desktopEntries: root.allEntries.filter(app => {
         const appCategories = app.categories;
         const gridCategories = root.aggregatedCategory.categories;
         return appCategories.some(cat => gridCategories.indexOf(cat) !== -1);
-    })].sort((a, b) => a.name.localeCompare(b.name));
+    })
 
     property Item windowRootItem: {
         var item = root;

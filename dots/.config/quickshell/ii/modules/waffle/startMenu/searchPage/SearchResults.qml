@@ -52,7 +52,7 @@ RowLayout {
         Layout.preferredWidth: 386
         Layout.leftMargin: 1
         Layout.rightMargin: 1
-        entry: resultList.model[resultList.currentIndex] ?? searchResultComp.createObject()
+        entry: resultList.model[resultList.currentIndex]?.entry ?? emptyResult
     }
 
     component ResultList: WListView {
@@ -111,10 +111,13 @@ RowLayout {
                             break;
                         }
                         const entry = allResults[i];
-                        const tweakedEntry = searchResultComp.createObject(null, Object.assign({}, entry));
-                        tweakedEntry.category = categorizedResults.length === 0 ? Translation.tr("Best match") : entry.type;
-
-                        categorizedResults.push(tweakedEntry); // Section header
+                        // A plain row, not a copy of the result: copying a result meant
+                        // handing every one of its signals to createObject as if it were
+                        // a property, for each result, on every keystroke.
+                        categorizedResults.push({
+                            category: categorizedResults.length === 0 ? Translation.tr("Best match") : entry.type,
+                            entry: entry
+                        }); // Section header
                         count++;
                         totalCount++;
                         if (count >= root.maxResultsPerCategory) {
@@ -136,7 +139,7 @@ RowLayout {
         delegate: SearchResultButton {
             required property int index
             required property var modelData
-            entry: modelData
+            entry: modelData.entry
             firstEntry: index === 0
             width: ListView.view?.width
             checked: resultListView.currentIndex === index
@@ -200,41 +203,46 @@ RowLayout {
                 clip: true
                 spacing: 2
                 model: {
-                    const isAppEntry = resultPreview.entry.type === Translation.tr("App");
-                    const appId = isAppEntry ? resultPreview.entry.id : "";
+                    const entry = resultPreview.entry;
+                    if (!entry)
+                        return [];
+                    const isAppEntry = entry.type === Translation.tr("App");
+                    const appId = isAppEntry ? entry.id : "";
                     const pinned = isAppEntry ? (Config.options.dock.pinnedApps.includes(appId)) : false;
                     const startPinned = isAppEntry ? (Config.options.launcher.pinnedApps.includes(appId)) : false;
+                    // Plain rows: these are read straight by the delegate below and never
+                    // needed to be objects of their own.
                     var result = [
-                        searchResultComp.createObject(null, {
-                            name: resultPreview.entry.verb,
+                        {
+                            name: entry.verb,
                             iconName: isAppEntry ? "open_in_new" : "keyboard_return",
                             iconType: LauncherSearchResult.IconType.Material,
                             execute: () => {
-                                resultPreview.entry.execute();
+                                entry.execute();
                             }
-                        }),
+                        },
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(null, {
+                            {
                                 name: startPinned ? Translation.tr("Unpin from Start") : Translation.tr("Pin to Start"),
                                 iconName: startPinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,
                                 execute: () => {
                                     LauncherApps.togglePin(appId);
                                 }
-                            })
+                            }
                         ] : []),
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(null, {
+                            {
                                 name: pinned ? Translation.tr("Unpin from taskbar") : Translation.tr("Pin to taskbar"),
                                 iconName: pinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,
                                 execute: () => {
                                     TaskbarApps.togglePin(appId);
                                 }
-                            })
+                            }
                         ] : []),
                     ];
-                    result = result.concat(resultPreview.entry.actions);
+                    result = result.concat(entry.actions);
                     return result;
                 }
                 delegate: WButton {
@@ -262,8 +270,8 @@ RowLayout {
         }
     }
 
-    Component {
-        id: searchResultComp
-        LauncherSearchResult {}
+    // Stands in for a selection while there is nothing to select.
+    LauncherSearchResult {
+        id: emptyResult
     }
 }

@@ -79,13 +79,46 @@ Singleton {
             // as anything was pinned left it hanging off the end whenever every open
             // window belonged to an application that was pinned already.
             if (pinnedCount > 0 && index === pinnedCount) {
-                values.push(appEntryComp.createObject(null, { appId: "SEPARATOR", toplevels: [], pinned: false }));
+                values.push(root.separatorEntry);
             }
-            values.push(appEntryComp.createObject(null, { appId: key, toplevels: value.toplevels, pinned: root.isPinned(key) }));
+            values.push(root.heldEntry(key, value.toplevels));
             index++;
         }
 
+        // Whatever is no longer on the taskbar lets go of the windows it was holding.
+        for (const key of Object.keys(root.entryPool)) {
+            if (!map.has(key)) root.entryPool[key].toplevels = [];
+        }
+
         return values;
+    }
+
+    // One entry per application, kept across rebuilds. Handing out a new object each
+    // time made every binding that reads an entry -- the icon guess among them, which
+    // fuzzy-searches the whole application list on a miss -- run again on each window
+    // that opened, closed or took focus.
+    property var entryPool: ({})
+
+    readonly property TaskbarAppEntry separatorEntry: appEntryComp.createObject(root, {
+        appId: "SEPARATOR",
+        toplevels: [],
+        pinned: false
+    })
+
+    function heldEntry(appId, toplevels) {
+        var entry = root.entryPool[appId];
+        if (!entry) {
+            entry = appEntryComp.createObject(root, {
+                appId: appId,
+                toplevels: toplevels,
+                pinned: root.isPinned(appId)
+            });
+            root.entryPool[appId] = entry;
+            return entry;
+        }
+        entry.toplevels = toplevels;
+        entry.pinned = root.isPinned(appId);
+        return entry;
     }
 
     component TaskbarAppEntry: QtObject {

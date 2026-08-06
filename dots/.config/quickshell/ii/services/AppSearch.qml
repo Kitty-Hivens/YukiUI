@@ -58,6 +58,17 @@ Singleton {
         entry: a
     }))
 
+    // Both answers below are worked out by fuzzy-searching every installed entry
+    // when the cheap guesses miss, and both are asked from bindings that re-run
+    // whenever a window opens, closes or is focused. The answers only change when
+    // the set of installed applications does.
+    property var iconGuessCache: ({})
+    property var entryLookupCache: ({})
+    onListChanged: {
+        root.iconGuessCache = ({});
+        root.entryLookupCache = ({});
+    }
+
     function fuzzyQuery(search: string): var { // Idk why list<DesktopEntry> doesn't work
         if (root.sloppySearch) {
             const results = list.map(obj => ({
@@ -118,7 +129,14 @@ Singleton {
      */
     function entryFor(appClass) {
         if (!appClass || appClass.length == 0) return null;
+        if (appClass in root.entryLookupCache) return root.entryLookupCache[appClass];
 
+        const entry = root.lookUpEntry(appClass);
+        root.entryLookupCache[appClass] = entry;
+        return entry;
+    }
+
+    function lookUpEntry(appClass) {
         const guesses = [
             appClass,
             root.getKebabNormalizedAppName(appClass),
@@ -135,7 +153,14 @@ Singleton {
 
     function guessIcon(str) {
         if (!str || str.length == 0) return "image-missing";
+        if (str in root.iconGuessCache) return root.iconGuessCache[str];
 
+        const icon = root.workOutIcon(str);
+        root.iconGuessCache[str] = icon;
+        return icon;
+    }
+
+    function workOutIcon(str) {
         // Quickshell's desktop entry lookup
         const entry = DesktopEntries.byId(str);
         if (entry) return entry.icon;

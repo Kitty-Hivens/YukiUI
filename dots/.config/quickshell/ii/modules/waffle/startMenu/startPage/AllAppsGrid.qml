@@ -14,6 +14,10 @@ GridLayout {
 
     columns: 4
 
+    // Every category grid filters this same list, so the sort happens here once
+    // rather than in each of them.
+    readonly property list<DesktopEntry> sortedEntries: [...DesktopEntries.applications.values].sort((a, b) => a.name.localeCompare(b.name))
+
     Component {
         id: aggAppCatComp
         AggregatedAppCategoryModel {}
@@ -61,6 +65,7 @@ GridLayout {
                 id: categoryGrid
                 Layout.fillWidth: true
                 aggregatedCategory: categoryItem.aggregatedCategory
+                allEntries: root.sortedEntries
             }
 
             WButton {

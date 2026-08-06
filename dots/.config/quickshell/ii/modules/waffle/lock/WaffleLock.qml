@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
@@ -58,12 +59,17 @@ LockScreen {
             }
         }
 
-        GaussianBlur {
+        // A gaussian blur of this radius takes 201 samples per pixel across the whole
+        // screen, on the surface that has to come up promptly when the machine is
+        // locked. MultiEffect reaches the same look through downscaling.
+        MultiEffect {
             z: 1
             anchors.fill: bg
             source: bg
-            radius: 100
-            samples: radius * 2 + 1
+            blurEnabled: true
+            blur: 1
+            blurMax: 64
+            blurMultiplier: 1.5
             scale: root.passwordView ? 1.1 : 1
             opacity: root.passwordView ? 1 : 0
 

@@ -18,6 +18,11 @@ WBarAttachedPanelContent {
     property bool searching: false
     property string searchText: LauncherSearch.query
 
+    onSearchingChanged: {
+        if (root.searching)
+            searchPageLoader.active = true;
+    }
+
     StartMenuContext {
         id: context
     }
@@ -101,12 +106,23 @@ WBarAttachedPanelContent {
                 }
             }
             Item {
-                implicitHeight: root.searching ? 800 : 800 // TODO: Make sizes naturally inferred
+                implicitHeight: 800 // TODO: Make sizes naturally inferred
                 Layout.fillWidth: true
+                // Both pages stay for as long as the menu is open. Swapping one Loader
+                // between them tore down the start page on the first character typed and
+                // built it again on the last one deleted, and building it means walking
+                // every installed application once per category.
                 Loader {
-                    id: pageContentLoader
                     anchors.fill: parent
-                    sourceComponent: root.searching ? searchPageComp : startPageComp
+                    visible: !root.searching
+                    sourceComponent: startPageComp
+                }
+                Loader {
+                    id: searchPageLoader
+                    anchors.fill: parent
+                    visible: root.searching
+                    active: false
+                    sourceComponent: searchPageComp
                 }
             }
         }

@@ -11,7 +11,7 @@ import qs.modules.waffle.looks
 
 Item {
     id: root
-    required property LauncherSearchResult entry
+    required property var entry // A LauncherSearchResult, or a plain row standing in for one
     property int iconSize: 24
     implicitWidth: Math.max(iconSize, textIconLoader.implicitWidth)
     implicitHeight: iconSize

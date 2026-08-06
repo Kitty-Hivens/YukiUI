@@ -10,30 +10,37 @@ Rectangle {
 
     property bool shiny: true // Top border
     property color borderColor: ColorUtils.transparentize(Looks.colors.bg1Hover, 0.7)
-    property color internalBorderColor: ColorUtils.transparentize(borderColor, shiny ? 0.0 : 1)
     color: Looks.colors.bg1Hover
     radius: Looks.radius.medium
     Behavior on color {
         animation: Looks.transition.color.createObject(this)
     }
-    Behavior on internalBorderColor {
-        animation: Looks.transition.color.createObject(this)
-    }
-    onInternalBorderColorChanged: {
+    onBorderColorChanged: {
         borderCanvas.requestPaint();
     }
-    
+
     // 1px border at the top or bottom
     Canvas {
         id: borderCanvas
         anchors.fill: parent
         // For dark mode we have a shiny top border, and for light mode we have sort of a shadow
         rotation: Looks.dark ? 0 : 180
+        // The stroke fades in and out rather than being drawn again in a new colour
+        // every frame of it: a Canvas repaints through JavaScript on the UI thread
+        // and re-uploads its texture, and every acrylic button carries one.
+        opacity: root.shiny ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 80
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+            }
+        }
         onPaint: {
             var ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
 
-            var borderColor = root.internalBorderColor;
+            var borderColor = root.borderColor;
 
             var r = root.radius;
             var fadeLength = Math.max(1, r);
