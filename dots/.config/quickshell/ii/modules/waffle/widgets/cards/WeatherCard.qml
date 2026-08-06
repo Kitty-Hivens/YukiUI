@@ -5,6 +5,7 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.waffle.looks
 import qs.modules.waffle.widgets
 
@@ -15,12 +16,17 @@ WWidgetCard {
     title: Weather.data.city || Translation.tr("Weather")
     iconName: WIcons.weatherIconForCode(Weather.data.wCode)
 
+    // A block of colour, the way this card reads on the board it copies.
+    color: Looks.colors.accent
+    foregroundColor: Looks.colors.accentFg
+    border.color: ColorUtils.transparentize(Looks.colors.accentFg, 0.85)
+
     ColumnLayout {
         anchors {
             left: parent.left
             right: parent.right
         }
-        spacing: 4
+        spacing: 2
 
         RowLayout {
             Layout.fillWidth: true
@@ -29,13 +35,16 @@ WWidgetCard {
             FluentIcon {
                 Layout.alignment: Qt.AlignVCenter
                 icon: WIcons.weatherIconForCode(Weather.data.wCode)
-                implicitSize: 44
+                implicitSize: 40
+                monochrome: true
+                color: root.foregroundColor
             }
 
             WText {
                 Layout.alignment: Qt.AlignVCenter
                 text: Weather.data.temp || "--"
-                font.pixelSize: 32
+                color: root.foregroundColor
+                font.pixelSize: 34
                 font.weight: Looks.font.weight.thin
             }
 
@@ -48,13 +57,13 @@ WWidgetCard {
             Layout.fillWidth: true
             visible: (Weather.data.tempFeelsLike ?? "").length > 0
             text: Translation.tr("Feels like %1").arg(Weather.data.tempFeelsLike)
-            color: Looks.colors.subfg
+            color: ColorUtils.transparentize(root.foregroundColor, 0.2)
         }
 
         WText {
             Layout.fillWidth: true
             text: Translation.tr("Humidity %1 | Wind %2").arg(Weather.data.humidity).arg(Weather.data.wind)
-            color: Looks.colors.subfg
+            color: ColorUtils.transparentize(root.foregroundColor, 0.2)
             elide: Text.ElideRight
         }
     }

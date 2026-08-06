@@ -15,6 +15,9 @@ Rectangle {
     required property string cardId
     property string title: ""
     property string iconName: "apps"
+    // Cards carry their own colour where the original does -- the weather one is a
+    // block of colour there, the rest sit on the board's own surface.
+    property color foregroundColor: Looks.colors.fg
     default property alias cardContent: contentArea.data
 
     Layout.fillWidth: true
@@ -42,6 +45,7 @@ Rectangle {
                 icon: root.iconName
                 implicitSize: 18
                 monochrome: true
+                color: root.foregroundColor
             }
 
             WText {
@@ -49,6 +53,7 @@ Rectangle {
                 Layout.alignment: Qt.AlignVCenter
                 text: root.title
                 elide: Text.ElideRight
+                color: root.foregroundColor
                 font.pixelSize: Looks.font.pixelSize.large
                 font.weight: Looks.font.weight.strong
             }
