@@ -10,6 +10,11 @@ __pycache__/
 # exp-update
 /.update-lock
 
+# Copies of the running configuration, kept by the experimental subcommands before
+# they replace anything. They belong to whoever ran them and never to the history.
+/.update-backups
+/.exp-merge-backups
+
 # custom os-release
 /os-release
 
