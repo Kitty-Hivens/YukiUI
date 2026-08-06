@@ -28,7 +28,11 @@ WBarAttachedPanelContent {
         spacing: 12
 
         WPane {
-            opacity: (MprisController.activePlayer != null && MprisController.isRealPlayer(MprisController.activePlayer)) ? 1 : 0
+            // Held out of the layout, not just made see-through: an invisible pane
+            // still took its 176px and left a gap above the toggles.
+            readonly property bool hasPlayer: MprisController.activePlayer != null && MprisController.isRealPlayer(MprisController.activePlayer)
+            visible: hasPlayer
+            opacity: hasPlayer ? 1 : 0
             Layout.fillWidth: true
             contentItem: MediaPaneContent {}
         }

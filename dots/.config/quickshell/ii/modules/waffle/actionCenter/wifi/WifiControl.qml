@@ -47,9 +47,16 @@ Item {
                             id: toggleSwitch
                             Layout.rightMargin: 12
                             checked: Network.wifiStatus !== "disabled"
-                            onCheckedChanged: {
-                                Network.enableWifi(checked);
-                                Network.rescanWifi();
+                            // Only a press means the radio should change: reacting to "checked"
+                            // itself also fired while the panel was reading the radio's own
+                            // state. The switch drops its binding when pressed, so the state
+                            // has to be handed back to it.
+                            onToggled: {
+                                const wanted = checked;
+                                checked = Qt.binding(() => Network.wifiStatus !== "disabled");
+                                Network.enableWifi(wanted);
+                                if (wanted)
+                                    Network.rescanWifi();
                             }
                         }
                     }

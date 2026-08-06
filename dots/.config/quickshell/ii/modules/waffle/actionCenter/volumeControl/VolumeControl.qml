@@ -136,7 +136,6 @@ Item {
         ////////////////////////////////////////////////////////////
 
         SectionText {
-            visible: EasyEffects.available
             text: Translation.tr("Volume mixer")
         }
 

@@ -17,10 +17,12 @@ Item {
     id: root
 
     Component.onCompleted: {
-        if (Bluetooth.defaultAdapter.enabled) Bluetooth.defaultAdapter.discovering = true;
+        if (Bluetooth.defaultAdapter?.enabled)
+            Bluetooth.defaultAdapter.discovering = true;
     }
     Component.onDestruction: {
-        Bluetooth.defaultAdapter.discovering = false;
+        if (Bluetooth.defaultAdapter)
+            Bluetooth.defaultAdapter.discovering = false;
     }
 
     WPanelPageColumn {
@@ -51,15 +53,18 @@ Item {
                             id: toggleSwitch
                             Layout.rightMargin: 12
                             checked: Bluetooth.defaultAdapter?.enabled ?? false
-                            onCheckedChanged: {
-                                if (Bluetooth.defaultAdapter) {
-                                    Bluetooth.defaultAdapter.enabled = checked;
-                                    if (checked) {
-                                        Bluetooth.defaultAdapter.discovering = true;
-                                    } else {
-                                        Bluetooth.defaultAdapter.discovering = false;
-                                    }
-                                }
+                            // Only a press means the adapter should change: reacting to
+                            // "checked" itself also fired while the panel was reading the
+                            // adapter's own state. The switch drops its binding when pressed,
+                            // so the state has to be handed back to it.
+                            onToggled: {
+                                const wanted = checked;
+                                checked = Qt.binding(() => Bluetooth.defaultAdapter?.enabled ?? false);
+                                const adapter = Bluetooth.defaultAdapter;
+                                if (!adapter)
+                                    return;
+                                adapter.enabled = wanted;
+                                adapter.discovering = wanted;
                             }
                         }
                     }
