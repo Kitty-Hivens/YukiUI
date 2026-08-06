@@ -681,6 +681,18 @@ Singleton {
                 property JsonObject calendar: JsonObject {
                     property bool force2CharDayOfWeek: true
                 }
+                property JsonObject widgets: JsonObject {
+                    property list<string> cards: ["weather", "calendar", "todo"]
+                    // The board of the thing this copies opens on its own cards and keeps
+                    // the story feed folded away; ours has nowhere to fetch stories from
+                    // until feeds are named here, so it stays off and silent until then.
+                    property JsonObject feed: JsonObject {
+                        property bool enable: false
+                        property list<string> sources: []
+                        property int refreshInterval: 30 // minutes
+                        property int maxArticles: 40
+                    }
+                }
             }
         }
     }

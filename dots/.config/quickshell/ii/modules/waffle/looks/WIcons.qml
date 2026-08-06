@@ -11,6 +11,64 @@ Singleton {
         return Quickshell.shellPath(`assets/icons/fluent/${iconName}.svg`);
     }
 
+    // wttr.in weather codes, the same ones the weather service reports, mapped onto
+    // the Fluent set. Names not yet in assets/icons/fluent fall through to the system
+    // icon theme, which looks out of place -- those SVGs still have to be added.
+    readonly property var weatherIcons: ({
+        "113": "weather-sunny",
+        "116": "weather-partly-cloudy-day",
+        "119": "weather-cloudy",
+        "122": "weather-cloudy",
+        "143": "weather-fog",
+        "176": "weather-rain-showers-day",
+        "179": "weather-snow-shower-day",
+        "182": "weather-rain-snow",
+        "185": "weather-rain-snow",
+        "200": "weather-thunderstorm",
+        "227": "weather-snow",
+        "230": "weather-blowing-snow",
+        "248": "weather-fog",
+        "260": "weather-fog",
+        "263": "weather-drizzle",
+        "266": "weather-drizzle",
+        "281": "weather-rain-snow",
+        "284": "weather-rain-snow",
+        "293": "weather-rain-showers-day",
+        "296": "weather-rain",
+        "299": "weather-rain",
+        "302": "weather-rain",
+        "305": "weather-rain",
+        "308": "weather-rain",
+        "311": "weather-rain-snow",
+        "314": "weather-rain-snow",
+        "317": "weather-rain-snow",
+        "320": "weather-snow",
+        "323": "weather-snow-shower-day",
+        "326": "weather-snow-shower-day",
+        "329": "weather-snow",
+        "332": "weather-snow",
+        "335": "weather-blowing-snow",
+        "338": "weather-blowing-snow",
+        "350": "weather-hail-day",
+        "353": "weather-rain-showers-day",
+        "356": "weather-rain",
+        "359": "weather-rain",
+        "362": "weather-rain-snow",
+        "365": "weather-rain-snow",
+        "368": "weather-snow-shower-day",
+        "371": "weather-snow",
+        "374": "weather-hail-day",
+        "377": "weather-hail-day",
+        "386": "weather-thunderstorm",
+        "389": "weather-thunderstorm",
+        "392": "weather-thunderstorm",
+        "395": "weather-blowing-snow"
+    })
+
+    function weatherIconForCode(code) {
+        return root.weatherIcons[String(code)] ?? "weather-cloudy";
+    }
+
     function wifiIconForStrength(strength) {
         if (strength > 75)
             return "wifi-1";

@@ -16,6 +16,7 @@ import qs.modules.waffle.searchPanel
 import qs.modules.waffle.startMenu
 import qs.modules.waffle.sessionScreen
 import qs.modules.waffle.taskView
+import qs.modules.waffle.widgets
 
 // Fallbacks
 import qs.modules.ii.cheatsheet
@@ -39,6 +40,7 @@ Scope {
     PanelLoader { component: WaffleStartMenu {} }
     PanelLoader { component: WaffleSessionScreen {} }
     PanelLoader { component: WaffleTaskView {} }
+    PanelLoader { component: WaffleWidgets {} }
 
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { component: OnScreenKeyboard {} }
