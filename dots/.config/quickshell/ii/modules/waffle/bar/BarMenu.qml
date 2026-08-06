@@ -10,10 +10,7 @@ import qs.modules.waffle.looks
 BarPopup {
     id: root
     default property var menuData
-    property var model: [
-        { iconName: "start-here", text: "Start", action: () => {print("hello")} },
-        { type : "separator" },
-    ]
+    property var model: []
     readonly property bool hasIcons: model.some(item => item.iconName !== undefined && item.iconName !== "")
     padding: 2
 

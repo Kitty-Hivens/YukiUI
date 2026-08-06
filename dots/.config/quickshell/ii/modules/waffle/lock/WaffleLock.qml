@@ -40,8 +40,6 @@ LockScreen {
             height: parent.height
             onStatusChanged: {
                 if (status === Image.Ready) {
-                    print("Lock wallpaper loaded");
-                    print(lockSurfaceItem.height);
                     y = -lockSurfaceItem.height;
                     openAnim.restart();
                 }
