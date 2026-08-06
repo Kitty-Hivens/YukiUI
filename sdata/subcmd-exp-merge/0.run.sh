@@ -113,7 +113,11 @@ copy_and_commit_user_config() {
   cp -r "${user_quickshell}" "${repo_quickshell}"
   find "${repo_quickshell}" \( -name '.git' -o -name '.gitmodules' \) -exec rm -rf {} + 2>/dev/null || true
 
-  git add .
+  # Only what was just replaced. Staging everything swept in whatever else happened
+  # to be lying about untracked -- notes, patches, and the copies of the running
+  # configuration these very subcommands leave behind -- and committed it as the
+  # person's configuration changes.
+  git add -A -- "${repo_quickshell}"
   if git diff --cached --quiet; then
     log_info "No changes to commit"
   else
