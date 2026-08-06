@@ -44,10 +44,25 @@ ShellRoot {
         Config.options.panelFamily = families[nextIndex]
     }
 
+    // The config file is written to while the shell starts, and every write is read
+    // back. The family name reads as its default in the middle of that, which was
+    // enough to build the other family, let it claim the ipc targets both families
+    // register, and tear it down again -- leaving the family actually in use with
+    // handlers that are registered but never reached.
+    property string requestedFamily: Config.ready ? Config.options.panelFamily : ""
+    property string settledFamily: ""
+    onRequestedFamilyChanged: familySettleTimer.restart()
+
+    Timer {
+        id: familySettleTimer
+        interval: 100
+        onTriggered: root.settledFamily = root.requestedFamily
+    }
+
     component PanelFamilyLoader: LazyLoader {
         required property string identifier
         property bool extraCondition: true
-        active: Config.ready && Config.options.panelFamily === identifier && extraCondition
+        active: root.settledFamily === identifier && extraCondition
     }
     
     PanelFamilyLoader {
