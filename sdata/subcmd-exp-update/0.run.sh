@@ -510,6 +510,26 @@ handle_file_conflict() {
   esac
 }
 
+# The commit this run started from, recorded before anything is pulled.
+PRE_UPDATE_REF=""
+
+# What the current checkout is compared against. This used to be HEAD@{1}, the
+# previous position of HEAD in the reflog, which is the pre-pull commit only when
+# the pull happened to move HEAD. On a run where the pull brought nothing it points
+# at the base of the run before instead, so files already settled were offered up
+# for a decision all over again.
+update_base_ref() {
+  if [[ -n "$PRE_UPDATE_REF" ]]; then
+    printf '%s' "$PRE_UPDATE_REF"
+    return 0
+  fi
+  if git rev-parse --verify HEAD@{1} &>/dev/null; then
+    printf '%s' "HEAD@{1}"
+    return 0
+  fi
+  return 1
+}
+
 # Function to check if PKGBUILD has changed
 check_pkgbuild_changed() {
   local pkg_dir="$1"
@@ -523,13 +543,13 @@ check_pkgbuild_changed() {
     return 0
   fi
 
-  # Check if HEAD@{1} exists before trying to use it
-  if ! git rev-parse --verify HEAD@{1} &>/dev/null; then
+  local base
+  if ! base=$(update_base_ref); then
     # Fresh clone, assume all PKGBUILDs need checking
     return 0
   fi
 
-  if git diff --name-only HEAD@{1} HEAD 2>/dev/null | grep -q "^${relative_path}$"; then
+  if git diff --name-only "$base" HEAD 2>/dev/null | grep -q "^${relative_path}$"; then
     return 0
   fi
 
@@ -704,12 +724,13 @@ get_changed_files() {
   fi
   
   # Try git-based detection first
-  if git rev-parse --verify HEAD@{1} &>/dev/null 2>&1; then
+  local base
+  if base=$(update_base_ref); then
     local temp_file
     temp_file=$(mktemp)
-    
+
     # Get changed files with specific filters (Added, Copied, Modified, Renamed)
-    git diff --name-only --diff-filter=ACMR HEAD@{1} HEAD 2>/dev/null | \
+    git diff --name-only --diff-filter=ACMR "$base" HEAD 2>/dev/null | \
       while IFS= read -r file; do
         local full_path="${REPO_ROOT}/${file}"
         if [[ "$full_path" == "$dir_path"/* ]] && [[ -f "$full_path" ]]; then
@@ -732,12 +753,12 @@ get_changed_files() {
 
 # Function to check if we have new commits
 has_new_commits() {
-  if git rev-parse --verify HEAD@{1} &>/dev/null; then
-    [[ "$(git rev-parse HEAD)" != "$(git rev-parse HEAD@{1})" ]]
-  else
+  local base
+  if ! base=$(update_base_ref); then
     # Fresh clone or no reflog - assume we want to process files
     return 0
   fi
+  [[ "$(git rev-parse HEAD)" != "$(git rev-parse "$base")" ]]
 }
 
 # Cleanup function for signal handling
@@ -861,6 +882,8 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   fi
 fi
 
+PRE_UPDATE_REF="$(git rev-parse HEAD)"
+
 if git remote get-url origin &>/dev/null; then
   log_info "Pulling changes from origin/$current_branch..."
   if [[ "$DRY_RUN" == true ]]; then
@@ -870,10 +893,8 @@ if git remote get-url origin &>/dev/null; then
       log_success "Successfully pulled latest changes"
       git submodule update --init --recursive
       # Verify we actually got new commits
-      if git rev-parse --verify HEAD@{1} &>/dev/null; then
-        if [[ "$(git rev-parse HEAD)" == "$(git rev-parse HEAD@{1})" ]]; then
-          log_info "Already up to date with remote"
-        fi
+      if [[ "$(git rev-parse HEAD)" == "$PRE_UPDATE_REF" ]]; then
+        log_info "Already up to date with remote"
       fi
     else
       log_warning "Failed to pull changes from remote."
