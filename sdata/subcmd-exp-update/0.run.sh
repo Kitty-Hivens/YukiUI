@@ -765,6 +765,13 @@ has_new_commits() {
 # Whether this run is the one holding the lock below.
 LOCK_HELD=false
 
+# Set aside before pulling, and put back at the end. Nothing used to bring them
+# back, and nothing mentioned them again either, so work in progress simply left
+# the working tree for a stash the person had no reason to look in.
+AUTO_STASH_TAKEN=false
+AUTO_STASH_REF=""
+AUTO_STASH_MESSAGE="Auto-stash before update $(date)"
+
 cleanup_on_exit() {
   local exit_code=$?
 
@@ -873,7 +880,9 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git status --short
   echo
 
-  if ! safe_read "Do you want to continue? This will stash your changes. (y/N): " response "N"; then
+  # Named for what is actually set aside: untracked files are neither seen by the
+  # check above nor taken by the stash, and they stay in the working tree.
+  if ! safe_read "Do you want to continue? Tracked changes will be stashed and put back at the end. (y/N): " response "N"; then
     echo
     log_error "Failed to read input. Aborting."
     exit 1
@@ -885,7 +894,12 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   if [[ "$DRY_RUN" == true ]]; then
     log_info "[DRY-RUN] Would stash changes"
   else
-    git stash push -m "Auto-stash before update $(date)"
+    git stash push -m "$AUTO_STASH_MESSAGE"
+    # Noted by what it is rather than by what it is called: the reflog subject a
+    # stash is listed under collapses runs of spaces, so the message never reads
+    # back exactly as it was written.
+    AUTO_STASH_REF="$(git rev-parse refs/stash 2>/dev/null || true)"
+    AUTO_STASH_TAKEN=true
     log_info "Changes stashed"
   fi
 fi
@@ -1163,6 +1177,24 @@ if [[ -d "${HOME}/.local/bin" ]]; then
   else
     find "${HOME}/.local/bin" -type f -exec chmod +x {} \; 2>/dev/null || true
     log_success "Updated ~/.local/bin script permissions"
+  fi
+fi
+
+# Step 5: Put back what was set aside at the start
+if [[ "$AUTO_STASH_TAKEN" == true ]]; then
+  log_header "Restoring Stashed Changes"
+  if [[ -n "$AUTO_STASH_REF" ]] && [[ "$(git rev-parse refs/stash 2>/dev/null || true)" == "$AUTO_STASH_REF" ]]; then
+    if git stash pop; then
+      log_success "Your changes are back in the working tree"
+    else
+      log_warning "Your changes clash with what was pulled, so they went back with conflicts."
+      log_warning "They are still saved as a stash entry as well, nothing is lost."
+      log_warning "Either resolve the conflicts in the working tree, or put the tracked files"
+      log_warning "back to the last commit with 'git reset --hard' and deal with the stash later."
+    fi
+  else
+    log_warning "Something else was stashed since this run started, so yours is no longer on top."
+    log_warning "Find it with 'git stash list' and recover it with 'git stash apply <entry>'."
   fi
 fi
 
