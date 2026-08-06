@@ -20,7 +20,7 @@ Button {
     Layout.fillHeight: true
 
     onClicked: {
-        root.toplevel.activate(); // TODO: make this work with those who disable focus on activate because telegram is abusive
+        root.toplevel?.activate(); // TODO: make this work with those who disable focus on activate because telegram is abusive
     }
 
     background: Rectangle {
@@ -47,8 +47,9 @@ Button {
                 id: appIcon
                 Layout.leftMargin: Looks.radius.large - root.padding + 2
                 Layout.alignment: Qt.AlignVCenter
-                iconName: AppSearch.guessIcon(root.toplevel.appId)
+                iconName: AppSearch.guessIcon(root.toplevel?.appId ?? "")
                 implicitSize: 16
+                tryCustomIcon: false
             }
 
             Item {
@@ -59,7 +60,7 @@ Button {
                 WText {
                     id: appTitleText
                     anchors.fill: parent
-                    text: root.toplevel.title
+                    text: root.toplevel?.title ?? ""
                     elide: Text.ElideRight
                     font.pixelSize: Looks.font.pixelSize.large
                     font.weight: Looks.font.weight.thin
@@ -98,7 +99,7 @@ Button {
         implicitWidth: 30
         radius: Looks.radius.large - root.padding
         onClicked: {
-            root.toplevel.close();
+            root.toplevel?.close();
         }
     }
 }

@@ -13,7 +13,7 @@ MouseArea {
     id: root
 
     required property var notification
-    property bool expanded: notification.actions.length > 0
+    property bool expanded: (notification?.actions.length ?? 0) > 0
     property string groupExpandControlMessage: ""
 
     readonly property bool isPopup: notification?.popup ?? false
@@ -97,12 +97,12 @@ MouseArea {
                         top: parent.top
                         left: parent.left
                     }
-                    active: root.notification.image != ""
+                    active: (root.notification?.image ?? "") !== ""
                     sourceComponent: StyledImage {
                         readonly property int size: 48
                         width: size
                         height: size
-                        source: root.notification.image
+                        source: root.notification?.image ?? ""
                         fillMode: Image.PreserveAspectFit
                     }
                 }
@@ -166,11 +166,11 @@ MouseArea {
     }
 
     component ActionsRow: RowLayout {
-        visible: root.expanded && root.notification.actions.length > 0
+        visible: root.expanded && (root.notification?.actions.length ?? 0) > 0
         uniformCellSizes: true
         Repeater {
             id: actionRepeater
-            model: root.notification.actions
+            model: root.notification?.actions ?? []
             delegate: WBorderedButton {
                 id: actionButton
                 Layout.fillHeight: true
@@ -194,7 +194,7 @@ MouseArea {
     component SummaryText: WText {
         Layout.fillWidth: true
         elide: Text.ElideRight
-        text: root.notification?.summary
+        text: root.notification?.summary ?? ""
         font.pixelSize: Looks.font.pixelSize.large
     }
 
@@ -206,9 +206,12 @@ MouseArea {
         wrapMode: Text.Wrap
         maximumLineCount: root.expanded ? 100 : 1
         text: {
+            if (!root.notification)
+                return "";
+            const body = NotificationUtils.processNotificationBody(root.notification.body, root.notification.appName || root.notification.summary).replace(/\n/g, "<br/>");
             if (root.expanded)
-                return `<style>img{max-width:${summaryText.width}px; align: right}</style>` + `${NotificationUtils.processNotificationBody(root.notification.body, root.notification.appName || root.notification.summary).replace(/\n/g, "<br/>")}`;
-            return NotificationUtils.processNotificationBody(root.notification.body, root.notification.appName || root.notification.summary).replace(/\n/g, "<br/>");
+                return `<style>img{max-width:${summaryText.width}px; align: right}</style>` + body;
+            return body;
         }
         color: Looks.colors.subfg
         textFormat: root.expanded ? Text.RichText : Text.StyledText

@@ -19,6 +19,9 @@ PopupWindow {
     function close() { // Closing doesn't animate, not sure if they're just lazy or it's intentional
         marginBehavior.enabled = false;
         root.visible = false;
+        // Dropped, or the hidden popup keeps a screencopy of every window of the
+        // last application hovered for as long as the bar lives.
+        root.appEntry = null;
     }
 
     function open() {

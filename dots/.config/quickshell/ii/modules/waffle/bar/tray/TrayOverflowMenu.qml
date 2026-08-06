@@ -30,8 +30,8 @@ BarPopup {
         GridLayout {
             id: contentGrid
             anchors.centerIn: parent
-            rows: Math.floor(Math.sqrt(TrayService.unpinnedItems.length))
-            columns: Math.ceil(TrayService.unpinnedItems.length / rows)
+            rows: Math.max(1, Math.floor(Math.sqrt(TrayService.unpinnedItems.length)))
+            columns: Math.max(1, Math.ceil(TrayService.unpinnedItems.length / rows))
             columnSpacing: 0
             rowSpacing: 0
 

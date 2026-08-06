@@ -92,7 +92,7 @@ Menu {
             implicitHeight: contentHeight
             implicitWidth: Array.from({
                 length: count
-            }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0).reduce((a, b) => a > b ? a : b)
+            }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0).reduce((a, b) => a > b ? a : b, 0)
 
             model: root.contentModel
         }
