@@ -14,6 +14,40 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 TEST_DIR=""
 ORIGINAL_DIR="$PWD"
+SANDBOX_HOME=""
+
+# Every test runs against a home directory of its own. Some of what follows sources
+# the update script in a way that lets its main body run, and that body reaches for
+# $HOME -- so run against a real one it marked everything in ~/.local/bin
+# executable and removed a directory from ~/.config.
+setup_sandbox_home() {
+  SANDBOX_HOME=$(mktemp -d -t dotfiles-test-home.XXXXXX)
+  mkdir -p "$SANDBOX_HOME/.config" "$SANDBOX_HOME/.cache" \
+           "$SANDBOX_HOME/.local/bin" "$SANDBOX_HOME/.local/share" "$SANDBOX_HOME/.local/state"
+  export HOME="$SANDBOX_HOME"
+  export XDG_CONFIG_HOME="$SANDBOX_HOME/.config"
+  export XDG_DATA_HOME="$SANDBOX_HOME/.local/share"
+  export XDG_CACHE_HOME="$SANDBOX_HOME/.cache"
+  export XDG_STATE_HOME="$SANDBOX_HOME/.local/state"
+  export XDG_BIN_HOME="$SANDBOX_HOME/.local/bin"
+}
+
+# A repository the update can actually be run inside. Copying sdata as it stands
+# drags the package build trees along, which come to gigabytes.
+make_runnable_repo() {
+  local dest="$1"
+  mkdir -p "$dest"
+  cp "$ORIGINAL_DIR/setup" "$dest/"
+  rsync -a --exclude 'src/' --exclude 'pkg/' --exclude '*.pkg.tar.*' "$ORIGINAL_DIR/sdata" "$dest/"
+  cp -r "$ORIGINAL_DIR/dots" "$dest/"
+  chmod +x "$dest/setup"
+}
+
+# Run the update inside the current directory, capturing everything it printed.
+run_update() {
+  local output_file="$1"; shift
+  ./setup exp-update --skip-notice --non-interactive "$@" > "$output_file" 2>&1 || true
+}
 
 # Helper functions
 log_test() {
@@ -57,22 +91,19 @@ cleanup_test_env() {
   fi
 }
 
-# Run a test and handle cleanup
-run_test() {
-  local test_name="$1"
-  local test_func="$2"
-
-  # Cleanup before test
-  cleanup_test_env
-
-  # Run the test
-  if $test_func; then
-    echo "✓ $test_name passed"
-    return 0
-  else
-    echo "✗ $test_name failed"
-    return 1
-  fi
+# A repository holding one configuration file, ready to be updated from.
+prepare_update_repo() {
+  local test_repo
+  test_repo=$(mktemp -d -t dotfiles-test.XXXXXX)
+  make_runnable_repo "$test_repo"
+  git -C "$test_repo" init -q
+  git -C "$test_repo" config user.email "test@example.com"
+  git -C "$test_repo" config user.name "Test User"
+  mkdir -p "$test_repo/dots/.config/test-app"
+  echo "from the repository" > "$test_repo/dots/.config/test-app/config.conf"
+  git -C "$test_repo" add . >/dev/null 2>&1
+  git -C "$test_repo" commit -m "Add test config" -q
+  printf '%s' "$test_repo"
 }
 
 # Test 2: Script has no syntax errors
@@ -222,24 +253,26 @@ EOF
   fi
 }
 
-# Test 6: Test dots prefix mapping to home directory
+# Test 6: entries under dots/ arrive under the home directory
 test_dots_mapping() {
-  log_test "Testing dots/ prefix home directory mapping"
-  
-  dir_name="dots/.config"
-  if [[ "$dir_name" == dots/* ]]; then
-    home_subdir="${dir_name#dots/}"
-    home_dir_path="${HOME}/${home_subdir}"
-  else
-    home_dir_path="${HOME}/${dir_name}"
-  fi
-  
-  expected_path="${HOME}/.config"
-  if [[ "$home_dir_path" == "$expected_path" ]]; then
-    log_pass "Dots prefix mapping correct: $dir_name → $home_dir_path"
+  log_test "Testing that dots/ entries are written under the home directory"
+
+  local test_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  rm -rf "${HOME}/.config/test-app"
+  run_update update_output.txt --force
+
+  if [[ -f "${HOME}/.config/test-app/config.conf" ]]; then
+    log_pass "dots/.config/test-app/config.conf arrived under ${HOME}/.config"
+    cd "$ORIGINAL_DIR"
     return 0
   else
-    log_fail "Dots prefix mapping failed: $dir_name → $home_dir_path (expected: $expected_path)"
+    log_fail "The file never arrived under the home directory"
+    tail -n 20 update_output.txt
+    cd "$ORIGINAL_DIR"
     return 1
   fi
 }
@@ -291,9 +324,15 @@ NON_INTERACTIVE=true
 UPDATE_IGNORE_FILE="\${REPO_ROOT}/.updateignore"
 HOME_UPDATE_IGNORE_FILE="/dev/null"
 
+# Only the definitions are wanted here, not a whole update run
+SOURCE_ONLY=true
+
 # Source the production script to use the real should_ignore function
 # Redirect all unwanted output to stderr, then to /dev/null
 source "$ORIGINAL_DIR/sdata/subcmd-exp-update/0.run.sh" 2>/dev/null
+
+# The main body used to do this on the way past; it no longer runs here
+load_ignore_patterns
 
 test_cases=(
   "\$REPO_ROOT/app.log:0"
@@ -383,55 +422,38 @@ test_safe_read_security() {
   fi
 }
 
-# Test 9: Test dry-run mode - FIXED
+# Test 9: dry-run writes nothing
 test_dry_run() {
   log_test "Testing dry-run mode"
 
   local test_repo
-  test_repo=$(setup_test_env)
+  test_repo=$(prepare_update_repo)
   TEST_DIR="$test_repo"
-
   cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
 
-  # Copy necessary files for setup to run
-  cp "$ORIGINAL_DIR/setup" .
-  cp -r "$ORIGINAL_DIR/sdata" .
-  cp -r "$ORIGINAL_DIR/dots" .
-  chmod +x setup
+  rm -rf "${HOME}/.config/test-app"
+  # Forced, or nothing would be compared at all and the run would write nothing
+  # whatever dry-run did.
+  run_update dry_run_output.txt --dry-run --force
 
-  # Create a test config file in repo
-  mkdir -p dots/.config/test-app
-  echo "test config" > dots/.config/test-app/config.conf
-
-  git add .
-  git commit -m "Add test config" -q
-
-  # FIXED: Clean up any existing test files before running test
-  rm -rf "${HOME}/.config/test-app" 2>/dev/null || true
-
-  # Use non-interactive mode and check for DRY-RUN marker
-  ./setup exp-update -n --skip-notice --non-interactive 2>&1 | tee dry_run_output.txt
-
-  if grep -q "DRY-RUN" dry_run_output.txt; then
-    log_pass "Dry-run mode detected in output"
-  else
-    log_fail "Dry-run mode not properly indicated"
-    cd "$ORIGINAL_DIR"
-    return 1
+  local ok=true
+  if ! grep -q "DRY-RUN" dry_run_output.txt; then
+    log_fail "Dry-run mode not indicated in the output"
+    ok=false
+  fi
+  if [[ -e "${HOME}/.config/test-app/config.conf" ]]; then
+    log_fail "Dry-run created a file in the home directory"
+    ok=false
   fi
 
-  # FIXED: Check if files were created (they shouldn't be in dry-run)
-  if [[ -f "${HOME}/.config/test-app/config.conf" ]]; then
-    log_fail "Files were created in home during dry-run"
-    rm -rf "${HOME}/.config/test-app"
+  if [[ "$ok" == true ]]; then
+    log_pass "Dry-run reported itself and wrote nothing"
     cd "$ORIGINAL_DIR"
-    return 1
-  else
-    log_pass "No files created in home during dry-run"
+    return 0
   fi
-
+  tail -n 20 dry_run_output.txt
   cd "$ORIGINAL_DIR"
-  return 0
+  return 1
 }
 
 # Test 10: Test command-line flags
@@ -488,11 +510,7 @@ test_lock_file() {
   
   cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
   
-  # Copy necessary files
-  cp "$ORIGINAL_DIR/setup" .
-  cp -r "$ORIGINAL_DIR/sdata" .
-  mkdir -p dots/.config
-  chmod +x setup
+  make_runnable_repo "$test_repo"
   
   git add .
   git commit -m "Add files" -q
@@ -561,6 +579,9 @@ NON_INTERACTIVE=true
 
 UPDATE_IGNORE_FILE="\${REPO_ROOT}/.updateignore"
 HOME_UPDATE_IGNORE_FILE="/dev/null"
+
+# Only the definitions are wanted here, not a whole update run
+SOURCE_ONLY=true
 
 # Source the production script to use the real should_ignore function
 source "$ORIGINAL_DIR/sdata/subcmd-exp-update/0.run.sh" 2>/dev/null
@@ -684,73 +705,247 @@ EOF
   fi
 }
 
-# Test 15: Test enhanced safe_read with non-interactive mode
+# Test 15: the real safe_read in non-interactive mode
 test_safe_read_noninteractive() {
   log_test "Testing safe_read in non-interactive mode"
-  
-  cat > test_safe_read.sh << 'EOF'
+
+  local test_repo
+  test_repo=$(mktemp -d -t dotfiles-test.XXXXXX)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  # Unquoted, so the path to the repository is filled in. Quoted, the two source
+  # lines below reached for /sdata/... and failed without anyone noticing, and the
+  # function under test was a simplified copy written out right here rather than
+  # the one that ships.
+  cat > test_safe_read.sh << EOF
 #!/bin/bash
 source "$ORIGINAL_DIR/sdata/lib/environment-variables.sh"
 source "$ORIGINAL_DIR/sdata/lib/functions.sh"
+log_info() { :; }
 log_warning() { :; }
 log_error() { :; }
+log_success() { :; }
+log_header() { :; }
+log_die() { echo "ERROR: \$1" >&2; exit 1; }
 
-# Simulate the enhanced safe_read function
-safe_read() {
-  local prompt="$1"
-  local varname="$2"
-  local default="${3:-}"
-  local input_value=""
-
-  # In non-interactive mode, use default immediately
-  if [[ "$NON_INTERACTIVE" == true ]]; then
-    if [[ -n "$default" ]]; then
-      printf -v "$varname" '%s' "$default"
-      return 0
-    else
-      log_error "Non-interactive mode requires default value for: $prompt"
-      return 1
-    fi
-  fi
-  
-  # Regular read logic...
-  printf -v "$varname" '%s' "$default"
-  return 0
-}
-
-# Test 1: With default in non-interactive mode
+REPO_ROOT="$ORIGINAL_DIR"
+SKIP_NOTICE=true
+CHECK_PACKAGES=false
+DRY_RUN=false
+FORCE_CHECK=false
+VERBOSE=false
 NON_INTERACTIVE=true
-if safe_read "Test: " result "default_value"; then
-  if [[ "$result" == "default_value" ]]; then
-    echo "TEST1: PASS"
-  else
-    echo "TEST1: FAIL - got '$result'"
-  fi
+SOURCE_ONLY=true
+
+source "$ORIGINAL_DIR/sdata/subcmd-exp-update/0.run.sh"
+
+# With a default, non-interactive mode takes it
+if safe_read "Test: " answer "default_value" && [[ "\$answer" == "default_value" ]]; then
+  echo "TEST1: PASS"
 else
-  echo "TEST1: FAIL - returned error"
+  echo "TEST1: FAIL - got '\${answer:-}'"
 fi
 
-# Test 2: Without default in non-interactive mode (should fail)
-if safe_read "Test: " result ""; then
-  echo "TEST2: FAIL - should have failed"
+# Without one, there is nothing it may assume
+if safe_read "Test: " answer ""; then
+  echo "TEST2: FAIL - should have refused"
 else
-  echo "TEST2: PASS - correctly failed"
+  echo "TEST2: PASS - correctly refused"
 fi
 EOF
-  
+
   chmod +x test_safe_read.sh
+  local result
   result=$(./test_safe_read.sh 2>&1)
-  
-  if echo "$result" | grep -q "TEST1: PASS" && echo "$result" | grep -q "TEST2: PASS"; then
-    log_pass "Enhanced safe_read handles non-interactive mode correctly"
-    rm -f test_safe_read.sh
+
+  if grep -q "TEST1: PASS" <<<"$result" && grep -q "TEST2: PASS" <<<"$result"; then
+    log_pass "safe_read handles non-interactive mode correctly"
+    cd "$ORIGINAL_DIR"
     return 0
   else
-    log_fail "Enhanced safe_read non-interactive mode failed"
+    log_fail "safe_read non-interactive mode failed"
     echo "$result"
-    rm -f test_safe_read.sh
+    cd "$ORIGINAL_DIR"
     return 1
   fi
+}
+
+# Test 16: a conflict resolved as "replace" overwrites what was there
+test_conflict_replace() {
+  log_test "Testing conflict resolution: replace"
+
+  local test_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  mkdir -p "${HOME}/.config/test-app"
+  echo "mine, from before" > "${HOME}/.config/test-app/config.conf"
+
+  run_update out.txt --force --default-choice replace
+
+  if [[ "$(cat "${HOME}/.config/test-app/config.conf")" == "from the repository" ]]; then
+    log_pass "The repository version replaced the local one"
+    cd "$ORIGINAL_DIR"
+    return 0
+  else
+    log_fail "The local file was not replaced"
+    tail -n 20 out.txt
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+}
+
+# Test 17: a conflict resolved as "keep" leaves the local file alone
+test_conflict_keep() {
+  log_test "Testing conflict resolution: keep"
+
+  local test_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  mkdir -p "${HOME}/.config/test-app"
+  echo "mine, from before" > "${HOME}/.config/test-app/config.conf"
+
+  run_update out.txt --force --default-choice keep
+
+  if [[ "$(cat "${HOME}/.config/test-app/config.conf")" == "mine, from before" ]]; then
+    log_pass "The local version was kept"
+    cd "$ORIGINAL_DIR"
+    return 0
+  else
+    log_fail "The local file was overwritten despite choosing to keep it"
+    tail -n 20 out.txt
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+}
+
+# Test 18: "backup" both saves the local file and replaces it
+test_conflict_backup() {
+  log_test "Testing conflict resolution: backup then replace"
+
+  local test_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  mkdir -p "${HOME}/.config/test-app"
+  echo "mine, from before" > "${HOME}/.config/test-app/config.conf"
+
+  run_update out.txt --force --default-choice backup
+
+  local saved
+  saved=$(grep -rl "mine, from before" .update-backups 2>/dev/null | head -1)
+
+  if [[ -n "$saved" ]] && [[ "$(cat "${HOME}/.config/test-app/config.conf")" == "from the repository" ]]; then
+    log_pass "The local file was saved and then replaced"
+    cd "$ORIGINAL_DIR"
+    return 0
+  else
+    log_fail "Backup missing or the file was not replaced (saved: ${saved:-none})"
+    tail -n 20 out.txt
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+}
+
+# Test 19: a lock held by a live process is left where it is
+test_lock_not_released_by_others() {
+  log_test "Testing that a refused run leaves the lock alone"
+
+  local test_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+
+  sleep 60 &
+  local holder=$!
+  echo "$holder" > .update-lock
+
+  run_update lock_out.txt --force
+
+  local refused=false still_there=false
+  grep -q "Another update is already running" lock_out.txt && refused=true
+  [[ -f .update-lock ]] && still_there=true
+
+  kill "$holder" 2>/dev/null || true
+  wait "$holder" 2>/dev/null || true
+  rm -f .update-lock
+
+  if [[ "$refused" == true ]] && [[ "$still_there" == true ]]; then
+    log_pass "The run refused to start and the lock survived"
+    cd "$ORIGINAL_DIR"
+    return 0
+  else
+    log_fail "refused=$refused, lock still present=$still_there"
+    tail -n 20 lock_out.txt
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+}
+
+# Test 20: a second run with nothing new does not offer the previous run's files
+test_diff_base_from_run_start() {
+  log_test "Testing that the comparison starts from this run's own commit"
+
+  local test_repo origin_repo
+  test_repo=$(prepare_update_repo)
+  TEST_DIR="$test_repo"
+  origin_repo=$(mktemp -d -t dotfiles-origin.XXXXXX)
+  git -C "$origin_repo" init -q --bare
+
+  cd "$test_repo" || { log_fail "Failed to cd to test directory"; return 1; }
+  git branch -M main
+  git remote add origin "$origin_repo"
+  git push -q -u origin main
+
+  # Something new upstream, so the first run has real work to do. The branch is
+  # named explicitly: a bare repository points its HEAD at master, so cloning
+  # without it checks nothing out and the change below is never made -- which let
+  # this test pass while proving nothing at all.
+  local other_clone
+  other_clone=$(mktemp -d -t dotfiles-other.XXXXXX)
+  git clone -q -b main "$origin_repo" "$other_clone"
+  git -C "$other_clone" config user.email "test@example.com"
+  git -C "$other_clone" config user.name "Test User"
+  echo "changed upstream" > "$other_clone/dots/.config/test-app/config.conf"
+  git -C "$other_clone" commit -qam "upstream change"
+  git -C "$other_clone" push -q origin main
+
+  # Refuse to go on unless the setup really produced something to pull
+  if [[ "$(git -C "$other_clone" rev-list --count main)" -lt 2 ]]; then
+    log_fail "Test setup failed: no upstream commit was created"
+    rm -rf "$origin_repo" "$other_clone"
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+
+  run_update first_run.txt --default-choice replace
+  if ! grep -qE "Successfully pulled|New commits detected" first_run.txt; then
+    log_fail "Test setup failed: the first run pulled nothing"
+    tail -n 10 first_run.txt
+    rm -rf "$origin_repo" "$other_clone"
+    cd "$ORIGINAL_DIR"
+    return 1
+  fi
+
+  run_update second_run.txt --default-choice replace
+
+  local verdict=0
+  if grep -q "No new commits found" second_run.txt; then
+    log_pass "The second run saw nothing to do, as it should"
+  else
+    log_fail "The second run went looking through the previous run's changes again"
+    grep -iE "new commits|skipping file updates" second_run.txt | head -n 4
+    verdict=1
+  fi
+
+  rm -rf "$origin_repo" "$other_clone"
+  cd "$ORIGINAL_DIR"
+  return $verdict
 }
 
 # Main test runner
@@ -765,6 +960,9 @@ main() {
   fi
 
   chmod +x setup 2>/dev/null || true
+
+  setup_sandbox_home
+  echo -e "${BLUE}Running against a sandbox home: ${SANDBOX_HOME}${NC}\n"
 
   # Define tests
   tests=(
@@ -782,10 +980,18 @@ main() {
     "test_lock_file"
     "test_directory_caching"
     "test_safe_read_noninteractive"
+    "test_conflict_replace"
+    "test_conflict_keep"
+    "test_conflict_backup"
+    "test_lock_not_released_by_others"
+    "test_diff_base_from_run_start"
   )
 
   # Run tests
   for test in "${tests[@]}"; do
+    # Each test builds a repository of its own; without this they all sat around
+    # until the end of the run, which is a great deal of disk for no reason.
+    cleanup_test_env
     if $test; then
       echo "✓ $test passed"
     else
@@ -803,10 +1009,10 @@ main() {
   echo -e "${BLUE}Total:  ${#tests[@]}${NC}\n"
 
   if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo -e "${GREEN}All tests passed! 🎉${NC}\n"
+    echo -e "${GREEN}All tests passed.${NC}\n"
     exit 0
   else
-    echo -e "${RED}Some tests failed! ❌${NC}\n"
+    echo -e "${RED}Some tests failed.${NC}\n"
     exit 1
   fi
 }
@@ -817,8 +1023,11 @@ cleanup() {
   cleanup_test_env
   rm -f test_detection.sh test_ignore.sh test_safe_read.sh test_fresh_clone.sh test_substring_ignore.sh dry_run_output.txt 2>/dev/null || true
   rm -f test_caching.sh test_dir_cache.sh 2>/dev/null || true
-  rm -f lock_test_output.txt 2>/dev/null || true
-  rm -rf "${HOME}/.config/test-app" 2>/dev/null || true
+  rm -f lock_test_output.txt out.txt first_run.txt second_run.txt update_output.txt 2>/dev/null || true
+  if [[ -n "${SANDBOX_HOME:-}" && -d "$SANDBOX_HOME" ]]; then
+    rm -rf "$SANDBOX_HOME"
+    SANDBOX_HOME=""
+  fi
 }
 
 trap cleanup EXIT INT TERM
