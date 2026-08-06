@@ -40,6 +40,15 @@ check_preconditions() {
     log_die "No remote 'upstream' configured"
   fi
 
+  # Nothing here can be trusted while a rebase is half done: branches cannot be
+  # switched, and what sits in the working tree is neither the old configuration
+  # nor the merged one.
+  if [[ -d "$(git rev-parse --git-path rebase-merge)" ]] || [[ -d "$(git rev-parse --git-path rebase-apply)" ]]; then
+    log_error "A rebase is in progress in this repository."
+    log_error "Finish it with 'git rebase --continue' or drop it with 'git rebase --abort', then run this again."
+    log_die "Cannot start with a rebase in progress"
+  fi
+
   log_success "Precondition checks passed"
 }
 
@@ -318,18 +327,32 @@ log_header "Merging Quickshell Config"
 
 switch_to_merge_branch
 
+merge_completed=false
 if copy_and_commit_user_config; then
   if rebase_onto_main; then
     apply_quickshell_config
+    merge_completed=true
   fi
 fi
 
-update_hypr_config
+# Only with the repository settled. A rebase that stopped on a conflict leaves the
+# working tree part way between the two sides and on the merge branch, so what this
+# would copy out over the running hyprland configuration is neither the old one nor
+# the merged one -- and it used to run regardless of how the merge had gone.
+if [[ "$merge_completed" == true ]] || [[ "$DRY_RUN" == true ]]; then
+  update_hypr_config
+else
+  log_warning "Leaving the hyprland configuration alone: the merge did not finish."
+fi
 
 # back to main
 if [[ "$DRY_RUN" != true ]]; then
-  log_info "Switching back to main..."
-  git checkout main
+  if [[ -d "$(git rev-parse --git-path rebase-merge)" ]] || [[ -d "$(git rev-parse --git-path rebase-apply)" ]]; then
+    log_warning "Staying on ${MERGE_BRANCH}: the rebase is still open, finish or abort it first."
+  else
+    log_info "Switching back to main..."
+    git checkout main
+  fi
 fi
 
 log_header "Merge Complete"
