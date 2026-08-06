@@ -213,6 +213,7 @@ Rectangle {
                                     columns: 4
                                     rows: 3
                                     desktopEntries: root.desktopEntries.slice(folderPage.index * 12, (folderPage.index + 1) * 12)
+                                    onEntryLaunched: GlobalStates.searchOpen = false
                                 }
                             }
                         }

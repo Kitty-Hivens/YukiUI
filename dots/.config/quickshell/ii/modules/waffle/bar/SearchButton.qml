@@ -12,9 +12,9 @@ AppButton {
     iconName: checked ? "system-search-checked" : "system-search"
     separateLightDark: true
 
-    checked: GlobalStates.searchOpen && LauncherSearch.query !== ""
+    checked: GlobalStates.searchPanelOpen
     onClicked: {
-        GlobalStates.searchOpen = !GlobalStates.searchOpen; // For now...
+        GlobalStates.searchPanelOpen = !GlobalStates.searchPanelOpen;
     }
 
     BarToolTip {

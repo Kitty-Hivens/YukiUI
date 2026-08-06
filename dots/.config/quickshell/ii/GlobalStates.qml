@@ -25,6 +25,7 @@ Singleton {
     property bool screenSharePickerOpen: false
     property bool screenShareRegionOpen: false
     property bool searchOpen: false
+    property bool searchPanelOpen: false
     property bool screenLocked: false
     property bool screenLockContainsCharacters: false
     property bool screenUnlockFailed: false

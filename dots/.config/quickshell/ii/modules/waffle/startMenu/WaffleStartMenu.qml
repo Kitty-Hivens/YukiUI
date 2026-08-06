@@ -16,6 +16,7 @@ Scope {
 
         function onSearchOpenChanged() {
             if (GlobalStates.searchOpen) {
+                GlobalStates.searchPanelOpen = false;
                 LauncherSearch.query = "";
                 panelLoader.active = true;
             }

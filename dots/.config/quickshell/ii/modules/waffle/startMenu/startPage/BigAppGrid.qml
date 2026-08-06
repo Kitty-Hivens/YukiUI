@@ -16,6 +16,10 @@ GridLayout {
 
     property list<var> desktopEntries: []
 
+    // Which panel to put away afterwards is the caller's to decide -- the grid is
+    // in the start menu and in the search panel both.
+    signal entryLaunched
+
     columnSpacing: 0
     rowSpacing: 0
 
@@ -29,7 +33,7 @@ GridLayout {
             required property var modelData
             desktopEntry: modelData
             onClicked: {
-                GlobalStates.searchOpen = false;
+                root.entryLaunched();
                 desktopEntry.execute();
             }
         }

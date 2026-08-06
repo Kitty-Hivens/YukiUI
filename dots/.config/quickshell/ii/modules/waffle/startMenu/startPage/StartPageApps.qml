@@ -45,6 +45,7 @@ BodyRectangle {
             desktopEntries: Config.options.launcher.pinnedApps
                 .map(appId => AppSearch.entryFor(appId))
                 .filter(entry => entry !== null)
+            onEntryLaunched: GlobalStates.searchOpen = false
         }
     }
 
