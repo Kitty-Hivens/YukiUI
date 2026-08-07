@@ -187,6 +187,16 @@ function install_dir__sync_exclude(){
   fi
   v rsync_dir__sync_exclude $s $t "$@"
 }
+function install_wallpaper_portal_service(){
+  # D-Bus activation of the wallpaper portal backend. Written rather than copied
+  # because Exec takes an absolute path and expands nothing.
+  local target="${XDG_DATA_HOME}/dbus-1/services/org.freedesktop.impl.portal.desktop.yuki.service"
+  local exec_path="${XDG_CONFIG_HOME}/quickshell/ii/scripts/portal/wallpaper-portal.py"
+  x mkdir -p "$(dirname "$target")"
+  sed "s|@EXEC@|${exec_path}|" sdata/files/org.freedesktop.impl.portal.desktop.yuki.service.in > "$target"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  realpath -se "$target" >> "${INSTALLED_LISTFILE}"
+}
 function install_google_sans_flex(){
   local font_name="Google Sans Flex"
   local src_name="google-sans-flex"
@@ -241,6 +251,9 @@ case "${EXPERIMENTAL_FILES_SCRIPT}" in
   true)source sdata/subcmd-install/3.files-exp.sh;;
   *)source sdata/subcmd-install/3.files-legacy.sh;;
 esac
+
+showfun install_wallpaper_portal_service
+v install_wallpaper_portal_service
 
 if [[ ! "$OS_GROUP_ID" == "fedora" ]]; then
   showfun install_google_sans_flex

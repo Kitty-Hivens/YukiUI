@@ -193,6 +193,7 @@ v sudo gpasswd -d "$user" input
 warn_undo_break_system
 v sudo rm /etc/modules-load.d/i2c-dev.conf
 v sudo rm -f /etc/polkit-1/rules.d/49-vt-switch.rules
+v sudo rm -f /usr/share/xdg-desktop-portal/portals/yuki.portal
 
 ##############################################################################################################################
 

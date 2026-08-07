@@ -28,6 +28,17 @@ function setup_vt_switch_policy(){
   fi
   x sudo install -m 644 -o root -g root sdata/files/49-vt-switch.rules /etc/polkit-1/rules.d/49-vt-switch.rules
 }
+function setup_wallpaper_portal(){
+  # Registers the wallpaper portal backend, which is what makes "Set as Background"
+  # in a file manager reach switchwall.sh. The D-Bus side of it is installed with
+  # the rest of the files in step 3.
+  local portal_dir=/usr/share/xdg-desktop-portal/portals
+  if [[ ! -d "$portal_dir" ]]; then
+    printf "${STY_YELLOW}[$0]: $portal_dir not found, skipping the wallpaper portal...${STY_RST}\n"
+    return
+  fi
+  x sudo install -m 644 -o root -g root sdata/files/yuki.portal "$portal_dir"/yuki.portal
+}
 #####################################################################################
 # These python packages are installed using uv into the venv (virtual environment). Once the folder of the venv gets deleted, they are all gone cleanly. So it's considered as setups, not dependencies.
 showfun install-python-packages
@@ -38,6 +49,9 @@ v setup_user_group
 
 showfun setup_vt_switch_policy
 v setup_vt_switch_policy
+
+showfun setup_wallpaper_portal
+v setup_wallpaper_portal
 
 if [[ ! -z $(systemctl --version) ]]; then
   # For Fedora, uinput is required for the virtual keyboard to function, and udev rules enable input group users to utilize it.

@@ -1,0 +1,6 @@
+# Goes to /usr/share/xdg-desktop-portal/portals, the one directory
+# xdg-desktop-portal reads backends from, hence the root-owned install.
+[portal]
+DBusName=org.freedesktop.impl.portal.desktop.yuki
+Interfaces=org.freedesktop.impl.portal.Wallpaper;
+UseIn=Hyprland;
