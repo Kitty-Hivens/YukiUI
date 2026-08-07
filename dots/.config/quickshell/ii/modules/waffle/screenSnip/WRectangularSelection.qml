@@ -23,22 +23,44 @@ Item {
         }
     }
 
-    // Overlay to darken screen
-    // Base dark overlay around region
-    Rectangle {
-        id: darkenOverlay
+    /// Everything outside the selection, as four bands measured from this item's own
+    /// edges. Drawn before as one rectangle with a border thick enough to reach
+    /// them, the thickness came from this item's size -- which is nothing until the
+    /// layout has run, so the first frames darkened a strip near one edge and left
+    /// the rest of the screen alone.
+    readonly property int shadeLeft: Math.max(0, Math.min(root.regionX, root.width))
+    readonly property int shadeTop: Math.max(0, Math.min(root.regionY, root.height))
+    readonly property int shadeRight: Math.max(0, Math.min(root.regionX + root.regionWidth, root.width))
+    readonly property int shadeBottom: Math.max(0, Math.min(root.regionY + root.regionHeight, root.height))
+
+    component Shade: Rectangle {
         z: 1
-        anchors {
-            left: parent.left
-            top: parent.top
-            leftMargin: root.regionX - darkenOverlay.border.width
-            topMargin: root.regionY - darkenOverlay.border.width
-        }
-        width: root.regionWidth + darkenOverlay.border.width * 2
-        height: root.regionHeight + darkenOverlay.border.width * 2
-        color: "transparent"
-        border.color: root.overlayColor
-        border.width: Math.max(root.width, root.height)
+        color: root.overlayColor
+    }
+
+    Shade {
+        x: 0
+        y: 0
+        width: root.width
+        height: root.shadeTop
+    }
+    Shade {
+        x: 0
+        y: root.shadeBottom
+        width: root.width
+        height: Math.max(0, root.height - root.shadeBottom)
+    }
+    Shade {
+        x: 0
+        y: root.shadeTop
+        width: root.shadeLeft
+        height: Math.max(0, root.shadeBottom - root.shadeTop)
+    }
+    Shade {
+        x: root.shadeRight
+        y: root.shadeTop
+        width: Math.max(0, root.width - root.shadeRight)
+        height: Math.max(0, root.shadeBottom - root.shadeTop)
     }
 
     // Selection border
