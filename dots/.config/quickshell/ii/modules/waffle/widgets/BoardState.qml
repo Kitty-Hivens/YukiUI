@@ -135,7 +135,7 @@ Singleton {
     }
 
     /// Everything that can be put on the board, in the order it is offered.
-    readonly property list<string> knownCards: ["weather", "calendar", "todo"]
+    readonly property list<string> knownCards: ["weather", "calendar", "todo", "media", "resources"]
 
     readonly property list<string> pinnedCards: Config.options?.waffles.widgets.cards ?? []
     readonly property list<string> unpinnedCards: root.knownCards.filter(card => root.pinnedCards.indexOf(card) === -1)
@@ -148,6 +148,10 @@ Singleton {
             return Translation.tr("Calendar");
         case "todo":
             return Translation.tr("To do");
+        case "media":
+            return Translation.tr("Media");
+        case "resources":
+            return Translation.tr("Resources");
         }
         return cardId;
     }
@@ -160,6 +164,10 @@ Singleton {
             return "calendar-add";
         case "todo":
             return "checkmark";
+        case "media":
+            return "music-note-2";
+        case "resources":
+            return "desktop";
         }
         return "apps";
     }

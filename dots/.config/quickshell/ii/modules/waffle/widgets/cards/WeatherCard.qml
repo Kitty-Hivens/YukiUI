@@ -14,7 +14,9 @@ WWidgetCard {
 
     cardId: "weather"
     title: Weather.data.city || Translation.tr("Weather")
-    iconName: WIcons.weatherIconForCode(Weather.data.wCode)
+    // The same glyph the picker offers this card under, rather than the condition --
+    // the condition is read from the icon beside the temperature.
+    iconName: "weather-sunny"
     readout: Weather.data.lastRefresh ? String(Weather.data.lastRefresh).split(" • ")[0] : "--:--"
 
     // A block of colour, the way this card reads on the board it copies.

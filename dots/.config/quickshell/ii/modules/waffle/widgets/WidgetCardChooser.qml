@@ -20,4 +20,12 @@ DelegateChooser {
         roleValue: "todo"
         TodoCard {}
     }
+    DelegateChoice {
+        roleValue: "media"
+        MediaCard {}
+    }
+    DelegateChoice {
+        roleValue: "resources"
+        ResourcesCard {}
+    }
 }

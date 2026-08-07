@@ -19,6 +19,10 @@ Loader {
             return calendarCard;
         case "todo":
             return todoCard;
+        case "media":
+            return mediaCard;
+        case "resources":
+            return resourcesCard;
         }
         return null;
     }
@@ -38,6 +42,18 @@ Loader {
     Component {
         id: todoCard
         TodoCard {
+            sample: root.sample
+        }
+    }
+    Component {
+        id: mediaCard
+        MediaCard {
+            sample: root.sample
+        }
+    }
+    Component {
+        id: resourcesCard
+        ResourcesCard {
             sample: root.sample
         }
     }

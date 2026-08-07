@@ -10,33 +10,26 @@ Item {
     property int length: BoardLooks.cornerLength
     property int weight: BoardLooks.cornerWeight
     property int inset: 0
-    /// Which corners are marked. One of them alone reads as a handle rather than as
-    /// a frame, which is what the card's size grip wants.
-    property list<string> corners: ["topLeft", "topRight", "bottomLeft", "bottomRight"]
 
     Repeater {
         model: [
             {
-                name: "topLeft",
                 h: Qt.AlignLeft,
                 v: Qt.AlignTop
             },
             {
-                name: "topRight",
                 h: Qt.AlignRight,
                 v: Qt.AlignTop
             },
             {
-                name: "bottomLeft",
                 h: Qt.AlignLeft,
                 v: Qt.AlignBottom
             },
             {
-                name: "bottomRight",
                 h: Qt.AlignRight,
                 v: Qt.AlignBottom
             }
-        ].filter(corner => root.corners.indexOf(corner.name) !== -1)
+        ]
         delegate: Item {
             id: corner
             required property var modelData

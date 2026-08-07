@@ -260,79 +260,146 @@ Rectangle {
             }
         }
 
-        // The corner is the size: dragged out, the card covers whatever rectangle of
-        // cells it is pulled over, down to the room its contents need.
-        Item {
-            anchors {
-                right: parent.right
-                bottom: parent.bottom
-            }
-            implicitWidth: Math.round(BoardLooks.unit * 1.2)
-            implicitHeight: Math.round(BoardLooks.unit * 1.2)
-
-            WCornerMarks {
-                anchors.fill: parent
-                anchors.margins: 2
-                corners: ["bottomRight"]
-                length: Math.round(BoardLooks.unit * 0.8)
-                weight: 2
-                color: gripHover.hovered || gripDrag.active ? Looks.colors.accent : BoardLooks.cornerColor
-            }
-
-            HoverHandler {
-                id: gripHover
-                cursorShape: Qt.SizeFDiagCursor
-            }
-
-            DragHandler {
-                id: gripDrag
-                target: null
-                cursorShape: Qt.SizeFDiagCursor
-                onActiveChanged: {
-                    if (gripDrag.active) {
-                        root.aimAtSize();
-                        return;
-                    }
-                    root.settleSize();
+        // Every edge and corner is a size handle. Nothing is drawn for them -- the
+        // cursor over one already says what it does -- and they are declared before
+        // the buttons so a press on a button is still a press on the button.
+        Repeater {
+            model: [
+                {
+                    gripX: -1,
+                    gripY: -1
+                },
+                {
+                    gripX: 0,
+                    gripY: -1
+                },
+                {
+                    gripX: 1,
+                    gripY: -1
+                },
+                {
+                    gripX: -1,
+                    gripY: 0
+                },
+                {
+                    gripX: 1,
+                    gripY: 0
+                },
+                {
+                    gripX: -1,
+                    gripY: 1
+                },
+                {
+                    gripX: 0,
+                    gripY: 1
+                },
+                {
+                    gripX: 1,
+                    gripY: 1
                 }
-                onActiveTranslationChanged: {
-                    if (gripDrag.active)
-                        root.aimAtSize();
-                }
+            ]
+            delegate: SizeHandle {
+                required property var modelData
+                gripX: modelData.gripX
+                gripY: modelData.gripY
             }
         }
     }
 
-    /// The rectangle of cells the corner has been pulled over, held inside the board
-    /// and never smaller than the card's own contents.
-    function sizeUnderGrip() {
+    /// The rectangle of cells the handle has been pulled over, held inside the board
+    /// and never smaller than the card's own contents. An edge on the near side moves
+    /// that side and leaves the far one where it is.
+    function sizeUnderGrip(gripX, gripY, translation) {
         const board = root.parent;
         const entry = board.entryFor(root.cardId);
         if (!entry)
             return null;
-        const right = root.x + root.width + gripDrag.activeTranslation.x;
-        const bottom = root.y + root.height + gripDrag.activeTranslation.y;
-        const overSegments = (right - board.cellX(entry.column) + board.gutter) / board.pitch;
-        const overRows = (bottom - entry.row * board.rowHeight + board.gutter) / board.rowHeight;
+        // A column is the narrowest a card is drawn in; wider goes by segments, so a
+        // card and a half across is a size like any other.
+        const leastSpan = BoardLooks.segments;
+        const leastRows = board.minRowsFor(root);
+
+        var column = entry.column;
+        var span = entry.span;
+        if (gripX < 0) {
+            const rightCell = entry.column + entry.span;
+            column = Math.min(Math.max(0, Math.round((root.x + translation.x) / board.pitch)), rightCell - leastSpan);
+            span = rightCell - column;
+        } else if (gripX > 0) {
+            const pulled = (root.x + root.width + translation.x - board.cellX(entry.column) + board.gutter) / board.pitch;
+            span = Math.max(leastSpan, Math.min(Math.round(pulled), board.cells - entry.column));
+        }
+
+        var row = entry.row;
+        var rows = entry.rows;
+        if (gripY < 0) {
+            const bottomRow = entry.row + entry.rows;
+            row = Math.min(Math.max(0, Math.round((root.y + translation.y) / board.rowHeight)), bottomRow - leastRows);
+            rows = bottomRow - row;
+        } else if (gripY > 0) {
+            const pulled = (root.y + root.height + translation.y - entry.row * board.rowHeight + board.gutter) / board.rowHeight;
+            rows = Math.min(board.rows - entry.row, Math.max(leastRows, Math.round(pulled)));
+        }
+
         return ({
-                column: entry.column,
-                row: entry.row,
-                // A column is the narrowest a card is drawn in; wider goes by segments,
-                // so a card and a half across is a size like any other.
-                span: Math.max(BoardLooks.segments, Math.min(Math.round(overSegments), board.cells - entry.column)),
-                rows: Math.min(board.rows - entry.row, Math.max(board.minRowsFor(root), Math.round(overRows)))
+                column: column,
+                row: row,
+                span: span,
+                rows: rows
             });
     }
 
-    function aimAtSize() {
+    function aimAtSize(gripX, gripY, translation) {
         const board = root.parent;
-        const size = root.sizeUnderGrip();
+        const size = root.sizeUnderGrip(gripX, gripY, translation);
         if (!size)
             return;
         board.dropColumn = size.column;
         board.dropRow = size.row;
         board.dropSpan = size.span;
         board.dropRows = size.rows;
+    }
+
+    component SizeHandle: Item {
+        id: handle
+
+        required property int gripX
+        required property int gripY
+
+        readonly property int reach: Math.round(BoardLooks.unit * 0.7)
+        readonly property int shape: {
+            if (handle.gripX === 0)
+                return Qt.SizeVerCursor;
+            if (handle.gripY === 0)
+                return Qt.SizeHorCursor;
+            return handle.gripX === handle.gripY ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor;
+        }
+
+        x: handle.gripX < 0 ? 0 : (handle.gripX > 0 ? parent.width - handle.width : handle.reach)
+        y: handle.gripY < 0 ? 0 : (handle.gripY > 0 ? parent.height - handle.height : handle.reach)
+        width: handle.gripX === 0 ? Math.max(0, parent.width - handle.reach * 2) : handle.reach
+        height: handle.gripY === 0 ? Math.max(0, parent.height - handle.reach * 2) : handle.reach
+
+        HoverHandler {
+            cursorShape: handle.shape
+        }
+
+        DragHandler {
+            id: handleDrag
+            target: null
+            cursorShape: handle.shape
+            onActiveChanged: {
+                if (handleDrag.active) {
+                    root.aimAtSize(handle.gripX, handle.gripY, handleDrag.activeTranslation);
+                    return;
+                }
+                root.settleSize();
+            }
+            onActiveTranslationChanged: {
+                if (handleDrag.active)
+                    root.aimAtSize(handle.gripX, handle.gripY, handleDrag.activeTranslation);
+            }
+        }
     }
 
     function settleSize() {
@@ -347,9 +414,10 @@ Rectangle {
         if (!size)
             return;
         // A gesture that ended where it started is not a resize, and writing it back
-        // would put every card's current size into the configuration for nothing.
+        // would put every card's current size into the configuration for nothing. The
+        // near edges move the card as well as size it, so where it sits counts too.
         const entry = board.entryFor(root.cardId);
-        if (entry && entry.span === size.span && entry.rows === size.rows)
+        if (entry && entry.span === size.span && entry.rows === size.rows && entry.column === size.column && entry.row === size.row)
             return;
         BoardState.setSize(root.cardId, size.span, size.rows);
         board.placeCard(root.cardId, size.column, size.row, size.span, size.rows);
