@@ -24,7 +24,13 @@ WBarAttachedPanelContent {
     readonly property int boardPadding: BoardLooks.padding
 
     function widthForColumns(columns) {
-        return root.columnWidth * columns + root.columnSpacing * (columns - 1) + root.boardPadding * 2;
+        return BoardLooks.widthForColumns(columns);
+    }
+
+    /// The width that was asked for, held inside what the screen allows.
+    readonly property int askedWidth: {
+        const asked = BoardState.width > 0 ? BoardState.width : root.widthForColumns(2);
+        return Math.max(root.minBoardWidth, Math.min(asked, root.maxBoardWidth));
     }
 
     readonly property int screenWidth: QsWindow.window?.screen?.width ?? 1920
@@ -32,19 +38,12 @@ WBarAttachedPanelContent {
     readonly property int minBoardWidth: root.widthForColumns(1)
     readonly property int maxBoardWidth: Math.min(root.widthForColumns(4), root.maxWidth - root.visualMargin * 2)
 
-    /// However many columns fit in the width the board was left at.
-    readonly property int fittingColumns: {
-        const asked = BoardState.width > 0 ? BoardState.width : root.widthForColumns(2);
-        const room = Math.max(root.minBoardWidth, Math.min(asked, root.maxBoardWidth)) - root.boardPadding * 2;
-        const fits = Math.floor((room + root.columnSpacing) / (root.columnWidth + root.columnSpacing));
-        return Math.max(1, fits);
-    }
-    onFittingColumnsChanged: BoardState.columnsForWidth = root.fittingColumns
-    Component.onCompleted: {
-        BoardState.columnsForWidth = root.fittingColumns;
-        BoardState.narrowWidth = root.widthForColumns(2);
-        BoardState.wideWidth = root.widthForColumns(3);
-    }
+    /// However many columns fit in the width the board was left at, which is the
+    /// count the state works out; the screen's limit is this panel's to tell.
+    readonly property int fittingColumns: BoardState.columns
+    readonly property int columnCeiling: BoardState.columnsFor(root.maxBoardWidth)
+    onColumnCeilingChanged: BoardState.columnCeiling = root.columnCeiling
+    Component.onCompleted: BoardState.columnCeiling = root.columnCeiling
 
     readonly property string greeting: {
         const hour = DateTime.clock.date.getHours();
@@ -72,7 +71,9 @@ WBarAttachedPanelContent {
             // the pane measures -- border included -- rather than as the body alone.
             function reportGeometry() {
                 BoardState.boardWidth = boardPane.width + root.visualMargin;
-                BoardState.boardHeight = boardPane.height;
+                // The body rather than the pane: the panel beside this one draws its
+                // own border around a body of the same height.
+                BoardState.boardHeight = paneBody.height;
                 BoardState.boardTop = boardPane.mapToItem(null, 0, 0).y;
             }
             onImplicitWidthChanged: reportSoon.restart()
@@ -107,7 +108,7 @@ WBarAttachedPanelContent {
 
                 HeaderButton {
                     iconName: BoardState.wide ? "arrow-minimize" : "arrow-expand"
-                    onClicked: BoardState.toggleWide(root.widthForColumns(2), root.widthForColumns(3))
+                    onClicked: BoardState.toggleWide()
                 }
                 HeaderButton {
                     iconName: BoardState.editing ? "checkmark" : "edit"
@@ -140,10 +141,12 @@ WBarAttachedPanelContent {
                     target: null
                     cursorShape: Qt.SizeHorCursor
                     yAxis.enabled: false
+                    // From the width that was asked for rather than the one it snapped
+                    // to, so the pixels inside the last column survive to the next drag.
                     property int widthAtStart: 0
                     onActiveChanged: {
                         if (active)
-                            widthAtStart = root.widthForColumns(root.fittingColumns);
+                            widthAtStart = root.askedWidth;
                     }
                     onActiveTranslationChanged: {
                         if (!edgeDrag.active)

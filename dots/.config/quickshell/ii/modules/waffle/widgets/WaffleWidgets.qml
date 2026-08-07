@@ -69,9 +69,12 @@ Scope {
                 id: content
                 anchors.fill: parent
 
+                // Arranging is a state of a board that is open, and it ends when the
+                // board starts leaving rather than when it has gone: the picker
+                // leaves on the same signal and would otherwise be left on screen
+                // alone for the length of its own animation.
+                onClosing: BoardState.editing = false
                 onClosed: {
-                    // Arranging is a state of a board that is open.
-                    BoardState.editing = false;
                     GlobalStates.widgetsOpen = false;
                     panelLoader.active = false;
                 }
@@ -95,7 +98,7 @@ Scope {
             NewsFeed.refresh();
         }
         function widen(): void {
-            BoardState.width = BoardState.wide ? BoardState.narrowWidth : BoardState.wideWidth;
+            BoardState.toggleWide();
         }
         function arrange(): void {
             BoardState.editing = !BoardState.editing;

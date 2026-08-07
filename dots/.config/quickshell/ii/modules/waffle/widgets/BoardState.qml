@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs.modules.common
+import qs.modules.waffle.widgets
 import qs.services
 
 /**
@@ -16,11 +17,6 @@ Singleton {
     id: root
 
     property bool editing: false
-
-    /// The widths the snap-toggle moves between, set by the board that knows its
-    /// own column arithmetic.
-    property int narrowWidth: 0
-    property int wideWidth: 0
 
     /// What the board currently measures, so a window standing beside it knows
     /// where the board ends.
@@ -38,9 +34,6 @@ Singleton {
     /// The picker's window, so the board's focus grab counts it as part of itself
     /// and a press on it is not a press past the board.
     property var pickerWindow: null
-    /// Where the picker window starts, so a widget carried out of it can be placed
-    /// in the board's coordinates.
-    property int pickerLeft: 0
     /// Where the board's own panel starts inside its window.
     property int boardTop: 0
 
@@ -107,15 +100,26 @@ Singleton {
     /// from it: as many as fit, rather than a choice between two sizes.
     property int width: Persistent.states.widgets.width
     onWidthChanged: Persistent.states.widgets.width = root.width
-    property int columnsForWidth: 2
-    readonly property int columns: root.columnsForWidth
+
+    function columnsFor(width) {
+        const room = (width > 0 ? width : BoardLooks.widthForColumns(2)) - BoardLooks.padding * 2;
+        return Math.max(1, Math.floor((room + BoardLooks.gutter) / (BoardLooks.columnWidth + BoardLooks.gutter)));
+    }
+
+    /// As many columns as the screen has room for, told by the board while it is
+    /// open. The count itself follows the width whether the board is there or not,
+    /// so a width set from elsewhere is read the same way.
+    property int columnCeiling: 4
+    readonly property int columns: Math.min(root.columnsFor(root.width), root.columnCeiling)
 
     /// Read from the width rather than remembered beside it, so the button that
     /// snaps between narrow and wide always knows which way it is going.
     readonly property bool wide: root.columns >= 3
 
-    function toggleWide(narrowWidth, wideWidth) {
-        root.width = root.wide ? narrowWidth : wideWidth;
+    /// The two widths the corner button snaps between. Worked out here rather than
+    /// handed in by the board, which exists only while the board is open.
+    function toggleWide() {
+        root.width = BoardLooks.widthForColumns(root.wide ? 2 : 3);
     }
 
     /// Everything that can be put on the board, in the order it is offered.

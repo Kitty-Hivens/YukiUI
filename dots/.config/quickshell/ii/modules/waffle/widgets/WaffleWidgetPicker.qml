@@ -66,13 +66,20 @@ Scope {
             function close() {
                 openAnim.stop();
                 pickerWindow.closing = true;
-                BoardState.carriedOffer = "";
+                pickerWindow.dropCarried();
                 closeAnim.start();
+            }
+
+            // A drag ends by being let go, and a window that goes away underneath one
+            // never gets there: the cell marked out on the board would stay marked.
+            function dropCarried() {
+                BoardState.carriedOffer = "";
+                BoardState.aimDrop(null);
             }
 
             Component.onCompleted: pickerWindow.open()
             Component.onDestruction: {
-                BoardState.carriedOffer = "";
+                pickerWindow.dropCarried();
                 if (BoardState.pickerWindow === pickerWindow)
                     BoardState.pickerWindow = null;
             }
@@ -107,18 +114,12 @@ Scope {
                 y: BoardState.boardTop
                 opacity: 1 + pickerWindow.slide / BoardLooks.pickerWidth
 
-                // Told to whoever carries a widget out of here, so it can be placed in
-                // the board's own coordinates, and to the board, so a press on this
-                // panel is not a press past it.
-                onXChanged: BoardState.pickerLeft = content.x
-                Component.onCompleted: {
-                    BoardState.pickerLeft = content.x;
-                    BoardState.pickerWindow = pickerWindow;
-                }
+                // Told to the board, so a press on this panel is not a press past it.
+                Component.onCompleted: BoardState.pickerWindow = pickerWindow
 
                 contentItem: WidgetPicker {
                     implicitWidth: BoardLooks.pickerWidth
-                    implicitHeight: Math.max(BoardState.boardHeight - 2, BoardLooks.unit * 10)
+                    implicitHeight: Math.max(BoardState.boardHeight, BoardLooks.unit * 10)
                 }
             }
 

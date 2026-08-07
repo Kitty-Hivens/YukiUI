@@ -47,9 +47,10 @@ BodyRectangle {
             id: offerFlickable
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // Neither clipped nor scrolling while an offer is being carried: the card
-            // has to be visible on its way to the board, and the press belongs to it.
-            clip: !root.carrying
+            // Not scrolling while an offer is being carried: the press belongs to the
+            // card. It stays clipped -- the copy on its way to the board is drawn by
+            // the window, not by anything in here.
+            clip: true
             interactive: !root.carrying
             contentWidth: width
             contentHeight: offerColumn.implicitHeight
@@ -123,9 +124,9 @@ BodyRectangle {
             }
         }
 
-        /// The board is a window of its own, so the pointer is followed through the
-        /// picker window's own offset rather than through a shared parent.
         /// Where the carried copy sits in the window, so the window can draw it there.
+        /// mapToItem already accounts for the drag, so the translation goes onto the
+        /// corner the card started from and never onto the mapped point.
         function reportCarried() {
             const corner = sample.mapToItem(null, 0, 0);
             BoardState.carriedX = corner.x + sampleDrag.activeTranslation.x;
