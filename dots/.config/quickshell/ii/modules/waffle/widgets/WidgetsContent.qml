@@ -10,8 +10,9 @@ import qs.modules.common.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.widgets.cards
 
-// The board is two columns: the cards that were pinned, and the stories beside
-// them, under a greeting that carries the date.
+// A board of cards, two columns wide. The board this sits beside gives a third of
+// itself to cards and the rest to a feed of stories; there is no such feed here, so
+// the cards get the room and the news, when it is switched on, is a card among them.
 WBarAttachedPanelContent {
     id: root
 
@@ -19,8 +20,8 @@ WBarAttachedPanelContent {
     revealFromLeft: true
 
     readonly property list<string> cards: Config.options.waffles.widgets.cards
-    readonly property int cardColumnWidth: 320
-    readonly property int storyColumnWidth: 340
+    readonly property int columnWidth: 336
+    readonly property int columnSpacing: 16
 
     readonly property string greeting: {
         const hour = DateTime.clock.date.getHours();
@@ -35,15 +36,15 @@ WBarAttachedPanelContent {
 
     contentItem: WPane {
         contentItem: BodyRectangle {
-            implicitWidth: root.cardColumnWidth + root.storyColumnWidth * 2 + 16 + 24 * 3
-            implicitHeight: 900
+            implicitWidth: root.columnWidth * 2 + root.columnSpacing + 24 * 2
+            implicitHeight: 860
 
             ColumnLayout {
                 anchors {
                     fill: parent
                     margins: 24
                 }
-                spacing: 20
+                spacing: 18
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -85,69 +86,41 @@ WBarAttachedPanelContent {
                     }
                 }
 
-                RowLayout {
+                StyledFlickable {
+                    id: boardFlickable
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 24
+                    clip: true
+                    contentWidth: width
+                    contentHeight: boardGrid.implicitHeight
 
-                    // Pinned cards
-                    ColumnLayout {
-                        Layout.preferredWidth: root.cardColumnWidth
-                        Layout.fillHeight: true
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 12
+                    GridLayout {
+                        id: boardGrid
+                        width: boardFlickable.width
+                        columns: 2
+                        columnSpacing: root.columnSpacing
+                        rowSpacing: root.columnSpacing
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            WText {
-                                Layout.fillWidth: true
-                                text: Translation.tr("Widgets")
-                                font.weight: Looks.font.weight.strong
+                        Repeater {
+                            model: ScriptModel {
+                                values: root.cards
                             }
-                            HeaderButton {
-                                iconName: "add"
-                                implicitWidth: 28
-                                implicitHeight: 28
-                            }
+                            delegate: WidgetCardChooser {}
                         }
 
-                        StyledFlickable {
-                            id: cardFlickable
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            contentWidth: width
-                            contentHeight: cardColumn.implicitHeight
-
-                            ColumnLayout {
-                                id: cardColumn
-                                width: cardFlickable.width
-                                spacing: 12
-
-                                Repeater {
-                                    model: ScriptModel {
-                                        values: root.cards
-                                    }
-                                    delegate: WidgetCardChooser {}
-                                }
-
-                                WText {
-                                    Layout.fillWidth: true
-                                    Layout.topMargin: 12
-                                    visible: root.cards.length === 0
-                                    horizontalAlignment: Text.AlignHCenter
-                                    text: Translation.tr("No widgets are pinned")
-                                    color: Looks.colors.subfg
-                                }
-                            }
+                        NewsCard {
+                            Layout.columnSpan: 2
                         }
-                    }
 
-                    // Stories
-                    FeedSection {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        columnWidth: root.storyColumnWidth
+                        WText {
+                            Layout.columnSpan: 2
+                            Layout.fillWidth: true
+                            Layout.topMargin: 12
+                            visible: root.cards.length === 0
+                            horizontalAlignment: Text.AlignHCenter
+                            text: Translation.tr("No widgets are pinned")
+                            color: Looks.colors.subfg
+                        }
                     }
                 }
             }

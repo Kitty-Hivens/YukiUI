@@ -18,9 +18,15 @@ Rectangle {
     // Cards carry their own colour where the original does -- the weather one is a
     // block of colour there, the rest sit on the board's own surface.
     property color foregroundColor: Looks.colors.fg
+    // A card that has somewhere to send you says so along its bottom edge, the one
+    // part of the original's card that is worth keeping wholesale.
+    property string actionText: ""
+    property bool unpinnable: true
+    signal actionTriggered
     default property alias cardContent: contentArea.data
 
     Layout.fillWidth: true
+    Layout.alignment: Qt.AlignTop
     implicitHeight: contentColumn.implicitHeight + 32
 
     color: Looks.colors.bg1
@@ -60,6 +66,7 @@ Rectangle {
 
             WPanelIconButton {
                 id: menuButton
+                visible: root.unpinnable
                 implicitWidth: 28
                 implicitHeight: 28
                 iconSize: 16
@@ -85,6 +92,15 @@ Rectangle {
             id: contentArea
             Layout.fillWidth: true
             implicitHeight: childrenRect.height
+        }
+
+        WTextButton {
+            Layout.alignment: Qt.AlignRight
+            Layout.topMargin: -4
+            visible: root.actionText.length > 0
+            implicitHeight: 30
+            text: root.actionText
+            onClicked: root.actionTriggered()
         }
     }
 }
