@@ -201,11 +201,19 @@ Singleton {
     }
 
     /**
-     * An output that is plugged in but not driving reports a 0x0 mode. That is a
-     * state of the hardware, not something the user chose, so it must not reach
-     * validation as a rejected mode: doing so blocks the page on an error the
-     * user has no way to clear. The first advertised mode stands in, and an
-     * output with nothing to offer is marked unusable and left out of the checks.
+     * The mode to work from, and whether there is one at all.
+     *
+     * An output that is not driving reports 0x0. That is a state of the
+     * hardware, not something the user chose, so it must not reach validation as
+     * a rejected mode: doing so blocks the page on an error the user has no way
+     * to clear. The first advertised mode stands in for it.
+     *
+     * Not driving is deliberately not the same as unusable. Every switched-off
+     * output reports 0x0, so counting that as unusable dropped it from the batch
+     * apply builds and from the plan persist writes: switching one back on ran
+     * the whole sequence and reached neither the compositor nor the config, and
+     * the page then reset the toggle from a compositor that had never heard
+     * about it. Only an output advertising no mode either is unusable.
      */
     function usableMode(output) {
         if (output.width > 0 && output.height > 0)
@@ -219,7 +227,7 @@ Singleton {
             width: parseInt(parsed[1]),
             height: parseInt(parsed[2]),
             refreshRate: Math.round(parseFloat(parsed[3])),
-            usable: false
+            usable: true
         };
     }
 

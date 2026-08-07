@@ -72,6 +72,21 @@ Item {
         root.selectedName = name;
     }
 
+    /**
+     * Switching an output on from the inspector, which unlike a drag names no
+     * place to put it.
+     *
+     * The compositor reports no position for an output that is off -- a panel
+     * that has been parked reads back as -1x-1 -- so turning one on where it
+     * claims to be drops it on top of whatever took its place, and the page
+     * refuses the layout it was just asked for. It goes to the right of the
+     * arrangement instead, which is both clear of everything and touching it.
+     */
+    function enableOutput(name) {
+        const bounds = Arrange.boundsOf(root.draft);
+        root.enableAt(name, bounds.x + bounds.width, bounds.y);
+    }
+
     // Refused rather than silently ignored when it would leave nothing on: the
     // display being dragged away is the one the user is looking at.
     function disableOutput(name) {
@@ -260,8 +275,12 @@ Item {
                             enabled: root.selected !== null
                                 && !(root.selected.enabled && root.draft.filter(entry => entry.enabled).length <= 1)
                             onCheckedChanged: {
-                                if (root.selected && checked !== root.selected.enabled)
-                                    root.patch(root.selected.name, { enabled: checked });
+                                if (!root.selected || checked === root.selected.enabled)
+                                    return;
+                                if (checked)
+                                    root.enableOutput(root.selected.name);
+                                else
+                                    root.patch(root.selected.name, { enabled: false });
                             }
                             StyledToolTip {
                                 text: Translation.tr("The last enabled display cannot be turned off")
