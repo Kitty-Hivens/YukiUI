@@ -77,7 +77,20 @@ MouseArea {
     Rectangle {
         id: contentItem
         width: parent.width
-        color: root.isPopup ? Looks.colors.bg0 : Looks.colors.bgPanelBody
+        // Answers a press the way a card in the shell this copies does: it takes the
+        // fill it takes when active and gives a little under the pointer. A press
+        // that turns into a swipe keeps it, which is what being held looks like.
+        readonly property bool held: root.pressed
+        color: contentItem.held ? (root.isPopup ? Looks.colors.bg1Active : Looks.colors.bg2Active) : (root.isPopup ? Looks.colors.bg0 : Looks.colors.bgPanelBody)
+        scale: contentItem.held ? 0.985 : 1
+        transformOrigin: Item.Center
+
+        Behavior on color {
+            animation: Looks.transition.color.createObject(this)
+        }
+        Behavior on scale {
+            animation: Looks.transition.move.createObject(this)
+        }
         radius: root.isPopup ? Looks.radius.large : Looks.radius.medium
         property real padding: 12
         implicitHeight: notificationContent.implicitHeight + padding * 2
