@@ -137,10 +137,14 @@ Scope {
                 opacity: pickerWindow.fade
 
                 // Told to the board, so a press on this panel is not a press past it,
-                // and so a card dragged over this panel is one being given back.
+                // and so a card dragged over this panel is one being given back. Told
+                // again whenever the panel moves: it starts beside a board that has
+                // not said how wide it is yet, and it slides into place after that.
                 function reportArea() {
                     BoardState.pickerArea = Qt.rect(content.x, content.y, content.width, content.height);
                 }
+                onXChanged: content.reportArea()
+                onYChanged: content.reportArea()
                 onWidthChanged: content.reportArea()
                 onHeightChanged: content.reportArea()
                 Component.onCompleted: {

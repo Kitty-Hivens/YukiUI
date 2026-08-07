@@ -42,7 +42,10 @@ Scope {
                 left: true
             }
 
-            implicitWidth: content.maxWidth
+            // As wide as the screen, not as wide as the board: the picker stands
+            // beside the board in a window of its own, and a card carried towards it
+            // is dragged in this one.
+            implicitWidth: panelWindow.screen?.width ?? content.maxWidth
             implicitHeight: content.implicitHeight
             mask: Region {
                 item: content.visibleArea
