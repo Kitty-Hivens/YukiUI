@@ -71,6 +71,9 @@ Rectangle {
                 implicitHeight: 28
                 iconSize: 16
                 iconName: "more-horizontal"
+                // Held lit for as long as its menu is: the pointer moves onto the menu,
+                // which takes the hover with it and left the button looking untouched.
+                checked: cardMenu.visible
                 onClicked: cardMenu.popup()
 
                 WMenu {

@@ -18,6 +18,8 @@ WWidgetCard {
     iconName: "calendar-add"
 
     readonly property var locale: Qt.locale(Config.options.calendar.locale)
+    readonly property int dayCellSize: 36
+    readonly property int gridWidth: dayCellSize * 7 + 4 * 6
 
     ColumnLayout {
         anchors {
@@ -33,10 +35,14 @@ WWidgetCard {
             font.weight: Looks.font.weight.strong
         }
 
+        // Both rows are laid out to the same fixed width and centred: letting either
+        // stretch on its own put the day names out of step with the columns under them.
         DayOfWeekRow {
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: root.gridWidth
             locale: root.locale
             spacing: monthGrid.buttonSpacing
+            padding: 0
             delegate: Item {
                 id: dayOfWeekItem
                 required property var model
@@ -52,11 +58,12 @@ WWidgetCard {
 
         CalendarView {
             id: monthGrid
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: root.gridWidth
             locale: root.locale
             verticalPadding: 0
-            buttonSize: 30
-            buttonSpacing: 2
+            buttonSize: root.dayCellSize
+            buttonSpacing: 4
             buttonVerticalSpacing: 1
             delegate: Item {
                 id: dayItem
