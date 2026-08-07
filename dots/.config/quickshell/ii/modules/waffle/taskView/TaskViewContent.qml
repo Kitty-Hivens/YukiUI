@@ -17,6 +17,9 @@ Rectangle {
 
     color: ColorUtils.transparentize(Looks.colors.bg1Base, 0.5)
     property bool draggingWindow: false
+    /// True from the moment closing starts, so the window it lives in can let go of
+    /// input while the animation plays out.
+    readonly property bool closing: closeAnim.running
     property real openProgress: 0
     property Item hoveredWorkspace: null
     signal closed

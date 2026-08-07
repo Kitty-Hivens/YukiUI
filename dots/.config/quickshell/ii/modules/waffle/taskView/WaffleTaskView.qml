@@ -50,6 +50,13 @@ Scope {
                     right: true
                 }
 
+                // Nothing is clickable here once it is on its way out; otherwise the
+                // press that closed it is followed by one the closing window still eats.
+                Region {
+                    id: noInput
+                }
+                mask: taskViewContent.closing ? noInput : null
+
                 TaskViewContent {
                     id: taskViewContent
                     anchors.fill: parent

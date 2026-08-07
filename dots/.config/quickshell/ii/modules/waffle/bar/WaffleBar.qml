@@ -7,6 +7,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.waffle.bar
 
 Scope {
     id: root
@@ -34,6 +35,9 @@ Scope {
                 color: "transparent"
                 implicitHeight: content.implicitHeight
                 implicitWidth: content.implicitWidth
+
+                Component.onCompleted: WBarWindows.add(barRoot)
+                Component.onDestruction: WBarWindows.remove(barRoot)
 
                 WaffleBarContent {
                     id: content

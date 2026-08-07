@@ -7,6 +7,8 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.waffle
+import qs.modules.waffle.bar
 
 Scope {
     id: root
@@ -15,6 +17,8 @@ Scope {
         target: GlobalStates
 
         function onSidebarLeftOpenChanged() {
+            if (GlobalStates.sidebarLeftOpen)
+                WPanels.keepOnly("sidebarLeftOpen");
             if (GlobalStates.sidebarLeftOpen)
                 panelLoader.active = true;
         }
@@ -47,7 +51,7 @@ Scope {
             HyprlandFocusGrab {
                 id: focusGrab
                 active: true
-                windows: [panelWindow]
+                windows: [panelWindow].concat(WBarWindows.windows)
                 onCleared: content.close()
             }
 

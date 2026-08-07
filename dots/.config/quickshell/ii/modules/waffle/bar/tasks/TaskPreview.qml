@@ -27,6 +27,8 @@ PopupWindow {
     function open() {
         marginBehavior.enabled = true;
         root.visible = true;
+        contentItem.opacity = 0;
+        fadeIn.restart();
     }
 
     function show(appEntry: var, button: Item) {
@@ -50,6 +52,17 @@ PopupWindow {
         item: root.anchorItem
         gravity: bottom ? Edges.Top : Edges.Bottom
         edges: bottom ? Edges.Top : Edges.Bottom
+    }
+
+    NumberAnimation {
+        id: fadeIn
+        target: contentItem
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: 120
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     }
 
     Timer {
@@ -115,6 +128,7 @@ PopupWindow {
                     delegate: WindowPreview {
                         required property var modelData
                         toplevel: modelData
+                        onPicked: root.close()
                     }
                 }
             }

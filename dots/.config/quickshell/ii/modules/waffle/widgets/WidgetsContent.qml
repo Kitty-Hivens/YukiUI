@@ -55,9 +55,8 @@ WBarAttachedPanelContent {
     contentItem: WPane {
         contentItem: BodyRectangle {
             implicitWidth: root.widthForColumns(root.fittingColumns)
-            // As tall as the window leaves it: the board runs from the bar to the top
-            // of the screen, whatever screen that is.
-            implicitHeight: Math.max(root.height - root.visualMargin * 2, BoardLooks.unit * 20)
+            readonly property int roomForBoard: root.height - root.visualMargin * 2
+            implicitHeight: Config.options.waffles.widgets.fullHeight ? roomForBoard : Math.min(Config.options.waffles.widgets.height, roomForBoard)
             Behavior on implicitWidth {
                 animation: Looks.transition.resize.createObject(this)
             }

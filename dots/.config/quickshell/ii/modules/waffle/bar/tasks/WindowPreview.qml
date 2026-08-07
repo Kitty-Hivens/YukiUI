@@ -19,8 +19,11 @@ Button {
     padding: 5
     Layout.fillHeight: true
 
+    signal picked
+
     onClicked: {
         root.toplevel?.activate(); // TODO: make this work with those who disable focus on activate because telegram is abusive
+        root.picked();
     }
 
     background: Rectangle {
