@@ -83,6 +83,7 @@ MouseArea { // Notification group area
         anchors.fill: parent
         interactive: !expanded
         automaticallyReset: false
+        acceptedAxis: Qt.Horizontal
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         onPressed: {

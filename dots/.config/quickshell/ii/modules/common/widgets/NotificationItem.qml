@@ -68,6 +68,7 @@ Item { // Notification item area
         anchors.leftMargin: root.expanded ? -notificationIcon.implicitWidth : 0
         interactive: expanded
         automaticallyReset: false
+        acceptedAxis: Qt.Horizontal
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
         onClicked: (mouse) => {

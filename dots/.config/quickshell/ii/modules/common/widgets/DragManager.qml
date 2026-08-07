@@ -18,6 +18,10 @@ MouseArea {
     /// for every press: the card moved while the list scrolled. Set to 0 where the
     /// gesture is the only thing on offer, as in the region selector.
     property real dragThreshold: Qt.styleHints.startDragDistance
+    /// Which way a gesture has to leave to belong to this manager. A press that
+    /// leaves the other way is never taken up, so the list underneath gets it
+    /// straight away instead of the two trading it back and forth.
+    property int acceptedAxis: Qt.Horizontal | Qt.Vertical
     readonly property real dragDiffX: _dragDiffX
     readonly property real dragDiffY: _dragDiffY
     property real startX: 0
@@ -56,6 +60,7 @@ MouseArea {
             return;
         }
         dragging = false
+        root.preventStealing = false;
         root.dragReleased(_dragDiffX, _dragDiffY);
         if (root.automaticallyReset) {
             root.resetDrag();
@@ -68,10 +73,19 @@ MouseArea {
         if (mouse.buttons & Qt.LeftButton) {
             const diffX = mouse.x - startX;
             const diffY = mouse.y - startY;
-            // Once it is a drag it stays one: the distance decides where it begins,
-            // not whether it continues.
-            if (!root.dragging && Math.sqrt(diffX * diffX + diffY * diffY) < root.dragThreshold)
-                return;
+            if (!root.dragging) {
+                // The distance decides where a drag begins, and the direction
+                // decides whose it is.
+                if (Math.sqrt(diffX * diffX + diffY * diffY) < root.dragThreshold)
+                    return;
+                const leaving = Math.abs(diffX) >= Math.abs(diffY) ? Qt.Horizontal : Qt.Vertical;
+                if (!(root.acceptedAxis & leaving))
+                    return;
+                // Held for the rest of the gesture: a list above this would take the
+                // grab the moment the pointer wandered across it, and the card would
+                // snap back in the middle of being swiped away.
+                root.preventStealing = true;
+            }
             root._dragDiffX = diffX;
             root._dragDiffY = diffY;
             root.dragPressed(_dragDiffX, _dragDiffY);
