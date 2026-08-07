@@ -86,7 +86,9 @@ Rectangle {
 
             WText {
                 Layout.alignment: Qt.AlignVCenter
-                visible: root.readout.length > 0
+                // Out of the way while the card carries its arranging controls, which
+                // sit in the same corner.
+                visible: root.readout.length > 0 && !root.arrangeable
                 text: root.readout
                 color: ColorUtils.transparentize(root.foregroundColor, 0.45)
                 font.family: BoardLooks.readoutFamily

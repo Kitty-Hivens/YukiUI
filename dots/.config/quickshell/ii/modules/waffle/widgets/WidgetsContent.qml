@@ -101,6 +101,10 @@ WBarAttachedPanelContent {
                         onClicked: BoardState.wide = !BoardState.wide
                     }
                     HeaderButton {
+                        iconName: "add"
+                        onClicked: addDialog.open()
+                    }
+                    HeaderButton {
                         iconName: BoardState.editing ? "checkmark" : "edit"
                         checked: BoardState.editing
                         onClicked: BoardState.editing = !BoardState.editing
@@ -158,57 +162,15 @@ WBarAttachedPanelContent {
                                 color: Looks.colors.subfg
                             }
 
-                            // What is not on the board, offered while it is being arranged.
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                visible: BoardState.editing
-                                spacing: 10
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 1
-                                    color: BoardLooks.rule
-                                }
-
-                                WText {
-                                    text: Translation.tr("Add a widget").toUpperCase()
-                                    color: BoardLooks.readoutColor
-                                    font.family: BoardLooks.readoutFamily
-                                    font.pixelSize: BoardLooks.readoutSize
-                                    font.letterSpacing: BoardLooks.readoutSpacing
-                                }
-
-                                WText {
-                                    Layout.fillWidth: true
-                                    visible: BoardState.unpinnedCards.length === 0
-                                    text: Translation.tr("Everything is already on the board")
-                                    color: Looks.colors.subfg
-                                }
-
-                                Flow {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    Repeater {
-                                        model: ScriptModel {
-                                            values: BoardState.unpinnedCards
-                                        }
-                                        delegate: WBorderedButton {
-                                            id: addButton
-                                            required property var modelData
-                                            implicitHeight: 34
-                                            icon.name: BoardState.iconOf(addButton.modelData)
-                                            text: BoardState.nameOf(addButton.modelData)
-                                            onClicked: BoardState.addCard(addButton.modelData)
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    AddWidgetDialog {
+        id: addDialog
     }
 
     component HeaderButton: WPanelIconButton {
