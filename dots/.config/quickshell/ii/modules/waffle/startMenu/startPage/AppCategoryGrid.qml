@@ -97,7 +97,7 @@ Rectangle {
                 to: categoryFolderPopup.windowCenterPoint.x - categoryFolderPopup.width / 2
                 duration: 300
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
             NumberAnimation {
                 target: categoryFolderPopup
@@ -106,7 +106,7 @@ Rectangle {
                 to: categoryFolderPopup.windowCenterPoint.y - categoryFolderPopup.height / 2
                 duration: 300
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
             NumberAnimation {
                 target: categoryFolderPopup
@@ -115,7 +115,7 @@ Rectangle {
                 to: 1
                 duration: 300
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -126,7 +126,7 @@ Rectangle {
                 to: categoryFolderPopup.originPoint.x - categoryOpenButtonLoader.width * 5 / 2
                 duration: 200
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
             }
             NumberAnimation {
                 target: categoryFolderPopup
@@ -134,7 +134,7 @@ Rectangle {
                 to: categoryFolderPopup.originPoint.y - categoryOpenButtonLoader.height * 3 / 2
                 duration: 200
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
             }
             NumberAnimation {
                 target: categoryFolderPopup
@@ -143,7 +143,7 @@ Rectangle {
                 to: 0
                 duration: 200
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
             }
         }
 
@@ -251,7 +251,7 @@ Rectangle {
                 NumberAnimation {
                     id: scaleAnim
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
                 }
             }
             GridLayout {
@@ -291,7 +291,7 @@ Rectangle {
                 NumberAnimation {
                     id: scaleAnim
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
                 }
             }
             WAppIcon {

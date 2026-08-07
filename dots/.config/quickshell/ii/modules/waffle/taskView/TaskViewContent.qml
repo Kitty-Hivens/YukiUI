@@ -38,7 +38,7 @@ Rectangle {
         to: 1
         duration: 250
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
     }
     SequentialAnimation {
         id: closeAnim
@@ -49,7 +49,7 @@ Rectangle {
             to: 0
             duration: 250
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
         }
         ScriptAction {
             script: {

@@ -7,8 +7,8 @@ StackView {
     property real moveDistance: 30
     property int pushDuration: 200
     property int fadeDuration: 80
-    property list<real> bezierCurve: Looks.transition.easing.bezierCurve.easeIn
-    property list<real> fadeBezierCurve: Looks.transition.easing.bezierCurve.easeInOut
+    property list<real> bezierCurve: Looks.transition.easing.bezierCurve.decelerate
+    property list<real> fadeBezierCurve: Looks.transition.easing.bezierCurve.standard
     clip: true
 
     background: null

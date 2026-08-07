@@ -31,7 +31,7 @@ Menu {
             to: root.margins
             duration: 200
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
         }
     }
     exit: Transition {
@@ -41,7 +41,7 @@ Menu {
             to: -root.implicitHeight
             duration: 150
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
         }
     }
 

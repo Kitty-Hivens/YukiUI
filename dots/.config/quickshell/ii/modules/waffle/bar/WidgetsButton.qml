@@ -23,7 +23,7 @@ AppButton {
     }
     onDownChanged: {
         scaleAnim.duration = root.down ? 150 : 200;
-        scaleAnim.easing.bezierCurve = root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut;
+        scaleAnim.easing.bezierCurve = root.down ? Looks.transition.easing.bezierCurve.decelerate : Looks.transition.easing.bezierCurve.accelerate;
         iconWidget.scale = root.down ? 5 / 6 : 1; // If/When we do dragging, the scale is 1.25
     }
 

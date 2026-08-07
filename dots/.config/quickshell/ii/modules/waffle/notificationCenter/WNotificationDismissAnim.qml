@@ -22,7 +22,7 @@ SequentialAnimation {
         to: root.target.width
         duration: 250
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
     }
     PropertyAction {
         target: root.target

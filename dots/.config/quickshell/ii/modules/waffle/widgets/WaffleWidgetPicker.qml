@@ -100,7 +100,7 @@ Scope {
                     to: 0
                     duration: 220
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
                 }
                 NumberAnimation {
                     target: pickerWindow
@@ -118,7 +118,7 @@ Scope {
                     to: pickerWindow.travel
                     duration: 160
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
                 }
                 NumberAnimation {
                     target: pickerWindow

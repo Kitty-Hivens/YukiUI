@@ -73,7 +73,7 @@ ExpandableChoiceButton {
                 colBackgroundHover: Looks.colors.bg2Hover
                 colBackgroundActive: Looks.colors.bg2Active
                 implicitHeight: 30
-                implicitWidth: 148
+                implicitWidth: Looks.sizes.controlActionWidth
                 text: root.device?.connected ? Translation.tr("Disconnect") : Translation.tr("Connect")
 
                 onClicked: {

@@ -55,7 +55,7 @@ LockScreen {
                 to: 0
                 duration: 350
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -81,7 +81,7 @@ LockScreen {
                 NumberAnimation {
                     duration: 400
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
                 }
             }
         }
@@ -110,7 +110,7 @@ LockScreen {
                 to: -height * 1.1
                 duration: 250
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
             ScriptAction {
                 script: {

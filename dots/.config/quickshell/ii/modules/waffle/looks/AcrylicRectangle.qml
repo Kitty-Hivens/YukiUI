@@ -33,7 +33,7 @@ Rectangle {
             NumberAnimation {
                 duration: 80
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
             }
         }
         onPaint: {

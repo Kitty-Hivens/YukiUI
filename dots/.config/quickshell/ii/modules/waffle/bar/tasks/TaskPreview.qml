@@ -62,7 +62,7 @@ PopupWindow {
         to: 1
         duration: 120
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
     }
 
     Timer {

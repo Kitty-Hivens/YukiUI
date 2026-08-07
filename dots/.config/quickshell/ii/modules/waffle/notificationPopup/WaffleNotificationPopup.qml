@@ -50,7 +50,7 @@ Scope {
             height: Math.min(contentItem.height + topMargin + bottomMargin, parent.height)
             width: parent.width - Appearance.sizes.elevationMargin * 2
             
-            implicitWidth: 396
+            implicitWidth: Looks.sizes.notificationWidth
             spacing:12
 
             model: ScriptModel {

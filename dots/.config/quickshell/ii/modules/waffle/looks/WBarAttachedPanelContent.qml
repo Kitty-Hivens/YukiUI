@@ -106,12 +106,12 @@ Item {
         to: root.visualMargin
         duration: 200
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
     }
     component CloseAnim: PropertyAnimation {
         target: panelContent
         duration: root.closeAnimDuration
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
     }
 }

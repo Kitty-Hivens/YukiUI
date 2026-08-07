@@ -136,6 +136,24 @@ Singleton {
         property color selectionFg: Appearance.colors.colOnPrimaryContainer
     }
 
+    /// Measurements shared by more than one place. Everything here was a literal
+    /// repeated across files -- the same page height in four control pages, the same
+    /// width in the start menu and the panel that stands beside it -- so changing one
+    /// of them meant finding the rest. The values are unchanged.
+    property QtObject sizes: QtObject {
+        id: sizes
+        /// The bar.
+        property int barHeight: 48
+        /// A control page inside the action centre: Wi-Fi, Bluetooth, sound, night light.
+        property int controlPageHeight: 400
+        /// The button along the trailing edge of a row in one of those pages.
+        property int controlActionWidth: 148
+        /// The start menu, and the search panel that takes its place.
+        property int menuWidth: 832
+        /// A notification, in the popup stack and in the centre.
+        property int notificationWidth: 396
+    }
+
     radius: QtObject {
         id: radius
         property int none: 0
@@ -163,11 +181,6 @@ Singleton {
             property real larger: 15
             property real xlarger: 17
         }
-        property QtObject variableAxes: QtObject {
-            property var ui: ({
-                "wdth": 25
-            })
-        }
     }
 
     transition: QtObject {
@@ -176,10 +189,19 @@ Singleton {
         property int velocity: 850
 
         property QtObject easing: QtObject {
+            // Fluent's three curves, named for what they do rather than for the CSS
+            // keywords: what was called easeIn decelerates and what was called
+            // easeOut accelerates, which is the right way round for entering and
+            // leaving but reads backwards at every use. Both were also degenerate --
+            // a control point in the corner starts at full speed, so panels arrived
+            // with a snap instead of settling.
             property QtObject bezierCurve: QtObject {
-                readonly property list<real> easeInOut: [0.42,0.00,0.58,1.00,1,1]
-                readonly property list<real> easeIn: [0,1,1,1,1,1]
-                readonly property list<real> easeOut: [1,0,1,1,1,1]
+                /// Entering: quick off the mark, long settle.
+                readonly property list<real> decelerate: [0.1, 0.9, 0.2, 1.0, 1, 1]
+                /// Leaving: gentle release, then away.
+                readonly property list<real> accelerate: [0.7, 0.0, 1.0, 0.5, 1, 1]
+                /// Moving between two places on screen.
+                readonly property list<real> standard: [0.8, 0.0, 0.2, 1.0, 1, 1]
             }
         }
 
@@ -187,7 +209,7 @@ Singleton {
             ColorAnimation {
                 duration: 80
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -195,7 +217,7 @@ Singleton {
             NumberAnimation {
                 duration: 120
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -203,7 +225,7 @@ Singleton {
             NumberAnimation {
                 duration: 200
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -211,7 +233,7 @@ Singleton {
             NumberAnimation {
                 duration: 250
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -219,7 +241,7 @@ Singleton {
             NumberAnimation {
                 duration: 250
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: transition.easing.bezierCurve.accelerate
             }
         }
 
@@ -227,7 +249,7 @@ Singleton {
             NumberAnimation {
                 duration: 170
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeInOut
+                easing.bezierCurve: transition.easing.bezierCurve.standard
             }
         }
 
@@ -235,7 +257,7 @@ Singleton {
             NumberAnimation {
                 duration: 170
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeInOut
+                easing.bezierCurve: transition.easing.bezierCurve.standard
             }
         }
 
@@ -243,7 +265,7 @@ Singleton {
             AnchorAnimation {
                 duration: 160
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 
@@ -251,7 +273,7 @@ Singleton {
             NumberAnimation {
                 duration: 1000
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: transition.easing.bezierCurve.easeIn
+                easing.bezierCurve: transition.easing.bezierCurve.decelerate
             }
         }
 

@@ -10,7 +10,7 @@ Rectangle {
     id: root
 
     color: Looks.colors.bg0
-    implicitHeight: 48
+    implicitHeight: Looks.sizes.barHeight
     
     Rectangle {
         id: border

@@ -29,7 +29,7 @@ Item {
         anchors.fill: parent
 
         BodyRectangle {
-            implicitHeight: 400
+            implicitHeight: Looks.sizes.controlPageHeight
             implicitWidth: 50
 
             ColumnLayout {
