@@ -21,9 +21,9 @@ WBarAttachedPanelContent {
     revealFromLeft: true
 
     readonly property list<string> cards: Config.options.waffles.widgets.cards
-    readonly property int columnWidth: 336
-    readonly property int columnSpacing: 16
-    readonly property int boardPadding: 24
+    readonly property int columnWidth: BoardLooks.columnWidth
+    readonly property int columnSpacing: BoardLooks.gutter
+    readonly property int boardPadding: BoardLooks.padding
 
     function widthForColumns(columns) {
         return root.columnWidth * columns + root.columnSpacing * (columns - 1) + root.boardPadding * 2;
@@ -55,7 +55,9 @@ WBarAttachedPanelContent {
     contentItem: WPane {
         contentItem: BodyRectangle {
             implicitWidth: root.widthForColumns(root.fittingColumns)
-            implicitHeight: 860
+            // As tall as the window leaves it: the board runs from the bar to the top
+            // of the screen, whatever screen that is.
+            implicitHeight: Math.max(root.height - root.visualMargin * 2, BoardLooks.unit * 20)
             Behavior on implicitWidth {
                 animation: Looks.transition.resize.createObject(this)
             }

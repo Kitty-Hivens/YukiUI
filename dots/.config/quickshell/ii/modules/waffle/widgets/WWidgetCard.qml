@@ -28,7 +28,7 @@ Rectangle {
 
     Layout.fillWidth: true
     Layout.alignment: Qt.AlignTop
-    implicitHeight: contentColumn.implicitHeight + 32
+    implicitHeight: contentColumn.implicitHeight + BoardLooks.cardPadding * 2
 
     color: Looks.colors.bg1
     radius: Looks.radius.medium
@@ -42,9 +42,9 @@ Rectangle {
         id: contentColumn
         anchors {
             fill: parent
-            margins: 16
+            margins: BoardLooks.cardPadding
         }
-        spacing: 10
+        spacing: Math.round(BoardLooks.unit * 0.66)
 
         RowLayout {
             Layout.fillWidth: true

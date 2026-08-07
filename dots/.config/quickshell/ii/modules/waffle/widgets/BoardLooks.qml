@@ -17,16 +17,32 @@ import qs.modules.waffle.looks
 Singleton {
     id: root
 
+    /// The board's unit of measure: the height of a line of its own text, the way
+    /// Plasma sizes its grid. Everything below is a multiple of it, so the board
+    /// follows the font and the scale factor instead of a set of pixel counts.
+    readonly property real unit: boardMetrics.height
+    readonly property int columnWidth: Math.round(root.unit * 22)
+    readonly property int gutter: Math.round(root.unit)
+    readonly property int padding: Math.round(root.unit * 1.5)
+    readonly property int cardPadding: Math.round(root.unit)
+    readonly property int controlSize: Math.round(root.unit * 1.6)
+
+    FontMetrics {
+        id: boardMetrics
+        font.family: Looks.font.family.ui
+        font.pixelSize: Looks.font.pixelSize.normal
+    }
+
     /// Small type for readings and labels, set in the configured monospace face.
     readonly property string readoutFamily: Config.options.appearance.fonts.monospace
-    readonly property int readoutSize: 10
+    readonly property int readoutSize: Math.round(root.unit * 0.66)
     readonly property real readoutSpacing: 0.8
 
     /// Headings are set in caps and spaced out, the way panel labels are.
     readonly property real headingSpacing: 1.4
 
     /// Length of the corner marks that stand in for a full border.
-    readonly property int cornerLength: 10
+    readonly property int cornerLength: Math.round(root.unit * 0.66)
     readonly property int cornerWeight: 1
 
     readonly property color cornerColor: ColorUtils.transparentize(Looks.colors.fg, 0.55)
