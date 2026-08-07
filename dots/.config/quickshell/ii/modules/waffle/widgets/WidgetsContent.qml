@@ -38,6 +38,9 @@ WBarAttachedPanelContent {
     contentItem: WPane {
         contentItem: BodyRectangle {
             implicitWidth: root.columnWidth * BoardState.columns + root.columnSpacing * (BoardState.columns - 1) + 24 * 2
+            Behavior on implicitWidth {
+                animation: Looks.transition.resize.createObject(this)
+            }
             implicitHeight: 860
 
             ColumnLayout {

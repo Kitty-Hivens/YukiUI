@@ -48,8 +48,6 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            // Held at the height of the arrange controls whether they are showing or
-            // not, so entering and leaving arranging does not resize every card.
             Layout.preferredHeight: 24
             spacing: 8
 
@@ -85,25 +83,7 @@ Rectangle {
                 font.letterSpacing: BoardLooks.readoutSpacing
             }
 
-            // While the board is being arranged, the heading carries the controls for
-            // arranging this card instead of a menu holding one item.
-            CardButton {
-                visible: root.unpinnable && BoardState.editing
-                enabled: BoardState.canMove(root.cardId, -1)
-                iconName: "arrow-left"
-                onClicked: BoardState.moveCard(root.cardId, -1)
-            }
-            CardButton {
-                visible: root.unpinnable && BoardState.editing
-                enabled: BoardState.canMove(root.cardId, 1)
-                iconName: "arrow-right"
-                onClicked: BoardState.moveCard(root.cardId, 1)
-            }
-            CardButton {
-                visible: root.unpinnable && BoardState.editing
-                iconName: "dismiss"
-                onClicked: BoardState.removeCard(root.cardId)
-            }
+
         }
 
         Rectangle {
@@ -128,10 +108,66 @@ Rectangle {
         }
     }
 
-    component CardButton: WPanelIconButton {
-        implicitWidth: 24
-        implicitHeight: 24
-        iconSize: 14
-        Layout.alignment: Qt.AlignVCenter
+    // Arranging happens over the card, not inside its heading: picking it up and
+    // dropping it somewhere is the whole gesture, and the readings stay put.
+    readonly property bool arrangeable: root.unpinnable && BoardState.editing
+
+    z: dragHandler.active ? 10 : 0
+    transform: Translate {
+        x: dragHandler.active ? dragHandler.activeTranslation.x : 0
+        y: dragHandler.active ? dragHandler.activeTranslation.y : 0
+    }
+
+    DragHandler {
+        id: dragHandler
+        enabled: root.arrangeable
+        target: null
+        cursorShape: Qt.ClosedHandCursor
+        onActiveChanged: {
+            if (!active)
+                root.dropWhereItLies();
+        }
+    }
+
+    /// The card under this one's middle is the place it was dropped on.
+    function dropWhereItLies() {
+        const middleX = root.x + dragHandler.activeTranslation.x + root.width / 2;
+        const middleY = root.y + dragHandler.activeTranslation.y + root.height / 2;
+        for (const sibling of root.parent.children) {
+            if (sibling === root || sibling.cardId === undefined || !sibling.visible)
+                continue;
+            if (middleX < sibling.x || middleX > sibling.x + sibling.width)
+                continue;
+            if (middleY < sibling.y || middleY > sibling.y + sibling.height)
+                continue;
+            BoardState.moveCardTo(root.cardId, BoardState.pinnedCards.indexOf(sibling.cardId));
+            return;
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: root.arrangeable
+        color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0.75 : 0.94)
+        radius: root.radius
+        border.width: 1
+        border.color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0 : 0.5)
+
+        Behavior on color {
+            animation: Looks.transition.color.createObject(this)
+        }
+
+        WPanelIconButton {
+            anchors {
+                top: parent.top
+                right: parent.right
+                margins: 6
+            }
+            implicitWidth: 26
+            implicitHeight: 26
+            iconSize: 14
+            iconName: "dismiss"
+            onClicked: BoardState.removeCard(root.cardId)
+        }
     }
 }

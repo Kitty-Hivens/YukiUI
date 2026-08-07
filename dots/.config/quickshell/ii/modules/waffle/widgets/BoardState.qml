@@ -61,7 +61,17 @@ Singleton {
         Config.options.waffles.widgets.cards = root.pinnedCards.filter(card => card !== cardId);
     }
 
-    /// Moves a card by one place, which is what the arrows on it do.
+    /// Puts a card where another one is, which is what dropping it there means.
+    function moveCardTo(cardId, index) {
+        const cards = root.pinnedCards.slice();
+        const from = cards.indexOf(cardId);
+        if (from === -1 || index < 0 || index >= cards.length || from === index)
+            return;
+        cards.splice(index, 0, cards.splice(from, 1)[0]);
+        Config.options.waffles.widgets.cards = cards;
+    }
+
+    /// Moves a card by one place, for the keyboard.
     function moveCard(cardId, delta) {
         const cards = root.pinnedCards.slice();
         const from = cards.indexOf(cardId);

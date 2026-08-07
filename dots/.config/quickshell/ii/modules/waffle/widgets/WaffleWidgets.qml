@@ -7,6 +7,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.waffle.widgets
 
 Scope {
     id: root
@@ -47,7 +48,27 @@ Scope {
                 id: focusGrab
                 active: true
                 windows: [panelWindow]
-                onCleared: content.close()
+                onCleared: {
+                    // Widening the board resizes its window, and the compositor drops the
+                    // grab when it does. That is not a click past the board.
+                    if (resizeGuard.running) {
+                        focusGrab.active = true;
+                        return;
+                    }
+                    content.close();
+                }
+            }
+
+            Timer {
+                id: resizeGuard
+                interval: 250
+            }
+
+            Connections {
+                target: BoardState
+                function onColumnsChanged() {
+                    resizeGuard.restart();
+                }
             }
 
             Connections {
