@@ -29,6 +29,17 @@ Rectangle {
     Layout.fillWidth: true
     Layout.alignment: Qt.AlignTop
     implicitHeight: contentColumn.implicitHeight + BoardLooks.cardPadding * 2
+    height: implicitHeight
+    onHeightChanged: root.parent?.relayout?.()
+
+    Behavior on x {
+        enabled: !dragHandler.active
+        animation: Looks.transition.move.createObject(this)
+    }
+    Behavior on y {
+        enabled: !dragHandler.active
+        animation: Looks.transition.move.createObject(this)
+    }
 
     color: Looks.colors.bg1
     radius: Looks.radius.medium
@@ -124,25 +135,34 @@ Rectangle {
         target: null
         cursorShape: Qt.ClosedHandCursor
         onActiveChanged: {
-            if (!active)
-                root.dropWhereItLies();
+            if (active) {
+                root.parent.carried = root;
+                return;
+            }
+            root.dropWhereItLies();
+            root.parent.carried = null;
+        }
+        onCentroidChanged: {
+            if (dragHandler.active)
+                root.showWhereItWouldLand();
         }
     }
 
-    /// The card under this one's middle is the place it was dropped on.
+    function carriedMiddle() {
+        return Qt.point(root.x + dragHandler.activeTranslation.x + root.width / 2, root.y + dragHandler.activeTranslation.y + root.height / 2);
+    }
+
+    /// The others step aside while the card is still in the air, so where it will
+    /// land is visible before it is let go.
+    function showWhereItWouldLand() {
+        const middle = root.carriedMiddle();
+        const index = root.parent.indexAt(middle.x, middle.y);
+        if (index !== -1)
+            BoardState.moveCardTo(root.cardId, index);
+    }
+
     function dropWhereItLies() {
-        const middleX = root.x + dragHandler.activeTranslation.x + root.width / 2;
-        const middleY = root.y + dragHandler.activeTranslation.y + root.height / 2;
-        for (const sibling of root.parent.children) {
-            if (sibling === root || sibling.cardId === undefined || !sibling.visible)
-                continue;
-            if (middleX < sibling.x || middleX > sibling.x + sibling.width)
-                continue;
-            if (middleY < sibling.y || middleY > sibling.y + sibling.height)
-                continue;
-            BoardState.moveCardTo(root.cardId, BoardState.pinnedCards.indexOf(sibling.cardId));
-            return;
-        }
+        root.showWhereItWouldLand();
     }
 
     Rectangle {
@@ -157,17 +177,29 @@ Rectangle {
             animation: Looks.transition.color.createObject(this)
         }
 
-        WPanelIconButton {
+        RowLayout {
             anchors {
                 top: parent.top
                 right: parent.right
                 margins: 6
             }
-            implicitWidth: 26
-            implicitHeight: 26
-            iconSize: 14
-            iconName: "dismiss"
-            onClicked: BoardState.removeCard(root.cardId)
+            spacing: 4
+
+            WPanelIconButton {
+                implicitWidth: 26
+                implicitHeight: 26
+                iconSize: 14
+                iconName: BoardState.spanOf(root.cardId) === 2 ? "arrow-minimize" : "arrow-expand"
+                onClicked: BoardState.toggleSpan(root.cardId)
+            }
+
+            WPanelIconButton {
+                implicitWidth: 26
+                implicitHeight: 26
+                iconSize: 14
+                iconName: "dismiss"
+                onClicked: BoardState.removeCard(root.cardId)
+            }
         }
     }
 }

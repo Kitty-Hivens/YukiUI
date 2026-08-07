@@ -11,9 +11,9 @@ import qs.modules.waffle.looks
 import qs.modules.waffle.widgets
 import qs.modules.waffle.widgets.cards
 
-// A board of cards, two columns wide. The board this sits beside gives a third of
-// itself to cards and the rest to a feed of stories; there is no such feed here, so
-// the cards get the room and the news, when it is switched on, is a card among them.
+// A board of cards. The board this sits beside gives a third of itself to cards and
+// the rest to a feed of stories; there is no such feed here, so the cards get the
+// room and the news, when it is switched on, is a card among them.
 WBarAttachedPanelContent {
     id: root
 
@@ -28,6 +28,7 @@ WBarAttachedPanelContent {
     function widthForColumns(columns) {
         return root.columnWidth * columns + root.columnSpacing * (columns - 1) + root.boardPadding * 2;
     }
+
     /// The window is held at the widest the board can be. Resizing a layer surface
     /// makes the compositor drop the focus grab and blanks the surface while it
     /// settles, and neither is worth an animation.
@@ -54,9 +55,13 @@ WBarAttachedPanelContent {
 
     contentItem: WPane {
         contentItem: BodyRectangle {
+            // Measured from the window rather than from the panel: the panel's height
+            // comes from this, and reading it back here would chase its own tail.
+            readonly property int roomForBoard: (root.QsWindow.window?.height ?? 1080) - root.visualMargin * 2
+
             implicitWidth: root.widthForColumns(root.fittingColumns)
-            readonly property int roomForBoard: root.height - root.visualMargin * 2
             implicitHeight: Config.options.waffles.widgets.fullHeight ? roomForBoard : Math.min(Config.options.waffles.widgets.height, roomForBoard)
+
             Behavior on implicitWidth {
                 animation: Looks.transition.resize.createObject(this)
             }
@@ -66,7 +71,7 @@ WBarAttachedPanelContent {
                     fill: parent
                     margins: root.boardPadding
                 }
-                spacing: 18
+                spacing: Math.round(BoardLooks.unit * 1.2)
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -116,80 +121,86 @@ WBarAttachedPanelContent {
                     interactive: !BoardState.editing
                     clip: true
                     contentWidth: width
-                    contentHeight: boardGrid.implicitHeight
+                    contentHeight: boardBody.implicitHeight
 
-                    GridLayout {
-                        id: boardGrid
+                    Item {
+                        id: boardBody
                         width: boardFlickable.width
-                        columns: root.fittingColumns
-                        columnSpacing: root.columnSpacing
-                        rowSpacing: root.columnSpacing
+                        implicitHeight: cardArea.implicitHeight + (extras.implicitHeight > 0 ? extras.implicitHeight + root.columnSpacing : 0)
 
-                        Repeater {
-                            model: ScriptModel {
-                                values: root.cards
-                            }
-                            delegate: WidgetCardChooser {}
+                        WidgetBoardArea {
+                            id: cardArea
+                            width: parent.width
+                            columns: root.fittingColumns
+                            columnWidth: root.columnWidth
+                            gutter: root.columnSpacing
                         }
 
-                        NewsCard {
-                            Layout.columnSpan: root.fittingColumns
-                        }
-
-                        WText {
-                            Layout.columnSpan: root.fittingColumns
-                            Layout.fillWidth: true
-                            Layout.topMargin: 12
-                            visible: root.cards.length === 0 && !BoardState.editing
-                            horizontalAlignment: Text.AlignHCenter
-                            text: Translation.tr("No widgets are pinned")
-                            color: Looks.colors.subfg
-                        }
-
-                        // What is not on the board, offered while it is being arranged.
                         ColumnLayout {
-                            Layout.columnSpan: root.fittingColumns
-                            Layout.fillWidth: true
-                            Layout.topMargin: 8
-                            visible: BoardState.editing
-                            spacing: 10
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                implicitHeight: 1
-                                color: BoardLooks.rule
+                            id: extras
+                            anchors {
+                                top: cardArea.bottom
+                                topMargin: root.columnSpacing
+                                left: parent.left
+                                right: parent.right
                             }
+                            spacing: root.columnSpacing
 
-                            WText {
-                                text: Translation.tr("Add a widget").toUpperCase()
-                                color: BoardLooks.readoutColor
-                                font.family: BoardLooks.readoutFamily
-                                font.pixelSize: BoardLooks.readoutSize
-                                font.letterSpacing: BoardLooks.readoutSpacing
+                            NewsCard {
+                                Layout.fillWidth: true
                             }
 
                             WText {
                                 Layout.fillWidth: true
-                                visible: BoardState.unpinnedCards.length === 0
-                                text: Translation.tr("Everything is already on the board")
+                                visible: root.cards.length === 0 && !BoardState.editing
+                                horizontalAlignment: Text.AlignHCenter
+                                text: Translation.tr("No widgets are pinned")
                                 color: Looks.colors.subfg
                             }
 
-                            Flow {
+                            // What is not on the board, offered while it is being arranged.
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                visible: BoardState.editing
+                                spacing: 10
 
-                                Repeater {
-                                    model: ScriptModel {
-                                        values: BoardState.unpinnedCards
-                                    }
-                                    delegate: WBorderedButton {
-                                        id: addButton
-                                        required property var modelData
-                                        implicitHeight: 34
-                                        icon.name: BoardState.iconOf(addButton.modelData)
-                                        text: BoardState.nameOf(addButton.modelData)
-                                        onClicked: BoardState.addCard(addButton.modelData)
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 1
+                                    color: BoardLooks.rule
+                                }
+
+                                WText {
+                                    text: Translation.tr("Add a widget").toUpperCase()
+                                    color: BoardLooks.readoutColor
+                                    font.family: BoardLooks.readoutFamily
+                                    font.pixelSize: BoardLooks.readoutSize
+                                    font.letterSpacing: BoardLooks.readoutSpacing
+                                }
+
+                                WText {
+                                    Layout.fillWidth: true
+                                    visible: BoardState.unpinnedCards.length === 0
+                                    text: Translation.tr("Everything is already on the board")
+                                    color: Looks.colors.subfg
+                                }
+
+                                Flow {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Repeater {
+                                        model: ScriptModel {
+                                            values: BoardState.unpinnedCards
+                                        }
+                                        delegate: WBorderedButton {
+                                            id: addButton
+                                            required property var modelData
+                                            implicitHeight: 34
+                                            icon.name: BoardState.iconOf(addButton.modelData)
+                                            text: BoardState.nameOf(addButton.modelData)
+                                            onClicked: BoardState.addCard(addButton.modelData)
+                                        }
                                     }
                                 }
                             }
@@ -201,8 +212,8 @@ WBarAttachedPanelContent {
     }
 
     component HeaderButton: WPanelIconButton {
-        implicitWidth: 32
-        implicitHeight: 32
-        iconSize: 16
+        implicitWidth: Math.round(BoardLooks.controlSize * 1.4)
+        implicitHeight: Math.round(BoardLooks.controlSize * 1.4)
+        iconSize: Math.round(BoardLooks.controlSize * 0.7)
     }
 }

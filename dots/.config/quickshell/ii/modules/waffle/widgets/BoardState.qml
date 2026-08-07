@@ -52,6 +52,21 @@ Singleton {
         return "apps";
     }
 
+    /// How many columns a card takes. Two is as far as it goes: the board is two
+    /// columns at its narrowest, and a third size would collapse onto one of these.
+    readonly property list<string> wideCards: Config.options?.waffles.widgets.wideCards ?? []
+
+    function spanOf(cardId) {
+        return root.wideCards.indexOf(cardId) !== -1 ? 2 : 1;
+    }
+
+    function toggleSpan(cardId) {
+        if (root.spanOf(cardId) === 2)
+            Config.options.waffles.widgets.wideCards = root.wideCards.filter(card => card !== cardId);
+        else
+            Config.options.waffles.widgets.wideCards = root.wideCards.concat([cardId]);
+    }
+
     function addCard(cardId) {
         if (root.pinnedCards.indexOf(cardId) !== -1)
             return;

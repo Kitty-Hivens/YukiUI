@@ -687,6 +687,8 @@ Singleton {
                     // its own, which is a matter of taste rather than of layout.
                     property bool fullHeight: false
                     property int height: 860
+                    /// Cards listed here take two columns instead of one.
+                    property list<string> wideCards: []
                     // The board of the thing this copies opens on its own cards and keeps
                     // the story feed folded away; ours has nowhere to fetch stories from
                     // until feeds are named here, so it stays off and silent until then.
