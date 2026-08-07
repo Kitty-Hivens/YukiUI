@@ -84,8 +84,6 @@ Item {
                     Layout.fillWidth: true
                     animateAppearance: false
 
-                    contentHeight: contentLayout.implicitHeight
-                    contentWidth: width
                     clip: true
                     spacing: 4
 
@@ -111,7 +109,7 @@ Item {
                 }
                 text: Translation.tr("More Bluetooth settings")
                 onClicked: {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "sidebarLeft", "toggle"]);
+                    GlobalStates.sidebarLeftOpen = false;
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.bluetooth]);
                 }
             }

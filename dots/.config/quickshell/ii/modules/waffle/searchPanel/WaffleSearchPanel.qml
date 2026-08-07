@@ -19,9 +19,9 @@ Scope {
         function onSearchPanelOpenChanged() {
             if (!GlobalStates.searchPanelOpen)
                 return;
-            // The two panels sit in the same place and answer the same query, so
-            // one opening closes the other.
-            GlobalStates.searchOpen = false;
+            // The two panels sit in the same place and answer the same query, and
+            // the rest of the panels hanging off the bar put each other away too.
+            WPanels.keepOnly("searchPanelOpen");
             LauncherSearch.query = "";
             panelLoader.active = true;
         }

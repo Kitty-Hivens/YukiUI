@@ -60,7 +60,7 @@ AppButton {
             {
                 text: Translation.tr("Search"),
                 action: () => {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "overview", "toggle"]);
+                    GlobalStates.searchPanelOpen = true;
                 }
             },
         ]

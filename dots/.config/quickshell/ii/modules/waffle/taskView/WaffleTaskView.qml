@@ -40,7 +40,10 @@ Scope {
 
                 WlrLayershell.namespace: "quickshell:wTaskView"
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+                // Exclusive, like the session screen and like the other family's
+                // overview: OnDemand only hands the keyboard over on a click, so
+                // Escape did nothing until the panel had been clicked first.
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
                 color: "transparent"
 
                 anchors {

@@ -25,8 +25,8 @@ WMouseAreaButton {
 
     property string iconName: AppSearch.guessIcon(hyprlandClient?.class)
 
-    color: drag.active ? ColorUtils.transparentize(Looks.colors.bg1Base) : (containsMouse ? Looks.colors.bg1Base : Looks.colors.bgPanelFooterBackground)
-    borderColor: ColorUtils.transparentize(Looks.colors.bg2Border, drag.active ? 1 : 0)
+    color: root.Drag.active ? ColorUtils.transparentize(Looks.colors.bg1Base) : (containsMouse ? Looks.colors.bg1Base : Looks.colors.bgPanelFooterBackground)
+    borderColor: ColorUtils.transparentize(Looks.colors.bg2Border, root.Drag.active ? 1 : 0)
     radius: Looks.radius.xLarge
 
     property real titleBarImplicitHeight: titleBar.implicitHeight
@@ -46,7 +46,7 @@ WMouseAreaButton {
                 radius: root.background.radius
                 anchors {
                     fill: parent
-                    topMargin: root.drag.active ? root.titleBarImplicitHeight : 0
+                    topMargin: root.Drag.active ? root.titleBarImplicitHeight : 0
                 }
             }
         }
@@ -91,7 +91,7 @@ WMouseAreaButton {
 
         RowLayout {
             id: titleBar
-            opacity: root.drag.active ? 0 : 1
+            opacity: root.Drag.active ? 0 : 1
             spacing: 8
             WAppIcon {
                 Layout.leftMargin: 10

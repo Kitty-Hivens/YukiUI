@@ -40,7 +40,11 @@ AppButton {
     tryCustomIcon: false
     
     onHoverTimedOut: {
-        root.hoverPreviewRequested()
+        // Replaces the base handler rather than adding to it, so what the base did
+        // with the same signal is done here too -- otherwise nothing ever raises
+        // the tooltip flag and a button with no windows has no tooltip at all.
+        root.shouldShowTooltip = true;
+        root.hoverPreviewRequested();
     }
 
     onClicked: {

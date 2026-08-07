@@ -76,8 +76,6 @@ Item {
                     Layout.fillWidth: true
                     animateAppearance: false
 
-                    contentHeight: contentLayout.implicitHeight
-                    contentWidth: width
                     clip: true
                     spacing: 4
 
@@ -103,7 +101,7 @@ Item {
                 }
                 text: Translation.tr("More Internet settings")
                 onClicked: {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "sidebarLeft", "toggle"]);
+                    GlobalStates.sidebarLeftOpen = false;
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.network]);
                 }
             }

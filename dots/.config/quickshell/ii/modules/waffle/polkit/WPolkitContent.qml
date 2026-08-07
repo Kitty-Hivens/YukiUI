@@ -77,7 +77,7 @@ Rectangle {
 
                         WAppIcon {
                             iconName: PolkitService.flow?.iconName ?? "window-shield"
-                            fallback: PolkitService.flow?.iconName == "" ? `${Looks.iconsPath}/window-shield` : PolkitService.flow.iconName
+                            fallback: (PolkitService.flow?.iconName ?? "") === "" ? `${Looks.iconsPath}/window-shield` : PolkitService.flow.iconName
                             isMask: PolkitService.flow?.iconName === ""
                             tryCustomIcon: false
                         }

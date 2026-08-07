@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.modules.common
+import qs.modules.waffle
 import qs.modules.waffle.actionCenter
 import qs.modules.waffle.background
 import qs.modules.waffle.bar
@@ -26,6 +27,11 @@ import qs.modules.ii.screenTranslator
 import qs.modules.ii.wallpaperSelector
 
 Scope {
+    // Touched here so it exists from the start: it is what keeps a panel from being
+    // mapped over a fullscreen game, and a singleton nobody has asked for yet is a
+    // singleton that is not watching.
+    Component.onCompleted: WPanels.enforce()
+
     PanelLoader { component: WaffleActionCenter {} }
     PanelLoader { component: WaffleBar {} }
     PanelLoader { component: WaffleBackground {} }

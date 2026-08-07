@@ -82,7 +82,7 @@ Scope {
     IpcHandler {
         target: "sidebarLeft"
 
-        function toggle() {
+        function toggle(): void {
             root.toggleOpen();
         }
     }

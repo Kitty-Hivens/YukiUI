@@ -31,9 +31,14 @@ WBarAttachedPanelContent {
     }
 
     Keys.onPressed: event => {
-        // Prevent Esc and Backspace from registering
-        if (event.key === Qt.Key_Escape)
+        // This handler replaces the base one rather than adding to it, so what the
+        // base did for Escape has to be done here or the menu cannot be dismissed
+        // with the key that dismisses every other panel.
+        if (event.key === Qt.Key_Escape) {
+            root.close();
+            event.accepted = true;
             return;
+        }
 
         // Handle Backspace: focus and delete character if not focused
         if (event.key === Qt.Key_Backspace) {
