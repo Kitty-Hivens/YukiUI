@@ -35,10 +35,7 @@ WBarAttachedPanelContent {
         return Translation.tr("Good evening");
     }
 
-    maskItem: boardPane
-
     contentItem: WPane {
-        id: boardPane
         contentItem: BodyRectangle {
             implicitWidth: root.columnWidth * BoardState.columns + root.columnSpacing * (BoardState.columns - 1) + 24 * 2
             implicitHeight: 860

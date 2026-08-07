@@ -40,11 +40,7 @@ Scope {
             // Input only where the panel is drawn, so a click past it reaches what is
             // behind and the focus grab can close the panel.
             mask: Region {
-                item: content.notificationArea
-
-                Region {
-                    item: content.calendarArea
-                }
+                item: content.visibleArea
             }
 
             HyprlandFocusGrab {

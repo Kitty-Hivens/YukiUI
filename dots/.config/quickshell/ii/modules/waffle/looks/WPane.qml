@@ -24,6 +24,12 @@ Item {
         target: borderRect
     }
 
+    // Anything the pane's own contents do not take is still a click on the pane.
+    MouseArea {
+        anchors.fill: contentRect
+        z: -1
+    }
+
     Rectangle {
         id: borderRect
         z: 1
