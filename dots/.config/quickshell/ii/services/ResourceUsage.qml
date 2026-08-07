@@ -70,7 +70,10 @@ Singleton {
     }
 
 	Timer {
-		interval: 1
+        // The configured interval, which was being ignored: a hardcoded 1 meant both
+        // /proc files were read a thousand times a second, which is load the shell
+        // makes for itself and then reports as the machine's.
+        interval: Config?.options.resources.updateInterval ?? 3000
         running: true 
         repeat: true
 		onTriggered: {
@@ -87,11 +90,15 @@ Singleton {
 
             // Parse CPU usage
             const textStat = fileStat.text()
-            const cpuLine = textStat.match(/^cpu\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/)
+            // All ten fields of the line, not the first seven: steal and the guest
+            // counters belong in the total too.
+            const cpuLine = textStat.match(/^cpu\s+(.*)/)
             if (cpuLine) {
-                const stats = cpuLine.slice(1).map(Number)
+                const stats = cpuLine[1].trim().split(/\s+/).map(Number)
                 const total = stats.reduce((a, b) => a + b, 0)
-                const idle = stats[3]
+                // Waiting on a disk is not the processor being busy. Counting iowait
+                // as work is what makes a machine reading a slow disk look pinned.
+                const idle = stats[3] + (stats[4] ?? 0)
 
                 if (previousCpuStats) {
                     const totalDiff = total - previousCpuStats.total
