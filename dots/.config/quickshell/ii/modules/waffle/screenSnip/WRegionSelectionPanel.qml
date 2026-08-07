@@ -185,7 +185,9 @@ PanelWindow {
 
                 // Image post-processing
                 snipProc.startDetached();
-                root.close();
+                // Closed after this handler returns: closing tears down the drag manager
+                // that is still running it, and it goes on to reset itself afterwards.
+                Qt.callLater(root.close);
             }
 
             WRectangularSelection {

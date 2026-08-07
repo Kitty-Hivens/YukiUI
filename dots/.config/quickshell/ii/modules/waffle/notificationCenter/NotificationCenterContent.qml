@@ -19,6 +19,11 @@ WBarAttachedPanelContent {
 
     property bool collapsed: false
 
+    // Two panes with empty space above them, so the mask follows both rather than
+    // the full-height column they sit in.
+    readonly property alias notificationArea: notificationPane
+    readonly property alias calendarArea: calendarPane
+
     contentItem: ColumnLayout {
         id: contentLayout
         anchors {

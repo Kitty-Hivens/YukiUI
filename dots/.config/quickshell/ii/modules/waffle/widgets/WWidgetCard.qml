@@ -48,6 +48,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            // Held at the height of the arrange controls whether they are showing or
+            // not, so entering and leaving arranging does not resize every card.
+            Layout.preferredHeight: 24
             spacing: 8
 
             FluentIcon {

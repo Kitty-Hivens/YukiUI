@@ -50,14 +50,10 @@ MouseArea {
             return;
         }
         dragging = false
-        // Reset before telling anyone, because what listens may close the panel this
-        // lives on -- and then there is no object left to reset.
-        const releasedX = root._dragDiffX;
-        const releasedY = root._dragDiffY;
+        root.dragReleased(_dragDiffX, _dragDiffY);
         if (root.automaticallyReset) {
             root.resetDrag();
         }
-        root.dragReleased(releasedX, releasedY);
     }
     onPositionChanged: (mouse) => {
         if (!root.interactive) {

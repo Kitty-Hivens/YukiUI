@@ -26,8 +26,10 @@ Item {
     // The part of the window the panel is actually drawn on. The window itself
     // reaches further -- across the whole screen height for the ones anchored top
     // and bottom, and over the margin the panel slides in from -- so a window that
-    // takes input everywhere swallows clicks aimed past the panel.
-    readonly property alias visibleArea: panelContent
+    // takes input everywhere swallows clicks aimed past the panel. A panel whose
+    // content does not fill the sliding area points this at what it does fill.
+    property Item maskItem: panelContent
+    readonly property Item visibleArea: root.maskItem
 
     readonly property bool barAtBottom: Config.options.waffles.bar.bottom
 
