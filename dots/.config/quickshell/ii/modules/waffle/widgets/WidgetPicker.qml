@@ -91,13 +91,9 @@ BodyRectangle {
         Layout.fillWidth: true
         implicitHeight: sampleLoader.implicitHeight
 
-        z: sampleDrag.active ? 10 : 0
-        transform: Translate {
-            x: sampleDrag.active ? sampleDrag.activeTranslation.x : 0
-            y: sampleDrag.active ? sampleDrag.activeTranslation.y : 0
-        }
-
-        opacity: sampleDrag.active ? 0.85 : 1
+        // The card itself stays put and dims; what follows the pointer is drawn by
+        // the window, where nothing masks it.
+        opacity: sampleDrag.active ? 0.35 : 1
 
         HoverHandler {
             cursorShape: Qt.OpenHandCursor
@@ -110,24 +106,34 @@ BodyRectangle {
             onActiveChanged: {
                 root.carrying = active;
                 if (active) {
+                    BoardState.carriedOffer = sample.cardId;
+                    BoardState.carriedWidth = sample.width;
+                    sample.reportCarried();
                     sample.aimAtBoard();
                     return;
                 }
                 sample.dropOnBoard();
+                BoardState.carriedOffer = "";
             }
             onActiveTranslationChanged: {
-                if (sampleDrag.active)
-                    sample.aimAtBoard();
+                if (!sampleDrag.active)
+                    return;
+                sample.reportCarried();
+                sample.aimAtBoard();
             }
         }
 
         /// The board is a window of its own, so the pointer is followed through the
         /// picker window's own offset rather than through a shared parent.
-        /// mapToItem already accounts for the transform the drag applies, so the
-        /// translation must not be added a second time.
+        /// Where the carried copy sits in the window, so the window can draw it there.
+        function reportCarried() {
+            const corner = sample.mapToItem(null, 0, 0);
+            BoardState.carriedX = corner.x + sampleDrag.activeTranslation.x;
+            BoardState.carriedY = corner.y + sampleDrag.activeTranslation.y;
+        }
+
         function boardCell() {
-            const inWindow = sample.mapToItem(null, sample.width / 2, sample.height / 2);
-            return BoardState.cellAtBoardPoint(inWindow.x + BoardState.pickerLeft, inWindow.y, sample.cardId, sample.height);
+            return BoardState.cellAtBoardPoint(BoardState.carriedX + sample.width / 2, BoardState.carriedY + sample.height / 2, sample.cardId, sample.height);
         }
 
         function aimAtBoard() {

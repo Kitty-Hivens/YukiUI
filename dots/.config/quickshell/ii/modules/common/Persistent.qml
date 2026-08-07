@@ -98,7 +98,8 @@ Singleton {
             }
 
             property JsonObject widgets: JsonObject {
-                property bool wide: false
+                /// Width the board was last dragged to, in pixels. Zero means unset.
+                property int width: 0
             }
 
             property JsonObject search: JsonObject {

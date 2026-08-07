@@ -172,6 +172,15 @@ Item {
         root.placeCard(root.carried.cardId, root.dropColumn, root.dropRow, root.dropSpan, root.dropRows);
     }
 
+    // Laying out again is deferred so that a burst of changes settles into one pass.
+    // A timer rather than Qt.callLater: this dies with the board, and a call that
+    // outlives it lands in a context that no longer has these functions.
+    Timer {
+        id: relayoutSoon
+        interval: 0
+        onTriggered: root.relayout()
+    }
+
     Component.onCompleted: BoardState.grid = root
     Component.onDestruction: {
         if (BoardState.grid === root)
@@ -181,23 +190,23 @@ Item {
     onWidthChanged: root.relayout()
     onColumnsChanged: root.relayout()
     onCarriedChanged: root.relayout()
-    onDropColumnChanged: Qt.callLater(root.relayout)
-    onDropRowChanged: Qt.callLater(root.relayout)
-    onDropRowsChanged: Qt.callLater(root.relayout)
+    onDropColumnChanged: relayoutSoon.restart()
+    onDropRowChanged: relayoutSoon.restart()
+    onDropRowsChanged: relayoutSoon.restart()
 
     Connections {
         target: BoardState
         function onPinnedCardsChanged() {
-            Qt.callLater(root.relayout);
+            relayoutSoon.restart();
         }
         function onPlacementsChanged() {
-            Qt.callLater(root.relayout);
+            relayoutSoon.restart();
         }
         function onWideCardsChanged() {
-            Qt.callLater(root.relayout);
+            relayoutSoon.restart();
         }
         function onEditingChanged() {
-            Qt.callLater(root.relayout);
+            relayoutSoon.restart();
         }
     }
 
@@ -220,7 +229,7 @@ Item {
             values: BoardState.pinnedCards
         }
         delegate: WidgetCardChooser {}
-        onItemAdded: Qt.callLater(root.relayout)
-        onItemRemoved: Qt.callLater(root.relayout)
+        onItemAdded: relayoutSoon.restart()
+        onItemRemoved: relayoutSoon.restart()
     }
 }

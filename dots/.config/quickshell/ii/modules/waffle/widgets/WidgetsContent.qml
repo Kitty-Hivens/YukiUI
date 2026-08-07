@@ -11,9 +11,7 @@ import qs.modules.waffle.looks
 import qs.modules.waffle.widgets
 import qs.modules.waffle.widgets.cards
 
-// A board of cards. The board this sits beside gives a third of itself to cards and
-// the rest to a feed of stories; there is no such feed here, so the cards get the
-// room and the news, when it is switched on, is a card among them.
+// A board of cards, as wide as it was last dragged to be.
 WBarAttachedPanelContent {
     id: root
 
@@ -29,17 +27,23 @@ WBarAttachedPanelContent {
         return root.columnWidth * columns + root.columnSpacing * (columns - 1) + root.boardPadding * 2;
     }
 
-    /// The window is held at the widest the board can be. Resizing a layer surface
-    /// makes the compositor drop the focus grab and blanks the surface while it
-    /// settles, and neither is worth an animation.
     readonly property int screenWidth: QsWindow.window?.screen?.width ?? 1920
-    readonly property int maxWidth: Math.min(root.widthForColumns(3) + root.visualMargin * 2, root.screenWidth)
+    readonly property int maxWidth: Math.min(root.widthForColumns(4) + root.visualMargin * 2, root.screenWidth)
+    readonly property int minBoardWidth: root.widthForColumns(1)
+    readonly property int maxBoardWidth: Math.min(root.widthForColumns(4), root.maxWidth - root.visualMargin * 2)
 
-    /// Columns asked for, minus the ones the screen has no room for.
+    /// However many columns fit in the width the board was left at.
     readonly property int fittingColumns: {
-        const room = root.maxWidth - root.visualMargin * 2 - root.boardPadding * 2;
+        const asked = BoardState.width > 0 ? BoardState.width : root.widthForColumns(2);
+        const room = Math.max(root.minBoardWidth, Math.min(asked, root.maxBoardWidth)) - root.boardPadding * 2;
         const fits = Math.floor((room + root.columnSpacing) / (root.columnWidth + root.columnSpacing));
-        return Math.max(1, Math.min(BoardState.columns, fits));
+        return Math.max(1, fits);
+    }
+    onFittingColumnsChanged: BoardState.columnsForWidth = root.fittingColumns
+    Component.onCompleted: {
+        BoardState.columnsForWidth = root.fittingColumns;
+        BoardState.narrowWidth = root.widthForColumns(2);
+        BoardState.wideWidth = root.widthForColumns(3);
     }
 
     readonly property string greeting: {
@@ -54,73 +58,126 @@ WBarAttachedPanelContent {
     }
 
     contentItem: WPane {
+        id: boardPane
+
         contentItem: BodyRectangle {
-            // Measured from the window rather than from the panel: the panel's height
-            // comes from this, and reading it back here would chase its own tail.
+            id: paneBody
+
             readonly property int roomForBoard: (root.QsWindow.window?.height ?? 1080) - root.visualMargin * 2
 
             implicitWidth: root.widthForColumns(root.fittingColumns)
             implicitHeight: Config.options.waffles.widgets.fullHeight ? roomForBoard : Math.min(Config.options.waffles.widgets.height, roomForBoard)
 
-            // Told to the board's state so the picker window can stand beside it.
-            // The width the board is heading for, not the one it is animating through:
-            // the picker's window is positioned from this, and moving a layer surface
-            // every frame of an animation drops its focus grab and blanks it.
-            readonly property int settledWidth: root.widthForColumns(root.fittingColumns) + root.visualMargin
-
+            // The panel beside this one is placed from these, so they are reported as
+            // the pane measures -- border included -- rather than as the body alone.
             function reportGeometry() {
-                BoardState.boardWidth = settledWidth;
-                BoardState.boardHeight = implicitHeight;
-                BoardState.boardTop = mapToItem(null, 0, 0).y;
+                BoardState.boardWidth = boardPane.width + root.visualMargin;
+                BoardState.boardHeight = boardPane.height;
+                BoardState.boardTop = boardPane.mapToItem(null, 0, 0).y;
             }
-            onSettledWidthChanged: reportGeometry()
-            onImplicitHeightChanged: reportGeometry()
-            onYChanged: Qt.callLater(reportGeometry)
-            Component.onCompleted: Qt.callLater(reportGeometry)
+            onImplicitWidthChanged: reportSoon.restart()
+            onImplicitHeightChanged: reportSoon.restart()
+            Component.onCompleted: reportSoon.restart()
 
+            Timer {
+                id: reportSoon
+                interval: 0
+                onTriggered: paneBody.reportGeometry()
+            }
+
+            Connections {
+                target: boardPane
+                function onXChanged() {
+                    reportSoon.restart();
+                }
+                function onYChanged() {
+                    reportSoon.restart();
+                }
+            }
+
+            // Pinned to the corner of the panel rather than sitting in the heading row.
             RowLayout {
+                z: 5
+                anchors {
+                    top: parent.top
+                    right: parent.right
+                    margins: root.boardPadding
+                }
+                spacing: 6
+
+                HeaderButton {
+                    iconName: BoardState.wide ? "arrow-minimize" : "arrow-expand"
+                    onClicked: BoardState.toggleWide(root.widthForColumns(2), root.widthForColumns(3))
+                }
+                HeaderButton {
+                    iconName: BoardState.editing ? "checkmark" : "edit"
+                    checked: BoardState.editing
+                    onClicked: BoardState.editing = !BoardState.editing
+                }
+            }
+
+            // The right edge is a handle: the board is as wide as it is dragged to be.
+            Rectangle {
+                z: 6
+                anchors {
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                width: Math.round(BoardLooks.unit * 0.4)
+                color: edgeHover.hovered || edgeDrag.active ? Looks.colors.accent : "transparent"
+
+                Behavior on color {
+                    animation: Looks.transition.color.createObject(this)
+                }
+
+                HoverHandler {
+                    id: edgeHover
+                    cursorShape: Qt.SizeHorCursor
+                }
+                DragHandler {
+                    id: edgeDrag
+                    target: null
+                    cursorShape: Qt.SizeHorCursor
+                    yAxis.enabled: false
+                    property int widthAtStart: 0
+                    onActiveChanged: {
+                        if (active)
+                            widthAtStart = root.widthForColumns(root.fittingColumns);
+                    }
+                    onActiveTranslationChanged: {
+                        if (!edgeDrag.active)
+                            return;
+                        const wanted = edgeDrag.widthAtStart + edgeDrag.activeTranslation.x;
+                        BoardState.width = Math.max(root.minBoardWidth, Math.min(wanted, root.maxBoardWidth));
+                    }
+                }
+            }
+
+            ColumnLayout {
                 anchors {
                     fill: parent
                     margins: root.boardPadding
                 }
-                spacing: root.columnSpacing
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
                 spacing: Math.round(BoardLooks.unit * 1.2)
 
-                RowLayout {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    Layout.rightMargin: Math.round(BoardLooks.unit * 5)
+                    spacing: 2
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        WText {
-                            text: root.greeting
-                            font.pixelSize: Looks.font.pixelSize.xlarger
-                            font.weight: Looks.font.weight.strong
-                        }
-                        // The date and the clock read as an instrument's line, not a subtitle.
-                        WText {
-                            text: Qt.locale().toString(DateTime.clock.date, "ddd dd MMM yyyy").toUpperCase() + "  ·  " + DateTime.time
-                            color: BoardLooks.readoutColor
-                            font.family: BoardLooks.readoutFamily
-                            font.pixelSize: BoardLooks.readoutSize
-                            font.letterSpacing: BoardLooks.readoutSpacing
-                        }
+                    WText {
+                        text: root.greeting
+                        font.pixelSize: Looks.font.pixelSize.xlarger
+                        font.weight: Looks.font.weight.strong
                     }
-
-                    HeaderButton {
-                        iconName: BoardState.wide ? "arrow-minimize" : "arrow-expand"
-                        onClicked: BoardState.wide = !BoardState.wide
-                    }
-                    HeaderButton {
-                        iconName: BoardState.editing ? "checkmark" : "edit"
-                        checked: BoardState.editing
-                        onClicked: BoardState.editing = !BoardState.editing
+                    // The date and the clock read as an instrument's line, not a subtitle.
+                    WText {
+                        text: Qt.locale().toString(DateTime.clock.date, "ddd dd MMM yyyy").toUpperCase() + "  ·  " + DateTime.time
+                        color: BoardLooks.readoutColor
+                        font.family: BoardLooks.readoutFamily
+                        font.pixelSize: BoardLooks.readoutSize
+                        font.letterSpacing: BoardLooks.readoutSpacing
                     }
                 }
 
@@ -169,12 +226,9 @@ WBarAttachedPanelContent {
                                 text: Translation.tr("No widgets are pinned")
                                 color: Looks.colors.subfg
                             }
-
                         }
                     }
                 }
-            }
-
             }
         }
     }

@@ -12,6 +12,7 @@ Item {
     id: root
 
     signal closed
+    signal closing
 
     required property Item contentItem
     property real visualMargin: 12
@@ -20,6 +21,7 @@ Item {
     property bool revealFromLeft: true
 
     function close() {
+        root.closing();
         closeAnim.start();
     }
 

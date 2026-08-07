@@ -17,10 +17,23 @@ Singleton {
 
     property bool editing: false
 
+    /// The widths the snap-toggle moves between, set by the board that knows its
+    /// own column arithmetic.
+    property int narrowWidth: 0
+    property int wideWidth: 0
+
     /// What the board currently measures, so a window standing beside it knows
     /// where the board ends.
     property int boardWidth: 0
     property int boardHeight: 0
+
+    /// What is being carried out of the picker, drawn by the picker's window rather
+    /// than inside its pane -- a pane masks what it holds, and a card on its way to
+    /// the board is outside it.
+    property string carriedOffer: ""
+    property real carriedX: 0
+    property real carriedY: 0
+    property real carriedWidth: 0
 
     /// The picker's window, so the board's focus grab counts it as part of itself
     /// and a press on it is not a press past the board.
@@ -90,10 +103,20 @@ Singleton {
         root.grid.placeCard(cardId, cell.column, cell.row, cell.span, cell.rows ?? 1);
     }
 
-    /// A wider board fits another column of cards. Kept across sessions.
-    property bool wide: Persistent.states.widgets.wide
-    onWideChanged: Persistent.states.widgets.wide = root.wide
-    readonly property int columns: root.wide ? 3 : 2
+    /// The width the board was last left at, dragged by its edge. Columns follow
+    /// from it: as many as fit, rather than a choice between two sizes.
+    property int width: Persistent.states.widgets.width
+    onWidthChanged: Persistent.states.widgets.width = root.width
+    property int columnsForWidth: 2
+    readonly property int columns: root.columnsForWidth
+
+    /// Read from the width rather than remembered beside it, so the button that
+    /// snaps between narrow and wide always knows which way it is going.
+    readonly property bool wide: root.columns >= 3
+
+    function toggleWide(narrowWidth, wideWidth) {
+        root.width = root.wide ? narrowWidth : wideWidth;
+    }
 
     /// Everything that can be put on the board, in the order it is offered.
     readonly property list<string> knownCards: ["weather", "calendar", "todo"]

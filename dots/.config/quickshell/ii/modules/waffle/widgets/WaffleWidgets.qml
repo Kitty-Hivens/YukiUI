@@ -95,7 +95,7 @@ Scope {
             NewsFeed.refresh();
         }
         function widen(): void {
-            BoardState.wide = !BoardState.wide;
+            BoardState.width = BoardState.wide ? BoardState.narrowWidth : BoardState.wideWidth;
         }
         function arrange(): void {
             BoardState.editing = !BoardState.editing;
