@@ -62,11 +62,16 @@ Item {
         }
 
         Component.onCompleted: {
+            // Set once, not bound: these are where the panel starts from, and a panel
+            // that changes size later would otherwise be pushed back off the screen by
+            // its own opening offsets.
+            panelContent.sourceEdgeMargin = -(panelContent.implicitHeight + root.visualMargin);
+            panelContent.sideEdgeMargin = -(panelContent.implicitWidth + root.visualMargin);
             openAnim.start();
         }
 
-        property real sourceEdgeMargin: -(implicitHeight + root.visualMargin)
-        property real sideEdgeMargin: -(implicitWidth + root.visualMargin)
+        property real sourceEdgeMargin: 0
+        property real sideEdgeMargin: 0
         OpenAnim {
             id: openAnim
             properties: "sourceEdgeMargin, sideEdgeMargin"

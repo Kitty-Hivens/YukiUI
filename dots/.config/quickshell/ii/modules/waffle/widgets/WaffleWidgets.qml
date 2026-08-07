@@ -86,6 +86,9 @@ Scope {
         function refreshFeed(): void {
             NewsFeed.refresh();
         }
+        function widen(): void {
+            BoardState.wide = !BoardState.wide;
+        }
     }
 
     GlobalShortcut {

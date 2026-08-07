@@ -31,7 +31,15 @@ WBarAttachedPanelContent {
     /// The window is held at the widest the board can be. Resizing a layer surface
     /// makes the compositor drop the focus grab and blanks the surface while it
     /// settles, and neither is worth an animation.
-    readonly property int maxWidth: root.widthForColumns(3) + root.visualMargin * 2
+    readonly property int screenWidth: QsWindow.window?.screen?.width ?? 1920
+    readonly property int maxWidth: Math.min(root.widthForColumns(3) + root.visualMargin * 2, root.screenWidth)
+
+    /// Columns asked for, minus the ones the screen has no room for.
+    readonly property int fittingColumns: {
+        const room = root.maxWidth - root.visualMargin * 2 - root.boardPadding * 2;
+        const fits = Math.floor((room + root.columnSpacing) / (root.columnWidth + root.columnSpacing));
+        return Math.max(1, Math.min(BoardState.columns, fits));
+    }
 
     readonly property string greeting: {
         const hour = DateTime.clock.date.getHours();
@@ -46,7 +54,7 @@ WBarAttachedPanelContent {
 
     contentItem: WPane {
         contentItem: BodyRectangle {
-            implicitWidth: root.widthForColumns(BoardState.columns)
+            implicitWidth: root.widthForColumns(root.fittingColumns)
             implicitHeight: 860
             Behavior on implicitWidth {
                 animation: Looks.transition.resize.createObject(this)
@@ -112,7 +120,7 @@ WBarAttachedPanelContent {
                     GridLayout {
                         id: boardGrid
                         width: boardFlickable.width
-                        columns: BoardState.columns
+                        columns: root.fittingColumns
                         columnSpacing: root.columnSpacing
                         rowSpacing: root.columnSpacing
 
@@ -124,11 +132,11 @@ WBarAttachedPanelContent {
                         }
 
                         NewsCard {
-                            Layout.columnSpan: BoardState.columns
+                            Layout.columnSpan: root.fittingColumns
                         }
 
                         WText {
-                            Layout.columnSpan: BoardState.columns
+                            Layout.columnSpan: root.fittingColumns
                             Layout.fillWidth: true
                             Layout.topMargin: 12
                             visible: root.cards.length === 0 && !BoardState.editing
@@ -139,7 +147,7 @@ WBarAttachedPanelContent {
 
                         // What is not on the board, offered while it is being arranged.
                         ColumnLayout {
-                            Layout.columnSpan: BoardState.columns
+                            Layout.columnSpan: root.fittingColumns
                             Layout.fillWidth: true
                             Layout.topMargin: 8
                             visible: BoardState.editing
