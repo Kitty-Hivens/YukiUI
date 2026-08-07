@@ -65,6 +65,10 @@ PanelWindow {
     // Hyprland stuff
     readonly property HyprlandMonitor hyprlandMonitor: Hyprland.monitorFor(screen)
     readonly property real monitorScale: hyprlandMonitor.scale
+    /// Where this screen starts in the layout, which is what separates the
+    /// coordinates Hyprland reports from the ones this panel works in.
+    readonly property int monitorX: hyprlandMonitor?.x ?? 0
+    readonly property int monitorY: hyprlandMonitor?.y ?? 0
     readonly property var windows: [...HyprlandData.windowList].sort((a, b) => {
         // Sort floating=true windows before others
         if (a.floating === b.floating)
@@ -94,10 +98,10 @@ PanelWindow {
         root.visible = true;
     }
 
-    // One panel per screen, each taking focus, so each gives it back under a
-    // name of its own; otherwise the first to go hands focus back while the
-    // others still cover their screens.
-    readonly property string focusOwner: `wRegionSelector:${root.screen.name}`
+    // Fixed for the life of the panel: focus is given back under the name it was
+    // remembered under, and a name that follows a property leaves the old one in
+    // the list forever, after which nothing in the shell hands focus back at all.
+    readonly property string focusOwner: "wRegionSelector"
     Component.onDestruction: FocusReturn.restore(root.focusOwner)
 
     function getScreenshotAction() {
@@ -157,15 +161,20 @@ PanelWindow {
             cursorShape: Qt.CrossCursor
 
             property bool isWindowSelection: root.selectionMode === WRegionSelectionPanel.SelectionMode.Window
+            // Hyprland gives window positions in the layout's coordinates and the
+            // pointer arrives in this panel's; on a screen that does not start at
+            // the layout origin the two differ by where the screen starts.
             property var hoveredWindow: root.windows.find(w => {
-                const inCurrentWorkspace = w.workspace.id === HyprlandData.activeWorkspace?.id;
-                const withinXRange = w.at[0] <= dragArea.mouseX && dragArea.mouseX <= w.at[0] + w.size[0];
-                const withinYRange = w.at[1] <= dragArea.mouseY && dragArea.mouseY <= w.at[1] + w.size[1];
+                const inCurrentWorkspace = w.workspace.id === root.hyprlandMonitor?.activeWorkspace?.id;
+                const localX = w.at[0] - root.monitorX;
+                const localY = w.at[1] - root.monitorY;
+                const withinXRange = localX <= dragArea.mouseX && dragArea.mouseX <= localX + w.size[0];
+                const withinYRange = localY <= dragArea.mouseY && dragArea.mouseY <= localY + w.size[1];
                 return inCurrentWorkspace && withinXRange && withinYRange;
             })
             property int winPadding: 1
-            property int selectionX: isWindowSelection ? ((hoveredWindow?.at[0] ?? 0) - winPadding) : regionTopLeftX
-            property int selectionY: isWindowSelection ? ((hoveredWindow?.at[1] ?? 0) - winPadding) : regionTopLeftY
+            property int selectionX: isWindowSelection ? ((hoveredWindow?.at[0] ?? 0) - root.monitorX - winPadding) : regionTopLeftX
+            property int selectionY: isWindowSelection ? ((hoveredWindow?.at[1] ?? 0) - root.monitorY - winPadding) : regionTopLeftY
             property int selectionWidth: isWindowSelection ? ((hoveredWindow?.size[0] ?? 0) + winPadding * 2) : regionWidth
             property int selectionHeight: isWindowSelection ? ((hoveredWindow?.size[1] ?? 0) + winPadding * 2) : regionHeight
 
@@ -173,15 +182,16 @@ PanelWindow {
                 if (selectionWidth === 0 || selectionHeight === 0) {
                     return;
                 }
-                const screenshotDir = Config.options.screenSnip.savePath !== "" ? Config.options.screenSnip.savePath : "";
+                const screenshotDir = Config.options.screenSnip.savePath;
                 const screenshotAction = root.getScreenshotAction();
-                const command = ScreenshotAction.getCommand(dragArea.selectionX * root.monitorScale //
-                , dragArea.selectionY * root.monitorScale //
-                , dragArea.selectionWidth * root.monitorScale//
-                , dragArea.selectionHeight * root.monitorScale //
-                , root.screenshotPath //
-                , screenshotAction //
-                , screenshotDir); // yo wtf is this formatting qmlls do be funnie
+                // The crop is applied to a capture of this screen alone, so it is
+                // measured in that image's pixels. The recorder is handed a
+                // rectangle of the whole layout instead, unscaled.
+                const recording = screenshotAction === ScreenshotAction.Action.Record || screenshotAction === ScreenshotAction.Action.RecordWithSound;
+                const originX = recording ? root.monitorX : 0;
+                const originY = recording ? root.monitorY : 0;
+                const factor = recording ? 1 : root.monitorScale;
+                const command = ScreenshotAction.getCommand((dragArea.selectionX + originX) * factor, (dragArea.selectionY + originY) * factor, dragArea.selectionWidth * factor, dragArea.selectionHeight * factor, root.screenshotPath, screenshotAction, screenshotDir);
                 snipProc.command = command;
 
                 // Image post-processing

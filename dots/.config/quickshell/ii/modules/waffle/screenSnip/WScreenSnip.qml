@@ -17,23 +17,25 @@ import Quickshell.Hyprland
 Scope {
     id: root
 
-    /// What the selection will be used for, held here rather than pushed into the
-    /// panel after it exists: pushed in, a mode set while the panel was already
-    /// open never arrived, and the plain screenshot key could not take the panel
-    /// back out of the mode a previous key had left it in.
-    property var mediaType: WRegionSelectionPanel.MediaType.Image
-    property var imageAction: WRegionSelectionPanel.ImageAction.Copy
-    property var videoAction: WRegionSelectionPanel.VideoAction.Record
+    /// What the next panel will be opened for, and on. Read once, when the panel is
+    /// built: while it is up the panel owns its own mode, because its toolbar writes
+    /// those properties directly and would break any binding held from out here.
+    property var requestedMedia: WRegionSelectionPanel.MediaType.Image
+    property var requestedImageAction: WRegionSelectionPanel.ImageAction.Copy
+    property var requestedVideoAction: WRegionSelectionPanel.VideoAction.Record
+    property var requestedScreen: null
 
-    /// The screen the key was pressed on. The panel covers one screen, and the one
-    /// it should cover is the one being looked at.
-    property var targetScreen: null
-
-    function selectOn(media, image, video) {
-        root.mediaType = media;
-        root.imageAction = image ?? root.imageAction;
-        root.videoAction = video ?? root.videoAction;
-        root.targetScreen = Quickshell.screens.find(candidate => candidate.name === Hyprland.focusedMonitor?.name) ?? null;
+    /// Every request builds a panel rather than retargeting the one that is up. The
+    /// screen it covers, the capture it crops from and the name it hands focus back
+    /// under are all fixed when it is created, so moving any of them underneath a
+    /// live panel leaves the other two pointing at the screen it used to be on.
+    function request(media, imageAction, videoAction) {
+        root.requestedMedia = media;
+        root.requestedImageAction = imageAction ?? WRegionSelectionPanel.ImageAction.Copy;
+        root.requestedVideoAction = videoAction ?? WRegionSelectionPanel.VideoAction.Record;
+        root.requestedScreen = Quickshell.screens.find(candidate => candidate.name === Hyprland.focusedMonitor?.name) ?? root.requestedScreen;
+        if (GlobalStates.regionSelectorOpen)
+            GlobalStates.regionSelectorOpen = false;
         GlobalStates.regionSelectorOpen = true;
     }
 
@@ -42,23 +44,23 @@ Scope {
     }
 
     function screenshot() {
-        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Copy, null);
+        root.request(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Copy, null);
     }
 
     function ocr() {
-        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.CharRecognition, null);
+        root.request(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.CharRecognition, null);
     }
 
     function search() {
-        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Search, null);
+        root.request(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Search, null);
     }
 
     function record() {
-        root.selectOn(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.Record);
+        root.request(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.Record);
     }
 
     function recordWithSound() {
-        root.selectOn(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.RecordWithSound);
+        root.request(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.RecordWithSound);
     }
 
     Loader {
@@ -66,10 +68,12 @@ Scope {
         active: GlobalStates.regionSelectorOpen
 
         sourceComponent: WRegionSelectionPanel {
-            screen: root.targetScreen
-            mediaType: root.mediaType
-            imageAction: root.imageAction
-            videoAction: root.videoAction
+            // Taken as the panel is built and never rebound: the request cannot
+            // change while this panel exists, because a new one destroys it first.
+            screen: root.requestedScreen
+            mediaType: root.requestedMedia
+            imageAction: root.requestedImageAction
+            videoAction: root.requestedVideoAction
             onClosed: root.dismiss()
         }
     }
