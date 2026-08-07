@@ -17,8 +17,48 @@ import Quickshell.Hyprland
 Scope {
     id: root
 
+    /// What the selection will be used for, held here rather than pushed into the
+    /// panel after it exists: pushed in, a mode set while the panel was already
+    /// open never arrived, and the plain screenshot key could not take the panel
+    /// back out of the mode a previous key had left it in.
+    property var mediaType: WRegionSelectionPanel.MediaType.Image
+    property var imageAction: WRegionSelectionPanel.ImageAction.Copy
+    property var videoAction: WRegionSelectionPanel.VideoAction.Record
+
+    /// The screen the key was pressed on. The panel covers one screen, and the one
+    /// it should cover is the one being looked at.
+    property var targetScreen: null
+
+    function selectOn(media, image, video) {
+        root.mediaType = media;
+        root.imageAction = image ?? root.imageAction;
+        root.videoAction = video ?? root.videoAction;
+        root.targetScreen = Quickshell.screens.find(candidate => candidate.name === Hyprland.focusedMonitor?.name) ?? null;
+        GlobalStates.regionSelectorOpen = true;
+    }
+
     function dismiss() {
         GlobalStates.regionSelectorOpen = false;
+    }
+
+    function screenshot() {
+        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Copy, null);
+    }
+
+    function ocr() {
+        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.CharRecognition, null);
+    }
+
+    function search() {
+        root.selectOn(WRegionSelectionPanel.MediaType.Image, WRegionSelectionPanel.ImageAction.Search, null);
+    }
+
+    function record() {
+        root.selectOn(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.Record);
+    }
+
+    function recordWithSound() {
+        root.selectOn(WRegionSelectionPanel.MediaType.Video, null, WRegionSelectionPanel.VideoAction.RecordWithSound);
     }
 
     Loader {
@@ -26,54 +66,30 @@ Scope {
         active: GlobalStates.regionSelectorOpen
 
         sourceComponent: WRegionSelectionPanel {
+            screen: root.targetScreen
+            mediaType: root.mediaType
+            imageAction: root.imageAction
+            videoAction: root.videoAction
             onClosed: root.dismiss()
         }
-    }
-
-    function screenshot() {
-        GlobalStates.regionSelectorOpen = true;
-    }
-
-    function ocr() {
-        GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.CharRecognition;
-    }
-
-    function record() {
-        GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Video;
-        regionSelectorLoader.item.videoAction = WRegionSelectionPanel.VideoAction.Record;
-    }
-
-    function recordWithSound() {
-        GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Video;
-        regionSelectorLoader.item.videoAction = WRegionSelectionPanel.VideoAction.RecordWithSound;
-    }
-
-    function search() {
-        GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.Search;
     }
 
     IpcHandler {
         target: "region"
 
-        function screenshot() {
+        function screenshot(): void {
             root.screenshot();
         }
-        function ocr() {
+        function ocr(): void {
             root.ocr();
         }
-        function record() {
+        function record(): void {
             root.record();
         }
-        function recordWithSound() {
+        function recordWithSound(): void {
             root.recordWithSound();
         }
-        function search() {
+        function search(): void {
             root.search();
         }
     }
