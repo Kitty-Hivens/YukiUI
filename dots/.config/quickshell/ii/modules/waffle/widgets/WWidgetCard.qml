@@ -264,98 +264,6 @@ Rectangle {
             animation: Looks.transition.color.createObject(this)
         }
 
-        RowLayout {
-            anchors {
-                top: parent.top
-                right: parent.right
-                margins: 6
-            }
-            spacing: 4
-
-            WPanelIconButton {
-                implicitWidth: 26
-                implicitHeight: 26
-                iconSize: 14
-                iconName: "dismiss"
-                onClicked: BoardState.removeCard(root.cardId)
-            }
-        }
-
-    }
-
-    /// Everything a gesture was about to do, dropped. Used when the board stops being
-    /// arranged underneath one: nothing was let go, so nothing is decided.
-    function abandonGesture() {
-        const board = root.parent;
-        BoardState.carriedOffer = "";
-        BoardState.returning = false;
-        if (!board)
-            return;
-        board.dropColumn = -1;
-        if (board.carried === root)
-            board.carried = null;
-        board.relayoutLater(false);
-    }
-
-    /// Where the card has been carried to, in the coordinates the board shares with
-    /// the picker's window.
-    function carriedCentre() {
-        const board = root.parent;
-        const carriedX = root.x + dragHandler.activeTranslation.x + root.width / 2;
-        const carriedY = root.y + dragHandler.activeTranslation.y + root.height / 2;
-        return board.mapToItem(null, carriedX, carriedY);
-    }
-
-    /// The cell the card is currently over, marked out on the board so the landing
-    /// place is visible before it is let go. Carried onto the picker instead, it is
-    /// being given back, and no cell is marked.
-    function aimAtCell() {
-        const board = root.parent;
-        const centre = root.carriedCentre();
-        BoardState.returning = BoardState.overPicker(centre.x, centre.y);
-        if (BoardState.returning) {
-            board.dropColumn = -1;
-            return;
-        }
-        const carriedX = root.x + dragHandler.activeTranslation.x;
-        const carriedY = root.y + dragHandler.activeTranslation.y;
-        const span = Math.min(BoardState.spanOf(root.cardId), board.cells);
-        const cell = board.cellAt(carriedX, carriedY, span, board.rowsFor(root));
-        board.dropSpan = span;
-        board.dropRows = board.rowsFor(root);
-        board.dropColumn = cell.column;
-        board.dropRow = cell.row;
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        visible: root.arrangeable
-        color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0.75 : 0.94)
-        radius: root.radius
-        border.width: 1
-        border.color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0 : 0.5)
-
-        Behavior on color {
-            animation: Looks.transition.color.createObject(this)
-        }
-
-        RowLayout {
-            anchors {
-                top: parent.top
-                right: parent.right
-                margins: 6
-            }
-            spacing: 4
-
-            WPanelIconButton {
-                implicitWidth: 26
-                implicitHeight: 26
-                iconSize: 14
-                iconName: "dismiss"
-                onClicked: BoardState.removeCard(root.cardId)
-            }
-        }
-
         // Every edge and corner is a size handle. Nothing is drawn for them -- the
         // cursor over one already says what it does -- and they are declared before
         // the buttons so a press on a button is still a press on the button.
@@ -400,6 +308,23 @@ Rectangle {
                 gripY: modelData.gripY
             }
         }
+        RowLayout {
+            anchors {
+                top: parent.top
+                right: parent.right
+                margins: 6
+            }
+            spacing: 4
+
+            WPanelIconButton {
+                implicitWidth: 26
+                implicitHeight: 26
+                iconSize: 14
+                iconName: "dismiss"
+                onClicked: BoardState.removeCard(root.cardId)
+            }
+        }
+
     }
 
     /// The rectangle of cells the handle has been pulled over, held inside the board
