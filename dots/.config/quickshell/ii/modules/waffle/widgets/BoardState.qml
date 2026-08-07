@@ -30,6 +30,17 @@ Singleton {
     property real carriedX: 0
     property real carriedY: 0
     property real carriedWidth: 0
+    property real carriedHeight: 0
+
+    /// Where the picker's panel is drawn, in the coordinates both windows share, so
+    /// a card dragged over it can be given back rather than dropped on the board.
+    property rect pickerArea: Qt.rect(0, 0, 0, 0)
+    /// Whether the card being carried is over the picker, which the picker shows.
+    property bool returning: false
+
+    function overPicker(pointX, pointY) {
+        return root.pickerArea.width > 0 && pointX >= root.pickerArea.x && pointX <= root.pickerArea.x + root.pickerArea.width && pointY >= root.pickerArea.y && pointY <= root.pickerArea.y + root.pickerArea.height;
+    }
 
     /// The picker's window, so the board's focus grab counts it as part of itself
     /// and a press on it is not a press past the board.
@@ -152,19 +163,51 @@ Singleton {
         return "apps";
     }
 
-    /// How many columns a card takes. Two is as far as it goes: the board is two
-    /// columns at its narrowest, and a third size would collapse onto one of these.
+    /// How big each card is, in cells, kept as "id:columnsXrows". Any rectangle the
+    /// board has room for: a card is dragged to its size by the corner rather than
+    /// picked from a set of sizes somebody else chose.
+    readonly property list<string> sizes: Config.options?.waffles.widgets.sizes ?? []
+    /// Boards arranged before sizes existed said only which cards were two columns
+    /// wide. Read so those boards come back the way they were left.
     readonly property list<string> wideCards: Config.options?.waffles.widgets.wideCards ?? []
 
+    function sizeOf(cardId) {
+        for (const entry of root.sizes) {
+            const parts = entry.split(":");
+            if (parts[0] !== cardId || parts.length < 2)
+                continue;
+            const at = parts[1].split("x");
+            const columns = parseInt(at[0]);
+            const rows = parseInt(at[1]);
+            if (columns > 0 && rows > 0)
+                return ({
+                        columns: columns,
+                        rows: rows
+                    });
+        }
+        return null;
+    }
+
+    /// How many columns a card takes. Rows are the board's to work out: a card is
+    /// never shorter than its contents, whatever size it was left at.
     function spanOf(cardId) {
+        const size = root.sizeOf(cardId);
+        if (size)
+            return size.columns;
         return root.wideCards.indexOf(cardId) !== -1 ? 2 : 1;
     }
 
-    function toggleSpan(cardId) {
-        if (root.spanOf(cardId) === 2)
-            Config.options.waffles.widgets.wideCards = root.wideCards.filter(card => card !== cardId);
-        else
-            Config.options.waffles.widgets.wideCards = root.wideCards.concat([cardId]);
+    function rowsOf(cardId) {
+        return root.sizeOf(cardId)?.rows ?? 0;
+    }
+
+    function setSize(cardId, columns, rows) {
+        const others = root.sizes.filter(entry => entry.split(":")[0] !== cardId);
+        Config.options.waffles.widgets.sizes = others.concat([`${cardId}:${columns}x${rows}`]);
+    }
+
+    function forgetSize(cardId) {
+        Config.options.waffles.widgets.sizes = root.sizes.filter(entry => entry.split(":")[0] !== cardId);
     }
 
     /// Where the cards sit. Kept as "id:column,row" so a card holds its place
@@ -208,8 +251,9 @@ Singleton {
     function removeCard(cardId) {
         Config.options.waffles.widgets.cards = root.pinnedCards.filter(card => card !== cardId);
         root.forgetPlacement(cardId);
-        // Width belongs to a card on the board; the offer in the picker is one column
-        // wide, and a span left behind would aim it as though it were two.
+        // Size belongs to a card on the board; the offer in the picker is one column
+        // wide, and a size left behind would aim it as though it were still that big.
+        root.forgetSize(cardId);
         Config.options.waffles.widgets.wideCards = root.wideCards.filter(card => card !== cardId);
     }
 

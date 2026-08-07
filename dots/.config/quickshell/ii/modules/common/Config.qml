@@ -687,7 +687,11 @@ Singleton {
                     // its own, which is a matter of taste rather than of layout.
                     property bool fullHeight: false
                     property int height: 860
-                    /// Cards listed here take two columns instead of one.
+                    /// How big each card is, in cells, as "id:columnsXrows". A card with
+                    /// no entry is one column wide and as tall as its contents need.
+                    property list<string> sizes: []
+                    /// Cards listed here take two columns instead of one. Superseded by
+                    /// sizes, and read only for boards arranged before it existed.
                     property list<string> wideCards: []
                     /// Where each card sits, as "id:column,row". A card with no entry is
                     /// given the first free spot. Empty cells between cards are allowed --

@@ -48,8 +48,18 @@ Item {
         return root.columnWidth * span + root.gutter * (span - 1);
     }
 
+    /// The fewest rows a card can be given: enough for what it draws.
+    function minRowsFor(item) {
+        return root.rowsForHeight(item.naturalHeight);
+    }
+
+    /// As many rows as the card was dragged to, and never fewer than it needs.
     function rowsFor(item) {
-        return root.rowsForHeight(item.implicitHeight);
+        return Math.max(root.minRowsFor(item), BoardState.rowsOf(item.cardId));
+    }
+
+    function relayoutLater() {
+        relayoutSoon.restart();
     }
 
     function rowsForHeight(height) {
@@ -124,10 +134,20 @@ Item {
         return placed;
     }
 
+    /// Where a card sits and how big it is, for a gesture that starts from its
+    /// current size rather than from the pointer alone.
+    function entryFor(cardId) {
+        for (const entry of root.placedCards())
+            if (entry.item.cardId === cardId)
+                return entry;
+        return null;
+    }
+
     function relayout() {
         var bottom = 1;
         for (const entry of root.placedCards()) {
             entry.item.width = root.spanWidth(entry.span);
+            entry.item.height = entry.rows * root.rowHeight - root.gutter;
             bottom = Math.max(bottom, entry.row + entry.rows);
             if (entry.item === root.carried)
                 continue;
@@ -202,7 +222,7 @@ Item {
         function onPlacementsChanged() {
             relayoutSoon.restart();
         }
-        function onWideCardsChanged() {
+        function onSizesChanged() {
             relayoutSoon.restart();
         }
         function onEditingChanged() {

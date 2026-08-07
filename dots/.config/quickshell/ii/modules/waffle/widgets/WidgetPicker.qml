@@ -6,6 +6,7 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.widgets
@@ -20,6 +21,18 @@ BodyRectangle {
 
     /// True while one of the offers is being carried out of the window.
     property bool carrying: false
+
+    // A card carried off the board and over this panel is being given back, and the
+    // panel says so before it is let go.
+    Rectangle {
+        anchors.fill: parent
+        visible: BoardState.returning
+        color: ColorUtils.transparentize(Looks.colors.accent, 0.88)
+        radius: parent.radius
+        border.width: 1
+        border.color: ColorUtils.transparentize(Looks.colors.accent, 0.4)
+        z: 5
+    }
 
     ColumnLayout {
         anchors {
@@ -109,6 +122,7 @@ BodyRectangle {
                 if (active) {
                     BoardState.carriedOffer = sample.cardId;
                     BoardState.carriedWidth = sample.width;
+                    BoardState.carriedHeight = sample.height;
                     sample.reportCarried();
                     sample.aimAtBoard();
                     return;

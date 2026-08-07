@@ -118,7 +118,8 @@ WBarAttachedPanelContent {
             }
 
             // The right edge is a handle: the board is as wide as it is dragged to be.
-            Rectangle {
+            // Unpainted -- the cursor over it already says what it is.
+            Item {
                 z: 6
                 anchors {
                     right: parent.right
@@ -126,14 +127,8 @@ WBarAttachedPanelContent {
                     bottom: parent.bottom
                 }
                 width: Math.round(BoardLooks.unit * 0.4)
-                color: edgeHover.hovered || edgeDrag.active ? Looks.colors.accent : "transparent"
-
-                Behavior on color {
-                    animation: Looks.transition.color.createObject(this)
-                }
 
                 HoverHandler {
-                    id: edgeHover
                     cursorShape: Qt.SizeHorCursor
                 }
                 DragHandler {
