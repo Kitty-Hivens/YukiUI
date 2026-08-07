@@ -29,23 +29,29 @@ Item {
     /// card can be placed under another without overlapping it.
     readonly property int rowHeight: Math.round(BoardLooks.unit * 2)
 
+    /// Across, the grid steps by a segment rather than by a whole column, so a card
+    /// one column wide has a place halfway between two columns as well as on each of
+    /// them. Everything horizontal below counts in segments.
+    readonly property int cells: root.columns * BoardLooks.segments
+    readonly property real pitch: (root.columnWidth + root.gutter) / BoardLooks.segments
+
     /// The card being carried, if any: it follows the pointer instead of the grid.
     property Item carried: null
     /// Where the carried card would land, in cells. Negative column means nowhere.
     property int dropColumn: -1
     property int dropRow: 0
-    property int dropSpan: 1
+    property int dropSpan: BoardLooks.segments
     property int dropRows: 1
 
     implicitHeight: root.usedRows * root.rowHeight
     property int usedRows: 1
 
-    function columnX(column) {
-        return column * (root.columnWidth + root.gutter);
+    function cellX(cell) {
+        return Math.round(cell * root.pitch);
     }
 
     function spanWidth(span) {
-        return root.columnWidth * span + root.gutter * (span - 1);
+        return Math.round(span * root.pitch) - root.gutter;
     }
 
     /// The fewest rows a card can be given: enough for what it draws.
@@ -76,7 +82,7 @@ Item {
     }
 
     function spanOf(item) {
-        return Math.min(BoardState.spanOf(item.cardId), root.columns);
+        return Math.min(BoardState.spanOf(item.cardId), root.cells);
     }
 
     /// Cards with their cells, in the order they are listed. A card without a
@@ -89,7 +95,7 @@ Item {
                 for (var r = 0; r < rows; r++) taken[`${column + c},${row + r}`] = true;
         };
         const free = (column, row, span, rows) => {
-            if (column < 0 || column + span > root.columns || row < 0)
+            if (column < 0 || column + span > root.cells || row < 0)
                 return false;
             for (var c = 0; c < span; c++)
                 for (var r = 0; r < rows; r++)
@@ -104,14 +110,14 @@ Item {
             const rows = root.rowsFor(item);
             const wanted = BoardState.placementOf(item.cardId);
 
-            var column = wanted ? Math.min(wanted.column, root.columns - span) : -1;
+            var column = wanted ? Math.min(wanted.column, root.cells - span) : -1;
             var row = wanted ? wanted.row : -1;
 
             if (column < 0 || row < 0 || !free(column, row, span, rows)) {
                 // First free spot, scanning row by row.
                 var found = false;
                 for (var r = 0; !found && r < 200; r++) {
-                    for (var c = 0; c + span <= root.columns; c++) {
+                    for (var c = 0; c + span <= root.cells; c++) {
                         if (!free(c, r, span, rows))
                             continue;
                         column = c;
@@ -151,7 +157,7 @@ Item {
             bottom = Math.max(bottom, entry.row + entry.rows);
             if (entry.item === root.carried)
                 continue;
-            entry.item.x = root.columnX(entry.column);
+            entry.item.x = root.cellX(entry.column);
             entry.item.y = entry.row * root.rowHeight;
         }
         if (root.dropColumn >= 0)
@@ -161,10 +167,10 @@ Item {
 
     /// The cell under a point, clamped to the grid.
     function cellAt(pointX, pointY, span) {
-        const column = Math.round(pointX / (root.columnWidth + root.gutter));
+        const column = Math.round(pointX / root.pitch);
         const row = Math.max(0, Math.round(pointY / root.rowHeight));
         return ({
-                column: Math.max(0, Math.min(column, root.columns - span)),
+                column: Math.max(0, Math.min(column, root.cells - span)),
                 row: row
             });
     }
@@ -234,7 +240,7 @@ Item {
     Rectangle {
         z: -1
         visible: root.dropColumn >= 0
-        x: root.columnX(root.dropColumn)
+        x: root.cellX(root.dropColumn)
         y: root.dropRow * root.rowHeight
         width: root.spanWidth(root.dropSpan)
         height: root.dropRows * root.rowHeight - root.gutter

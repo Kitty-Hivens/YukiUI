@@ -217,7 +217,7 @@ Rectangle {
         }
         const carriedX = root.x + dragHandler.activeTranslation.x;
         const carriedY = root.y + dragHandler.activeTranslation.y;
-        const span = Math.min(BoardState.spanOf(root.cardId), board.columns);
+        const span = Math.min(BoardState.spanOf(root.cardId), board.cells);
         const cell = board.cellAt(carriedX, carriedY, span);
         board.dropSpan = span;
         board.dropRows = board.rowsFor(root);
@@ -306,12 +306,14 @@ Rectangle {
             return null;
         const right = root.x + root.width + gripDrag.activeTranslation.x;
         const bottom = root.y + root.height + gripDrag.activeTranslation.y;
-        const overColumns = (right - board.columnX(entry.column) + board.gutter) / (board.columnWidth + board.gutter);
+        const overSegments = (right - board.cellX(entry.column) + board.gutter) / board.pitch;
         const overRows = (bottom - entry.row * board.rowHeight + board.gutter) / board.rowHeight;
         return ({
                 column: entry.column,
                 row: entry.row,
-                span: Math.max(1, Math.min(Math.round(overColumns), board.columns - entry.column)),
+                // A column is the narrowest a card is drawn in; wider goes by segments,
+                // so a card and a half across is a size like any other.
+                span: Math.max(BoardLooks.segments, Math.min(Math.round(overSegments), board.cells - entry.column)),
                 rows: Math.max(board.minRowsFor(root), Math.round(overRows))
             });
     }

@@ -22,6 +22,9 @@ Singleton {
     /// follows the font and the scale factor instead of a set of pixel counts.
     readonly property real unit: boardMetrics.height
     readonly property int columnWidth: Math.round(root.unit * 22)
+    /// The grid steps finer than a card is wide, so a card can stand between two
+    /// columns as well as on one. A card is a whole number of segments across.
+    readonly property int segments: 2
     readonly property int gutter: Math.round(root.unit)
     readonly property int padding: Math.round(root.unit * 1.5)
     readonly property int cardPadding: Math.round(root.unit)

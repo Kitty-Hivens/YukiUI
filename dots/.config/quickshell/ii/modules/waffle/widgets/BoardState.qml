@@ -60,11 +60,11 @@ Singleton {
         // edge -- means nowhere. Within it, the grid clamps for itself.
         if (inGrid.y < 0 || inGrid.y > root.grid.height + root.grid.rowHeight)
             return null;
-        if (inGrid.x < -root.grid.columnWidth / 2 || inGrid.x > root.grid.width)
+        if (inGrid.x < -root.grid.columnWidth / 2 || inGrid.x > root.grid.width + root.grid.columnWidth / 2)
             return null;
-        const span = Math.min(root.spanOf(cardId), root.grid.columns);
+        const span = Math.min(root.spanOf(cardId), root.grid.cells);
         const carriedHeight = cardHeight ?? root.grid.rowHeight;
-        const cell = root.grid.cellAt(inGrid.x - root.grid.columnWidth / 2, inGrid.y - carriedHeight / 2, span);
+        const cell = root.grid.cellAt(inGrid.x - root.grid.spanWidth(span) / 2, inGrid.y - carriedHeight / 2, span);
         return ({
                 column: cell.column,
                 row: cell.row,
@@ -163,9 +163,10 @@ Singleton {
         return "apps";
     }
 
-    /// How big each card is, in cells, kept as "id:columnsXrows". Any rectangle the
+    /// How big each card is, in cells, kept as "id:segmentsXrows". Any rectangle the
     /// board has room for: a card is dragged to its size by the corner rather than
-    /// picked from a set of sizes somebody else chose.
+    /// picked from a set of sizes somebody else chose. A column is BoardLooks.segments
+    /// segments across, so a card can be a column and a half wide.
     readonly property list<string> sizes: Config.options?.waffles.widgets.sizes ?? []
     /// Boards arranged before sizes existed said only which cards were two columns
     /// wide. Read so those boards come back the way they were left.
@@ -188,13 +189,13 @@ Singleton {
         return null;
     }
 
-    /// How many columns a card takes. Rows are the board's to work out: a card is
-    /// never shorter than its contents, whatever size it was left at.
+    /// How many segments across a card is. Rows are the board's to work out: a card
+    /// is never shorter than its contents, whatever size it was left at.
     function spanOf(cardId) {
         const size = root.sizeOf(cardId);
         if (size)
             return size.columns;
-        return root.wideCards.indexOf(cardId) !== -1 ? 2 : 1;
+        return BoardLooks.segments * (root.wideCards.indexOf(cardId) !== -1 ? 2 : 1);
     }
 
     function rowsOf(cardId) {
