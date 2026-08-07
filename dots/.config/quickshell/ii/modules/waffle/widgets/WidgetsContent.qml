@@ -40,7 +40,7 @@ WBarAttachedPanelContent {
     contentItem: WPane {
         id: boardPane
         contentItem: BodyRectangle {
-            implicitWidth: root.columnWidth * 2 + root.columnSpacing + 24 * 2
+            implicitWidth: root.columnWidth * BoardState.columns + root.columnSpacing * (BoardState.columns - 1) + 24 * 2
             implicitHeight: 860
 
             ColumnLayout {
@@ -74,6 +74,10 @@ WBarAttachedPanelContent {
                     }
 
                     HeaderButton {
+                        iconName: BoardState.wide ? "arrow-minimize" : "arrow-expand"
+                        onClicked: BoardState.wide = !BoardState.wide
+                    }
+                    HeaderButton {
                         iconName: BoardState.editing ? "checkmark" : "edit"
                         checked: BoardState.editing
                         onClicked: BoardState.editing = !BoardState.editing
@@ -96,7 +100,7 @@ WBarAttachedPanelContent {
                     GridLayout {
                         id: boardGrid
                         width: boardFlickable.width
-                        columns: 2
+                        columns: BoardState.columns
                         columnSpacing: root.columnSpacing
                         rowSpacing: root.columnSpacing
 
@@ -108,11 +112,11 @@ WBarAttachedPanelContent {
                         }
 
                         NewsCard {
-                            Layout.columnSpan: 2
+                            Layout.columnSpan: BoardState.columns
                         }
 
                         WText {
-                            Layout.columnSpan: 2
+                            Layout.columnSpan: BoardState.columns
                             Layout.fillWidth: true
                             Layout.topMargin: 12
                             visible: root.cards.length === 0 && !BoardState.editing
@@ -123,7 +127,7 @@ WBarAttachedPanelContent {
 
                         // What is not on the board, offered while it is being arranged.
                         ColumnLayout {
-                            Layout.columnSpan: 2
+                            Layout.columnSpan: BoardState.columns
                             Layout.fillWidth: true
                             Layout.topMargin: 8
                             visible: BoardState.editing

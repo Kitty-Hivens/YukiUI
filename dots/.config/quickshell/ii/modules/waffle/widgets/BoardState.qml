@@ -16,6 +16,11 @@ Singleton {
 
     property bool editing: false
 
+    /// A wider board fits another column of cards. Kept across sessions.
+    property bool wide: Persistent.states.widgets.wide
+    onWideChanged: Persistent.states.widgets.wide = root.wide
+    readonly property int columns: root.wide ? 3 : 2
+
     /// Everything that can be put on the board, in the order it is offered.
     readonly property list<string> knownCards: ["weather", "calendar", "todo"]
 

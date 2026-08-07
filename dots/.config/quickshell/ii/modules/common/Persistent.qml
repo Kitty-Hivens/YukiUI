@@ -97,6 +97,10 @@ Singleton {
                 property int tabIndex: 0
             }
 
+            property JsonObject widgets: JsonObject {
+                property bool wide: false
+            }
+
             property JsonObject search: JsonObject {
                 property list<string> recentQueries: []
             }
