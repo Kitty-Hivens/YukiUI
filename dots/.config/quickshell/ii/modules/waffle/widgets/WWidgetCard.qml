@@ -82,30 +82,24 @@ Rectangle {
                 font.letterSpacing: BoardLooks.readoutSpacing
             }
 
-            WPanelIconButton {
-                id: menuButton
-                visible: root.unpinnable
-                implicitWidth: 24
-                implicitHeight: 24
-                iconSize: 14
-                iconName: "more-horizontal"
-                // Held lit for as long as its menu is: the pointer moves onto the menu,
-                // which takes the hover with it and left the button looking untouched.
-                checked: cardMenu.visible
-                onClicked: cardMenu.popup()
-
-                WMenu {
-                    id: cardMenu
-                    downDirection: true
-
-                    WMenuItem {
-                        icon.name: "pin-off"
-                        text: Translation.tr("Unpin widget")
-                        onTriggered: {
-                            Config.options.waffles.widgets.cards = Config.options.waffles.widgets.cards.filter(card => card !== root.cardId);
-                        }
-                    }
-                }
+            // While the board is being arranged, the heading carries the controls for
+            // arranging this card instead of a menu holding one item.
+            CardButton {
+                visible: root.unpinnable && BoardState.editing
+                enabled: BoardState.canMove(root.cardId, -1)
+                iconName: "arrow-left"
+                onClicked: BoardState.moveCard(root.cardId, -1)
+            }
+            CardButton {
+                visible: root.unpinnable && BoardState.editing
+                enabled: BoardState.canMove(root.cardId, 1)
+                iconName: "arrow-right"
+                onClicked: BoardState.moveCard(root.cardId, 1)
+            }
+            CardButton {
+                visible: root.unpinnable && BoardState.editing
+                iconName: "dismiss"
+                onClicked: BoardState.removeCard(root.cardId)
             }
         }
 
@@ -129,5 +123,12 @@ Rectangle {
             text: root.actionText
             onClicked: root.actionTriggered()
         }
+    }
+
+    component CardButton: WPanelIconButton {
+        implicitWidth: 24
+        implicitHeight: 24
+        iconSize: 14
+        Layout.alignment: Qt.AlignVCenter
     }
 }

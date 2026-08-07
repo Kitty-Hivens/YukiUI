@@ -24,9 +24,9 @@ OBJECT_PATH = "/org/freedesktop/portal/desktop"
 DOCUMENTS_NAME = "org.freedesktop.portal.Documents"
 DOCUMENTS_PATH = "/org/freedesktop/portal/documents"
 
-# Response codes of org.freedesktop.impl.portal.Request.
+# Response codes of org.freedesktop.impl.portal.Request. 1, "cancelled", never comes
+# up here: there is no dialog to cancel.
 RESPONSE_SUCCESS = 0
-RESPONSE_CANCELLED = 1
 RESPONSE_FAILED = 2
 
 SWITCHWALL = os.path.normpath(
