@@ -1,12 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import qs
 import qs.services
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.widgets
 import qs.modules.waffle.widgets.cards
@@ -179,51 +177,48 @@ WBarAttachedPanelContent {
                     }
                 }
 
-                StyledFlickable {
-                    id: boardFlickable
+                // The board is what is on the screen and nothing more. It does not
+                // scroll: a card carried past the bottom edge used to land on a row
+                // nobody could see, with no way back to it.
+                Item {
+                    id: boardBody
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    // A press on a card while arranging is a grab of that card, not of
-                    // the list it is in.
-                    interactive: !BoardState.editing
-                    clip: true
-                    contentWidth: width
-                    contentHeight: boardBody.implicitHeight
 
-                    Item {
-                        id: boardBody
-                        width: boardFlickable.width
-                        implicitHeight: cardArea.implicitHeight + (extras.implicitHeight > 0 ? extras.implicitHeight + root.columnSpacing : 0)
+                    WidgetBoardArea {
+                        id: cardArea
+                        width: parent.width
+                        // Whatever the strip along the bottom does not take, and never
+                        // less than a row: the grid is what is left of the board.
+                        height: Math.max(root.columnSpacing, parent.height - (extras.height > 0 ? extras.height + root.columnSpacing : 0))
+                        columns: root.fittingColumns
+                        columnWidth: root.columnWidth
+                        gutter: root.columnSpacing
+                    }
 
-                        WidgetBoardArea {
-                            id: cardArea
-                            width: parent.width
-                            columns: root.fittingColumns
-                            columnWidth: root.columnWidth
-                            gutter: root.columnSpacing
+                    ColumnLayout {
+                        id: extras
+                        anchors {
+                            bottom: parent.bottom
+                            left: parent.left
+                            right: parent.right
+                        }
+                        // Held to a share of the board: what stands here grows on
+                        // demand, and the cards are not its to take.
+                        height: Math.min(extras.implicitHeight, Math.round(boardBody.height * 0.45))
+                        clip: true
+                        spacing: root.columnSpacing
+
+                        NewsCard {
+                            Layout.fillWidth: true
                         }
 
-                        ColumnLayout {
-                            id: extras
-                            anchors {
-                                top: cardArea.bottom
-                                topMargin: root.columnSpacing
-                                left: parent.left
-                                right: parent.right
-                            }
-                            spacing: root.columnSpacing
-
-                            NewsCard {
-                                Layout.fillWidth: true
-                            }
-
-                            WText {
-                                Layout.fillWidth: true
-                                visible: root.cards.length === 0 && !BoardState.editing
-                                horizontalAlignment: Text.AlignHCenter
-                                text: Translation.tr("No widgets are pinned")
-                                color: Looks.colors.subfg
-                            }
+                        WText {
+                            Layout.fillWidth: true
+                            visible: root.cards.length === 0 && !BoardState.editing
+                            horizontalAlignment: Text.AlignHCenter
+                            text: Translation.tr("No widgets are pinned")
+                            color: Looks.colors.subfg
                         }
                     }
                 }

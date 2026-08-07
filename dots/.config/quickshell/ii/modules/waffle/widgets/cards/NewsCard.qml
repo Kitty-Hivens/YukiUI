@@ -26,34 +26,44 @@ WWidgetCard {
 
     property int shownArticles: 4
 
-    ColumnLayout {
+    StyledFlickable {
+        id: storyList
         anchors {
             left: parent.left
             right: parent.right
         }
-        spacing: 8
+        implicitHeight: Math.min(stories.implicitHeight, Math.round(BoardLooks.unit * 18))
+        contentWidth: width
+        contentHeight: stories.implicitHeight
+        clip: true
 
-        WText {
-            Layout.fillWidth: true
-            visible: NewsFeed.sources.length === 0
-            text: Translation.tr("No feeds are configured")
-            color: Looks.colors.subfg
-        }
+        ColumnLayout {
+            id: stories
+            width: storyList.width
+            spacing: 8
 
-        WText {
-            Layout.fillWidth: true
-            visible: NewsFeed.sources.length > 0 && NewsFeed.articles.length === 0
-            text: NewsFeed.loading ? Translation.tr("Fetching stories...") : Translation.tr("Nothing came back from the feeds")
-            color: Looks.colors.subfg
-        }
-
-        Repeater {
-            model: ScriptModel {
-                values: NewsFeed.articles.slice(0, root.shownArticles)
+            WText {
+                Layout.fillWidth: true
+                visible: NewsFeed.sources.length === 0
+                text: Translation.tr("No feeds are configured")
+                color: Looks.colors.subfg
             }
-            delegate: ArticleRow {
-                required property var modelData
-                article: modelData
+
+            WText {
+                Layout.fillWidth: true
+                visible: NewsFeed.sources.length > 0 && NewsFeed.articles.length === 0
+                text: NewsFeed.loading ? Translation.tr("Fetching stories...") : Translation.tr("Nothing came back from the feeds")
+                color: Looks.colors.subfg
+            }
+
+            Repeater {
+                model: ScriptModel {
+                    values: NewsFeed.articles.slice(0, root.shownArticles)
+                }
+                delegate: ArticleRow {
+                    required property var modelData
+                    article: modelData
+                }
             }
         }
     }

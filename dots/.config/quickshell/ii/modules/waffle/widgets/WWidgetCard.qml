@@ -35,17 +35,23 @@ Rectangle {
     height: root.naturalHeight
     onNaturalHeightChanged: root.parent?.relayoutLater?.()
 
+    // Not animated into its first position: before the board has been measured every
+    // card sits at the corner, and animating from there is the whole board sliding
+    // apart each time it opens.
+    readonly property bool settled: root.parent?.everLaidOut ?? false
+
     Behavior on x {
-        enabled: !dragHandler.active
+        enabled: root.settled && !dragHandler.active
         animation: Looks.transition.move.createObject(this)
     }
     Behavior on y {
-        enabled: !dragHandler.active
+        enabled: root.settled && !dragHandler.active
         animation: Looks.transition.move.createObject(this)
     }
 
     color: Looks.colors.bg1
     radius: Looks.radius.medium
+    clip: true
 
     WCornerMarks {
         anchors.fill: parent
@@ -218,7 +224,7 @@ Rectangle {
         const carriedX = root.x + dragHandler.activeTranslation.x;
         const carriedY = root.y + dragHandler.activeTranslation.y;
         const span = Math.min(BoardState.spanOf(root.cardId), board.cells);
-        const cell = board.cellAt(carriedX, carriedY, span);
+        const cell = board.cellAt(carriedX, carriedY, span, board.rowsFor(root));
         board.dropSpan = span;
         board.dropRows = board.rowsFor(root);
         board.dropColumn = cell.column;
@@ -314,7 +320,7 @@ Rectangle {
                 // A column is the narrowest a card is drawn in; wider goes by segments,
                 // so a card and a half across is a size like any other.
                 span: Math.max(BoardLooks.segments, Math.min(Math.round(overSegments), board.cells - entry.column)),
-                rows: Math.max(board.minRowsFor(root), Math.round(overRows))
+                rows: Math.min(board.rows - entry.row, Math.max(board.minRowsFor(root), Math.round(overRows)))
             });
     }
 

@@ -43,8 +43,9 @@ Item {
     property int dropSpan: BoardLooks.segments
     property int dropRows: 1
 
-    implicitHeight: root.usedRows * root.rowHeight
-    property int usedRows: 1
+    /// How many rows there are. The board does not scroll, so this is however many
+    /// fit on it -- a card is never put on a row that cannot be seen.
+    readonly property int rows: Math.max(1, Math.floor((root.height + root.gutter) / root.rowHeight))
 
     function cellX(cell) {
         return Math.round(cell * root.pitch);
@@ -59,9 +60,11 @@ Item {
         return root.rowsForHeight(item.naturalHeight);
     }
 
-    /// As many rows as the card was dragged to, and never fewer than it needs.
+    /// As many rows as the card was dragged to, never fewer than it needs and never
+    /// more than the board has: nothing scrolls, so a taller card would simply be
+    /// drawn over the bottom edge.
     function rowsFor(item) {
-        return Math.max(root.minRowsFor(item), BoardState.rowsOf(item.cardId));
+        return Math.min(root.rows, Math.max(root.minRowsFor(item), BoardState.rowsOf(item.cardId)));
     }
 
     function relayoutLater() {
@@ -95,7 +98,7 @@ Item {
                 for (var r = 0; r < rows; r++) taken[`${column + c},${row + r}`] = true;
         };
         const free = (column, row, span, rows) => {
-            if (column < 0 || column + span > root.cells || row < 0)
+            if (column < 0 || column + span > root.cells || row < 0 || row + rows > root.rows)
                 return false;
             for (var c = 0; c < span; c++)
                 for (var r = 0; r < rows; r++)
@@ -111,12 +114,13 @@ Item {
             const wanted = BoardState.placementOf(item.cardId);
 
             var column = wanted ? Math.min(wanted.column, root.cells - span) : -1;
-            var row = wanted ? wanted.row : -1;
+            var row = wanted ? Math.min(wanted.row, root.rows - rows) : -1;
 
             if (column < 0 || row < 0 || !free(column, row, span, rows)) {
-                // First free spot, scanning row by row.
+                // First free spot, scanning row by row. A card with nowhere left to go
+                // is stacked at the top rather than dropped off the board.
                 var found = false;
-                for (var r = 0; !found && r < 200; r++) {
+                for (var r = 0; !found && r + rows <= root.rows; r++) {
                     for (var c = 0; c + span <= root.cells; c++) {
                         if (!free(c, r, span, rows))
                             continue;
@@ -125,6 +129,10 @@ Item {
                         found = true;
                         break;
                     }
+                }
+                if (!found) {
+                    column = 0;
+                    row = 0;
                 }
             }
 
@@ -149,29 +157,30 @@ Item {
         return null;
     }
 
+    property bool everLaidOut: false
+
     function relayout() {
-        var bottom = 1;
+        if (root.width <= 0 || root.height <= 0)
+            return;
         for (const entry of root.placedCards()) {
             entry.item.width = root.spanWidth(entry.span);
             entry.item.height = entry.rows * root.rowHeight - root.gutter;
-            bottom = Math.max(bottom, entry.row + entry.rows);
             if (entry.item === root.carried)
                 continue;
             entry.item.x = root.cellX(entry.column);
             entry.item.y = entry.row * root.rowHeight;
         }
-        if (root.dropColumn >= 0)
-            bottom = Math.max(bottom, root.dropRow + root.dropRows);
-        root.usedRows = bottom + (BoardState.editing ? 2 : 0);
+        root.everLaidOut = true;
     }
 
-    /// The cell under a point, clamped to the grid.
-    function cellAt(pointX, pointY, span) {
+    /// The cell under a point, held inside the board on both axes: there is nowhere
+    /// past the edges to put anything.
+    function cellAt(pointX, pointY, span, rows) {
         const column = Math.round(pointX / root.pitch);
-        const row = Math.max(0, Math.round(pointY / root.rowHeight));
+        const row = Math.round(pointY / root.rowHeight);
         return ({
                 column: Math.max(0, Math.min(column, root.cells - span)),
-                row: row
+                row: Math.max(0, Math.min(row, root.rows - (rows ?? 1)))
             });
     }
 
@@ -183,10 +192,27 @@ Item {
         for (const entry of root.placedCards()) {
             if (entry.item.cardId === cardId)
                 continue;
+            const stored = BoardState.placementOf(entry.item.cardId);
+            const keep = stored ? `${entry.item.cardId}:${stored.column},${stored.row}` : null;
             const overlapsColumns = entry.column < column + span && column < entry.column + entry.span;
             const overlapsRows = entry.row < row + rows && row < entry.row + entry.rows;
-            const pushed = overlapsColumns && overlapsRows ? row + rows : entry.row;
-            entries.push(`${entry.item.cardId}:${entry.column},${pushed}`);
+            if (!overlapsColumns || !overlapsRows) {
+                // Out of the way already: it keeps the place it was given rather than
+                // the one this pass happened to lay it out in.
+                if (keep)
+                    entries.push(keep);
+                continue;
+            }
+            // Down to make room, or up when there is no room below. A card with
+            // nowhere to go is left where it is instead of being made to overlap.
+            const below = row + rows;
+            const above = row - entry.rows;
+            if (below + entry.rows <= root.rows)
+                entries.push(`${entry.item.cardId}:${entry.column},${below}`);
+            else if (above >= 0)
+                entries.push(`${entry.item.cardId}:${entry.column},${above}`);
+            else if (keep)
+                entries.push(keep);
         }
         entries.push(`${cardId}:${column},${row}`);
         BoardState.setPlacements(entries);
@@ -214,11 +240,10 @@ Item {
     }
 
     onWidthChanged: root.relayout()
+    onHeightChanged: root.relayout()
     onColumnsChanged: root.relayout()
+    onRowsChanged: root.relayout()
     onCarriedChanged: root.relayout()
-    onDropColumnChanged: relayoutSoon.restart()
-    onDropRowChanged: relayoutSoon.restart()
-    onDropRowsChanged: relayoutSoon.restart()
 
     Connections {
         target: BoardState

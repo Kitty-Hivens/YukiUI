@@ -58,18 +58,19 @@ Singleton {
         const inGrid = root.grid.mapFromItem(null, pointX, pointY);
         // Off the board entirely -- above it, below its last row, or past its right
         // edge -- means nowhere. Within it, the grid clamps for itself.
-        if (inGrid.y < 0 || inGrid.y > root.grid.height + root.grid.rowHeight)
+        if (inGrid.y < -root.grid.rowHeight || inGrid.y > root.grid.height + root.grid.rowHeight)
             return null;
         if (inGrid.x < -root.grid.columnWidth / 2 || inGrid.x > root.grid.width + root.grid.columnWidth / 2)
             return null;
         const span = Math.min(root.spanOf(cardId), root.grid.cells);
         const carriedHeight = cardHeight ?? root.grid.rowHeight;
-        const cell = root.grid.cellAt(inGrid.x - root.grid.spanWidth(span) / 2, inGrid.y - carriedHeight / 2, span);
+        const rows = root.grid.rowsForHeight(carriedHeight);
+        const cell = root.grid.cellAt(inGrid.x - root.grid.spanWidth(span) / 2, inGrid.y - carriedHeight / 2, span, rows);
         return ({
                 column: cell.column,
                 row: cell.row,
                 span: span,
-                rows: root.grid.rowsForHeight(carriedHeight)
+                rows: rows
             });
     }
 
