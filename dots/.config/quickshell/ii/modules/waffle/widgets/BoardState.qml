@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs.modules.common
+import qs.services
 
 /**
  * What the board is doing and what can be done to it.

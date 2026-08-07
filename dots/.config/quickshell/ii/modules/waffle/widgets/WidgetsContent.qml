@@ -23,6 +23,15 @@ WBarAttachedPanelContent {
     readonly property list<string> cards: Config.options.waffles.widgets.cards
     readonly property int columnWidth: 336
     readonly property int columnSpacing: 16
+    readonly property int boardPadding: 24
+
+    function widthForColumns(columns) {
+        return root.columnWidth * columns + root.columnSpacing * (columns - 1) + root.boardPadding * 2;
+    }
+    /// The window is held at the widest the board can be. Resizing a layer surface
+    /// makes the compositor drop the focus grab and blanks the surface while it
+    /// settles, and neither is worth an animation.
+    readonly property int maxWidth: root.widthForColumns(3) + root.visualMargin * 2
 
     readonly property string greeting: {
         const hour = DateTime.clock.date.getHours();
@@ -37,16 +46,16 @@ WBarAttachedPanelContent {
 
     contentItem: WPane {
         contentItem: BodyRectangle {
-            implicitWidth: root.columnWidth * BoardState.columns + root.columnSpacing * (BoardState.columns - 1) + 24 * 2
+            implicitWidth: root.widthForColumns(BoardState.columns)
+            implicitHeight: 860
             Behavior on implicitWidth {
                 animation: Looks.transition.resize.createObject(this)
             }
-            implicitHeight: 860
 
             ColumnLayout {
                 anchors {
                     fill: parent
-                    margins: 24
+                    margins: root.boardPadding
                 }
                 spacing: 18
 
@@ -93,6 +102,9 @@ WBarAttachedPanelContent {
                     id: boardFlickable
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    // A press on a card while arranging is a grab of that card, not of
+                    // the list it is in.
+                    interactive: !BoardState.editing
                     clip: true
                     contentWidth: width
                     contentHeight: boardGrid.implicitHeight

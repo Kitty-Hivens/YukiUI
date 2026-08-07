@@ -38,7 +38,7 @@ Scope {
                 left: true
             }
 
-            implicitWidth: content.implicitWidth
+            implicitWidth: content.maxWidth
             implicitHeight: content.implicitHeight
             mask: Region {
                 item: content.visibleArea
@@ -48,27 +48,7 @@ Scope {
                 id: focusGrab
                 active: true
                 windows: [panelWindow]
-                onCleared: {
-                    // Widening the board resizes its window, and the compositor drops the
-                    // grab when it does. That is not a click past the board.
-                    if (resizeGuard.running) {
-                        focusGrab.active = true;
-                        return;
-                    }
-                    content.close();
-                }
-            }
-
-            Timer {
-                id: resizeGuard
-                interval: 250
-            }
-
-            Connections {
-                target: BoardState
-                function onColumnsChanged() {
-                    resizeGuard.restart();
-                }
+                onCleared: content.close()
             }
 
             Connections {
