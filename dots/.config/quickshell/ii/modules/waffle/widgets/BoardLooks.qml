@@ -26,6 +26,15 @@ Singleton {
     readonly property int padding: Math.round(root.unit * 1.5)
     readonly property int cardPadding: Math.round(root.unit)
     readonly property int controlSize: Math.round(root.unit * 1.6)
+    /// The panel of widgets to choose from, which opens beside the board in a
+    /// window of its own.
+    readonly property int pickerWidth: root.columnWidth + root.padding * 2
+    /// The margin a bar-attached panel keeps around itself.
+    readonly property int visualMargin: 12
+
+    function widthForColumns(columns) {
+        return root.columnWidth * columns + root.gutter * (columns - 1) + root.padding * 2;
+    }
 
     FontMetrics {
         id: boardMetrics

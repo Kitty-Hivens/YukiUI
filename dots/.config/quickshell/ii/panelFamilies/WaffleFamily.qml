@@ -41,6 +41,7 @@ Scope {
     PanelLoader { component: WaffleSessionScreen {} }
     PanelLoader { component: WaffleTaskView {} }
     PanelLoader { component: WaffleWidgets {} }
+    PanelLoader { component: WaffleWidgetPicker {} }
 
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { component: OnScreenKeyboard {} }

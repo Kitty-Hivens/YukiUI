@@ -17,6 +17,79 @@ Singleton {
 
     property bool editing: false
 
+    /// What the board currently measures, so a window standing beside it knows
+    /// where the board ends.
+    property int boardWidth: 0
+    property int boardHeight: 0
+
+    /// The picker's window, so the board's focus grab counts it as part of itself
+    /// and a press on it is not a press past the board.
+    property var pickerWindow: null
+    /// Where the picker window starts, so a widget carried out of it can be placed
+    /// in the board's coordinates.
+    property int pickerLeft: 0
+    /// Where the board's own panel starts inside its window.
+    property int boardTop: 0
+
+    /// The grid itself, handed over by the board so a widget carried in from the
+    /// picker window can be aimed at a cell in it.
+    property Item grid: null
+
+    function cellAtBoardPoint(pointX, pointY, cardId, cardHeight) {
+        if (!root.grid)
+            return null;
+        const inGrid = root.grid.mapFromItem(null, pointX, pointY);
+        // Off the board entirely -- above it, below its last row, or past its right
+        // edge -- means nowhere. Within it, the grid clamps for itself.
+        if (inGrid.y < 0 || inGrid.y > root.grid.height + root.grid.rowHeight)
+            return null;
+        if (inGrid.x < -root.grid.columnWidth / 2 || inGrid.x > root.grid.width)
+            return null;
+        const span = Math.min(root.spanOf(cardId), root.grid.columns);
+        const carriedHeight = cardHeight ?? root.grid.rowHeight;
+        const cell = root.grid.cellAt(inGrid.x - root.grid.columnWidth / 2, inGrid.y - carriedHeight / 2, span);
+        return ({
+                column: cell.column,
+                row: cell.row,
+                span: span,
+                rows: root.grid.rowsForHeight(carriedHeight)
+            });
+    }
+
+    function aimDrop(cell) {
+        if (!root.grid)
+            return;
+        if (!cell) {
+            root.grid.dropColumn = -1;
+            return;
+        }
+        root.grid.dropSpan = cell.span;
+        root.grid.dropRows = cell.rows ?? 1;
+        root.grid.dropColumn = cell.column;
+        root.grid.dropRow = cell.row;
+    }
+
+    /// The cell currently marked out on the board, if any.
+    function aimedCell() {
+        if (!root.grid || root.grid.dropColumn < 0)
+            return null;
+        return ({
+                column: root.grid.dropColumn,
+                row: root.grid.dropRow,
+                span: root.grid.dropSpan,
+                rows: root.grid.dropRows
+            });
+    }
+
+    /// A widget carried in from the picker lands the same way a card already on the
+    /// board does: what is in the way is pushed down far enough to fit.
+    function dropOnBoard(cardId, cell) {
+        if (!root.grid)
+            return;
+        root.addCard(cardId);
+        root.grid.placeCard(cardId, cell.column, cell.row, cell.span, cell.rows ?? 1);
+    }
+
     /// A wider board fits another column of cards. Kept across sessions.
     property bool wide: Persistent.states.widgets.wide
     onWideChanged: Persistent.states.widgets.wide = root.wide
@@ -108,6 +181,9 @@ Singleton {
     function removeCard(cardId) {
         Config.options.waffles.widgets.cards = root.pinnedCards.filter(card => card !== cardId);
         root.forgetPlacement(cardId);
+        // Width belongs to a card on the board; the offer in the picker is one column
+        // wide, and a span left behind would aim it as though it were two.
+        Config.options.waffles.widgets.wideCards = root.wideCards.filter(card => card !== cardId);
     }
 
     /// Puts a card where another one is, which is what dropping it there means.

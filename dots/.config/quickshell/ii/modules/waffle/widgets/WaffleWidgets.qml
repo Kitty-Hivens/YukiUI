@@ -51,7 +51,9 @@ Scope {
             HyprlandFocusGrab {
                 id: focusGrab
                 active: true
-                windows: [panelWindow].concat(WBarWindows.windows)
+                // The picker stands in its own window; pressing it is not pressing
+                // past the board.
+                windows: [panelWindow].concat(WBarWindows.windows).concat(BoardState.pickerWindow ? [BoardState.pickerWindow] : [])
                 onCleared: content.close()
             }
 
@@ -68,6 +70,8 @@ Scope {
                 anchors.fill: parent
 
                 onClosed: {
+                    // Arranging is a state of a board that is open.
+                    BoardState.editing = false;
                     GlobalStates.widgetsOpen = false;
                     panelLoader.active = false;
                 }
@@ -92,6 +96,9 @@ Scope {
         }
         function widen(): void {
             BoardState.wide = !BoardState.wide;
+        }
+        function arrange(): void {
+            BoardState.editing = !BoardState.editing;
         }
     }
 

@@ -49,7 +49,11 @@ Item {
     }
 
     function rowsFor(item) {
-        return Math.max(1, Math.ceil((item.implicitHeight + root.gutter) / root.rowHeight));
+        return root.rowsForHeight(item.implicitHeight);
+    }
+
+    function rowsForHeight(height) {
+        return Math.max(1, Math.ceil((height + root.gutter) / root.rowHeight));
     }
 
     function cardItems() {
@@ -145,21 +149,13 @@ Item {
             });
     }
 
-    /// Puts the carried card in the cell it is over, pushing whatever is in the way
-    /// far enough down to make room for it.
-    function dropCarried() {
-        if (root.dropColumn < 0 || !root.carried)
-            return;
-
-        const cardId = root.carried.cardId;
-        const span = root.dropSpan;
-        const rows = root.dropRows;
-        const column = root.dropColumn;
-        const row = root.dropRow;
-
+    /// Puts a card in a cell, pushing whatever is in the way far enough down to make
+    /// room for it. Used both by a card carried across the board and by one carried
+    /// in from the picker.
+    function placeCard(cardId, column, row, span, rows) {
         var entries = [];
         for (const entry of root.placedCards()) {
-            if (entry.item === root.carried)
+            if (entry.item.cardId === cardId)
                 continue;
             const overlapsColumns = entry.column < column + span && column < entry.column + entry.span;
             const overlapsRows = entry.row < row + rows && row < entry.row + entry.rows;
@@ -170,9 +166,24 @@ Item {
         BoardState.setPlacements(entries);
     }
 
+    function dropCarried() {
+        if (root.dropColumn < 0 || !root.carried)
+            return;
+        root.placeCard(root.carried.cardId, root.dropColumn, root.dropRow, root.dropSpan, root.dropRows);
+    }
+
+    Component.onCompleted: BoardState.grid = root
+    Component.onDestruction: {
+        if (BoardState.grid === root)
+            BoardState.grid = null;
+    }
+
     onWidthChanged: root.relayout()
     onColumnsChanged: root.relayout()
     onCarriedChanged: root.relayout()
+    onDropColumnChanged: Qt.callLater(root.relayout)
+    onDropRowChanged: Qt.callLater(root.relayout)
+    onDropRowsChanged: Qt.callLater(root.relayout)
 
     Connections {
         target: BoardState

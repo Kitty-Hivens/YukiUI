@@ -109,6 +109,9 @@ Rectangle {
             id: contentArea
             Layout.fillWidth: true
             implicitHeight: childrenRect.height
+            // A sample in the picker shows what the card looks like; its buttons are
+            // not there to be pressed, and pressing one would eat the drag.
+            enabled: !root.sample
         }
 
         WTextButton {
@@ -123,7 +126,10 @@ Rectangle {
 
     // Arranging happens over the card, not inside its heading: picking it up and
     // dropping it somewhere is the whole gesture, and the readings stay put.
-    readonly property bool arrangeable: root.unpinnable && BoardState.editing
+    /// A card shown as a sample in the picker is not on the board: it carries no
+    /// arranging controls and its own contents do not take the pointer.
+    property bool sample: false
+    readonly property bool arrangeable: root.unpinnable && BoardState.editing && !root.sample
 
     z: dragHandler.active ? 10 : 0
     transform: Translate {
@@ -133,7 +139,7 @@ Rectangle {
 
     DragHandler {
         id: dragHandler
-        enabled: root.arrangeable
+        enabled: root.arrangeable && !root.sample
         target: null
         cursorShape: Qt.ClosedHandCursor
         onActiveChanged: {

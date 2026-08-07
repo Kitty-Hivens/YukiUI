@@ -62,15 +62,32 @@ WBarAttachedPanelContent {
             implicitWidth: root.widthForColumns(root.fittingColumns)
             implicitHeight: Config.options.waffles.widgets.fullHeight ? roomForBoard : Math.min(Config.options.waffles.widgets.height, roomForBoard)
 
-            Behavior on implicitWidth {
-                animation: Looks.transition.resize.createObject(this)
-            }
+            // Told to the board's state so the picker window can stand beside it.
+            // The width the board is heading for, not the one it is animating through:
+            // the picker's window is positioned from this, and moving a layer surface
+            // every frame of an animation drops its focus grab and blanks it.
+            readonly property int settledWidth: root.widthForColumns(root.fittingColumns) + root.visualMargin
 
-            ColumnLayout {
+            function reportGeometry() {
+                BoardState.boardWidth = settledWidth;
+                BoardState.boardHeight = implicitHeight;
+                BoardState.boardTop = mapToItem(null, 0, 0).y;
+            }
+            onSettledWidthChanged: reportGeometry()
+            onImplicitHeightChanged: reportGeometry()
+            onYChanged: Qt.callLater(reportGeometry)
+            Component.onCompleted: Qt.callLater(reportGeometry)
+
+            RowLayout {
                 anchors {
                     fill: parent
                     margins: root.boardPadding
                 }
+                spacing: root.columnSpacing
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 spacing: Math.round(BoardLooks.unit * 1.2)
 
                 RowLayout {
@@ -101,18 +118,9 @@ WBarAttachedPanelContent {
                         onClicked: BoardState.wide = !BoardState.wide
                     }
                     HeaderButton {
-                        iconName: "add"
-                        onClicked: addDialog.open()
-                    }
-                    HeaderButton {
                         iconName: BoardState.editing ? "checkmark" : "edit"
                         checked: BoardState.editing
                         onClicked: BoardState.editing = !BoardState.editing
-                    }
-                    WUserAvatar {
-                        Layout.leftMargin: 4
-                        Layout.alignment: Qt.AlignVCenter
-                        sourceSize: Qt.size(32, 32)
                     }
                 }
 
@@ -166,11 +174,9 @@ WBarAttachedPanelContent {
                     }
                 }
             }
-        }
-    }
 
-    AddWidgetDialog {
-        id: addDialog
+            }
+        }
     }
 
     component HeaderButton: WPanelIconButton {
