@@ -189,9 +189,11 @@ hl.layer_rule({ match = { namespace = "quickshell:osk" }, order = -1})
 hl.layer_rule({ match = { namespace = "quickshell:wallpaperSelector" }, animation = "slide top"})
 hl.layer_rule({ match = { namespace = "quickshell:wNotificationCenter" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:wOnScreenDisplay" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:wSearchPanel" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:wStartMenu" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:wTaskView" }, ignore_alpha = 0})
 hl.layer_rule({ match = { namespace = "quickshell:wTaskView" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:wWidgets" }, no_anim = true})
 
 -- Launchers need to be FAST
 hl.layer_rule({ match = { namespace = "gtk4-layer-shell" }, no_anim = true})
