@@ -18,6 +18,7 @@ WWidgetCard {
     cardId: "news"
     title: Translation.tr("News")
     iconName: "news"
+    readout: NewsFeed.articles.length > 0 ? `${NewsFeed.articles.length}` : ""
     visible: NewsFeed.enabled
     unpinnable: false // Switched on and off with the feed itself, not from here
     actionText: NewsFeed.articles.length > root.shownArticles ? Translation.tr("Show more") : ""

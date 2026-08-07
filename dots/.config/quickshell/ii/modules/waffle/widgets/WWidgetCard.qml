@@ -5,21 +5,22 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.waffle.looks
+import qs.modules.waffle.widgets
 
-// One card on the board: a header with an icon, a name and a menu, and whatever
-// the card itself puts below it.
+// One card on the board: a heading set in caps, a reading beside it, a rule under
+// both, and whatever the card puts below that. Corner marks stand in for a border.
 Rectangle {
     id: root
 
     required property string cardId
     property string title: ""
     property string iconName: "apps"
-    // Cards carry their own colour where the original does -- the weather one is a
-    // block of colour there, the rest sit on the board's own surface.
     property color foregroundColor: Looks.colors.fg
-    // A card that has somewhere to send you says so along its bottom edge, the one
-    // part of the original's card that is worth keeping wholesale.
+    /// Small monospaced text along the heading -- a reading, not a label.
+    property string readout: ""
+    // A card that has somewhere to send you says so along its bottom edge.
     property string actionText: ""
     property bool unpinnable: true
     signal actionTriggered
@@ -30,9 +31,12 @@ Rectangle {
     implicitHeight: contentColumn.implicitHeight + 32
 
     color: Looks.colors.bg1
-    radius: Looks.radius.large
-    border.width: 1
-    border.color: Looks.colors.bg2Border
+    radius: Looks.radius.medium
+
+    WCornerMarks {
+        anchors.fill: parent
+        anchors.margins: 6
+    }
 
     ColumnLayout {
         id: contentColumn
@@ -40,7 +44,7 @@ Rectangle {
             fill: parent
             margins: 16
         }
-        spacing: 12
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
@@ -49,27 +53,41 @@ Rectangle {
             FluentIcon {
                 Layout.alignment: Qt.AlignVCenter
                 icon: root.iconName
-                implicitSize: 18
+                implicitSize: 16
                 monochrome: true
                 color: root.foregroundColor
             }
 
             WText {
-                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
-                text: root.title
+                text: root.title.toUpperCase()
                 elide: Text.ElideRight
                 color: root.foregroundColor
-                font.pixelSize: Looks.font.pixelSize.large
+                font.pixelSize: Looks.font.pixelSize.normal
                 font.weight: Looks.font.weight.strong
+                font.letterSpacing: BoardLooks.headingSpacing
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            WText {
+                Layout.alignment: Qt.AlignVCenter
+                visible: root.readout.length > 0
+                text: root.readout
+                color: ColorUtils.transparentize(root.foregroundColor, 0.45)
+                font.family: BoardLooks.readoutFamily
+                font.pixelSize: BoardLooks.readoutSize
+                font.letterSpacing: BoardLooks.readoutSpacing
             }
 
             WPanelIconButton {
                 id: menuButton
                 visible: root.unpinnable
-                implicitWidth: 28
-                implicitHeight: 28
-                iconSize: 16
+                implicitWidth: 24
+                implicitHeight: 24
+                iconSize: 14
                 iconName: "more-horizontal"
                 // Held lit for as long as its menu is: the pointer moves onto the menu,
                 // which takes the hover with it and left the button looking untouched.
@@ -91,6 +109,12 @@ Rectangle {
             }
         }
 
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: BoardLooks.rule
+        }
+
         Item {
             id: contentArea
             Layout.fillWidth: true
@@ -101,7 +125,7 @@ Rectangle {
             Layout.alignment: Qt.AlignRight
             Layout.topMargin: -4
             visible: root.actionText.length > 0
-            implicitHeight: 30
+            implicitHeight: 28
             text: root.actionText
             onClicked: root.actionTriggered()
         }

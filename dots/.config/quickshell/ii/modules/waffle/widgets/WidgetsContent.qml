@@ -8,6 +8,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.waffle.looks
+import qs.modules.waffle.widgets
 import qs.modules.waffle.widgets.cards
 
 // A board of cards, two columns wide. The board this sits beside gives a third of
@@ -52,16 +53,20 @@ WBarAttachedPanelContent {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 0
+                        spacing: 2
 
-                        WText {
-                            text: Qt.locale().toString(DateTime.clock.date, "d MMMM")
-                            color: Looks.colors.subfg
-                        }
                         WText {
                             text: root.greeting
                             font.pixelSize: Looks.font.pixelSize.xlarger
                             font.weight: Looks.font.weight.strong
+                        }
+                        // The date and the clock read as an instrument's line, not a subtitle.
+                        WText {
+                            text: Qt.locale().toString(DateTime.clock.date, "ddd dd MMM yyyy").toUpperCase() + "  ·  " + DateTime.time
+                            color: BoardLooks.readoutColor
+                            font.family: BoardLooks.readoutFamily
+                            font.pixelSize: BoardLooks.readoutSize
+                            font.letterSpacing: BoardLooks.readoutSpacing
                         }
                     }
 

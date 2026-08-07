@@ -16,8 +16,19 @@ WWidgetCard {
     cardId: "calendar"
     title: Qt.locale().toString(DateTime.clock.date, "MMMM yyyy")
     iconName: "calendar-add"
+    readout: "W" + root.weekNumber
 
     readonly property var locale: Qt.locale(Config.options.calendar.locale)
+    // ISO week: Thursday of the current week decides which year's week this is.
+    readonly property int weekNumber: {
+        const date = new Date(DateTime.clock.date.getFullYear(), DateTime.clock.date.getMonth(), DateTime.clock.date.getDate());
+        const dayIndex = (date.getDay() + 6) % 7;
+        date.setDate(date.getDate() - dayIndex + 3);
+        const firstThursday = new Date(date.getFullYear(), 0, 4);
+        const firstDayIndex = (firstThursday.getDay() + 6) % 7;
+        firstThursday.setDate(firstThursday.getDate() - firstDayIndex + 3);
+        return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    }
     readonly property int dayCellSize: 36
     readonly property int gridWidth: dayCellSize * 7 + 4 * 6
 

@@ -14,6 +14,7 @@ WWidgetCard {
     cardId: "todo"
     title: Translation.tr("To do")
     iconName: "checkmark"
+    readout: `${Todo.list.length - root.unfinished.length}/${Todo.list.length}`
 
     readonly property list<var> unfinished: Todo.list.map((item, index) => ({
                 item: item,

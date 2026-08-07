@@ -15,11 +15,11 @@ WWidgetCard {
     cardId: "weather"
     title: Weather.data.city || Translation.tr("Weather")
     iconName: WIcons.weatherIconForCode(Weather.data.wCode)
+    readout: Weather.data.lastRefresh ? String(Weather.data.lastRefresh).split(" • ")[0] : "--:--"
 
     // A block of colour, the way this card reads on the board it copies.
     color: Looks.colors.accent
     foregroundColor: Looks.colors.accentFg
-    border.color: ColorUtils.transparentize(Looks.colors.accentFg, 0.85)
 
     ColumnLayout {
         anchors {
