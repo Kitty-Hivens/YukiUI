@@ -13,13 +13,31 @@ MouseArea {
     id: root
 
     required property var notification
-    property bool expanded: (notification?.actions.length ?? 0) > 0
+    property bool expanded: root.buttonActions.length > 0
     property string groupExpandControlMessage: ""
 
     readonly property bool isPopup: notification?.popup ?? false
 
+    /// The action a press on the notification itself carries out. The shell this
+    /// copies draws no button for it -- the notification is the button -- so the
+    /// action named "default" is taken out of the row and put on the whole card.
+    readonly property var actions: root.notification?.actions ?? []
+    readonly property var defaultAction: root.actions.find(action => action.identifier === "default") ?? null
+    readonly property var buttonActions: root.actions.filter(action => action.identifier !== "default")
+
+    function invoke(identifier) {
+        if (!root.notification)
+            return;
+        Notifications.attemptInvokeAction(root.notification.notificationId, identifier);
+    }
+
     signal groupExpandToggle
     hoverEnabled: true
+    cursorShape: root.defaultAction ? Qt.PointingHandCursor : Qt.ArrowCursor
+    onClicked: {
+        if (root.defaultAction)
+            root.invoke(root.defaultAction.identifier);
+    }
 
     function dismiss() {
         Qt.callLater(() => {
@@ -166,11 +184,11 @@ MouseArea {
     }
 
     component ActionsRow: RowLayout {
-        visible: root.expanded && (root.notification?.actions.length ?? 0) > 0
+        visible: root.expanded && root.buttonActions.length > 0
         uniformCellSizes: true
         Repeater {
             id: actionRepeater
-            model: root.notification?.actions ?? []
+            model: root.buttonActions
             delegate: WBorderedButton {
                 id: actionButton
                 Layout.fillHeight: true
@@ -179,6 +197,7 @@ MouseArea {
                 verticalPadding: 16
                 horizontalPadding: 12
                 text: modelData.text
+                onClicked: root.invoke(modelData.identifier)
                 implicitHeight: actionButtonText.implicitHeight + verticalPadding * 2
                 contentItem: WText {
                     id: actionButtonText

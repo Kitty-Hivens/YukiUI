@@ -9,14 +9,19 @@ import qs.modules.waffle.widgets
 /**
  * The grid the cards sit on.
  *
- * Cards hold coordinates rather than an order, the way tiles do on the Start
- * screen this borrows from: a tile there carries `Column` and `Row` within a group
- * of a fixed cell width, so it stays where it was put and a gap beside it is a
- * legitimate arrangement rather than something to be closed up.
+ * Cards hold coordinates rather than an order, the way tiles do on the Start screen
+ * this borrows from: a tile there carries `Column` and `Row` within a group of a
+ * fixed cell width, so it stays where it was put and a gap beside it is a legitimate
+ * arrangement rather than something to be closed up.
  *
- * A card is one or two columns wide and as many rows tall as its contents need.
- * Dropping one onto occupied cells pushes what was there far enough down to fit,
- * which is the "make room" of the same Start screen.
+ * The grid steps finer than a card is wide -- by a segment, half a column -- so a
+ * card has a place between two columns as well as on each of them. A card is a whole
+ * number of segments across and of rows down, dragged to that size by its own edges.
+ *
+ * Nothing scrolls. There are as many rows as fit on the board, and a card put on it
+ * is held inside them: a card carried off the bottom used to land on a row nobody
+ * could see, with no way back to it. Dropping one onto occupied cells pushes what
+ * was there out of the way, which is the "make room" of the same Start screen.
  */
 Item {
     id: root
@@ -28,12 +33,11 @@ Item {
     /// Height of one row of the grid. Cards are measured in whole rows so that a
     /// card can be placed under another without overlapping it.
     readonly property int rowHeight: Math.round(BoardLooks.unit * 2)
-
-    /// Across, the grid steps by a segment rather than by a whole column, so a card
-    /// one column wide has a place halfway between two columns as well as on each of
-    /// them. Everything horizontal below counts in segments.
+    /// Everything horizontal below counts in segments rather than columns.
     readonly property int cells: root.columns * BoardLooks.segments
     readonly property real pitch: (root.columnWidth + root.gutter) / BoardLooks.segments
+    /// How many rows there are: however many fit, since the board does not scroll.
+    readonly property int rows: Math.max(1, Math.floor((root.height + root.gutter) / root.rowHeight))
 
     /// The card being carried, if any: it follows the pointer instead of the grid.
     property Item carried: null
@@ -43,9 +47,14 @@ Item {
     property int dropSpan: BoardLooks.segments
     property int dropRows: 1
 
-    /// How many rows there are. The board does not scroll, so this is however many
-    /// fit on it -- a card is never put on a row that cannot be seen.
-    readonly property int rows: Math.max(1, Math.floor((root.height + root.gutter) / root.rowHeight))
+    /// Whether this pass is a rearrangement or a re-measure. Cards glide when the
+    /// board is arranged and snap when it is merely worked out again -- the board is
+    /// measured several times as it opens, and animating those is the whole thing
+    /// twitching into place.
+    property bool animating: false
+    property bool pendingAnimated: false
+
+    //////////////////// The grid's arithmetic ////////////////////
 
     function cellX(cell) {
         return Math.round(cell * root.pitch);
@@ -53,6 +62,10 @@ Item {
 
     function spanWidth(span) {
         return Math.round(span * root.pitch) - root.gutter;
+    }
+
+    function rowsForHeight(height) {
+        return Math.max(1, Math.ceil((height + root.gutter) / root.rowHeight));
     }
 
     /// The fewest rows a card can be given: enough for what it draws.
@@ -67,17 +80,22 @@ Item {
         return Math.min(root.rows, Math.max(root.minRowsFor(item), BoardState.rowsOf(item.cardId)));
     }
 
-    /// Deferred so that a burst of changes settles into one pass. Rearranging is
-    /// announced, so the pass that follows it is the one that glides.
-    function relayoutLater(rearranged) {
-        if (rearranged)
-            root.pendingAnimated = true;
-        relayoutSoon.restart();
+    function spanOf(item) {
+        return Math.min(BoardState.spanOf(item.cardId), root.cells);
     }
 
-    function rowsForHeight(height) {
-        return Math.max(1, Math.ceil((height + root.gutter) / root.rowHeight));
+    /// The cell under a point, held inside the board on both axes: there is nowhere
+    /// past the edges to put anything.
+    function cellAt(pointX, pointY, span, rows) {
+        const column = Math.round(pointX / root.pitch);
+        const row = Math.round(pointY / root.rowHeight);
+        return ({
+                column: Math.max(0, Math.min(column, root.cells - span)),
+                row: Math.max(0, Math.min(row, root.rows - (rows ?? 1)))
+            });
     }
+
+    //////////////////// Where the cards go ////////////////////
 
     function cardItems() {
         const byId = ({});
@@ -88,13 +106,9 @@ Item {
         return BoardState.pinnedCards.map(id => byId[id]).filter(item => item !== undefined);
     }
 
-    function spanOf(item) {
-        return Math.min(BoardState.spanOf(item.cardId), root.cells);
-    }
-
     /// Cards with their cells, in the order they are listed. A card without a
     /// placement takes the first free spot, and one whose placement no longer fits
-    /// the number of columns is pulled back inside.
+    /// the board is pulled back inside it.
     function placedCards() {
         const taken = ({});
         const mark = (column, row, span, rows) => {
@@ -161,44 +175,11 @@ Item {
         return null;
     }
 
-    /// Whether this pass is a rearrangement or a re-measure. Cards glide when the
-    /// board is arranged and snap when it is merely worked out again -- the board is
-    /// measured several times as it opens, and animating those is the whole thing
-    /// twitching into place.
-    property bool animating: false
-    property bool pendingAnimated: false
-
-    function relayout() {
-        if (root.width <= 0 || root.height <= 0)
-            return;
-        for (const entry of root.placedCards()) {
-            entry.item.width = root.spanWidth(entry.span);
-            entry.item.height = entry.rows * root.rowHeight - root.gutter;
-            if (entry.item === root.carried)
-                continue;
-            entry.item.x = root.cellX(entry.column);
-            entry.item.y = entry.row * root.rowHeight;
-            entry.item.placed = true;
-        }
-    }
-
-    /// The cell under a point, held inside the board on both axes: there is nowhere
-    /// past the edges to put anything.
-    function cellAt(pointX, pointY, span, rows) {
-        const column = Math.round(pointX / root.pitch);
-        const row = Math.round(pointY / root.rowHeight);
-        return ({
-                column: Math.max(0, Math.min(column, root.cells - span)),
-                row: Math.max(0, Math.min(row, root.rows - (rows ?? 1)))
-            });
-    }
-
-    /// Puts a card in a cell, pushing whatever is in the way far enough down to make
-    /// room for it. Used both by a card carried across the board and by one carried
-    /// in from the picker.
+    /// Puts a card in a cell, pushing whatever is in the way out of it. Used both by
+    /// a card carried across the board and by one carried in from the picker.
     function placeCard(cardId, column, row, span, rows) {
-        // Starts from every place that was stored, so a card the board is not
-        // showing right now -- one whose delegate has yet to be built -- keeps its.
+        // Starts from every place that was stored, so a card the board is not showing
+        // right now -- one whose delegate has yet to be built -- keeps its own.
         var byId = ({});
         for (const stored of BoardState.placements) {
             const id = stored.split(":")[0];
@@ -231,7 +212,30 @@ Item {
         root.placeCard(root.carried.cardId, root.dropColumn, root.dropRow, root.dropSpan, root.dropRows);
     }
 
-    // Laying out again is deferred so that a burst of changes settles into one pass.
+    //////////////////// Laying out ////////////////////
+
+    function relayout() {
+        if (root.width <= 0 || root.height <= 0)
+            return;
+        for (const entry of root.placedCards()) {
+            entry.item.width = root.spanWidth(entry.span);
+            entry.item.height = entry.rows * root.rowHeight - root.gutter;
+            if (entry.item === root.carried)
+                continue;
+            entry.item.x = root.cellX(entry.column);
+            entry.item.y = entry.row * root.rowHeight;
+            entry.item.placed = true;
+        }
+    }
+
+    /// Deferred so that a burst of changes settles into one pass. Rearranging says so,
+    /// and the pass that follows it is the one that glides.
+    function relayoutLater(rearranged) {
+        if (rearranged)
+            root.pendingAnimated = true;
+        relayoutSoon.restart();
+    }
+
     // A timer rather than Qt.callLater: this dies with the board, and a call that
     // outlives it lands in a context that no longer has these functions.
     Timer {
@@ -245,17 +249,17 @@ Item {
         }
     }
 
-    Component.onCompleted: BoardState.grid = root
-    Component.onDestruction: {
-        if (BoardState.grid === root)
-            BoardState.grid = null;
-    }
-
     onWidthChanged: root.relayout()
     onHeightChanged: root.relayout()
     onColumnsChanged: root.relayout()
     onRowsChanged: root.relayout()
     onCarriedChanged: root.relayout()
+
+    Component.onCompleted: BoardState.grid = root
+    Component.onDestruction: {
+        if (BoardState.grid === root)
+            BoardState.grid = null;
+    }
 
     Connections {
         target: BoardState
@@ -273,9 +277,11 @@ Item {
         }
     }
 
-    // Where the carried card will land, over the cards rather than under them: a
-    // card being made smaller would otherwise hide the very outline that says how
-    // small it is about to be.
+    //////////////////// What is drawn ////////////////////
+
+    // Where the carried card will land, over the cards rather than under them: a card
+    // being made smaller would otherwise hide the very outline that says how small it
+    // is about to be.
     Rectangle {
         z: 5
         visible: root.dropColumn >= 0

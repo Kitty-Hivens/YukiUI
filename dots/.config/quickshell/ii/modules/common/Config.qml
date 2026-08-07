@@ -68,6 +68,13 @@ Singleton {
         }
     }
 
+    /** A write asked for before the file had been read, held until it has been. */
+    property bool writePending: false
+    onReadyChanged: {
+        if (root.ready && root.writePending)
+            fileWriteTimer.restart();
+    }
+
     Timer {
         id: fileWriteTimer
         interval: root.readWriteDelay
@@ -78,6 +85,16 @@ Singleton {
             // damaged while the machine was off into a config that is gone.
             if (root.contentsUnreadable)
                 return;
+            // Nor before they have been read at all. The adapter writes every
+            // option at once, so a single setting changed while the file was
+            // still being loaded put the defaults for all the others over it --
+            // which is how a shell comes back on a different panel family than
+            // it was left on.
+            if (!root.ready) {
+                root.writePending = true;
+                return;
+            }
+            root.writePending = false;
             configFileView.writeAdapter()
         }
     }
