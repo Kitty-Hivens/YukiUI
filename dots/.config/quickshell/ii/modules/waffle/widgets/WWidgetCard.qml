@@ -33,19 +33,22 @@ Rectangle {
     readonly property int naturalHeight: contentColumn.implicitHeight + BoardLooks.cardPadding * 2
     implicitHeight: root.naturalHeight
     height: root.naturalHeight
-    onNaturalHeightChanged: root.parent?.relayoutLater?.()
+    // What the card draws settled into a different size; that is a re-measure of the
+    // board, not a rearrangement of it.
+    onNaturalHeightChanged: root.parent?.relayoutLater?.(false)
 
-    // Not animated into its first position: before the board has been measured every
-    // card sits at the corner, and animating from there is the whole board sliding
-    // apart each time it opens.
-    readonly property bool settled: root.parent?.everLaidOut ?? false
+    /// Set by the board the first time it puts the card somewhere. Until then the
+    /// card sits at the corner, and gliding out of the corner is what a board looks
+    /// like when it twitches into place.
+    property bool placed: false
+    readonly property bool glides: root.placed && (root.parent?.animating ?? false) && !dragHandler.active
 
     Behavior on x {
-        enabled: root.settled && !dragHandler.active
+        enabled: root.glides
         animation: Looks.transition.move.createObject(this)
     }
     Behavior on y {
-        enabled: root.settled && !dragHandler.active
+        enabled: root.glides
         animation: Looks.transition.move.createObject(this)
     }
 

@@ -67,7 +67,11 @@ Item {
         return Math.min(root.rows, Math.max(root.minRowsFor(item), BoardState.rowsOf(item.cardId)));
     }
 
-    function relayoutLater() {
+    /// Deferred so that a burst of changes settles into one pass. Rearranging is
+    /// announced, so the pass that follows it is the one that glides.
+    function relayoutLater(rearranged) {
+        if (rearranged)
+            root.pendingAnimated = true;
         relayoutSoon.restart();
     }
 
@@ -157,7 +161,12 @@ Item {
         return null;
     }
 
-    property bool everLaidOut: false
+    /// Whether this pass is a rearrangement or a re-measure. Cards glide when the
+    /// board is arranged and snap when it is merely worked out again -- the board is
+    /// measured several times as it opens, and animating those is the whole thing
+    /// twitching into place.
+    property bool animating: false
+    property bool pendingAnimated: false
 
     function relayout() {
         if (root.width <= 0 || root.height <= 0)
@@ -169,8 +178,8 @@ Item {
                 continue;
             entry.item.x = root.cellX(entry.column);
             entry.item.y = entry.row * root.rowHeight;
+            entry.item.placed = true;
         }
-        root.everLaidOut = true;
     }
 
     /// The cell under a point, held inside the board on both axes: there is nowhere
@@ -230,7 +239,12 @@ Item {
     Timer {
         id: relayoutSoon
         interval: 0
-        onTriggered: root.relayout()
+        onTriggered: {
+            root.animating = root.pendingAnimated;
+            root.pendingAnimated = false;
+            root.relayout();
+            root.animating = false;
+        }
     }
 
     Component.onCompleted: BoardState.grid = root
@@ -248,16 +262,16 @@ Item {
     Connections {
         target: BoardState
         function onPinnedCardsChanged() {
-            relayoutSoon.restart();
+            root.relayoutLater(false);
         }
         function onPlacementsChanged() {
-            relayoutSoon.restart();
+            root.relayoutLater(true);
         }
         function onSizesChanged() {
-            relayoutSoon.restart();
+            root.relayoutLater(true);
         }
         function onEditingChanged() {
-            relayoutSoon.restart();
+            root.relayoutLater(false);
         }
     }
 
@@ -280,7 +294,7 @@ Item {
             values: BoardState.pinnedCards
         }
         delegate: WidgetCardChooser {}
-        onItemAdded: relayoutSoon.restart()
-        onItemRemoved: relayoutSoon.restart()
+        onItemAdded: root.relayoutLater(false)
+        onItemRemoved: root.relayoutLater(false)
     }
 }
