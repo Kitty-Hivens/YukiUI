@@ -55,7 +55,7 @@ WWidgetCard {
         }
 
         RowLayout {
-            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Math.round(BoardLooks.unit * 0.4)
             visible: root.hasPlayer
             spacing: 4
@@ -74,9 +74,6 @@ WWidgetCard {
                 iconName: "next"
                 enabled: MprisController.canGoNext
                 onClicked: MprisController.next()
-            }
-            Item {
-                Layout.fillWidth: true
             }
         }
     }

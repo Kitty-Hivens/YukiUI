@@ -18,7 +18,6 @@ WWidgetCard {
     cardId: "resources"
     title: Translation.tr("Resources")
     iconName: "desktop"
-    readout: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
 
     // The filesystem costs a process to read, unlike /proc, so it is only read while
     // this card is on the board.
