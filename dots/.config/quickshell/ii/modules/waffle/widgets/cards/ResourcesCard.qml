@@ -21,8 +21,17 @@ WWidgetCard {
 
     // The filesystem costs a process to read, unlike /proc, so it is only read while
     // this card is on the board.
-    Component.onCompleted: ResourceUsage.storagePolling = true
-    Component.onDestruction: ResourceUsage.storagePolling = false
+    // Counted only by a card that is on a board. The copy shown in the picker, and
+    // the copy drawn under the pointer while one is carried, are pictures of a card
+    // rather than one doing its work.
+    Component.onCompleted: {
+        if (!root.sample)
+            ResourceUsage.storageWatchers++;
+    }
+    Component.onDestruction: {
+        if (!root.sample)
+            ResourceUsage.storageWatchers--;
+    }
 
     ColumnLayout {
         anchors {

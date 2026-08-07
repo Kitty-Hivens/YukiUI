@@ -164,6 +164,10 @@ Rectangle {
         cursorShape: Qt.ClosedHandCursor
         onActiveChanged: {
             const board = root.parent;
+            if (!dragHandler.active && !root.arrangeable) {
+                root.abandonGesture();
+                return;
+            }
             if (active) {
                 board.carried = root;
                 BoardState.carriedOffer = root.cardId;
@@ -202,6 +206,95 @@ Rectangle {
                 root.aimAtCell();
             }
         }
+    }
+
+    /// Everything a gesture was about to do, dropped. Used when the board stops being
+    /// arranged underneath one: nothing was let go, so nothing is decided.
+    function abandonGesture() {
+        const board = root.parent;
+        BoardState.carriedOffer = "";
+        BoardState.returning = false;
+        if (!board)
+            return;
+        board.dropColumn = -1;
+        if (board.carried === root)
+            board.carried = null;
+        board.relayoutLater(false);
+    }
+
+    /// Where the card has been carried to, in the coordinates the board shares with
+    /// the picker's window.
+    function carriedCentre() {
+        const board = root.parent;
+        const carriedX = root.x + dragHandler.activeTranslation.x + root.width / 2;
+        const carriedY = root.y + dragHandler.activeTranslation.y + root.height / 2;
+        return board.mapToItem(null, carriedX, carriedY);
+    }
+
+    /// The cell the card is currently over, marked out on the board so the landing
+    /// place is visible before it is let go. Carried onto the picker instead, it is
+    /// being given back, and no cell is marked.
+    function aimAtCell() {
+        const board = root.parent;
+        const centre = root.carriedCentre();
+        BoardState.returning = BoardState.overPicker(centre.x, centre.y);
+        if (BoardState.returning) {
+            board.dropColumn = -1;
+            return;
+        }
+        const carriedX = root.x + dragHandler.activeTranslation.x;
+        const carriedY = root.y + dragHandler.activeTranslation.y;
+        const span = Math.min(BoardState.spanOf(root.cardId), board.cells);
+        const cell = board.cellAt(carriedX, carriedY, span, board.rowsFor(root));
+        board.dropSpan = span;
+        board.dropRows = board.rowsFor(root);
+        board.dropColumn = cell.column;
+        board.dropRow = cell.row;
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: root.arrangeable
+        color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0.75 : 0.94)
+        radius: root.radius
+        border.width: 1
+        border.color: ColorUtils.transparentize(Looks.colors.accent, dragHandler.active ? 0 : 0.5)
+
+        Behavior on color {
+            animation: Looks.transition.color.createObject(this)
+        }
+
+        RowLayout {
+            anchors {
+                top: parent.top
+                right: parent.right
+                margins: 6
+            }
+            spacing: 4
+
+            WPanelIconButton {
+                implicitWidth: 26
+                implicitHeight: 26
+                iconSize: 14
+                iconName: "dismiss"
+                onClicked: BoardState.removeCard(root.cardId)
+            }
+        }
+
+    }
+
+    /// Everything a gesture was about to do, dropped. Used when the board stops being
+    /// arranged underneath one: nothing was let go, so nothing is decided.
+    function abandonGesture() {
+        const board = root.parent;
+        BoardState.carriedOffer = "";
+        BoardState.returning = false;
+        if (!board)
+            return;
+        board.dropColumn = -1;
+        if (board.carried === root)
+            board.carried = null;
+        board.relayoutLater(false);
     }
 
     /// Where the card has been carried to, in the coordinates the board shares with
@@ -326,7 +419,8 @@ Rectangle {
         var span = entry.span;
         if (gripX < 0) {
             const rightCell = entry.column + entry.span;
-            column = Math.min(Math.max(0, Math.round((root.x + translation.x) / board.pitch)), rightCell - leastSpan);
+            const leftmost = Math.max(0, rightCell - leastSpan);
+            column = Math.min(Math.max(0, Math.round((root.x + translation.x) / board.pitch)), leftmost);
             span = rightCell - column;
         } else if (gripX > 0) {
             const pulled = (root.x + root.width + translation.x - board.cellX(entry.column) + board.gutter) / board.pitch;
@@ -337,7 +431,8 @@ Rectangle {
         var rows = entry.rows;
         if (gripY < 0) {
             const bottomRow = entry.row + entry.rows;
-            row = Math.min(Math.max(0, Math.round((root.y + translation.y) / board.rowHeight)), bottomRow - leastRows);
+            const highest = Math.max(0, bottomRow - leastRows);
+            row = Math.min(Math.max(0, Math.round((root.y + translation.y) / board.rowHeight)), highest);
             rows = bottomRow - row;
         } else if (gripY > 0) {
             const pulled = (root.y + root.height + translation.y - entry.row * board.rowHeight + board.gutter) / board.rowHeight;
@@ -355,8 +450,10 @@ Rectangle {
     function aimAtSize(gripX, gripY, translation) {
         const board = root.parent;
         const size = root.sizeUnderGrip(gripX, gripY, translation);
-        if (!size)
+        if (!size) {
+            board.dropColumn = -1;
             return;
+        }
         board.dropColumn = size.column;
         board.dropRow = size.row;
         board.dropSpan = size.span;
@@ -396,6 +493,10 @@ Rectangle {
                     root.aimAtSize(handle.gripX, handle.gripY, handleDrag.activeTranslation);
                     return;
                 }
+                if (!root.arrangeable) {
+                    root.abandonGesture();
+                    return;
+                }
                 root.settleSize();
             }
             onActiveTranslationChanged: {
@@ -414,7 +515,7 @@ Rectangle {
                     rows: board.dropRows
                 }) : null;
         board.dropColumn = -1;
-        if (!size)
+        if (!size || !board.entryFor(root.cardId))
             return;
         // A gesture that ended where it started is not a resize, and writing it back
         // would put every card's current size into the configuration for nothing. The

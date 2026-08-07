@@ -23,8 +23,10 @@ Singleton {
     property var previousCpuStats
 
     // Reading a filesystem costs a process, unlike /proc, and nothing in the
-    // shell itself shows storage. Whoever displays it turns the poll on.
-    property bool storagePolling: false
+    // shell itself shows storage. Whoever displays it counts itself in, and the
+    // reading runs while anyone is still watching.
+    property int storageWatchers: 0
+    readonly property bool storagePolling: root.storageWatchers > 0
     property string storagePath: "/"
     property real storageTotal: 0
     property real storageUsed: 0

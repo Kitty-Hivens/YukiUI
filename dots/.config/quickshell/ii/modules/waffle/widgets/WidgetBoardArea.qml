@@ -197,34 +197,32 @@ Item {
     /// room for it. Used both by a card carried across the board and by one carried
     /// in from the picker.
     function placeCard(cardId, column, row, span, rows) {
-        var entries = [];
+        // Starts from every place that was stored, so a card the board is not
+        // showing right now -- one whose delegate has yet to be built -- keeps its.
+        var byId = ({});
+        for (const stored of BoardState.placements) {
+            const id = stored.split(":")[0];
+            if (id)
+                byId[id] = stored;
+        }
         for (const entry of root.placedCards()) {
             if (entry.item.cardId === cardId)
                 continue;
-            const stored = BoardState.placementOf(entry.item.cardId);
-            const keep = stored ? `${entry.item.cardId}:${stored.column},${stored.row}` : null;
             const overlapsColumns = entry.column < column + span && column < entry.column + entry.span;
             const overlapsRows = entry.row < row + rows && row < entry.row + entry.rows;
-            if (!overlapsColumns || !overlapsRows) {
-                // Out of the way already: it keeps the place it was given rather than
-                // the one this pass happened to lay it out in.
-                if (keep)
-                    entries.push(keep);
+            if (!overlapsColumns || !overlapsRows)
                 continue;
-            }
             // Down to make room, or up when there is no room below. A card with
             // nowhere to go is left where it is instead of being made to overlap.
             const below = row + rows;
             const above = row - entry.rows;
             if (below + entry.rows <= root.rows)
-                entries.push(`${entry.item.cardId}:${entry.column},${below}`);
+                byId[entry.item.cardId] = `${entry.item.cardId}:${entry.column},${below}`;
             else if (above >= 0)
-                entries.push(`${entry.item.cardId}:${entry.column},${above}`);
-            else if (keep)
-                entries.push(keep);
+                byId[entry.item.cardId] = `${entry.item.cardId}:${entry.column},${above}`;
         }
-        entries.push(`${cardId}:${column},${row}`);
-        BoardState.setPlacements(entries);
+        byId[cardId] = `${cardId}:${column},${row}`;
+        BoardState.setPlacements(Object.keys(byId).map(id => byId[id]));
     }
 
     function dropCarried() {
@@ -275,9 +273,11 @@ Item {
         }
     }
 
-    // Where the carried card will land.
+    // Where the carried card will land, over the cards rather than under them: a
+    // card being made smaller would otherwise hide the very outline that says how
+    // small it is about to be.
     Rectangle {
-        z: -1
+        z: 5
         visible: root.dropColumn >= 0
         x: root.cellX(root.dropColumn)
         y: root.dropRow * root.rowHeight

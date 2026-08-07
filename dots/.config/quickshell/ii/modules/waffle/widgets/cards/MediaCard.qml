@@ -31,25 +31,17 @@ WWidgetCard {
 
         WText {
             Layout.fillWidth: true
-            visible: !root.hasPlayer
-            text: Translation.tr("Nothing is playing")
-            color: Looks.colors.subfg
-        }
-
-        WText {
-            Layout.fillWidth: true
-            visible: root.hasPlayer
-            text: MprisController.activePlayer?.trackTitle || Translation.tr("Unknown track")
-            color: root.foregroundColor
+            text: root.hasPlayer ? (MprisController.activePlayer?.trackTitle || Translation.tr("Unknown track")) : Translation.tr("Nothing is playing")
+            color: root.hasPlayer ? root.foregroundColor : Looks.colors.subfg
             font.pixelSize: Looks.font.pixelSize.larger
             font.weight: Looks.font.weight.strong
             elide: Text.ElideRight
         }
 
+        // Standing even when empty, so the card is the same height either way.
         WText {
             Layout.fillWidth: true
-            visible: root.hasPlayer && (MprisController.activePlayer?.trackArtist ?? "").length > 0
-            text: MprisController.activePlayer?.trackArtist ?? ""
+            text: root.hasPlayer ? (MprisController.activePlayer?.trackArtist ?? "") : ""
             color: ColorUtils.transparentize(root.foregroundColor, 0.3)
             elide: Text.ElideRight
         }
@@ -57,7 +49,6 @@ WWidgetCard {
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Math.round(BoardLooks.unit * 0.4)
-            visible: root.hasPlayer
             spacing: 4
 
             Control {
@@ -82,5 +73,6 @@ WWidgetCard {
         implicitWidth: Math.round(BoardLooks.controlSize * 1.4)
         implicitHeight: Math.round(BoardLooks.controlSize * 1.4)
         iconSize: Math.round(BoardLooks.controlSize * 0.7)
+        opacity: enabled ? 1 : 0.35
     }
 }

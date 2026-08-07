@@ -28,8 +28,8 @@ Item {
 
     // Reading a filesystem costs a process, so it only happens while the page
     // that shows the figure is the one open.
-    Component.onCompleted: ResourceUsage.storagePolling = true
-    Component.onDestruction: ResourceUsage.storagePolling = false
+    Component.onCompleted: ResourceUsage.storageWatchers++
+    Component.onDestruction: ResourceUsage.storageWatchers--
 
     function gb(kb) {
         return (kb / (1024 * 1024)).toFixed(1);
