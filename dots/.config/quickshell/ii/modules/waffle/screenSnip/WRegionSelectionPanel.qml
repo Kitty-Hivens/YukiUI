@@ -157,6 +157,9 @@ PanelWindow {
             id: dragArea
             anchors.fill: parent
             hoverEnabled: true
+            // Nothing else here wants the gesture, and a selection that only begins
+            // after the system's drag distance would open at that size.
+            dragThreshold: 0
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.CrossCursor
 
