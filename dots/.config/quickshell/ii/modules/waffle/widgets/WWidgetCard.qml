@@ -137,32 +137,35 @@ Rectangle {
         onActiveChanged: {
             if (active) {
                 root.parent.carried = root;
+                root.aimAtCell();
                 return;
             }
-            root.dropWhereItLies();
+            root.parent.dropCarried();
+            root.parent.dropColumn = -1;
             root.parent.carried = null;
         }
         onCentroidChanged: {
             if (dragHandler.active)
-                root.showWhereItWouldLand();
+                root.aimAtCell();
+        }
+        onActiveTranslationChanged: {
+            if (dragHandler.active)
+                root.aimAtCell();
         }
     }
 
-    function carriedMiddle() {
-        return Qt.point(root.x + dragHandler.activeTranslation.x + root.width / 2, root.y + dragHandler.activeTranslation.y + root.height / 2);
-    }
-
-    /// The others step aside while the card is still in the air, so where it will
-    /// land is visible before it is let go.
-    function showWhereItWouldLand() {
-        const middle = root.carriedMiddle();
-        const index = root.parent.indexAt(middle.x, middle.y);
-        if (index !== -1)
-            BoardState.moveCardTo(root.cardId, index);
-    }
-
-    function dropWhereItLies() {
-        root.showWhereItWouldLand();
+    /// The cell the card is currently over, marked out on the board so the landing
+    /// place is visible before it is let go.
+    function aimAtCell() {
+        const board = root.parent;
+        const carriedX = root.x + dragHandler.activeTranslation.x;
+        const carriedY = root.y + dragHandler.activeTranslation.y;
+        const span = Math.min(BoardState.spanOf(root.cardId), board.columns);
+        const cell = board.cellAt(carriedX, carriedY, span);
+        board.dropSpan = span;
+        board.dropRows = board.rowsFor(root);
+        board.dropColumn = cell.column;
+        board.dropRow = cell.row;
     }
 
     Rectangle {

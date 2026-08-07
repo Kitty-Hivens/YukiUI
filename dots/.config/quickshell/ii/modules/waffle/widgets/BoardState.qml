@@ -67,6 +67,38 @@ Singleton {
             Config.options.waffles.widgets.wideCards = root.wideCards.concat([cardId]);
     }
 
+    /// Where the cards sit. Kept as "id:column,row" so a card holds its place
+    /// rather than being packed against its neighbours -- the grid a card is put
+    /// on is the grid it stays on, gaps and all.
+    readonly property list<string> placements: Config.options?.waffles.widgets.placements ?? []
+
+    function placementOf(cardId) {
+        for (const entry of root.placements) {
+            const parts = entry.split(":");
+            if (parts[0] !== cardId || parts.length < 2)
+                continue;
+            const at = parts[1].split(",");
+            return ({
+                    column: parseInt(at[0]),
+                    row: parseInt(at[1])
+                });
+        }
+        return null;
+    }
+
+    function setPlacement(cardId, column, row) {
+        const others = root.placements.filter(entry => entry.split(":")[0] !== cardId);
+        Config.options.waffles.widgets.placements = others.concat([`${cardId}:${column},${row}`]);
+    }
+
+    function setPlacements(entries) {
+        Config.options.waffles.widgets.placements = entries;
+    }
+
+    function forgetPlacement(cardId) {
+        Config.options.waffles.widgets.placements = root.placements.filter(entry => entry.split(":")[0] !== cardId);
+    }
+
     function addCard(cardId) {
         if (root.pinnedCards.indexOf(cardId) !== -1)
             return;
@@ -75,6 +107,7 @@ Singleton {
 
     function removeCard(cardId) {
         Config.options.waffles.widgets.cards = root.pinnedCards.filter(card => card !== cardId);
+        root.forgetPlacement(cardId);
     }
 
     /// Puts a card where another one is, which is what dropping it there means.
