@@ -104,6 +104,21 @@ Singleton {
         "activespecial", "activespecialv2"]
     readonly property var monitorEvents: ["monitoradded", "monitoraddedv2", "monitorremoved", "focusedmon", "focusedmonv2"]
     readonly property var layerEvents: ["openlayer", "closelayer"]
+    /**
+     * Titles are the one client event that arrives faster than it can be answered.
+     * Routing them to the window list alone already stopped four fifths of the work,
+     * but a title that animates is still several events a second and each of them
+     * was its own hyprctl process. Nothing else can have changed while a title
+     * churns, so the read waits for the churn to stop.
+     */
+    readonly property var titleEvents: ["windowtitle", "windowtitlev2"]
+
+    Timer {
+        id: titleSettleTimer
+        interval: 250
+        repeat: false
+        onTriggered: root.updateWindowList()
+    }
 
     Connections {
         target: Hyprland
@@ -117,7 +132,14 @@ Singleton {
                 root.updateAll();
                 return;
             }
+            if (root.titleEvents.includes(name)) {
+                titleSettleTimer.restart();
+                return;
+            }
             if (root.clientEvents.includes(name)) {
+                // Any other client event reads the list now, which answers whatever
+                // titles were waiting on as well.
+                titleSettleTimer.stop();
                 root.updateWindowList();
                 if (["openwindow", "closewindow", "movewindow", "movewindowv2"].includes(name))
                     root.updateWorkspaces();
