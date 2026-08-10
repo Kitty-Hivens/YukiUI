@@ -57,7 +57,7 @@ WBarAttachedPanelContent {
             SearchBar {
                 id: searchBar
                 Layout.fillWidth: true
-                implicitWidth: Looks.sizes.menuWidth // the start menu stands in the same place
+                implicitWidth: Looks.sizes.searchPanelWidth
                 horizontalPadding: 32
                 focus: true
                 text: LauncherSearch.query
@@ -70,7 +70,7 @@ WBarAttachedPanelContent {
             }
 
             Item {
-                implicitHeight: 640
+                implicitHeight: Looks.sizes.menuHeight - searchBar.implicitHeight
                 Layout.fillWidth: true
 
                 Loader {

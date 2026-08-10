@@ -38,7 +38,7 @@ Rectangle {
     }
 
     radius: Looks.radius.large
-    color: Looks.colors.bg1
+    color: Looks.colors.bg1OnBody
     border.width: 1
     border.color: ColorUtils.transparentize(Looks.colors.ambientShadow, 0.7)
     implicitWidth: 156

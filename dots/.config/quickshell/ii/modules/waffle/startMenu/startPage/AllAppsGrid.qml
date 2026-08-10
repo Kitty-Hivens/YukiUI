@@ -12,7 +12,10 @@ import qs.modules.waffle.looks
 GridLayout {
     id: root
 
-    columns: 4
+    // Three, not four. Measured: the cards are 156 and sit 64 in from either edge
+    // of a 640 menu, which leaves exactly 512 for three of them and their gaps.
+    // Four fitted only while the menu was mistakenly 832 wide.
+    columns: 3
 
     // Every category grid filters this same list, so the sort happens here once
     // rather than in each of them.
@@ -49,7 +52,7 @@ GridLayout {
         }
     }
 
-    columnSpacing: 27
+    columnSpacing: 22
     rowSpacing: 12
     component AppCategory: Item {
         id: categoryItem

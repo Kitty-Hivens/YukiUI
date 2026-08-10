@@ -28,12 +28,18 @@ BarButton {
             
             Column {
                 anchors.verticalCenter: parent.verticalCenter
+                // Noto sits a pixel higher than Segoe at this size, so the block is
+                // nudged back down onto the line Windows puts it on. Measured against
+                // the real thing, not guessed: 12..37 there, 11..36 here without it.
+                anchors.verticalCenterOffset: 1
                 WText {
                     anchors.right: parent.right
+                    font.pixelSize: 12
                     text: DateTime.time
                 }
                 WText {
                     anchors.right: parent.right
+                    font.pixelSize: 12
                     text: DateTime.date
                 }
             }

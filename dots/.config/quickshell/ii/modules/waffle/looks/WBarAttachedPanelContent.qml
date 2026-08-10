@@ -15,7 +15,10 @@ Item {
     signal closing
 
     required property Item contentItem
-    property real visualMargin: 12
+    /// The clear space between a panel and the edges it hangs from. Measured at 13 on
+    /// four separate surfaces -- start, search, quick settings, notification centre --
+    /// which all stop the same distance short of the taskbar and of the screen edge.
+    property real visualMargin: 13
     property int closeAnimDuration: 150
     property bool revealFromSides: false
     property bool revealFromLeft: true

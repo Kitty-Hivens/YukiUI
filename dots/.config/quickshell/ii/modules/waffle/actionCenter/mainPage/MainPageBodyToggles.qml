@@ -23,7 +23,8 @@ Item {
     readonly property int pages: Math.ceil(toggles.length / itemsPerPage)
     property list<string> toggles: Config.options.waffles.actionCenter.toggles
 
-    property real padding: 22
+    // 23 each side, three 96 tiles and two 12 gaps, is the 358 the panel measures.
+    property real padding: 23
     property real reducedBottomPadding: 12
     implicitHeight: swipeView.implicitHeight + (padding - swipeView.padding) * 2 - reducedBottomPadding
 

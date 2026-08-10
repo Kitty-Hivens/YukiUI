@@ -9,7 +9,7 @@ Kirigami.Icon {
     property bool separateLightDark: false
     property bool tryCustomIcon: true
     
-    property real implicitSize: 26
+    property real implicitSize: 24
     implicitWidth: implicitSize
     implicitHeight: implicitSize
 

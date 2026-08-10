@@ -52,6 +52,13 @@ Singleton {
         property color controlBg: '#807F85'
         property color controlBgHover: '#57575B'
         property color controlFg: "#FFFFFF"
+        /// The scrollbar's thumb. Stated as an alpha rather than a grey because it is
+        /// one: measured, the same thumb reads two different values over the panel
+        /// body and over its own track.
+        property color controlStrongFill: ColorUtils.transparentize("#000000", 0.5542)
+        /// The track behind it, which only a hovered scrollbar has. The alpha is the
+        /// one measured in the dark theme; the light one has not been looked at.
+        property color scrollTrack: ColorUtils.transparentize("#000000", 0.958)
         property color accentUnfocused: "#848484"
         property color link: "#235CCF"
         property color inputBg: ColorUtils.transparentize(bg0, 0.4)
@@ -80,6 +87,11 @@ Singleton {
         property color controlBg: "#9B9B9B"
         property color controlBgHover: "#CFCED1"
         property color controlFg: "#454545"
+        /// White at 54.42%, which is what reads as #9B9B9B over the panel body and
+        /// #9F9F9F over the scrollbar's own track. Both were measured.
+        property color controlStrongFill: ColorUtils.transparentize("#FFFFFF", 0.4558)
+        /// Measured #2C2C2C over the #242424 body, which is this.
+        property color scrollTrack: ColorUtils.transparentize("#FFFFFF", 0.958)
         property color accentUnfocused: "#989898"
         property color link: "#A7C9FC"
         property color inputBg: ColorUtils.transparentize(darkColors.bg0, 0.5)
@@ -105,6 +117,10 @@ Singleton {
         property color bg1Hover: ColorUtils.solveOverlayColor(bg0Base, root.dark ? root.darkColors.bg1Hover : root.lightColors.bg1Hover, 1 - root.contentTransparency)
         property color bg1Active: ColorUtils.solveOverlayColor(bg0Base, root.dark ? root.darkColors.bg1Active : root.lightColors.bg1Active, 1 - root.contentTransparency)
         property color bg1Border: ColorUtils.solveOverlayColor(bg0Base, root.dark ? root.darkColors.bg1Border : root.lightColors.bg1Border, 1 - root.contentTransparency)
+        /// Layer 1 for the things that sit on a panel's body rather than on layer 0.
+        /// `bg1` is solved against `bg0`, so drawing it on the body lands at #333333
+        /// where the reference has the same #2C2C2C it has everywhere else.
+        property color bg1OnBody: ColorUtils.solveOverlayColor(bgPanelBodyBase, bg1Base, 1 - root.contentTransparency)
         // Layer 2
         property color bg2Base: root.dark ? root.darkColors.bg2 : root.lightColors.bg2
         property color bg2: ColorUtils.solveOverlayColor(bgPanelBodyBase, bg2Base, 1 - root.contentTransparency)
@@ -122,6 +138,8 @@ Singleton {
         property color controlBg: root.dark ? root.darkColors.controlBg : root.lightColors.controlBg
         property color controlBgHover: root.dark ? root.darkColors.controlBgHover : root.lightColors.controlBgHover
         property color controlFg: root.dark ? root.darkColors.controlFg : root.lightColors.controlFg
+        property color controlStrongFill: root.dark ? root.darkColors.controlStrongFill : root.lightColors.controlStrongFill
+        property color scrollTrack: root.dark ? root.darkColors.scrollTrack : root.lightColors.scrollTrack
         property color inputBg: root.dark ? root.darkColors.inputBg : root.lightColors.inputBg
         property color danger: "#C42B1C"
         property color dangerActive: "#B62D1F"
@@ -136,22 +154,36 @@ Singleton {
         property color selectionFg: Appearance.colors.colOnPrimaryContainer
     }
 
-    /// Measurements shared by more than one place. Everything here was a literal
-    /// repeated across files -- the same page height in four control pages, the same
-    /// width in the start menu and the panel that stands beside it -- so changing one
-    /// of them meant finding the rest. The values are unchanged.
+    /// Measurements shared by more than one place, so that changing one does not mean
+    /// hunting for the rest. Those marked measured come from Windows itself rather than
+    /// from a guess; the others are still the inherited literals and say so.
     property QtObject sizes: QtObject {
         id: sizes
-        /// The bar.
+        /// The bar. Measured.
         property int barHeight: 48
+        /// One button in the bar's app row. Measured: the pitch is 44 whatever the
+        /// icon inside it happens to be, which is why it is stated rather than
+        /// derived from the content.
+        property int barButtonWidth: 44
         /// A control page inside the action centre: Wi-Fi, Bluetooth, sound, night light.
+        /// Not measured yet.
         property int controlPageHeight: 400
         /// The button along the trailing edge of a row in one of those pages.
+        /// Not measured yet.
         property int controlActionWidth: 148
-        /// The start menu, and the search panel that takes its place.
-        property int menuWidth: 832
-        /// A notification, in the popup stack and in the centre.
-        property int notificationWidth: 396
+        /// The start menu. Measured. It is not the width of the search panel: the two
+        /// stand in the same place and are deliberately different sizes, which one
+        /// shared token quietly denied.
+        property int startMenuWidth: 640
+        /// The search panel. Measured.
+        property int searchPanelWidth: 774
+        /// Both of them are this tall. Measured: they differ in width and agree in
+        /// height, because both hang from the taskbar and end on the same line.
+        /// Re-measured after the reference machine took a cumulative update that
+        /// rebuilt the start menu; it had been 724 before that, on both surfaces.
+        property int menuHeight: 690
+        /// A notification in the popup stack. Measured. The centre sizes its own.
+        property int notificationWidth: 362
     }
 
     radius: QtObject {

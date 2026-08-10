@@ -28,7 +28,7 @@ WButton {
             Layout.topMargin: 12
             Layout.alignment: Qt.AlignHCenter
             iconName: root.desktopEntry.icon
-            implicitSize: 34
+            implicitSize: 32
             tryCustomIcon: false
         }
         WText {

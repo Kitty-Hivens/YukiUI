@@ -17,7 +17,11 @@ FooterRectangle {
     property bool searching: text.length > 0
     property alias searchInput: searchInput
     property alias text: searchInput.text
-    implicitHeight: outline.implicitHeight + verticalPadding * 2
+    /// A pixel short of twice the padding, which is why the field ends up with 16
+    /// above it and 15 below. The band and the separator under it come to 64 between
+    /// them -- the same 64 as the account bar and its own separator at the other end
+    /// of the menu -- and that separator is drawn by the page below, not here.
+    implicitHeight: outline.implicitHeight + verticalPadding * 2 - 1
 
     signal accepted()
 
@@ -83,7 +87,10 @@ FooterRectangle {
                         verticalCenter: parent.verticalCenter
                     }
                     color: Looks.colors.accentUnfocused
-                    text: Translation.tr("Search for apps") // should also have "", settings, and documents" but we don't have those
+                    // The reference says "apps, settings, and documents". Settings are
+                    // searched now; documents are not, and claiming them would be a
+                    // promise the results cannot keep.
+                    text: Translation.tr("Search for apps and settings")
                     visible: searchInput.text.length === 0
                     font.pixelSize: Looks.font.pixelSize.large
                 }

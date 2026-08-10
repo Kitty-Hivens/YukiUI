@@ -15,7 +15,13 @@ BarButton {
     property alias tryCustomIcon: iconWidget.tryCustomIcon
     leftInset: 2
     rightInset: 2
-    implicitWidth: height - topInset - bottomInset + leftInset + rightInset
+    // Stated, not derived. Deriving the width from the height made the cell follow
+    // the icon: dropping the icon from 26 to its measured 24 pulled the button from
+    // 42 to 40, where Windows is 44 regardless of what it holds. The task row is a
+    // list view, which does not stretch its delegates, so the height has to be said
+    // as well or it comes back from the content too.
+    implicitWidth: Looks.sizes.barButtonWidth
+    implicitHeight: Looks.sizes.barHeight
 
     property real pressedScale: 5/6
 

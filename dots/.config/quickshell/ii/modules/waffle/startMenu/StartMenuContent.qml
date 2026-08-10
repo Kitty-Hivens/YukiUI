@@ -98,7 +98,7 @@ WBarAttachedPanelContent {
             SearchBar {
                 id: searchBar
                 Layout.fillWidth: true
-                implicitWidth: Looks.sizes.menuWidth
+                implicitWidth: Looks.sizes.startMenuWidth
                 horizontalPadding: 32
                 // verticalPadding: root.searching ? 32 : 16 // TODO: make this not nuke the panel
                 Synchronizer on searching {
@@ -114,7 +114,7 @@ WBarAttachedPanelContent {
                 }
             }
             Item {
-                implicitHeight: 800 // TODO: Make sizes naturally inferred
+                implicitHeight: Looks.sizes.menuHeight - searchBar.implicitHeight
                 Layout.fillWidth: true
                 // Both pages stay for as long as the menu is open. Swapping one Loader
                 // between them tore down the start page on the first character typed and
