@@ -23,7 +23,15 @@ Singleton {
     property string generatedTranslationsDir: Directories.shellConfig + "/translations"
 
     property string languageCode: {
-        var configLang = Config?.options.language.ui ?? "auto";
+        // Until the config file has been read the adapter still answers with its
+        // defaults, and answering from that switched the language twice on every
+        // load -- once to the system locale, once to what the config actually asks
+        // for -- reading four translation files to get there, half of them at a
+        // path for a language nobody selected.
+        if (!Config.ready)
+            return "";
+
+        var configLang = Config.options.language.ui ?? "auto";
 
         if (configLang !== "auto")
             return configLang;
@@ -48,17 +56,16 @@ Singleton {
     }
 
     onLanguageCodeChanged: {
+        if (root.languageCode === "")
+            return;
         print("[Translation] Language changed to", root.languageCode);
-        translationFileView.languageCode = root.languageCode;
-        generatedTranslationFileView.languageCode = root.languageCode;
-        translationFileView.reread();
-        generatedTranslationFileView.reread();
+        translationFileView.reread(root.languageCode);
+        generatedTranslationFileView.reread(root.languageCode);
     }
 
     TranslationReader {
         id: translationFileView
         translationsDir: root.translationsDir
-        languageCode: root.languageCode
         onContentLoaded: (data) => {
             root.translations = data;
             root.isLoading = false;
@@ -68,7 +75,6 @@ Singleton {
     TranslationReader {
         id: generatedTranslationFileView
         translationsDir: root.generatedTranslationsDir
-        languageCode: root.languageCode
         onContentLoaded: (data) => {
             root.generatedTranslations = data;
             root.isLoading = false;
@@ -118,13 +124,16 @@ Singleton {
     component TranslationReader: FileView {
         id: translationReader
         required property string translationsDir
-        property string languageCode: root.languageCode
         signal contentLoaded(var data)
 
-        function reread() { // Proper reload in case the file was incorrect before
+        // The code is passed in rather than mirrored on a property here: the mirror
+        // was bound to the singleton and then assigned over on every switch, which
+        // broke the binding on the first one and left it decorative. Clearing the
+        // path is already what forces the file to be read again, so the reload()
+        // that used to follow only ever read it a second time.
+        function reread(languageCode) {
             translationReader.path = "";
-            translationReader.path = `${translationReader.translationsDir}/${translationReader.languageCode}.json`;
-            translationReader.reload();
+            translationReader.path = `${translationReader.translationsDir}/${languageCode}.json`;
         }
         path: ""
 
