@@ -46,6 +46,10 @@ Singleton {
             name: "",
             pages: [
                 {
+                    // The name is translated and the component is a path, so neither
+                    // can be what a caller asks for. This is what goes in the window's
+                    // environment and what the launcher's results carry.
+                    key: "home",
                     name: Translation.tr("Home"),
                     icon: "home",
                     description: Translation.tr("Overview of this system"),
@@ -58,6 +62,7 @@ Singleton {
             name: Translation.tr("Hardware"),
             pages: [
                 {
+                    key: "displays",
                     name: Translation.tr("Displays"),
                     icon: "monitor",
                     description: Translation.tr("Arrangement, modes, colour"),
@@ -65,6 +70,7 @@ Singleton {
                     status: root.displaysStatus
                 },
                 {
+                    key: "sound",
                     name: Translation.tr("Sound"),
                     icon: "volume_up",
                     description: Translation.tr("Devices, applications and profiles"),
@@ -80,14 +86,11 @@ Singleton {
      * can open the window where it means rather than at the front door.
      */
     function componentFor(key) {
-        switch ((key ?? "").toLowerCase()) {
-        case "sound":
-            return root.soundComponent;
-        case "displays":
-            return root.displaysComponent;
-        default:
-            return root.homeComponent;
-        }
+        const wanted = (key ?? "").toLowerCase();
+        for (const page of root.pages)
+            if (page.key === wanted)
+                return page.component;
+        return root.homeComponent;
     }
 
     readonly property var pages: {

@@ -204,6 +204,14 @@ Singleton {
             return "pin";
         case "keep_off":
             return "pin-off";
+        // The settings window names its pages in Material, so its icons arrive here
+        // when one of its pages turns up as a search result.
+        case "home":
+            return "home";
+        case "monitor":
+            return "desktop";
+        case "volume_up":
+            return "speaker";
         default:
             return "apps";
         }

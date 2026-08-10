@@ -3,6 +3,7 @@ pragma Singleton
 import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.functions
+import qs.modules.systemSettings
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
@@ -122,6 +123,18 @@ Singleton {
 
     // Combined built-in and user actions
     property var allActions: searchActions.concat(userActionScripts)
+
+    /**
+     * The settings window's own pages, ready to be matched against.
+     *
+     * Both the page's name and the line describing what it holds are searched, so
+     * that "volume" reaches the sound page even though the word is not its title.
+     */
+    readonly property var preparedSettingsPages: SystemPages.pages.map(page => ({
+                page: page,
+                name: Fuzzy.prepare(page.name),
+                description: Fuzzy.prepare(page.description)
+            }))
 
     property string mathResult: ""
     property bool clipboardWorkSafetyActive: {
@@ -320,6 +333,27 @@ Singleton {
                 Qt.openUrlExternally(url);
             }
         });
+        const settingsResultObjects = Fuzzy.go(StringUtils.cleanPrefix(root.query, Config.options.search.prefix.app), root.preparedSettingsPages, {
+            all: false,
+            keys: ["name", "description"]
+        }).map(entry => {
+            const page = entry.obj.page;
+            return resultComp.createObject(null, {
+                type: Translation.tr("Settings"),
+                name: page.name,
+                iconName: page.icon,
+                iconType: LauncherSearchResult.IconType.Material,
+                verb: Translation.tr("Open"),
+                comment: page.description,
+                execute: () => {
+                    // The settings window is its own shell process, and the page it
+                    // lands on comes from the environment. Handed over as arguments
+                    // rather than through a shell, so a path with a space in it is
+                    // not something anyone has to think about.
+                    Quickshell.execDetached(["env", `YUKIUI_SETTINGS_PAGE=${page.key}`, "qs", "-p", Quickshell.shellPath("systemSettings.qml")]);
+                }
+            });
+        });
         const launcherActionObjects = root.allActions.map(action => {
             const actionString = `${Config.options.search.prefix.action}${action.action}`;
             if (actionString.startsWith(root.query) || root.query.startsWith(actionString)) {
@@ -353,6 +387,9 @@ Singleton {
 
         //////////////// Apps //////////////////
         result = result.concat(appResultObjects);
+
+        ////////////// Settings ////////////////
+        result = result.concat(settingsResultObjects);
 
         ////////// Launcher actions ////////////
         result = result.concat(launcherActionObjects);
