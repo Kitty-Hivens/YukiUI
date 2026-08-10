@@ -54,6 +54,14 @@ MouseArea {
     TaskPreview {
         id: previewPopup
         tasksHovered: root.containsMouse
-        anchor.window: root.QsWindow.window
+
+        /// Asked once and held, rather than left as a binding on the attached object.
+        /// Unmapping the bar tears its item tree down, and the cascade of derefWindow
+        /// calls reaches this MouseArea; anything still bound underneath is evaluated
+        /// again from inside that teardown, and this one would ask an item whose
+        /// window is already gone, which segfaults the shell.
+        property var barWindow: null
+        anchor.window: previewPopup.barWindow
+        Component.onCompleted: previewPopup.barWindow = root.QsWindow.window
     }
 }

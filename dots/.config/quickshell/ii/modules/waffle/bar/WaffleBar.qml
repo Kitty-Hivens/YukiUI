@@ -37,21 +37,27 @@ Scope {
                 implicitHeight: content.implicitHeight
                 implicitWidth: content.implicitWidth
 
-                // Unmapping under a fullscreen window is what lets Hyprland direct-scanout
-                // it, and the ii bar does that with a `visible` binding. The same binding
-                // here segfaulted Quickshell every time a window went fullscreen.
+                // Unmapped under a fullscreen window so Hyprland can direct-scanout it,
+                // which is what VRR pacing wants.
                 //
-                // What the dump shows, and no more than that: tearing the window down runs
-                // setParentItem, whose cascade of derefWindow calls reaches
-                // QQuickMouseArea::itemChange, which re-evaluates a binding that then asks
-                // a half-destroyed window for QQuickItem::window(). Which binding is not
-                // known. Nor is why the ii bar survives it -- it has tooltips, popups and
-                // tray menus of its own, so "this bar has more attached to it" was a guess
-                // and is not an explanation.
+                // This binding used to segfault the shell on every fullscreen. Tearing
+                // the window down runs setParentItem, whose cascade of derefWindow calls
+                // reaches QQuickMouseArea::itemChange, which re-evaluates a binding that
+                // then asks a half-destroyed window for QQuickItem::window(). The binding
+                // was the task row's preview popup: it hangs off a MouseArea and had its
+                // anchor window bound to that MouseArea's QsWindow. The ii bar survives
+                // the same unmapping because every QsWindow.window it reads sits inside a
+                // Loader that is inactive unless a menu or a tooltip is actually open --
+                // not because it has less attached to it. The preview takes its window
+                // once now instead of binding it.
                 //
-                // Left mapped until the cause is found on something other than the user's
-                // running shell. Putting the binding back before then costs them the
-                // shell, which is what it did.
+                // Deferring the unmap out of the binding update does not help: the
+                // teardown is unsafe whenever a live binding is left for it to walk back
+                // into, whatever point in the event loop it runs at.
+                property bool fullscreenHere: Hyprland.workspaces.values.some(ws => ws.active
+                    && ws.monitor?.name == barRoot.modelData.name
+                    && ws.toplevels.values.some(w => w.wayland?.fullscreen))
+                visible: !(Config.options.waffles.bar.hideWhenFullscreen && barRoot.fullscreenHere)
 
                 Component.onCompleted: WBarWindows.add(barRoot)
                 Component.onDestruction: WBarWindows.remove(barRoot)
