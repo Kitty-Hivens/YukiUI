@@ -56,10 +56,22 @@ Rectangle {
             return DesktopEntries.byId(desktopEntryString);
         }
 
-        FluentIcon {
+        /// A player that names a desktop entry brings its own picture from the icon
+        /// theme and is drawn as it is. One that names none gets the Fluent note
+        /// glyph in the foreground colour, which is a different path through the
+        /// assets: the theme name never appears in the Fluent set, so asking
+        /// FluentIcon for it only ever missed and leant on its fallback.
+        WAppIcon {
+            visible: !!appInfo.desktopEntry?.icon
             implicitSize: 20
-            icon: appInfo.desktopEntry?.icon || "music-note-2"
-            monochrome: !appInfo.desktopEntry?.icon
+            iconName: appInfo.desktopEntry?.icon ?? ""
+            tryCustomIcon: false
+        }
+
+        FluentIcon {
+            visible: !appInfo.desktopEntry?.icon
+            implicitSize: 20
+            icon: "music-note-2"
         }
 
         WText {
@@ -127,7 +139,7 @@ Rectangle {
         MediaControlButton {
             readonly property bool playing: root.activePlayer?.isPlaying ?? false
             iconName: playing ? "pause" : "play"
-            enabled: (playing && root.activePlayer?.canPause) || (!playing && root.activePlayer?.canPlay)
+            enabled: playing ? (root.activePlayer?.canPause ?? false) : (root.activePlayer?.canPlay ?? false)
             onClicked: root.activePlayer?.togglePlaying()
         }
         MediaControlButton {
