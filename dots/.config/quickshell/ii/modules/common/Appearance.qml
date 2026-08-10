@@ -35,77 +35,154 @@ Singleton {
     property real contentTransparency: Config?.options.appearance.transparency.automatic ? autoContentTransparency : Config?.options.appearance.transparency.contentTransparency
 
     m3colors: QtObject {
+        id: m3Colors
+
+        /// Off until the generated palette has been read once. The shell starts on the
+        /// colours declared below and loads the real ones a moment later, which would
+        /// otherwise fade in on every start rather than only when the theme changes.
+        property bool transitionsEnabled: false
+        property int transitionDuration: 350
+
         property bool darkmode: true
         property bool transparent: false
         property color m3background: "#141313"
+        Behavior on m3background { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onBackground: "#e6e1e1"
+        Behavior on m3onBackground { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surface: "#141313"
+        Behavior on m3surface { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceDim: "#141313"
+        Behavior on m3surfaceDim { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceBright: "#3a3939"
+        Behavior on m3surfaceBright { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceContainerLowest: "#0f0e0e"
+        Behavior on m3surfaceContainerLowest { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceContainerLow: "#1c1b1c"
+        Behavior on m3surfaceContainerLow { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceContainer: "#201f20"
+        Behavior on m3surfaceContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceContainerHigh: "#2b2a2a"
+        Behavior on m3surfaceContainerHigh { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceContainerHighest: "#363435"
+        Behavior on m3surfaceContainerHighest { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSurface: "#e6e1e1"
+        Behavior on m3onSurface { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceVariant: "#49464a"
+        Behavior on m3surfaceVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSurfaceVariant: "#cbc5ca"
+        Behavior on m3onSurfaceVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3inverseSurface: "#e6e1e1"
+        Behavior on m3inverseSurface { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3inverseOnSurface: "#313030"
+        Behavior on m3inverseOnSurface { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3outline: "#948f94"
+        Behavior on m3outline { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3outlineVariant: "#49464a"
+        Behavior on m3outlineVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3shadow: "#000000"
+        Behavior on m3shadow { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3scrim: "#000000"
+        Behavior on m3scrim { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3surfaceTint: "#cbc4cb"
+        Behavior on m3surfaceTint { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3primary: "#cbc4cb"
+        Behavior on m3primary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onPrimary: "#322f34"
+        Behavior on m3onPrimary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3primaryContainer: "#2d2a2f"
+        Behavior on m3primaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onPrimaryContainer: "#bcb6bc"
+        Behavior on m3onPrimaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3inversePrimary: "#615d63"
+        Behavior on m3inversePrimary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3secondary: "#cac5c8"
+        Behavior on m3secondary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSecondary: "#323032"
+        Behavior on m3onSecondary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3secondaryContainer: "#4d4b4d"
+        Behavior on m3secondaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSecondaryContainer: "#ece6e9"
+        Behavior on m3onSecondaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3tertiary: "#d1c3c6"
+        Behavior on m3tertiary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onTertiary: "#372e30"
+        Behavior on m3onTertiary { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3tertiaryContainer: "#31292b"
+        Behavior on m3tertiaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onTertiaryContainer: "#c1b4b7"
+        Behavior on m3onTertiaryContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3error: "#ffb4ab"
+        Behavior on m3error { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onError: "#690005"
+        Behavior on m3onError { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3errorContainer: "#93000a"
+        Behavior on m3errorContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onErrorContainer: "#ffdad6"
+        Behavior on m3onErrorContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3primaryFixed: "#e7e0e7"
+        Behavior on m3primaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3primaryFixedDim: "#cbc4cb"
+        Behavior on m3primaryFixedDim { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onPrimaryFixed: "#1d1b1f"
+        Behavior on m3onPrimaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onPrimaryFixedVariant: "#49454b"
+        Behavior on m3onPrimaryFixedVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3secondaryFixed: "#e6e1e4"
+        Behavior on m3secondaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3secondaryFixedDim: "#cac5c8"
+        Behavior on m3secondaryFixedDim { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSecondaryFixed: "#1d1b1d"
+        Behavior on m3onSecondaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSecondaryFixedVariant: "#484648"
+        Behavior on m3onSecondaryFixedVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3tertiaryFixed: "#eddfe1"
+        Behavior on m3tertiaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3tertiaryFixedDim: "#d1c3c6"
+        Behavior on m3tertiaryFixedDim { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onTertiaryFixed: "#211a1c"
+        Behavior on m3onTertiaryFixed { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onTertiaryFixedVariant: "#4e4447"
+        Behavior on m3onTertiaryFixedVariant { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3success: "#B5CCBA"
+        Behavior on m3success { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSuccess: "#213528"
+        Behavior on m3onSuccess { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3successContainer: "#374B3E"
+        Behavior on m3successContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color m3onSuccessContainer: "#D1E9D6"
+        Behavior on m3onSuccessContainer { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term0: "#EDE4E4"
+        Behavior on term0 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term1: "#B52755"
+        Behavior on term1 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term2: "#A97363"
+        Behavior on term2 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term3: "#AF535D"
+        Behavior on term3 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term4: "#A67F7C"
+        Behavior on term4 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term5: "#B2416B"
+        Behavior on term5 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term6: "#8D76AD"
+        Behavior on term6 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term7: "#272022"
+        Behavior on term7 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term8: "#0E0D0D"
+        Behavior on term8 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term9: "#B52755"
+        Behavior on term9 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term10: "#A97363"
+        Behavior on term10 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term11: "#AF535D"
+        Behavior on term11 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term12: "#A67F7C"
+        Behavior on term12 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term13: "#B2416B"
+        Behavior on term13 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term14: "#8D76AD"
+        Behavior on term14 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
         property color term15: "#221A1A"
+        Behavior on term15 { enabled: m3Colors.transitionsEnabled; ColorAnimation { duration: m3Colors.transitionDuration; easing.type: Easing.BezierSpline; easing.bezierCurve: root.animationCurves.standard } }
     }
 
     colors: QtObject {
