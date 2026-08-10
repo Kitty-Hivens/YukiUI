@@ -161,12 +161,36 @@ Singleton {
     }
 
     // Status update
+    //
+    // `nmcli monitor` reports a wifi state change as several lines inside the same
+    // second -- radio off and on, scan, associate, DHCP, connected -- and each of
+    // them arrives here. Starting a Process that is already running races the
+    // teardown of the stdout callback still in flight, which crashes the shell, so
+    // a call that lands mid-batch is remembered and re-run once the batch is done.
+    property bool pendingUpdate: false
+    readonly property bool updateInFlight: updateConnectionType.running || wifiStatusProcess.running
+        || updateNetworkName.running || updateNetworkStrength.running || getNetworks.running
+
     function update() {
+        if (root.updateInFlight) {
+            root.pendingUpdate = true;
+            return;
+        }
         updateConnectionType.running = true;
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
         getNetworks.running = true;
+    }
+
+    // Watched rather than driven from each process's onExited: a process that fails
+    // to launch at all never reports an exit, and `running` is the one signal that
+    // arrives either way.
+    onUpdateInFlightChanged: {
+        if (root.updateInFlight || !root.pendingUpdate)
+            return;
+        root.pendingUpdate = false;
+        root.update();
     }
 
     // Re-scan on every transition out of "connected": refreshes the AP list
