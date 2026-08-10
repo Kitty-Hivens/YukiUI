@@ -67,7 +67,7 @@ Button {
             width: root.rowHeight * modelData.aspect_ratio
             height: root.rowHeight
             fillMode: Image.PreserveAspectFit
-            source: modelData.sample_url ?? modelData.preview_url
+            primarySource: modelData.sample_url ?? modelData.preview_url
             fallbacks: [modelData.preview_url]
 
             layer.enabled: true

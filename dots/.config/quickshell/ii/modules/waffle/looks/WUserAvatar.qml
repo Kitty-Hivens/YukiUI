@@ -15,7 +15,7 @@ StyledImage {
     id: avatar
     Layout.alignment: Qt.AlignTop
     sourceSize: Qt.size(32, 32)
-    source: Directories.userAvatarPathAccountsService
+    primarySource: Directories.userAvatarPathAccountsService
     fallbacks: [Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
 
     layer.enabled: true
