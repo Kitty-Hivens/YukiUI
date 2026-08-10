@@ -9,6 +9,7 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.waffle.looks
 import qs.modules.waffle.bar
+import qs.modules.waffle.bar.tray
 
 BarPopup {
     id: root
@@ -25,8 +26,11 @@ BarPopup {
     contentItem: Item {
         id: contentItem
         anchors.centerIn: parent
-        implicitWidth: contentGrid.implicitWidth
-        implicitHeight: contentGrid.implicitHeight
+        // 4 around the grid: measured, the flyout is 48 across one 40 cell and 88
+        // across two.
+        readonly property int gridPadding: 4
+        implicitWidth: contentGrid.implicitWidth + contentItem.gridPadding * 2
+        implicitHeight: contentGrid.implicitHeight + contentItem.gridPadding * 2
         GridLayout {
             id: contentGrid
             anchors.centerIn: parent
@@ -69,56 +73,75 @@ BarPopup {
                         }
                     }
 
-                    property real initialX
-                    property real initialY
-
-                    Behavior on x {
-                        animation: Looks.transition.move.createObject(this)
-                    }
-                    Behavior on y {
-                        animation: Looks.transition.move.createObject(this)
+                    readonly property bool carrying: TrayDragState.item === trayButton.item
+                    opacity: trayButton.carrying ? 0.35 : 1
+                    Behavior on opacity {
+                        animation: Looks.transition.opacity.createObject(this)
                     }
 
                     MouseArea {
                         id: dragArea
                         anchors.fill: parent
-                        drag.target: parent
-                        drag.threshold: 2
+
+                        property point pressedAt
+                        property bool moved: false
+
+                        /// The layer that draws a carried icon stands beside the bar, so
+                        /// it speaks the bar window's coordinates and this one does not.
+                        /// The flyout hangs off the chevron, though, and the chevron can
+                        /// be located in both spaces -- the difference between the two is
+                        /// the shift between the windows.
+                        function inBarSpace(x, y) {
+                            const here = dragArea.mapToItem(null, x, y);
+                            const anchorHere = trayButton.QsWindow.mapFromItem(root.anchorItem, 0, 0);
+                            const anchorThere = root.anchorItem.mapToItem(null, 0, 0);
+                            return Qt.point(here.x - anchorHere.x + anchorThere.x,
+                                here.y - anchorHere.y + anchorThere.y);
+                        }
 
                         onPressed: event => {
-                            trayButton.Drag.hotSpot.x = event.x;
-                            trayButton.Drag.hotSpot.y = event.y;
-                            trayButton.initialX = trayButton.x;
-                            trayButton.initialY = trayButton.y;
-                            trayButton.Drag.active = true;
+                            dragArea.pressedAt = Qt.point(event.x, event.y);
+                            dragArea.moved = false;
                         }
-                        onReleased: {
-                            if (!dragArea.drag.active) {
-                                trayButton.click();
+                        onPositionChanged: event => {
+                            const far = Math.abs(event.x - dragArea.pressedAt.x) > 3
+                                || Math.abs(event.y - dragArea.pressedAt.y) > 3;
+                            if (!dragArea.moved && !far)
+                                return;
+                            const point = dragArea.inBarSpace(event.x, event.y);
+                            if (!dragArea.moved) {
+                                dragArea.moved = true;
+                                TrayDragState.begin(trayButton.item, point.x, point.y, 8, 8);
                             } else {
-                                if (!unpinDropArea.containsDrag && unpinDropArea.willUnpin) {
-                                    // Quickshell would crash if we don't hide this item first. Took me fucking 3 hours to figure out...
-                                    trayButton.visible = false;
-                                    TrayService.togglePin(trayButton.item.id);
-                                    unpinDropArea.willUnpin = false;
-                                } else {
-                                    trayButton.x = trayButton.initialX;
-                                    trayButton.y = trayButton.initialY;
-                                }
+                                TrayDragState.moveTo(point.x, point.y);
                             }
-                            trayButton.Drag.active = false;
+                            const local = dragArea.mapToItem(contentItem, event.x, event.y);
+                            const left = local.x < 0 || local.y < 0
+                                || local.x > contentItem.width || local.y > contentItem.height;
+                            TrayDragState.dropAction = left ? "pin" : "";
+                        }
+                        onReleased: event => {
+                            const local = dragArea.mapToItem(contentItem, event.x, event.y);
+                            const left = local.x < 0 || local.y < 0
+                                || local.x > contentItem.width || local.y > contentItem.height;
+                            if (!dragArea.moved) {
+                                trayButton.click();
+                            } else if (left) {
+                                // Hidden first: the item leaves the model on the next
+                                // line, and upstream found the shell would crash otherwise.
+                                trayButton.visible = false;
+                                TrayService.togglePin(trayButton.item.id);
+                            }
+                            dragArea.moved = false;
+                            TrayDragState.clear();
+                        }
+                        onCanceled: {
+                            dragArea.moved = false;
+                            TrayDragState.clear();
                         }
                     }
                 }
             }
-        }
-
-        DropArea {
-            id: unpinDropArea
-            anchors.fill: parent
-            property bool willUnpin: false
-            onEntered: willUnpin = false
-            onExited: willUnpin = true
         }
     }
 }

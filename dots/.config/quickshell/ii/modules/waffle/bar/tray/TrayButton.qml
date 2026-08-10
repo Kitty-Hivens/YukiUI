@@ -8,6 +8,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.bar
+import qs.modules.waffle.bar.tray
 
 BarIconButton {
     id: root
@@ -46,7 +47,10 @@ BarIconButton {
     }
 
     BarToolTip {
+        // Both mechanisms have to be covered: the tray carries its icon through
+        // TrayDragState, the hidden-icons flyout still moves the button itself.
         extraVisibleCondition: root.shouldShowTooltip && !root.Drag.active
+            && TrayDragState.item !== root.item
         text: TrayService.getTooltipForItem(root.item)
     }
 }
