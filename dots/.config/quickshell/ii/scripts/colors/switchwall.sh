@@ -180,13 +180,6 @@ switch() {
         categorize_wallpaper "$imgpath" &
     fi
 
-    read scale screenx screeny screensizey < <(hyprctl monitors -j | jq '.[] | select(.focused) | .scale, .x, .y, .height' | xargs)
-    cursorposx=$(hyprctl cursorpos -j | jq '.x' 2>/dev/null) || cursorposx=960
-    cursorposx=$(bc <<< "scale=0; ($cursorposx - $screenx) * $scale / 1")
-    cursorposy=$(hyprctl cursorpos -j | jq '.y' 2>/dev/null) || cursorposy=540
-    cursorposy=$(bc <<< "scale=0; ($cursorposy - $screeny) * $scale / 1")
-    cursorposy_inverted=$((screensizey - cursorposy))
-
     matugen_args=(--source-color-index 0)
 
     if [[ "$color_flag" == "1" ]]; then
@@ -198,7 +191,12 @@ switch() {
             exit 0
         fi
 
-        check_and_prompt_upscale "$imgpath" &
+        # A mode flip keeps the picture that is already up, and it was measured against
+        # the screen when it was set. Asking again costs two more hyprctl calls and can
+        # put a prompt on screen for a wallpaper the user did not just choose.
+        if [[ -z "$noswitch_flag" ]]; then
+            check_and_prompt_upscale "$imgpath" &
+        fi
         kill_existing_mpvpaper
 
         if is_video "$imgpath"; then
@@ -358,6 +356,26 @@ main() {
         deactivate
     }
 
+    # Which scheme a picture calls for depends on the picture and nothing else, and
+    # working it out costs a Python interpreter and the better part of a second. A
+    # light/dark flip does not change the picture, so the answer is kept beside the
+    # palette and asked for again only when the file itself changes.
+    scheme_type_cache="$STATE_DIR/user/generated/scheme_type.txt"
+    scheme_cache_key() {
+        printf '%s:%s' "$1" "$(stat -c %Y "$1" 2>/dev/null)"
+    }
+    cached_scheme_type() {
+        [[ -f "$scheme_type_cache" ]] || return 1
+        local cached_key cached_type
+        { read -r cached_key; read -r cached_type; } < "$scheme_type_cache" || return 1
+        [[ "$cached_key" == "$1" ]] || return 1
+        printf '%s' "$cached_type"
+    }
+    store_scheme_type() {
+        mkdir -p "$(dirname "$scheme_type_cache")"
+        printf '%s\n%s\n' "$1" "$2" > "$scheme_type_cache"
+    }
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --mode)
@@ -433,7 +451,13 @@ main() {
     # If type_flag is 'auto', detect scheme type from image (after imgpath is set)
     if [[ "$type_flag" == "auto" ]]; then
         if [[ -n "$imgpath" && -f "$imgpath" ]]; then
-            detected_type="$(detect_scheme_type_from_image "$imgpath")"
+            scheme_key="$(scheme_cache_key "$imgpath")"
+            detected_type="$(cached_scheme_type "$scheme_key")"
+            detected_was_cached=1
+            if [[ -z "$detected_type" ]]; then
+                detected_was_cached=0
+                detected_type="$(detect_scheme_type_from_image "$imgpath")"
+            fi
             # Only use detected_type if it's valid
             valid_detected=0
             for t in "${allowed_types[@]}"; do
@@ -444,6 +468,7 @@ main() {
             done
             if [[ $valid_detected -eq 1 ]]; then
                 type_flag="$detected_type"
+                [[ $detected_was_cached -eq 1 ]] || store_scheme_type "$scheme_key" "$detected_type"
             else
                 echo "[switchwall] Warning: Could not auto-detect a valid scheme, defaulting to 'scheme-tonal-spot'" >&2
                 type_flag="scheme-tonal-spot"
