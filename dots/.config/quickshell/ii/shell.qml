@@ -51,12 +51,27 @@ ShellRoot {
     // handlers that are registered but never reached.
     property string requestedFamily: Config.ready ? Config.options.panelFamily : ""
     property string settledFamily: ""
+    property string pendingFamily: ""
     onRequestedFamilyChanged: familySettleTimer.restart()
 
     Timer {
         id: familySettleTimer
         interval: 100
-        onTriggered: root.settledFamily = root.requestedFamily
+        onTriggered: {
+            root.pendingFamily = root.requestedFamily
+            root.settledFamily = ""
+            familySwapTimer.restart()
+        }
+    }
+
+    // The swap takes two beats, so that for one of them no family is alive. An
+    // IpcHandler registers once, when it is built: a family raised while the one it
+    // replaces still holds `search` and `session` is refused those targets for good,
+    // and the keybinds that call them go on reaching the family being torn down.
+    Timer {
+        id: familySwapTimer
+        interval: 1
+        onTriggered: root.settledFamily = root.pendingFamily
     }
 
     component PanelFamilyLoader: LazyLoader {
