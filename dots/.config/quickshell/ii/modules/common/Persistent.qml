@@ -106,6 +106,18 @@ Singleton {
                 property list<string> recentQueries: []
             }
 
+            property JsonObject startMenu: JsonObject {
+                /// When each application was first seen here, as `<id>=<epoch ms>`.
+                /// The dates on `.desktop` files cannot answer this: a system update
+                /// rewrites most of them at once, which reads as seventy new programs
+                /// rather than none. Measured on this machine -- 70 of 197 in a week.
+                property list<string> appFirstSeen: []
+                /// When that list was first filled in. Everything stamped at that
+                /// moment was already installed and is not new to anyone, so nothing
+                /// from the first sweep is ever offered as recently added.
+                property real seededAt: 0
+            }
+
             property JsonObject sidebar: JsonObject {
                 property JsonObject bottomGroup: JsonObject {
                     property bool collapsed: false

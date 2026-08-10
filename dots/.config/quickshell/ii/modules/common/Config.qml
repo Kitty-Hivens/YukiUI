@@ -688,9 +688,17 @@ Singleton {
                     property bool smootherMenuAnimations: true
                     property bool smootherSearchBar: true
                 }
+                property JsonObject startMenu: JsonObject {
+                    // Two switches, the same two the reference offers, because what
+                    // fills the recommended section is a list of what has been opened
+                    // and that is not everyone's idea of something to put on screen.
+                    property bool showRecentlyAdded: true
+                    property bool showRecentFiles: true
+                }
                 property JsonObject bar: JsonObject {
                     property bool bottom: true
                     property bool leftAlignApps: false
+                    property bool hideWhenFullscreen: true // Unmap bar under a fullscreen window so Hyprland can direct-scanout it (fixes VRR pacing)
                 }
                 property JsonObject actionCenter: JsonObject {
                     property list<string> toggles: [ "network", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker" ]
