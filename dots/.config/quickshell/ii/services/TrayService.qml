@@ -28,7 +28,10 @@ Singleton {
     function pin(itemId) {
         var pins = Config.options.tray.pinnedItems;
         if (pins.includes(itemId)) return;
-        Config.options.tray.pinnedItems.push(itemId);
+        // Assigned rather than pushed into, the way unpin below already does it: the
+        // two lists at the top of this file bind to this property, and the config is
+        // written when it changes. An in-place push says neither of those things.
+        Config.options.tray.pinnedItems = [...pins, itemId];
     }
     function unpin(itemId) {
         Config.options.tray.pinnedItems = Config.options.tray.pinnedItems.filter(id => id !== itemId);
