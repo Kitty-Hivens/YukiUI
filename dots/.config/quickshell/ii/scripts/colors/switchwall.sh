@@ -12,6 +12,26 @@ SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 MATUGEN_DIR="$XDG_CONFIG_HOME/matugen"
 terminalscheme="$SCRIPT_DIR/terminal/scheme-base.json"
 
+# Which mode the palette already on disk was built for, by the same test the shell
+# applies to it: the background's HSL lightness. This is what is actually on screen,
+# so it is the honest answer when nothing else has stated a preference. Dark when
+# there is no palette to read, which matches the colours the shell ships with.
+palette_mode() {
+    local colors="$STATE_DIR/user/generated/colors.json"
+    [[ -f "$colors" ]] || { echo dark; return; }
+    local hex
+    hex=$(jq -r '.background // empty' "$colors" 2>/dev/null | tr -d '#')
+    [[ ${#hex} -eq 6 ]] || { echo dark; return; }
+    local r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
+    local max=$r min=$r
+    (( g > max )) && max=$g
+    (( b > max )) && max=$b
+    (( g < min )) && min=$g
+    (( b < min )) && min=$b
+    # (max + min) / 2 / 255 < 0.5 without leaving integers.
+    if (( max + min < 255 )); then echo dark; else echo light; fi
+}
+
 pre_process() {
     local mode_flag="$1"
     # Set GNOME color-scheme, GTK theme and icon theme by mode
@@ -253,8 +273,15 @@ switch() {
         current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
         if [[ "$current_mode" == "prefer-dark" ]]; then
             mode_flag="dark"
-        else
+        elif [[ "$current_mode" == "prefer-light" ]]; then
             mode_flag="light"
+        else
+            # Neither preference is stated -- "default" is what the setting holds until
+            # something writes it, and it means the user has not said. Anything that was
+            # not exactly prefer-dark used to count as light here, so the first wallpaper
+            # change on such a machine quietly turned the desktop light and then wrote
+            # that down, which every later run read back as the user's own choice.
+            mode_flag="$(palette_mode)"
         fi
     fi
 
