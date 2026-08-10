@@ -23,15 +23,34 @@ Toolbar {
     // Signals
     signal dismiss()
 
+    // Assigned in both directions rather than bound one way and written back the
+    // other. Binding currentIndex to selectionMode while the tab bar's own change
+    // handler assigned selectionMode closed a cycle, which the engine reports as a
+    // binding loop. An assignment that lands on the value already there emits
+    // nothing, so the two settle after a single hop.
+    function syncTabFromSelectionMode() {
+        if (root.selectionMode === undefined)
+            return;
+        tabBar.currentIndex = (root.selectionMode === RegionSelection.SelectionMode.RectCorners) ? 0 : 1;
+    }
+    onSelectionModeChanged: root.syncTabFromSelectionMode()
+    Component.onCompleted: root.syncTabFromSelectionMode()
+
     ToolbarTabBar {
         id: tabBar
         tabButtonList: [
             {"icon": "activity_zone", "name": Translation.tr("Rect")},
             {"icon": "gesture", "name": Translation.tr("Circle")}
         ]
-        currentIndex: root.selectionMode === RegionSelection.SelectionMode.RectCorners ? 0 : 1
+        // Until the synchronizer has delivered a mode there is nothing to report
+        // back, and reporting anyway would have announced whichever tab happened
+        // to be current as the user's choice.
         onCurrentIndexChanged: {
-            root.selectionMode = currentIndex === 0 ? RegionSelection.SelectionMode.RectCorners : RegionSelection.SelectionMode.Circle;
+            if (root.selectionMode === undefined)
+                return;
+            root.selectionMode = (tabBar.currentIndex === 0)
+                ? RegionSelection.SelectionMode.RectCorners
+                : RegionSelection.SelectionMode.Circle;
         }
     }
 }

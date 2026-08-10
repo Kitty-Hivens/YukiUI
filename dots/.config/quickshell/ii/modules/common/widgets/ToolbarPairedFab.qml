@@ -15,13 +15,13 @@ Item {
     }
     implicitWidth: fabWidget.implicitWidth
     implicitHeight: fabWidget.implicitHeight
-    Loader {
-        active: root.enableShadow
-        anchors.fill: parent
-        sourceComponent: StyledRectangularShadow {
-            target: fabWidget
-            radius: fabWidget.buttonRadius
-        }
+    // A direct child, the way every other caller instantiates it. The shadow anchors
+    // itself to its target, and from inside a Loader that target is the Loader's
+    // sibling rather than the shadow's own, which anchoring refuses.
+    StyledRectangularShadow {
+        visible: root.enableShadow
+        target: fabWidget
+        radius: fabWidget.buttonRadius
     }
     FloatingActionButton {
         id: fabWidget

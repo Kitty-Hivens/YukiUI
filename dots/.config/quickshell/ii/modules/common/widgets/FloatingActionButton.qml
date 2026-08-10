@@ -46,6 +46,10 @@ RippleButton {
                 visible: root.expanded || implicitWidth > 0
                 reveal: root.expanded
                 implicitWidth: reveal ? (buttonText.implicitWidth + root.elementSpacing + contentRowLayout.horizontalMargins) : 0
+                // Taken from the label rather than left to childrenRect: the label
+                // centres itself on this item, so its y depends on this height, and
+                // a height read back out of childrenRect depends on its own answer.
+                implicitHeight: buttonText.implicitHeight
                 StyledText {
                     id: buttonText
                     anchors {
