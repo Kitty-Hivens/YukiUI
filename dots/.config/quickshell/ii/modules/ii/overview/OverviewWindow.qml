@@ -17,30 +17,44 @@ Item { // Window
     property var monitorData
     property var scale
     property bool restrictToWorkspace: true
+    // Every monitor here comes from a lookup in HyprlandData that is allowed to miss:
+    // during this delegate's own construction, before the binding that fills the
+    // property has run, and again whenever the monitor list is between refreshes.
+    // A ratio has no answer then, and 1 is the one that keeps the geometry finite --
+    // NaN reaches width and height from here, and a positioner handed a NaN size
+    // never settles, which is the polish() loop the overview logs on open.
     property real widthRatio: {
+        if (!widgetMonitor || !monitorData)
+            return 1;
         const widgetWidth = widgetMonitor.transform & 1 ? widgetMonitor.height : widgetMonitor.width;
         const monitorWidth = monitorData.transform & 1 ? monitorData.height : monitorData.width;
         return (widgetWidth * monitorData.scale) / (monitorWidth * widgetMonitor.scale);
     }
     property real heightRatio: {
+        if (!widgetMonitor || !monitorData)
+            return 1;
         const widgetHeight = widgetMonitor.transform & 1 ? widgetMonitor.width : widgetMonitor.height;
         const monitorHeight = monitorData.transform & 1 ? monitorData.width : monitorData.height;
         return (widgetHeight * monitorData.scale) / (monitorHeight * widgetMonitor.scale);
     }
     property real initX: {
-        return Math.max((windowData?.at[0] - (monitorData?.x ?? 0) - monitorData?.reserved[0]) * widthRatio * root.scale, 0) + xOffset;
+        if (!windowData || !monitorData)
+            return xOffset;
+        return Math.max((windowData.at[0] - monitorData.x - monitorData.reserved[0]) * widthRatio * root.scale, 0) + xOffset;
     }
 
     property real initY: {
-        return Math.max((windowData?.at[1] - (monitorData?.y ?? 0) - monitorData?.reserved[1]) * heightRatio * root.scale, 0) + yOffset;
+        if (!windowData || !monitorData)
+            return yOffset;
+        return Math.max((windowData.at[1] - monitorData.y - monitorData.reserved[1]) * heightRatio * root.scale, 0) + yOffset;
     }
     property real xOffset: 0
     property real yOffset: 0
     property var widgetMonitor
-    property int widgetMonitorId: widgetMonitor.id
+    property int widgetMonitorId: widgetMonitor?.id ?? -1
 
-    property var targetWindowWidth: windowData?.size[0] * scale * widthRatio
-    property var targetWindowHeight: windowData?.size[1] * scale * heightRatio
+    property var targetWindowWidth: (windowData?.size[0] ?? 0) * scale * widthRatio
+    property var targetWindowHeight: (windowData?.size[1] ?? 0) * scale * heightRatio
     property bool hovered: false
     property bool pressed: false
 
@@ -58,7 +72,7 @@ Item { // Window
     y: initY
     width: targetWindowWidth
     height: targetWindowHeight
-    opacity: windowData.monitor == widgetMonitorId ? 1 : 0.4
+    opacity: windowData?.monitor === widgetMonitorId ? 1 : 0.4
 
     property real topLeftRadius
     property real topRightRadius

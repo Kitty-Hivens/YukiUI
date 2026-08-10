@@ -20,7 +20,7 @@ Item {
     readonly property int effectiveActiveWorkspaceId: Math.max(1, Math.min(100, monitor?.activeWorkspace?.id ?? 1))
     readonly property int workspacesShown: Config.options.overview.rows * Config.options.overview.columns
     readonly property int workspaceGroup: Math.floor((effectiveActiveWorkspaceId - 1) / workspacesShown)
-    property bool monitorIsFocused: (Hyprland.focusedMonitor?.name == monitor.name)
+    property bool monitorIsFocused: (Hyprland.focusedMonitor?.name == monitor?.name)
     property var windows: HyprlandData.windowList
     property var windowByAddress: HyprlandData.windowByAddress
     property var windowAddresses: HyprlandData.addresses
@@ -28,17 +28,30 @@ Item {
     property real scale: Config.options.overview.scale
     property color activeBorderColor: Appearance.colors.colSecondary
 
-    property real workspaceImplicitWidth: (monitorData?.transform % 2 === 1) ? 
-        ((monitor.height - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scale / monitor.scale) :
-        ((monitor.width - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scale / monitor.scale)
-    property real workspaceImplicitHeight: (monitorData?.transform % 2 === 1) ? 
-        ((monitor.width - monitorData?.reserved[1] - monitorData?.reserved[3]) * root.scale / monitor.scale) :
-        ((monitor.height - monitorData?.reserved[1] - monitorData?.reserved[3]) * root.scale / monitor.scale)
+    // The insets come from the hyprctl monitor list, which is allowed to be between
+    // refreshes, and the monitor itself can still be null while the widget is built.
+    // Missing insets count as zero rather than poisoning the arithmetic: subtracting
+    // undefined yields NaN, these two feed the implicit size of every workspace in
+    // the Row below, and a positioner handed a NaN size re-polishes itself forever.
+    readonly property var reservedInsets: monitorData?.reserved ?? [0, 0, 0, 0]
+    readonly property bool monitorIsRotated: (monitorData?.transform ?? 0) % 2 === 1
+    property real workspaceImplicitWidth: {
+        if (!monitor)
+            return 0;
+        const span = root.monitorIsRotated ? monitor.height : monitor.width;
+        return (span - root.reservedInsets[0] - root.reservedInsets[2]) * root.scale / monitor.scale;
+    }
+    property real workspaceImplicitHeight: {
+        if (!monitor)
+            return 0;
+        const span = root.monitorIsRotated ? monitor.width : monitor.height;
+        return (span - root.reservedInsets[1] - root.reservedInsets[3]) * root.scale / monitor.scale;
+    }
     property real largeWorkspaceRadius: Appearance.rounding.large
     property real smallWorkspaceRadius: Appearance.rounding.verysmall
 
     property real workspaceNumberMargin: 80
-    property real workspaceNumberSize: 250 * monitor.scale
+    property real workspaceNumberSize: 250 * (monitor?.scale ?? 1)
     property int workspaceZ: 0
     property int windowZ: 1
     property int windowDraggingZ: 99999
@@ -194,7 +207,7 @@ Item {
                     toplevel: modelData
                     monitorData: this.monitor
                     scale: root.scale
-                    widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
+                    widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor?.id)
                     windowData: windowByAddress[address]
 
                     property bool atInitPosition: (initX == x && initY == y)
@@ -204,8 +217,10 @@ Item {
                     property int workspaceRowIndex: getWsRow(windowData?.workspace.id)
                     xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                     yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
-                    property real xWithinWorkspaceWidget: Math.max((windowData?.at[0] - (monitor?.x ?? 0) - monitorData?.reserved[0]) * root.scale, 0)
-                    property real yWithinWorkspaceWidget: Math.max((windowData?.at[1] - (monitor?.y ?? 0) - monitorData?.reserved[1]) * root.scale, 0)
+                    property real xWithinWorkspaceWidget: (!windowData || !monitorData) ? 0
+                        : Math.max((windowData.at[0] - monitorData.x - monitorData.reserved[0]) * root.scale, 0)
+                    property real yWithinWorkspaceWidget: (!windowData || !monitorData) ? 0
+                        : Math.max((windowData.at[1] - monitorData.y - monitorData.reserved[1]) * root.scale, 0)
 
                     // Radius
                     property real minRadius: Appearance.rounding.small
@@ -241,7 +256,7 @@ Item {
                         }
                     }
 
-                    z: Drag.active ? root.windowDraggingZ : (root.windowZ + windowData?.floating + windowData?.fullscreen * 2)
+                    z: Drag.active ? root.windowDraggingZ : (root.windowZ + (windowData?.floating ?? 0) + (windowData?.fullscreen ?? 0) * 2)
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
                     MouseArea {
