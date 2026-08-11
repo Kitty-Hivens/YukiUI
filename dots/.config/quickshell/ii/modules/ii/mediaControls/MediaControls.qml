@@ -123,15 +123,29 @@ Scope {
                 item: playerColumnLayout
             }
 
-            Component.onCompleted: {
-                GlobalFocusGrab.addDismissable(panelWindow);
+            /// Registered only while actually on screen. A window that has stepped
+            /// aside for a fullscreen game is unmapped, and Hyprland drops a grab that
+            /// names an unmapped surface -- which reaches the shared grab as a
+            /// dismissal and closes everything dismissable, this window included.
+            function syncGrabRegistration() {
+                if (panelWindow.visible)
+                    GlobalFocusGrab.addDismissable(panelWindow);
+                else
+                    GlobalFocusGrab.removeDismissable(panelWindow);
             }
+            onVisibleChanged: panelWindow.syncGrabRegistration()
+            Component.onCompleted: panelWindow.syncGrabRegistration()
             Component.onDestruction: {
                 GlobalFocusGrab.removeDismissable(panelWindow);
             }
             Connections {
                 target: GlobalFocusGrab
                 function onDismissed() {
+                    // Whether the grab is dropped before or after the window leaves the
+                    // list is the compositor's business, so being told while off screen
+                    // is not the user dismissing anything.
+                    if (!panelWindow.visible)
+                        return;
                     GlobalStates.mediaControlsOpen = false;
                 }
             }
