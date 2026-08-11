@@ -88,7 +88,16 @@ Scope {
 
         sourceComponent: PanelWindow {
             id: panelWindow
-            visible: true
+
+            // Steps aside for a fullscreen window the way the bar does, and for the
+            // same two reasons: nothing of ours belongs on top of a game, and a
+            // surface still mapped there is one Hyprland cannot direct-scanout past.
+            // Only the window goes -- whether the controls are open is left alone, so
+            // they come back by themselves afterwards rather than needing reopening.
+            readonly property bool fullscreenOnThisMonitor: Hyprland.workspaces.values.some(ws =>
+                ws.active && ws.monitor?.name == panelWindow.screen?.name
+                && ws.toplevels.values.some(w => w.wayland?.fullscreen))
+            visible: !(Config?.options.bar.hideWhenFullscreen && panelWindow.fullscreenOnThisMonitor)
 
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
