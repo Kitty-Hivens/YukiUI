@@ -68,6 +68,41 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "bookmark_heart"
+        title: Translation.tr("Booru")
+
+        NoticeBox {
+            Layout.fillWidth: true
+            materialIcon: "key"
+            visible: !Booru.accountConfigured("gelbooru")
+            text: Translation.tr("Gelbooru's API is closed to anonymous requests. Copy the whole api_key/user_id line from the account options page and paste it below. It is stored in plain text and sent with every Gelbooru request.")
+
+            RippleButtonWithIcon {
+                buttonRadius: Appearance.rounding.full
+                materialIcon: "person_add"
+                mainText: Translation.tr("Create account")
+                onClicked: Qt.openUrlExternally(Booru.providers.gelbooru.account.signupUrl)
+            }
+            RippleButtonWithIcon {
+                buttonRadius: Appearance.rounding.full
+                materialIcon: "open_in_new"
+                mainText: Translation.tr("Get credentials")
+                onClicked: Qt.openUrlExternally(Booru.providers.gelbooru.account.credentialsUrl)
+            }
+        }
+
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("Gelbooru credentials (&api_key=...&user_id=...)")
+            text: Config.options.sidebar.booru.gelbooru.credentials
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Config.options.sidebar.booru.gelbooru.credentials = text;
+            }
+        }
+    }
+
+    ContentSection {
         icon: "memory"
         title: Translation.tr("Resources")
 

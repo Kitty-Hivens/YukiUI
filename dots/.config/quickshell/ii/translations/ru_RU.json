@@ -882,5 +882,10 @@
   "Memory": "Память",
   "Disk": "Диск",
   "Unknown track": "Неизвестный трек",
-  "PLAYING": "ИГРАЕТ"
+  "PLAYING": "ИГРАЕТ",
+  "Gelbooru's API is closed to anonymous requests. Copy the whole api_key/user_id line from the account options page and paste it below. It is stored in plain text and sent with every Gelbooru request.": "API Gelbooru закрыт для анонимных запросов. Скопируйте строку api_key/user_id со страницы настроек аккаунта целиком и вставьте ниже. Она хранится открытым текстом и уходит с каждым запросом к Gelbooru.",
+  "Create account": "Создать аккаунт",
+  "Get credentials": "Получить ключ",
+  "Gelbooru credentials (&api_key=...&user_id=...)": "Данные Gelbooru (&api_key=...&user_id=...)",
+  "%1 does not answer anonymous requests. [Create an account](%2), then copy the user ID and API key from [account options](%3) into Settings -> Services -> Booru.": "%1 не отвечает на анонимные запросы. [Создайте аккаунт](%2), затем скопируйте user ID и API key из [настроек аккаунта](%3) в Настройки -> Службы -> Booru."
 }

@@ -619,5 +619,10 @@
   "Use varying shapes for password characters": "Use varying shapes for password characters",
   "Battery full": "Battery full",
   "Pin": "Pin",
-  "Unpin": "Unpin"
+  "Unpin": "Unpin",
+  "Gelbooru's API is closed to anonymous requests. Copy the whole api_key/user_id line from the account options page and paste it below. It is stored in plain text and sent with every Gelbooru request.": "Gelbooru's API is closed to anonymous requests. Copy the whole api_key/user_id line from the account options page and paste it below. It is stored in plain text and sent with every Gelbooru request.",
+  "Create account": "Create account",
+  "Get credentials": "Get credentials",
+  "Gelbooru credentials (&api_key=...&user_id=...)": "Gelbooru credentials (&api_key=...&user_id=...)",
+  "%1 does not answer anonymous requests. [Create an account](%2), then copy the user ID and API key from [account options](%3) into Settings -> Services -> Booru.": "%1 does not answer anonymous requests. [Create an account](%2), then copy the user ID and API key from [account options](%3) into Settings -> Services -> Booru."
 }

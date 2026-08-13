@@ -585,6 +585,12 @@ Singleton {
                     property JsonObject zerochan: JsonObject {
                         property string username: "[unset]"
                     }
+                    // Gelbooru answers 401 to every anonymous api call. Its account page
+                    // hands the credentials out as one ready-made `&api_key=...&user_id=...`
+                    // line, so that whole line is what gets kept and pasted around.
+                    property JsonObject gelbooru: JsonObject {
+                        property string credentials: ""
+                    }
                 }
                 property JsonObject cornerOpen: JsonObject {
                     property bool enable: true

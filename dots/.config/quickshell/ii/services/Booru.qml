@@ -157,6 +157,19 @@ Singleton {
             "url": "https://gelbooru.com",
             "api": "https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1",
             "description": Translation.tr("The hentai one | Great quantity, a lot of NSFW, quality varies wildly"),
+            "account": {
+                "signupUrl": "https://gelbooru.com/index.php?page=account&s=reg",
+                "credentialsUrl": "https://gelbooru.com/index.php?page=account&s=options",
+                // Read back out of the line the account page hands out, rather than
+                // trusting its order or its leading ampersand.
+                "params": () => {
+                    const credentials = Config.options?.sidebar?.booru?.gelbooru?.credentials ?? ""
+                    const userId = credentials.match(/user_id=([^&\s]+)/)?.[1] ?? ""
+                    const apiKey = credentials.match(/api_key=([^&\s]+)/)?.[1] ?? ""
+                    if (!userId || !apiKey) return null
+                    return [`user_id=${encodeURIComponent(userId)}`, `api_key=${encodeURIComponent(apiKey)}`]
+                }
+            },
             "mapFunc": (response) => {
                 response = response.post
                 return response.map(item => {
@@ -274,6 +287,28 @@ Singleton {
     }
     property var currentProvider: Persistent.states.booru.provider
 
+    // A provider that closed its api to anonymous requests carries an `account` block.
+    // Its credentials ride in the query string, so they are also what has to be kept
+    // out of the log line below.
+    function accountParams(provider) {
+        return providers[provider]?.account?.params() ?? []
+    }
+
+    function accountConfigured(provider) {
+        const account = providers[provider]?.account
+        return !account || account.params() !== null
+    }
+
+    function accountSetupMessage(provider) {
+        const account = providers[provider].account
+        return Translation.tr("%1 does not answer anonymous requests. [Create an account](%2), then copy the user ID and API key from [account options](%3) into Settings -> Services -> Booru.")
+            .arg(providers[provider].name).arg(account.signupUrl).arg(account.credentialsUrl)
+    }
+
+    function redactCredentials(url) {
+        return url.replace(/([?&](?:api_key|user_id)=)[^&]*/g, "$1[hidden]")
+    }
+
     function getWorkingImageSource(url) {
         if (url?.includes('pximg.net')) {
             return `https://www.pixiv.net/en/artworks/${url.substring(url.lastIndexOf('/') + 1).replace(/_p\d+\.(png|jpg|jpeg|gif)$/, '')}`;
@@ -287,6 +322,9 @@ Singleton {
             Persistent.states.booru.provider = provider
             root.addSystemMessage(Translation.tr("Provider set to ") + providers[provider].name
                 + (provider == "zerochan" ? Translation.tr(". Notes for Zerochan:\n- You must enter a color\n- Set your zerochan username in `sidebar.booru.zerochan.username` config option. You [might be banned for not doing so](https://www.zerochan.net/api#:~:text=The%20request%20may%20still%20be%20completed%20successfully%20without%20this%20custom%20header%2C%20but%20your%20project%20may%20be%20banned%20for%20being%20anonymous.)!") : ""))
+            if (!root.accountConfigured(provider)) {
+                root.addSystemMessage(root.accountSetupMessage(provider))
+            }
         } else {
             root.addSystemMessage(Translation.tr("Invalid API provider. Supported: \n- ") + providerList.join("\n- "))
         }
@@ -349,6 +387,7 @@ Singleton {
                 params.push("page=" + page)
             }
         }
+        params = params.concat(root.accountParams(currentProvider))
         if (baseUrl.indexOf("?") === -1) {
             url += "?" + params.join("&")
         } else {
@@ -358,8 +397,12 @@ Singleton {
     }
 
     function makeRequest(tags, nsfw=false, limit=20, page=1) {
+        if (!root.accountConfigured(currentProvider)) {
+            root.addSystemMessage(root.accountSetupMessage(currentProvider))
+            return
+        }
         var url = constructRequestUrl(tags, nsfw, limit, page)
-        console.log("[Booru] Making request to " + url)
+        console.log("[Booru] Making request to " + root.redactCredentials(url))
 
         const newResponse = root.booruResponseDataComponent.createObject(null, {
             "provider": currentProvider,
@@ -397,7 +440,11 @@ Singleton {
             }
             else if (xhr.readyState === XMLHttpRequest.DONE) {
                 console.log("[Booru] Request failed with status: " + xhr.status)
-                newResponse.message = root.failMessage
+                // Credentials that are set but not accepted deserve the setup message too,
+                // not the generic "check your tags" one that sends people looking elsewhere.
+                const credentialsRejected = (xhr.status === 401 || xhr.status === 403)
+                    && providers[newResponse.provider]?.account
+                newResponse.message = credentialsRejected ? root.accountSetupMessage(newResponse.provider) : root.failMessage
                 root.runningRequests--;
                 root.responses = [...root.responses, newResponse]
             }
@@ -430,10 +477,14 @@ Singleton {
         if (provider.fixedTags) {
             root.tagSuggestion(query, provider.fixedTags)
             return provider.fixedTags;
-        } else if (!provider.tagSearchTemplate) {
+        } else if (!provider.tagSearchTemplate || !root.accountConfigured(currentProvider)) {
             return
         }
         var url = provider.tagSearchTemplate.replace("{{query}}", encodeURIComponent(query))
+        const accountParams = root.accountParams(currentProvider)
+        if (accountParams.length > 0) {
+            url += (url.indexOf("?") === -1 ? "?" : "&") + accountParams.join("&")
+        }
 
         var xhr = new XMLHttpRequest()
         currentTagRequest = xhr
