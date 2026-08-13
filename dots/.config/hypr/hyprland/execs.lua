@@ -9,7 +9,13 @@ hl.on("hyprland.start", function ()
     -- uwsm app: run qs as its own tracked unit so it lands in user@.service (not 0::/),
     -- restoring logind/polkit session tracking for its PolkitAgent. MemoryLow keeps the
     -- shell resident under memory pressure so it doesn't stall faulting pages back from swap.
-    hl.exec_cmd("uwsm app -a quickshell -p MemoryLow=350M -- qs -c $qsConfig")
+    --
+    -- systemd-cat: the shell logs to stdout, and its own log file under
+    -- $XDG_RUNTIME_DIR/quickshell keeps nothing once the process is gone abruptly -- an
+    -- exit that skips the crash handler leaves no report, no core and a log that just
+    -- stops. journald has each line the moment it is written, so it survives. systemd-cat
+    -- execs rather than forks, so the unit's main process is still qs.
+    hl.exec_cmd("uwsm app -a quickshell -p MemoryLow=350M -- systemd-cat --identifier=quickshell qs --no-color -c $qsConfig")
     hl.exec_cmd("$HOME/.config/hypr/custom/scripts/__restore_video_wallpaper.sh")
 
     -- Core components (authentication, lock screen, notification daemon)
