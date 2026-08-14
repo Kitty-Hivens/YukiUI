@@ -72,7 +72,14 @@ Singleton {
             // hold the title without holding the input, and asking again is what
             // re-arms a pointer lock.
             const vacated = !focused || `0x${focused}` === root.address;
-            if (root.address.length > 0 && vacated)
+            // Focusing a window also goes to the workspace it sits on. The
+            // workspace the panel was opened over is not necessarily the one it
+            // is closed over, and a window left behind there is not worth being
+            // dragged back to. A window hyprland no longer lists is let through:
+            // the dispatch finds nothing and does nothing.
+            const target = Hyprland.toplevels.values.find(toplevel => `0x${toplevel.address}` === root.address);
+            const onScreen = target?.workspace?.active ?? true;
+            if (root.address.length > 0 && vacated && onScreen)
                 Hyprland.dispatch(`hl.dsp.focus({ window = "address:${root.address}" })`);
             root.address = "";
         }
