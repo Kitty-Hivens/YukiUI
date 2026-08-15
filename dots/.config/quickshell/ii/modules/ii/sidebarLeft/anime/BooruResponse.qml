@@ -19,6 +19,7 @@ Rectangle {
     property string previewDownloadPath
     property string downloadPath
     property string nsfwPath
+    property string imageReferer: Booru.providers[root.responseData.provider]?.imageReferer ?? ""
 
     property real availableWidth: parent.width
     property real rowTooShortThreshold: 190
@@ -229,8 +230,11 @@ Rectangle {
                         imageData: modelData
                         rowHeight: imageRow.rowHeight
                         imageRadius: imageRow.modelData.images.length == 1 ? 50 : Appearance.rounding.normal
-                        // Download manually to reduce redundant requests or make sure downloading works
+                        // Download manually to reduce redundant requests or make sure downloading works.
+                        // A provider that demands a Referer leaves no choice: Image sends no headers.
                         manualDownload: ["danbooru", "waifu.im", "t.alcy.cc", "konachan"].includes(root.responseData.provider)
+                            || root.imageReferer.length > 0
+                        imageReferer: root.imageReferer
                         previewDownloadPath: root.previewDownloadPath
                         downloadPath: root.downloadPath
                         nsfwPath: root.nsfwPath

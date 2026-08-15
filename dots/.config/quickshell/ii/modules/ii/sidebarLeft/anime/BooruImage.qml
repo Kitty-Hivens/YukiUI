@@ -17,25 +17,35 @@ Button {
     property var imageData
     property var rowHeight
     property bool manualDownload: false
+    property string imageReferer: ""
     property string previewDownloadPath
     property string downloadPath
     property string nsfwPath
     property string fileName: decodeURIComponent((imageData.file_url).substring((imageData.file_url).lastIndexOf('/') + 1))
-    property string filePath: `${root.previewDownloadPath}/${root.fileName}`
+    // The cached copy is named after the url it came from. Naming a downscaled jpeg
+    // after the post's .png -- or its .mp4 -- leaves a file lying about what it holds.
+    property string previewFileName: decodeURIComponent(root.remoteSource.substring(root.remoteSource.lastIndexOf('/') + 1))
+    property string filePath: `${root.previewDownloadPath}/${root.previewFileName}`
     property int maxTagStringLineLength: 50
     property real imageRadius: Appearance.rounding.small
 
     property bool showActions: false
+    // Prefer the medium-res sample over the ~150px preview so the grid isn't upscaled to mush.
+    property string remoteSource: root.imageData.sample_url || root.imageData.preview_url
+    // Where the downloader put the picture, once it has. Kept as a property so the
+    // image's own source stays a binding -- writing to it would strip the binding
+    // and pin a reused delegate to the previous row's file.
+    property string downloadedPath: ""
+
     ImageDownloaderProcess {
         id: imageDownloader
         running: root.manualDownload
         filePath: root.filePath
-        // Prefer the medium-res sample over the ~150px preview so the grid isn't upscaled to mush.
-        sourceUrl: root.imageData.sample_url ?? root.imageData.preview_url
+        sourceUrl: root.remoteSource
+        referer: root.imageReferer
         onDone: (path, width, height) => {
-            imageObject.source = ""
-            imageObject.source = path
-            if (!modelData.width || !modelData.height) {
+            root.downloadedPath = path
+            if (width > 0 && height > 0 && (!modelData.width || !modelData.height)) {
                 modelData.width = width
                 modelData.height = height
                 modelData.aspect_ratio = width / height
@@ -67,8 +77,10 @@ Button {
             width: root.rowHeight * modelData.aspect_ratio
             height: root.rowHeight
             fillMode: Image.PreserveAspectFit
-            primarySource: modelData.sample_url ?? modelData.preview_url
-            fallbacks: [modelData.preview_url]
+            // A manually downloaded picture has no remote fallback worth trying: the
+            // provider is on the list precisely because Image can't fetch it itself.
+            primarySource: root.manualDownload ? root.downloadedPath : root.remoteSource
+            fallbacks: root.manualDownload ? [] : [modelData.preview_url]
 
             layer.enabled: true
             layer.effect: OpacityMask {
@@ -176,8 +188,9 @@ Button {
                                 const targetPath = root.imageData.is_nsfw ? root.nsfwPath : root.downloadPath;
                                 const userAgent = Config.options?.networking?.userAgent ?? ""
                                 const userAgentHeader = userAgent ? ` -H 'User-Agent: ${StringUtils.shellSingleQuoteEscape(userAgent)}'` : ""
-                                Quickshell.execDetached(["bash", "-c", 
-                                    `mkdir -p '${targetPath}' && curl '${StringUtils.shellSingleQuoteEscape(root.imageData.file_url)}'${userAgentHeader} -o '${targetPath}/${root.fileName}' && notify-send '${Translation.tr("Download complete")}' '${root.downloadPath}/${root.fileName}' -a 'Shell'`
+                                const refererHeader = root.imageReferer ? ` -H 'Referer: ${StringUtils.shellSingleQuoteEscape(root.imageReferer)}'` : ""
+                                Quickshell.execDetached(["bash", "-c",
+                                    `mkdir -p '${targetPath}' && curl -Lf --remove-on-error '${StringUtils.shellSingleQuoteEscape(root.imageData.file_url)}'${userAgentHeader}${refererHeader} -o '${targetPath}/${root.fileName}' && notify-send '${Translation.tr("Download complete")}' '${root.downloadPath}/${root.fileName}' -a 'Shell'`
                                 ])
                             }
                         }

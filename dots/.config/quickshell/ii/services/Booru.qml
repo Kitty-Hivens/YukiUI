@@ -40,7 +40,7 @@ Singleton {
                         "is_nsfw": (item.rating != 's'),
                         "md5": item.md5,
                         "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
+                        "sample_url": stillImageUrl(item.sample_url) ?? stillImageUrl(item.file_url) ?? item.preview_url,
                         "file_url": item.file_url,
                         "file_ext": item.file_ext,
                         "source": getWorkingImageSource(item.source) ?? item.file_url,
@@ -74,7 +74,7 @@ Singleton {
                         "is_nsfw": (item.rating != 's'),
                         "md5": item.md5,
                         "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
+                        "sample_url": stillImageUrl(item.sample_url) ?? stillImageUrl(item.file_url) ?? item.preview_url,
                         "file_url": item.file_url,
                         "file_ext": item.file_ext,
                         "source": getWorkingImageSource(item.source) ?? item.file_url,
@@ -135,7 +135,7 @@ Singleton {
                         "is_nsfw": (item.rating != 's'),
                         "md5": item.md5,
                         "preview_url": item.preview_file_url,
-                        "sample_url": item.file_url ?? item.large_file_url,
+                        "sample_url": stillImageUrl(item.file_url) ?? stillImageUrl(item.large_file_url) ?? item.preview_file_url,
                         "file_url": item.large_file_url,
                         "file_ext": item.file_ext,
                         "source": getWorkingImageSource(item.source) ?? item.file_url,
@@ -170,20 +170,27 @@ Singleton {
                     return [`user_id=${encodeURIComponent(userId)}`, `api_key=${encodeURIComponent(apiKey)}`]
                 }
             },
+            // Its image host answers a refererless request with a redirect to an html
+            // page, so the pictures have to be fetched by something that can carry one.
+            "imageReferer": "https://gelbooru.com/",
             "mapFunc": (response) => {
                 response = response.post
                 return response.map(item => {
+                    // Gelbooru spells its ratings out where the rest of the boorus use letters,
+                    // and counts only `general` as safe -- the same line the nsfw filter draws.
+                    const rating = item.rating.replace('general', 'safe').charAt(0)
                     return {
                         "id": item.id,
                         "width": item.width,
                         "height": item.height,
                         "aspect_ratio": item.width / item.height,
                         "tags": item.tags,
-                        "rating": item.rating.replace('general', 's').charAt(0),
-                        "is_nsfw": (item.rating != 's'),
+                        "rating": rating,
+                        "is_nsfw": (item.rating != 'general'),
                         "md5": item.md5,
                         "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
+                        // A post that has no downscaled sample carries an empty string, not a missing field.
+                        "sample_url": item.sample_url || stillImageUrl(item.file_url) || item.preview_url,
                         "file_url": item.file_url,
                         "file_ext": item.file_url.split('.').pop(),
                         "source": getWorkingImageSource(item.source) ?? item.file_url,
@@ -307,6 +314,20 @@ Singleton {
 
     function redactCredentials(url) {
         return url.replace(/([?&](?:api_key|user_id)=)[^&]*/g, "$1[hidden]")
+    }
+
+    readonly property var stillImageExtensions: ["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp"]
+
+    /**
+     * The url back, or null if it doesn't point at something an image element can
+     * decode. Boorus carry video and archive posts too, and for those the thumbnail
+     * is the only still there is -- their file would come down as several megabytes
+     * of nothing to draw.
+     */
+    function stillImageUrl(url) {
+        if (!url) return null
+        const extension = url.split(/[?#]/)[0].split('.').pop().toLowerCase()
+        return stillImageExtensions.includes(extension) ? url : null
     }
 
     function getWorkingImageSource(url) {
