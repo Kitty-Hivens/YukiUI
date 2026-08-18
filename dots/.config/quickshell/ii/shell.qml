@@ -8,7 +8,19 @@
 
 import "modules/common"
 import "services"
-import "panelFamilies"
+
+// Environments, named here for one reason only: to be registered.
+//
+// An import builds nothing. What it does is send the scanner through the tree,
+// which is how the qmldir the engine resolves types from comes to exist at all
+// -- a directory nobody imports is a directory whose types are "not installed",
+// however it is loaded later.
+//
+// Which one comes up, and whether one comes up at all, is decided at runtime
+// from the manifests. An environment that is not on disk costs a warning from
+// the scanner and is then simply absent.
+import "environments/ii"
+import "environments/waffle"
 
 import QtQuick
 import QtQuick.Window
@@ -19,10 +31,12 @@ import Quickshell.Hyprland
 ShellRoot {
     id: root
 
-    // Stuff for every panel family
+    // Stuff for every environment
     ReloadPopup {}
 
     Component.onCompleted: {
+        Plugins.load()
+        Environments.load()
         MaterialThemeLoader.reapplyTheme()
         Hyprsunset.load()
         FirstRunExperience.load()
@@ -36,58 +50,54 @@ ShellRoot {
     }
 
 
-    // Panel families
-    property list<string> families: ["ii", "waffle"]
-    function cyclePanelFamily() {
-        const currentIndex = families.indexOf(Config.options.panelFamily)
-        const nextIndex = (currentIndex + 1) % families.length
-        Config.options.panelFamily = families[nextIndex]
+    // Environments
+    //
+    // The list, what may be switched to and what is built all come from the same
+    // scan of the manifests, so there is no second table to keep in agreement
+    // with the first -- which is what used to let the config name an environment
+    // that no loader answered to, leaving the shell up and empty.
+    function cycleEnvironment() {
+        const ids = Environments.offeredIds;
+        if (ids.length === 0)
+            return;
+        const currentIndex = ids.indexOf(Config.options.panelFamily);
+        Config.options.panelFamily = ids[(currentIndex + 1) % ids.length];
     }
 
     // The config file is written to while the shell starts, and every write is read
-    // back. The family name reads as its default in the middle of that, which was
-    // enough to build the other family, let it claim the ipc targets both families
-    // register, and tear it down again -- leaving the family actually in use with
+    // back. The environment name reads as its default in the middle of that, which was
+    // enough to build the other environment, let it claim the ipc targets both
+    // register, and tear it down again -- leaving the one actually in use with
     // handlers that are registered but never reached.
-    property string requestedFamily: Config.ready ? Config.options.panelFamily : ""
-    property string settledFamily: ""
-    property string pendingFamily: ""
-    onRequestedFamilyChanged: familySettleTimer.restart()
+    //
+    // Resolved rather than taken as written: a name that is not installed comes
+    // back as the fallback, so an environment removed from disk costs its panels
+    // and not the whole desktop. The config keeps what it said, so putting the
+    // environment back brings it back.
+    property string requestedEnvironment: Config.ready ? Environments.resolve(Config.options.panelFamily) : ""
+    property string settledEnvironment: ""
+    property string pendingEnvironment: ""
+    onRequestedEnvironmentChanged: environmentSettleTimer.restart()
+    onSettledEnvironmentChanged: Environments.activeId = root.settledEnvironment
 
     Timer {
-        id: familySettleTimer
+        id: environmentSettleTimer
         interval: 100
         onTriggered: {
-            root.pendingFamily = root.requestedFamily
-            root.settledFamily = ""
-            familySwapTimer.restart()
+            root.pendingEnvironment = root.requestedEnvironment
+            root.settledEnvironment = ""
+            environmentSwapTimer.restart()
         }
     }
 
-    // The swap takes two beats, so that for one of them no family is alive. An
-    // IpcHandler registers once, when it is built: a family raised while the one it
+    // The swap takes two beats, so that for one of them no environment is alive. An
+    // IpcHandler registers once, when it is built: one raised while the one it
     // replaces still holds `search` and `session` is refused those targets for good,
-    // and the keybinds that call them go on reaching the family being torn down.
+    // and the keybinds that call them go on reaching the environment being torn down.
     Timer {
-        id: familySwapTimer
+        id: environmentSwapTimer
         interval: 1
-        onTriggered: root.settledFamily = root.pendingFamily
-    }
-
-    component PanelFamilyLoader: LazyLoader {
-        required property string identifier
-        property bool extraCondition: true
-        active: root.settledFamily === identifier && extraCondition
-    }
-    
-    PanelFamilyLoader {
-        identifier: "ii"
-        component: IllogicalImpulseFamily {}
-    }
-
-    PanelFamilyLoader {
-        identifier: "waffle"
-        component: WaffleFamily {}
+        onTriggered: root.settledEnvironment = root.pendingEnvironment
     }
 
 
@@ -96,7 +106,7 @@ ShellRoot {
         target: "panelFamily"
 
         function cycle(): void {
-            root.cyclePanelFamily()
+            root.cycleEnvironment()
         }
     }
 
@@ -104,7 +114,6 @@ ShellRoot {
         name: "panelFamilyCycle"
         description: "Cycles panel family"
 
-        onPressed: root.cyclePanelFamily()
+        onPressed: root.cycleEnvironment()
     }
 }
-

@@ -38,6 +38,15 @@ AbstractQuickPanel {
         }
         IdleInhibitor {}
         EasyEffectsToggle {}
-        CloudflareWarp {}
+
+        // Whatever the installed plugins offer, after what the family brings
+        // itself. Nothing here names any of them.
+        Repeater {
+            model: Plugins.quickToggleIds
+            delegate: ContributedToggle {
+                required property string modelData
+                toggleModel: Plugins.quickToggle(modelData)
+            }
+        }
     }
 }

@@ -41,13 +41,6 @@ DelegateChooser {
         }
     }
     DelegateChoice {
-        roleValue: "cloudflareWarp"
-        ActionCenterToggleButton {
-            toggleModel: CloudflareWarpToggle {}
-            icon: "cloudflare"
-        }
-    }
-    DelegateChoice {
         roleValue: "colorPicker"
         ActionCenterToggleButton {
             toggleModel: ColorPickerToggle {}
@@ -149,6 +142,20 @@ DelegateChooser {
         ActionCenterToggleButton {
             toggleModel: ScreenSnipToggle {}
             icon: "cut"
+        }
+    }
+
+    // Whatever this family has no branch of its own for is looked for among the
+    // plugins. The glyph comes from the plugin's entry for this family, since
+    // the two families do not draw from the same icon set and a Material name
+    // would be a missing picture here.
+    DelegateChoice {
+        ActionCenterToggleButton {
+            required property var modelData
+            readonly property QuickToggleModel contributed: Plugins.quickToggle(modelData)
+            visible: !!contributed
+            toggleModel: contributed
+            icon: contributed?.familyIcons?.waffle ?? contributed?.icon ?? ""
         }
     }
 }

@@ -135,6 +135,28 @@ Singleton {
 
             property string panelFamily: "ii" // "ii", "waffle"
 
+            /**
+             * Environments that are installed but not offered.
+             *
+             * Named rather than deleted, so turning one back on costs a line
+             * instead of an install, and so an environment that ships with the
+             * shell does not have to be present to be switched away from.
+             * Naming the one already in use does not take it down: an explicit
+             * choice outranks a default, and a desktop should not vanish on an
+             * update. It only stops being offered.
+             */
+            property list<string> disabledEnvironments: ["waffle"]
+
+            /**
+             * Plugins that are installed but not built.
+             *
+             * Empty by default: a plugin is installed on purpose, so the
+             * install is the consent. Named here, its entry never runs at all,
+             * which is the difference that matters -- a plugin switched off
+             * cannot start a process or claim a shortcut.
+             */
+            property list<string> disabledPlugins: []
+
             property JsonObject policies: JsonObject {
                 property int ai: 1 // 0: No | 1: Yes | 2: Local
                 property int weeb: 1 // 0: No | 1: Open | 2: Closet

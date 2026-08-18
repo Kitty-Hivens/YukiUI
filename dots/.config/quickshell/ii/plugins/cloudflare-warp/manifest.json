@@ -1,0 +1,9 @@
+{
+    "id": "cloudflareWarp",
+    "name": "Cloudflare WARP",
+    "apiVersion": 1,
+    "entry": "Plugin.qml",
+    "config": {
+        "autoRegister": false
+    }
+}
