@@ -23,13 +23,98 @@ Singleton {
     }
 
     readonly property bool visualEngaged: root.engaged && Config.options.gameMode.visual
-    onVisualEngagedChanged: root.applyVisual(visualEngaged)
-    function applyVisual(on) {
-        if (on) {
-            Quickshell.execDetached(["bash", "-c",
-                `hyprctl --batch "keyword animations:enabled 0; keyword decoration:shadow:enabled 0; keyword decoration:blur:enabled 0; keyword general:gaps_in 0; keyword general:gaps_out 0; keyword general:border_size 1; keyword decoration:rounding 0; keyword general:allow_tearing 1"`])
-        } else {
-            Quickshell.execDetached(["hyprctl", "reload"])
+
+    /**
+     * The keywords the visual side overwrites, and what they held beforehand.
+     *
+     * Putting them back used to be `hyprctl reload`, which re-reads the whole
+     * compositor config. That rebuilds every keybind, so the shell's global
+     * shortcuts are torn down and registered again; a key still held across
+     * that moment is released against a registration that never saw it pressed,
+     * and the tap-to-open overview fires without a tap. Leaving a fullscreen
+     * window is exactly when that happens, because leaving it is what ends the
+     * mode. A reload also drops every other keyword set while the session ran,
+     * which is not this service's to discard.
+     */
+    readonly property list<string> visualKeywords: ["animations:enabled", "decoration:shadow:enabled", "decoration:blur:enabled", "general:gaps_in", "general:gaps_out", "general:border_size", "decoration:rounding", "general:allow_tearing"]
+
+    readonly property var visualValues: ({
+        "animations:enabled": "0",
+        "decoration:shadow:enabled": "0",
+        "decoration:blur:enabled": "0",
+        "general:gaps_in": "0",
+        "general:gaps_out": "0",
+        "general:border_size": "1",
+        "decoration:rounding": "0",
+        "general:allow_tearing": "1"
+    })
+
+    /** Filled the first time the mode engages, so it holds the desktop's own values. */
+    property var visualBefore: null
+
+    onVisualEngagedChanged: {
+        if (root.visualEngaged)
+            root.engageVisual();
+        else
+            root.disengageVisual();
+    }
+
+    function keywordBatch(values) {
+        const parts = root.visualKeywords.map(key => `keyword ${key} ${values[key]}`);
+        return ["bash", "-c", `hyprctl --batch "${parts.join("; ")}"`];
+    }
+
+    function engageVisual() {
+        // Read before writing, or what gets remembered is the mode's own doing.
+        if (root.visualBefore)
+            Quickshell.execDetached(root.keywordBatch(root.visualValues));
+        else
+            captureProc.running = true;
+    }
+
+    function disengageVisual() {
+        if (!root.visualBefore) {
+            // Engaged before anything was read -- the shell started inside the
+            // mode. The config's own values are the only ones left to go by.
+            Quickshell.execDetached(["hyprctl", "reload"]);
+            return;
+        }
+        Quickshell.execDetached(root.keywordBatch(root.visualBefore));
+    }
+
+    Process {
+        id: captureProc
+        command: ["bash", "-c", `for key in ${root.visualKeywords.join(" ")}; do printf '%s\t' "$key"; hyprctl -j getoption "$key" | tr -d '\n'; printf '\n'; done`]
+        stdout: StdioCollector {
+            id: captureCollector
+            onStreamFinished: {
+                const found = {};
+                for (const line of captureCollector.text.split("\n")) {
+                    const tab = line.indexOf("\t");
+                    if (tab < 0)
+                        continue;
+                    const key = line.slice(0, tab);
+                    let reported;
+                    try {
+                        reported = JSON.parse(line.slice(tab + 1));
+                    } catch (error) {
+                        continue;
+                    }
+                    // Whichever type the option turned out to be. A quad such as
+                    // "4 4 4 4" comes back as one string and goes back as one.
+                    for (const field of ["bool", "int", "float", "css", "str"]) {
+                        if (reported[field] !== undefined) {
+                            found[key] = String(reported[field]);
+                            break;
+                        }
+                    }
+                }
+                if (Object.keys(found).length === root.visualKeywords.length)
+                    root.visualBefore = found;
+                else
+                    console.warn(`[GameMode] read back ${Object.keys(found).length} of ${root.visualKeywords.length} settings, leaving the reload as the way out`);
+                Quickshell.execDetached(root.keywordBatch(root.visualValues));
+            }
         }
     }
 
@@ -46,7 +131,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (root.visualEngaged) root.applyVisual(true);
+        if (root.visualEngaged) root.engageVisual();
         if (root.wallpaperPaused) root.setWallpaperPaused(true);
     }
 }
