@@ -109,11 +109,18 @@ Singleton {
                         }
                     }
                 }
-                if (Object.keys(found).length === root.visualKeywords.length)
+                const complete = Object.keys(found).length === root.visualKeywords.length;
+                // What was read is only worth keeping if it is the desktop's own.
+                // A shell that restarted while the mode was on reads back the mode's
+                // own values, and remembering those would restore them as if they
+                // were the desktop -- the settings would never come back.
+                const alreadyApplied = root.visualKeywords.every(key => found[key] === root.visualValues[key]);
+                if (complete && !alreadyApplied)
                     root.visualBefore = found;
-                else
+                else if (!complete)
                     console.warn(`[GameMode] read back ${Object.keys(found).length} of ${root.visualKeywords.length} settings, leaving the reload as the way out`);
-                Quickshell.execDetached(root.keywordBatch(root.visualValues));
+                if (!alreadyApplied)
+                    Quickshell.execDetached(root.keywordBatch(root.visualValues));
             }
         }
     }

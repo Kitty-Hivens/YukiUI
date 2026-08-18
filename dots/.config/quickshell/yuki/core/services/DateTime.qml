@@ -25,8 +25,12 @@ Singleton {
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
     property string uptime: "0m"
 
+    // Read once a minute, which is the precision the answer is shown at. It used
+    // to run a hundred times a second, re-reading /proc from disk each time for a
+    // number that cannot change more often than the unit it is rendered in.
     Timer {
-        interval: 10
+        interval: 60000
+        triggeredOnStart: true
         running: true
         repeat: true
         onTriggered: {
