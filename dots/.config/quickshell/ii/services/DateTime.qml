@@ -23,7 +23,7 @@ Singleton {
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")
     property string longDate: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
-    property string uptime: "0h, 0m"
+    property string uptime: "0m"
 
     Timer {
         interval: 10
@@ -39,15 +39,19 @@ Singleton {
             const hours = Math.floor((uptimeSeconds % 86400) / 3600);
             const minutes = Math.floor((uptimeSeconds % 3600) / 60);
 
-            // Build the formatted uptime string
-            let formatted = "";
+            // Only the two largest units that have a value. This is read at a
+            // glance rather than measured, and a machine that has been up for
+            // days is not telling anyone anything with its minutes.
+            const parts = [];
             if (days > 0)
-                formatted += `${days}d`;
+                parts.push(`${days}d`);
             if (hours > 0)
-                formatted += `${formatted ? ", " : ""}${hours}h`;
-            if (minutes > 0 || !formatted)
-                formatted += `${formatted ? ", " : ""}${minutes}m`;
-            uptime = formatted;
+                parts.push(`${hours}h`);
+            if (minutes > 0)
+                parts.push(`${minutes}m`);
+            if (parts.length === 0)
+                parts.push("0m");
+            uptime = parts.slice(0, 2).join(", ");
             // Settles at a minute, which is the finest this string distinguishes.
             // At the resource poll it re-read /proc and rebuilt the same text
             // twenty times for each change it could actually show.
