@@ -4,6 +4,11 @@ hl.on("hyprland.start", function ()
     -- uwsm: import env into systemd/dbus and activate graphical-session (run first)
     hl.exec_cmd("uwsm finalize")
 
+    -- Before the shell, so that no client has to survive the output changes it
+    -- makes: an output the layout disables was still lit by the kernel at boot,
+    -- and only claiming and releasing it turns it off.
+    hl.exec_cmd("$HOME/.config/hypr/hyprland/scripts/release_disabled_outputs.sh")
+
     -- Bar, wallpaper
     hl.exec_cmd("$HOME/.config/hypr/hyprland/scripts/start_geoclue_agent.sh")
     -- uwsm app: run qs as its own tracked unit so it lands in user@.service (not 0::/),
