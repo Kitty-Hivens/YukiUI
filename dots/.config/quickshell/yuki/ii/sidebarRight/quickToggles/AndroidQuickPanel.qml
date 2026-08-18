@@ -1,12 +1,13 @@
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 
-import qs.modules.ii.sidebarRight.quickToggles.androidStyle
+import qs.ii.sidebarRight.quickToggles.androidStyle
+import qs.common
 
 AbstractQuickPanel {
     id: root

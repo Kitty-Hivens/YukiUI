@@ -1,10 +1,10 @@
 import QtQuick
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.waffle.looks
-import qs.modules.waffle.bar
+import qs.core.services
+import qs.core
+import qs.waffle.looks
+import qs.waffle.bar
 
 WButton {
     id: root

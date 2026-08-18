@@ -1,23 +1,23 @@
 import QtQuick
 import Quickshell
 
-import qs.modules.common
-import qs.modules.waffle
-import qs.modules.waffle.actionCenter
-import qs.modules.waffle.background
-import qs.modules.waffle.bar
-import qs.modules.waffle.lock
-import qs.modules.waffle.notificationCenter
-import qs.modules.waffle.notificationPopup
-import qs.modules.waffle.onScreenDisplay
-// import qs.modules.waffle.overlay
-import qs.modules.waffle.polkit
-import qs.modules.waffle.screenSnip
-import qs.modules.waffle.searchPanel
-import qs.modules.waffle.startMenu
-import qs.modules.waffle.sessionScreen
-import qs.modules.waffle.taskView
-import qs.modules.waffle.widgets
+import qs.core
+import qs.waffle
+import qs.waffle.actionCenter
+import qs.waffle.background
+import qs.waffle.bar
+import qs.waffle.lock
+import qs.waffle.notificationCenter
+import qs.waffle.notificationPopup
+import qs.waffle.onScreenDisplay
+// import qs.waffle.overlay
+import qs.waffle.polkit
+import qs.waffle.screenSnip
+import qs.waffle.searchPanel
+import qs.waffle.startMenu
+import qs.waffle.sessionScreen
+import qs.waffle.taskView
+import qs.waffle.widgets
 
 // Nothing from the other environment is imported here, and that is the point.
 // A cheatsheet, an on-screen keyboard, the overlays, the screen translator and

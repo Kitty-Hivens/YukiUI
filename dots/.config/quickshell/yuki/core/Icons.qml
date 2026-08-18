@@ -3,7 +3,7 @@ pragma Singleton
 // From https://github.com/caelestia-dots/shell (GPLv3)
 
 import Quickshell
-import qs.services
+import qs.core.services
 
 Singleton {
     id: root

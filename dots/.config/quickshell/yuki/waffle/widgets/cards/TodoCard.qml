@@ -3,10 +3,10 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.waffle.looks
-import qs.modules.waffle.widgets
+import qs.core.services
+import qs.core
+import qs.waffle.looks
+import qs.waffle.widgets
 
 WWidgetCard {
     id: root

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQml
 import QtQuick
 import Quickshell.Io
-import qs.services
+import qs.core.services
 import "../"
 
 NestableObject {

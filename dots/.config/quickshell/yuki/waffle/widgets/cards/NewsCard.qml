@@ -3,11 +3,11 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.widgets
 
 // News as one card among the rest, rather than the half of the board a publisher's
 // feed occupies in the original. No reactions, no trends, no promoted anything --

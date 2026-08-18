@@ -11,10 +11,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import Quickshell
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions as CF
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions as CF
+import qs.common
 
 ApplicationWindow {
     id: root
@@ -27,17 +28,17 @@ ApplicationWindow {
     readonly property string activeFamily: Config.options?.panelFamily ?? "ii"
 
     readonly property var iiPages: [
-        { name: Translation.tr("Quick"), icon: "instant_mix", component: "modules/settings/QuickConfig.qml" },
-        { name: Translation.tr("General"), icon: "browse", component: "modules/settings/GeneralConfig.qml" },
-        { name: Translation.tr("Bar"), icon: "toast", iconRotation: 180, component: "modules/settings/BarConfig.qml" },
-        { name: Translation.tr("Background"), icon: "texture", component: "modules/settings/BackgroundConfig.qml" },
-        { name: Translation.tr("Interface"), icon: "bottom_app_bar", component: "modules/settings/InterfaceConfig.qml" },
-        { name: Translation.tr("Services"), icon: "settings", component: "modules/settings/ServicesConfig.qml" },
-        { name: Translation.tr("Advanced"), icon: "construction", component: "modules/settings/AdvancedConfig.qml" },
-        { name: Translation.tr("System"), icon: "info", component: "modules/settings/About.qml" }
+        { name: Translation.tr("Quick"), icon: "instant_mix", component: "ii/settings/QuickConfig.qml" },
+        { name: Translation.tr("General"), icon: "browse", component: "ii/settings/GeneralConfig.qml" },
+        { name: Translation.tr("Bar"), icon: "toast", iconRotation: 180, component: "ii/settings/BarConfig.qml" },
+        { name: Translation.tr("Background"), icon: "texture", component: "ii/settings/BackgroundConfig.qml" },
+        { name: Translation.tr("Interface"), icon: "bottom_app_bar", component: "ii/settings/InterfaceConfig.qml" },
+        { name: Translation.tr("Services"), icon: "settings", component: "ii/settings/ServicesConfig.qml" },
+        { name: Translation.tr("Advanced"), icon: "construction", component: "ii/settings/AdvancedConfig.qml" },
+        { name: Translation.tr("System"), icon: "info", component: "ii/settings/About.qml" }
     ]
     readonly property var wafflePages: [
-        { name: "Waffle", icon: "grid_view", component: "modules/settings/WaffleConfig.qml" }
+        { name: "Waffle", icon: "grid_view", component: "ii/settings/WaffleConfig.qml" }
     ]
     readonly property var currentPages: activeFamily === "waffle" ? wafflePages : iiPages
     property int currentPage: 0

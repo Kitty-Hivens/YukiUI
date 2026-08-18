@@ -3,9 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.common
 
 /**
  * One live figure: what it measures, what it reads now, and where it has been.

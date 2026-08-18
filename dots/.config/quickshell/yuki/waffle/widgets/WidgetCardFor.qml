@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.modules.waffle.widgets.cards
+import qs.waffle.widgets.cards
 
 // One card by name. The board picks its cards through a delegate chooser, which
 // only works as a delegate; this is the same choice made anywhere else.

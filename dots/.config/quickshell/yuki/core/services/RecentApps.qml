@@ -2,7 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import qs.modules.common
+import qs.core
 
 /**
  * The applications that appeared on this machine lately.

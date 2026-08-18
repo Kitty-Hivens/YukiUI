@@ -3,11 +3,12 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.common.widgets.widgetCanvas
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.common.widgets.widgetCanvas
+import qs.common
 
 Rectangle {
     id: root

@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.modules.common.functions
-import qs.modules.common.utils
-import qs.services
+import qs.core.functions
+import qs.core.utils
+import qs.core.services
 import ".."
 
 GCloudApi {

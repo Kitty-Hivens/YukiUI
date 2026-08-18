@@ -1,8 +1,9 @@
-import qs.modules.common.widgets
-import qs.modules.common
+import qs.common.widgets
+import qs.core
 import QtQuick
 import QtQuick.Layouts
-import qs.services
+import qs.core.services
+import qs.common
 
 RowLayout {
     id: root

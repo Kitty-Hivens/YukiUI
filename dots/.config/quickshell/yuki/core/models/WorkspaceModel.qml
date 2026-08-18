@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import qs.services
-import qs.modules.common as C
+import qs.core.services
+import qs.core as C
 
 NestableObject {
     id: root

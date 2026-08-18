@@ -1,8 +1,8 @@
-import qs.services
+import qs.core.services
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import qs.modules.ii.onScreenDisplay
+import qs.ii.onScreenDisplay
 
 OsdValueIndicator {
     id: rotateIcon

@@ -1,7 +1,7 @@
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,14 +9,15 @@ import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
 
-import qs.modules.ii.sidebarRight.quickToggles
-import qs.modules.ii.sidebarRight.quickToggles.classicStyle
+import qs.ii.sidebarRight.quickToggles
+import qs.ii.sidebarRight.quickToggles.classicStyle
 
-import qs.modules.ii.sidebarRight.bluetoothDevices
-import qs.modules.ii.sidebarRight.gameMode
-import qs.modules.ii.sidebarRight.nightLight
-import qs.modules.ii.sidebarRight.volumeMixer
-import qs.modules.ii.sidebarRight.wifiNetworks
+import qs.ii.sidebarRight.bluetoothDevices
+import qs.ii.sidebarRight.gameMode
+import qs.ii.sidebarRight.nightLight
+import qs.ii.sidebarRight.volumeMixer
+import qs.ii.sidebarRight.wifiNetworks
+import qs.common
 
 Item {
     id: root

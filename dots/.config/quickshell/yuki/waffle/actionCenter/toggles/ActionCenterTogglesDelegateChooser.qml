@@ -4,15 +4,15 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.models.quickToggles
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.actionCenter.bluetooth
-import qs.modules.waffle.actionCenter.nightLight
-import qs.modules.waffle.actionCenter.volumeControl
-import qs.modules.waffle.actionCenter.wifi
+import qs.core.services
+import qs.core
+import qs.core.models.quickToggles
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.actionCenter.bluetooth
+import qs.waffle.actionCenter.nightLight
+import qs.waffle.actionCenter.volumeControl
+import qs.waffle.actionCenter.wifi
 
 DelegateChooser {
     id: root

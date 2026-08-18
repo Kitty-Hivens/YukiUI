@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.services
-import qs.modules.common.functions
+import qs.core.services
+import qs.core.functions
 
 RowLayout {
     id: root

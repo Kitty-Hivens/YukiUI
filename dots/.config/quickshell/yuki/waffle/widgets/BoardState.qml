@@ -2,9 +2,9 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import qs.modules.common
-import qs.modules.waffle.widgets
-import qs.services
+import qs.core
+import qs.waffle.widgets
+import qs.core.services
 
 /**
  * What the board is doing and what can be done to it.

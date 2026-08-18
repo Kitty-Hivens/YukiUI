@@ -1,9 +1,10 @@
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.services
+import qs.core
+import qs.common.widgets
+import qs.core.services
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.ii.bar as Bar
+import qs.ii.bar as Bar
+import qs.common
 
 MouseArea {
     id: root

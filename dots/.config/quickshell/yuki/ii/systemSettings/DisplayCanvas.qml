@@ -2,9 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.common
 import "arrange.js" as Arrange
 
 /**

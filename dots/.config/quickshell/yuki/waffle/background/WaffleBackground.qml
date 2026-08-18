@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.widgets.widgetCanvas
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.common.widgets.widgetCanvas
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects

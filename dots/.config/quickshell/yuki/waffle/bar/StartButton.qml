@@ -3,9 +3,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.waffle.looks
 
 // TODO: Replace the icon with QMLized svg (with /usr/lib/qt6/bin/svgtoqml) for proper micro-animation
 AppButton {

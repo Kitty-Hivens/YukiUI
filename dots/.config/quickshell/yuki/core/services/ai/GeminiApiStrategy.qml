@@ -1,6 +1,6 @@
 import QtQuick
-import qs.modules.common
-import qs.modules.common.functions as CF
+import qs.core
+import qs.core.functions as CF
 
 ApiStrategy {
     readonly property string apiKeyEnvVarName: "API_KEY"

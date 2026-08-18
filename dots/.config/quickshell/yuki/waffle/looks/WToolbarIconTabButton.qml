@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-import qs.modules.common
+import qs.core
 
 TabButton {
     id: root

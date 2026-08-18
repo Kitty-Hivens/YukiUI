@@ -2,9 +2,9 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
 
 /**
  * The board's own vocabulary.

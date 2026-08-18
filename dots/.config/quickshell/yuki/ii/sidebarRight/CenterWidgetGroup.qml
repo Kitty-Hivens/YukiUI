@@ -1,7 +1,8 @@
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.services
-import qs.modules.ii.sidebarRight.notifications
+import qs.core
+import qs.common.widgets
+import qs.core.services
+import qs.ii.sidebarRight.notifications
+import qs.common
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls

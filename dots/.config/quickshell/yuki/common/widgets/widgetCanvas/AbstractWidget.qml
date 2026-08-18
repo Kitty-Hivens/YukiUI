@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
-import qs.modules.common
+import qs.core
+import qs.common
 
 /*
  * Widget to be placed on a WidgetCanvas

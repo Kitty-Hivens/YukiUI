@@ -1,8 +1,9 @@
 import qs
-import qs.services
-import qs.services.network
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core.services.network
+import qs.core
+import qs.common.widgets
+import qs.common
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -2,8 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core
+import qs.common.widgets
+import qs.common
 
 /**
  * A way into one section of the settings, carrying what that section currently

@@ -2,10 +2,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Qt5Compat.GraphicalEffects
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.utils
-import qs.modules.ii.overlay
+import qs.core
+import qs.core.functions
+import qs.core.utils
+import qs.ii.overlay
+import qs.common
 
 StyledOverlayWidget {
     id: root

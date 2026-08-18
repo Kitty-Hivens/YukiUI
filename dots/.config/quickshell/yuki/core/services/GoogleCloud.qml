@@ -2,7 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import qs.modules.common.utils
+import qs.core.utils
 
 Singleton {
     id: root
@@ -19,7 +19,7 @@ Singleton {
 
     readonly property bool loaded: keyReady && tokenReady
 
-    readonly property string tokenForKeyScriptPath: Quickshell.shellPath("services/gCloud/token-from-key-venv.sh")
+    readonly property string tokenForKeyScriptPath: Quickshell.shellPath("core/services/gCloud/token-from-key-venv.sh")
 
     function load() {
         // Init load will be handled by Component.onCompleted

@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.waffle.looks
 
 WButton {
     id: root

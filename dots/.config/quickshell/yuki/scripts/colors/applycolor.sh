@@ -13,7 +13,7 @@ if [ ! -d "$STATE_DIR"/user/generated ]; then
   mkdir -p "$STATE_DIR"/user/generated
 fi
 # The shell root, two levels up from scripts/colors, rather than a spelled-out
-# ~/.config/quickshell/ii: the name is not fixed and the shell need not have
+# ~/.config/quickshell/yuki: the name is not fixed and the shell need not have
 # been launched from there. Nothing below reads a relative path, so this only
 # has to be somewhere that exists.
 cd "$SCRIPT_DIR/../.." || exit

@@ -191,7 +191,7 @@ function install_wallpaper_portal_service(){
   # D-Bus activation of the wallpaper portal backend. Written rather than copied
   # because Exec takes an absolute path and expands nothing.
   local target="${XDG_DATA_HOME}/dbus-1/services/org.freedesktop.impl.portal.desktop.yuki.service"
-  local exec_path="${XDG_CONFIG_HOME}/quickshell/ii/scripts/portal/wallpaper-portal.py"
+  local exec_path="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/portal/wallpaper-portal.py"
   x mkdir -p "$(dirname "$target")"
   sed "s|@EXEC@|${exec_path}|" sdata/files/org.freedesktop.impl.portal.desktop.yuki.service.in > "$target"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"

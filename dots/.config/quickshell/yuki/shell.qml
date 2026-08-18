@@ -6,8 +6,9 @@
 // Remove two slashes below and adjust the value to change the UI scale
 ////@ pragma Env QT_SCALE_FACTOR=1
 
-import "modules/common"
-import "services"
+import "core"
+import "common"
+import "core/services"
 
 // Environments, named here for one reason only: to be registered.
 //

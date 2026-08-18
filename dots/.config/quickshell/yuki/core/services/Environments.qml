@@ -6,8 +6,8 @@ import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
-import qs.modules.common.functions
+import qs.core
+import qs.core.functions
 
 /**
  * The environments installed, and the one that is up.

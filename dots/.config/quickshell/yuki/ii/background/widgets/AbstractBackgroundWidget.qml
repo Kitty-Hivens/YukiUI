@@ -2,9 +2,10 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets.widgetCanvas
+import qs.core
+import qs.core.functions
+import qs.common.widgets.widgetCanvas
+import qs.common
 
 AbstractWidget {
     id: root

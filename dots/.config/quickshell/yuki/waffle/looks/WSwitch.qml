@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import qs.modules.common
-import qs.modules.waffle.looks
+import qs.core
+import qs.waffle.looks
+import qs.common
 
 Switch {
     id: root

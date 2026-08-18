@@ -1,5 +1,6 @@
-import qs.modules.common
-import qs.modules.common.functions
+import qs.core
+import qs.core.functions
+import qs.common
 import QtQuick
 import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects

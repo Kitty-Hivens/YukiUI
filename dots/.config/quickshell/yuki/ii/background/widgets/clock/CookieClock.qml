@@ -1,16 +1,17 @@
 pragma ComponentBehavior: Bound
 
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 
-import qs.modules.ii.background.widgets.clock.dateIndicator
-import qs.modules.ii.background.widgets.clock.minuteMarks
+import qs.ii.background.widgets.clock.dateIndicator
+import qs.ii.background.widgets.clock.minuteMarks
+import qs.common
 
 Item {
     id: root

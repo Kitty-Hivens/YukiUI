@@ -1,13 +1,13 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
-import qs.modules.common.functions as CF
-import qs.modules.common
+import qs.core.functions as CF
+import qs.core
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
-import qs.services.ai
+import qs.core.services.ai
 
 /**
  * Basic service to handle LLM chats. Supports Google's and OpenAI's API formats.

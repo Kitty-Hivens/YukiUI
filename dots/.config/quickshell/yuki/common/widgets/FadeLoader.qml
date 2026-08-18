@@ -1,6 +1,7 @@
 import QtQuick
 
-import qs.modules.common
+import qs.core
+import qs.common
 
 Loader {
     id: root

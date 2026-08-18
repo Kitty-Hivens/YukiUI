@@ -1,6 +1,7 @@
-import qs.modules.common
-import qs.modules.common.functions
-import qs.services
+import qs.core
+import qs.core.functions
+import qs.core.services
+import qs.common
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import Quickshell

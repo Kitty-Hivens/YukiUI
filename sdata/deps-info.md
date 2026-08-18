@@ -33,7 +33,7 @@ Tips:
 
 ## illogical-impulse-basic
 - `bc`
-  - Used in `quickshell/ii/scripts/colors/switchwall.sh` for example.
+  - Used in `quickshell/yuki/scripts/colors/switchwall.sh` for example.
 - `coreutils`
   - Too many executables involved, not sure where been used.
 - `cliphist`
@@ -107,7 +107,7 @@ Tips:
 - `gamemode`
   - Provides `gamemoderun`, held by the Quickshell game mode "System GameMode" option (Feral CPU governor).
 - `mpvpaper`
-  - Plays video wallpapers, set in `quickshell/ii/scripts/colors/switchwall.sh`.
+  - Plays video wallpapers, set in `quickshell/yuki/scripts/colors/switchwall.sh`.
 - `ffmpeg`
   - Extracts a single video frame for AI wallpaper categorisation (`scripts/ai/gemini-categorize-wallpaper.sh`).
 - `ffmpegthumbnailer`

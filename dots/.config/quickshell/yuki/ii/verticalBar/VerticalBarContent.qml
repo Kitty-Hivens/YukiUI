@@ -4,11 +4,12 @@ import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Services.UPower
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
-import qs.modules.ii.bar as Bar
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.ii.bar as Bar
+import qs.common
 
 Item { // Bar content region
     id: root

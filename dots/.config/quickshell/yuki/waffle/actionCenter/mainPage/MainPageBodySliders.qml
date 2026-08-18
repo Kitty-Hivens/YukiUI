@@ -2,12 +2,12 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
-import qs.modules.waffle.actionCenter
-import qs.modules.waffle.actionCenter.volumeControl
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
+import qs.waffle.actionCenter
+import qs.waffle.actionCenter.volumeControl
 
 ColumnLayout {
     id: root

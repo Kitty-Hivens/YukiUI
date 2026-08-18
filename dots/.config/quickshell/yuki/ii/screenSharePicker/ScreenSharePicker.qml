@@ -1,7 +1,8 @@
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.ii.regionSelector
+import qs.core.services
+import qs.core
+import qs.ii.regionSelector
+import qs.common
 import QtQuick
 import Quickshell
 import Quickshell.Io

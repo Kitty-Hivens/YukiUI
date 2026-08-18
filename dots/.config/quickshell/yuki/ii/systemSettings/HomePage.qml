@@ -5,10 +5,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.systemSettings
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.ii.systemSettings
+import qs.common
 
 /**
  * What the window opens on: what this machine is, what it is doing right now,

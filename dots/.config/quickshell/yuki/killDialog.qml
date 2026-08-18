@@ -13,10 +13,11 @@ import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.common
 
 ApplicationWindow {
     id: root

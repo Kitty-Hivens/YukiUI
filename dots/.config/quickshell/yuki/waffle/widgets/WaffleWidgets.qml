@@ -4,12 +4,12 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle
-import qs.modules.waffle.bar
-import qs.modules.waffle.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.waffle
+import qs.waffle.bar
+import qs.waffle.widgets
 
 Scope {
     id: root

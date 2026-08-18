@@ -1,18 +1,18 @@
 pragma ComponentBehavior: Bound
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
-import qs.modules.ii.overlay.crosshair
-import qs.modules.ii.overlay.volumeMixer
-import qs.modules.ii.overlay.floatingImage
-import qs.modules.ii.overlay.fpsLimiter
-import qs.modules.ii.overlay.recorder
-import qs.modules.ii.overlay.resources
-import qs.modules.ii.overlay.notes
+import qs.ii.overlay.crosshair
+import qs.ii.overlay.volumeMixer
+import qs.ii.overlay.floatingImage
+import qs.ii.overlay.fpsLimiter
+import qs.ii.overlay.recorder
+import qs.ii.overlay.resources
+import qs.ii.overlay.notes
 
 DelegateChooser {
     id: root

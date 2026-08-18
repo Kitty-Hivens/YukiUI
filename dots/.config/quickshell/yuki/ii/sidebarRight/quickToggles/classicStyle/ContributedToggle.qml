@@ -1,6 +1,7 @@
-import qs.modules.common
-import qs.modules.common.models.quickToggles
-import qs.modules.common.widgets
+import qs.core
+import qs.core.models.quickToggles
+import qs.common.widgets
+import qs.common
 import QtQuick
 
 /**

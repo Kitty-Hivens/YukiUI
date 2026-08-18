@@ -4,9 +4,10 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.common
 
 /**
  * One application's audio: how loud it is and which device carries it.

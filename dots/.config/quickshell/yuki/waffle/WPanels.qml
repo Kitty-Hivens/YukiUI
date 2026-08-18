@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs
-import qs.services
+import qs.core.services
 
 /**
  * The panels that hang off the bar, and the two rules they all follow: only one of

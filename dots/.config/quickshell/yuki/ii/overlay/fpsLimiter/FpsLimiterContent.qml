@@ -1,12 +1,12 @@
-import qs.services
+import qs.core.services
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.ii.overlay
+import qs.core
+import qs.common.widgets
+import qs.ii.overlay
 
 OverlayBackground {
     id: root

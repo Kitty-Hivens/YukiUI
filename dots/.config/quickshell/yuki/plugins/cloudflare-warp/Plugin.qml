@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.services
-import qs.modules.common.models.quickToggles
+import qs.core.services
+import qs.core.models.quickToggles
 
 /**
  * Cloudflare WARP, driven through warp-cli.

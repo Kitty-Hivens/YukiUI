@@ -1,8 +1,9 @@
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.utils
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.core.utils
+import qs.common.widgets
+import qs.common
 import QtQml
 import QtQuick
 import QtQuick.Controls

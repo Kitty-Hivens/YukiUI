@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.modules.waffle.widgets.cards
+import qs.waffle.widgets.cards
 
 DelegateChooser {
     id: root

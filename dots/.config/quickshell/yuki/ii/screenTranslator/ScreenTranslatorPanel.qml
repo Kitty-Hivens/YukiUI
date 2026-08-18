@@ -5,10 +5,11 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 
-import qs.modules.common
-import qs.modules.common.utils
-import qs.modules.common.widgets
-import qs.services
+import qs.core
+import qs.core.utils
+import qs.common.widgets
+import qs.core.services
+import qs.common
 
 PanelWindow {
     id: root

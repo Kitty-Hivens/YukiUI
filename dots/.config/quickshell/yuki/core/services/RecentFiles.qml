@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
+import qs.core
 
 /**
  * The files opened on this desktop lately.

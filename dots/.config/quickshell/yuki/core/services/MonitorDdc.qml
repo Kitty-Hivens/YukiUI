@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
-import qs.modules.common.functions
+import qs.core
+import qs.core.functions
 
 /**
  * The monitor's own controls, over DDC/CI.
@@ -53,7 +53,7 @@ Singleton {
     }
 
     /// Asked of the running shell rather than rebuilt from the config directory:
-    /// spelling out `quickshell/ii` hardcodes both the config name and the
+    /// spelling out `quickshell/yuki` hardcodes both the config name and the
     /// assumption that the shell was launched from there, and `qs -p` elsewhere
     /// makes neither true.
     readonly property string scriptDir: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/displays"))

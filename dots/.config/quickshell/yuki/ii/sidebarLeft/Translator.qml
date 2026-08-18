@@ -1,8 +1,9 @@
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
-import qs.modules.ii.sidebarLeft.translator
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.ii.sidebarLeft.translator
+import qs.common
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

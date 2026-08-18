@@ -1,5 +1,6 @@
-import qs.modules.common
-import qs.services
+import qs.core
+import qs.core.services
+import qs.common
 import QtQuick
 import QtQuick.Layouts
 

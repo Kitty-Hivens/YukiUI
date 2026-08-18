@@ -4,12 +4,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.widgets
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.widgets
 
 /**
  * The widgets there are to choose from, shown as themselves rather than as a list

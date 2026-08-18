@@ -3,9 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.modules.common
-import qs.modules.waffle.looks
-import qs.modules.waffle.bar.tray
+import qs.core
+import qs.waffle.looks
+import qs.waffle.bar.tray
 
 /**
  * Draws the tray icon that is currently being carried.

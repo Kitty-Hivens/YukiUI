@@ -6,12 +6,13 @@ import Qt5Compat.GraphicalEffects
 import Quickshell
 
 import qs
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.models.gCloud
-import qs.modules.common.utils
-import qs.modules.common.widgets
-import qs.services
+import qs.core
+import qs.core.functions
+import qs.core.models.gCloud
+import qs.core.utils
+import qs.common.widgets
+import qs.core.services
+import qs.common
 
 Item {
     id: root

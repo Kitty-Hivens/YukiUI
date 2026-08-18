@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.common
+import qs.core
 
 WButton {
     implicitHeight: 32

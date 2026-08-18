@@ -1,5 +1,5 @@
 import QtQuick
-import qs.services
+import qs.core.services
 
 QtObject {
     property string name

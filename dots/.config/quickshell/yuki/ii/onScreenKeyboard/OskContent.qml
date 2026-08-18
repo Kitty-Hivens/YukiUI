@@ -1,4 +1,4 @@
-import qs.modules.common
+import qs.core
 import "layouts.js" as Layouts
 import QtQuick
 import QtQuick.Layouts

@@ -3,11 +3,11 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
-import qs.modules.waffle.widgets
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
+import qs.waffle.widgets
 
 // Whatever is playing, through MPRIS -- the same players the bar already talks to.
 // The card asks the player and nothing else; there is no lookup of anything on the

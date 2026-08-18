@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.modules.common
-import qs.modules.common.models
+import qs.core
+import qs.core.models
+import qs.common
 
 TabBar {
     id: root

@@ -9,13 +9,13 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.common.panels.lock
-import qs.modules.waffle.looks
-import qs.modules.waffle.sessionScreen as SessionScreen
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.core.panels.lock
+import qs.waffle.looks
+import qs.waffle.sessionScreen as SessionScreen
 
 LockScreen {
     id: root

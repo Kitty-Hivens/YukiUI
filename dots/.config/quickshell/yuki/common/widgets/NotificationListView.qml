@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
-import qs.modules.common.widgets
-import qs.services
+import qs.common.widgets
+import qs.core.services
 import QtQuick
 import Quickshell
 

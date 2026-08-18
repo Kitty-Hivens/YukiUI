@@ -1,5 +1,5 @@
-import qs.modules.common.widgets
-import qs.services
+import qs.common.widgets
+import qs.core.services
 
 QuickToggleButton {
     id: root

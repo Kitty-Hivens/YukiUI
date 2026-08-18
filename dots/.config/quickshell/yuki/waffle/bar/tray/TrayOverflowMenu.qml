@@ -4,12 +4,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
-import qs.modules.waffle.bar
-import qs.modules.waffle.bar.tray
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
+import qs.waffle.bar
+import qs.waffle.bar.tray
 
 BarPopup {
     id: root

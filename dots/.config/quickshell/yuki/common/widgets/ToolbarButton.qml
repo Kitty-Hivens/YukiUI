@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.common
+import qs.core
+import qs.common
 
 RippleButton {
     Layout.fillHeight: true

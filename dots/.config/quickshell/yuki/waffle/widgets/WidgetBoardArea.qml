@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs
-import qs.modules.common
-import qs.modules.waffle.looks
-import qs.modules.waffle.widgets
+import qs.core
+import qs.waffle.looks
+import qs.waffle.widgets
 
 /**
  * The grid the cards sit on.

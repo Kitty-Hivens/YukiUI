@@ -7,12 +7,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.utils
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.core.utils
+import qs.common.widgets
+import qs.waffle.looks
 
 PanelWindow {
     id: root

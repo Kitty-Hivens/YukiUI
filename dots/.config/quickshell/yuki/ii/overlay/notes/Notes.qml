@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.services
-import qs.modules.common
-import qs.modules.ii.overlay
+import qs.core.services
+import qs.core
+import qs.ii.overlay
 
 StyledOverlayWidget {
     id: root

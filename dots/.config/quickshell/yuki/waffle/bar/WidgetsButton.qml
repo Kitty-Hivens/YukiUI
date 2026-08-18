@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.waffle.looks
 
 AppButton {
     id: root

@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core
+import qs.common.widgets
+import qs.common
 
 ColumnLayout {
     id: root

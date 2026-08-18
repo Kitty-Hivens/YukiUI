@@ -1,7 +1,7 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
-import qs.services
-import qs.modules.common
+import qs.core.services
+import qs.core
 
 Kirigami.Icon {
     id: root

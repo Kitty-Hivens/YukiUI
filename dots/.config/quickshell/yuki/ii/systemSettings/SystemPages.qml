@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import qs.services
+import qs.core.services
 
 /**
  * What the window can show, in the order it offers it.
@@ -15,9 +15,9 @@ import qs.services
 Singleton {
     id: root
 
-    readonly property string homeComponent: "modules/systemSettings/HomePage.qml"
-    readonly property string displaysComponent: "modules/systemSettings/DisplaysPage.qml"
-    readonly property string soundComponent: "modules/systemSettings/SoundPage.qml"
+    readonly property string homeComponent: "ii/systemSettings/HomePage.qml"
+    readonly property string displaysComponent: "ii/systemSettings/DisplaysPage.qml"
+    readonly property string soundComponent: "ii/systemSettings/SoundPage.qml"
 
     /**
      * A line of live state per page.

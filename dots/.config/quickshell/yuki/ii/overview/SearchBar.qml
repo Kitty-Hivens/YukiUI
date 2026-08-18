@@ -3,10 +3,11 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.common
 
 RowLayout {
     id: root

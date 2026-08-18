@@ -3,12 +3,13 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell.Services.UPower
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
-import qs.modules.common.panels.lock
-import qs.modules.ii.bar as Bar
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.core.panels.lock
+import qs.ii.bar as Bar
+import qs.common
 import Quickshell
 import Quickshell.Services.SystemTray
 

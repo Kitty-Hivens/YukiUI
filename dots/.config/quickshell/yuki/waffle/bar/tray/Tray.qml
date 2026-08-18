@@ -3,12 +3,12 @@ import QtQuick
 import QtQuick.Layouts
 import Qt.labs.synchronizer
 import Quickshell
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.bar
-import qs.modules.waffle.bar.tray
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.bar
+import qs.waffle.bar.tray
 
 RowLayout {
     id: root

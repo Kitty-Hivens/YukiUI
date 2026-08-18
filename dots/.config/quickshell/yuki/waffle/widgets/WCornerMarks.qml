@@ -1,5 +1,5 @@
 import QtQuick
-import qs.modules.waffle.widgets
+import qs.waffle.widgets
 
 // Four corner marks instead of a drawn border: the card reads as something aimed
 // at rather than something framed.

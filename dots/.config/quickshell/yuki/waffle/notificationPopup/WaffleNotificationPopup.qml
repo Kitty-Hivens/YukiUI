@@ -4,11 +4,12 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.notificationCenter
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.notificationCenter
+import qs.common
 
 Scope {
     id: notificationPopup

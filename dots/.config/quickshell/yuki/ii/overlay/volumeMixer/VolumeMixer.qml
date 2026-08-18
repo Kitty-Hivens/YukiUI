@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.ii.overlay
-import qs.modules.ii.sidebarRight.volumeMixer
+import qs.core.services
+import qs.core
+import qs.common.widgets
+import qs.ii.overlay
+import qs.ii.sidebarRight.volumeMixer
 
 StyledOverlayWidget {
     id: root

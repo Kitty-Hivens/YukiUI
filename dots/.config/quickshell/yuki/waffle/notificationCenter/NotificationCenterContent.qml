@@ -5,10 +5,10 @@ import QtQuick.Layouts
 import Quickshell
 import Qt.labs.synchronizer
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
 
 WBarAttachedPanelContent {
     id: root

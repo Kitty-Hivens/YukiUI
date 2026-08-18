@@ -3,9 +3,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Widgets
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
+import qs.core
+import qs.common.widgets
+import qs.waffle.looks
 
 ProgressBar {
     id: root

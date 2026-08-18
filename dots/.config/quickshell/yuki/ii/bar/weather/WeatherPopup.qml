@@ -1,10 +1,11 @@
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import qs.core.services
+import qs.core
+import qs.common.widgets
 
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.ii.bar
+import qs.ii.bar
+import qs.common
 
 StyledPopup {
     id: root

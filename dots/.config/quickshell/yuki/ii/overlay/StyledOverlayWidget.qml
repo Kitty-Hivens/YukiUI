@@ -4,10 +4,11 @@ import QtQuick.Layouts
 import Quickshell
 import Qt5Compat.GraphicalEffects
 import qs
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.common.widgets.widgetCanvas
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.common.widgets.widgetCanvas
+import qs.common
 
 /*
  * To make an overlay widget:

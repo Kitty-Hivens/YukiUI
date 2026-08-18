@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
-import qs.modules.common.widgets.widgetCanvas
-import qs.modules.ii.background.widgets
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.common.widgets.widgetCanvas
+import qs.ii.background.widgets
+import qs.common
 
 AbstractBackgroundWidget {
     id: root

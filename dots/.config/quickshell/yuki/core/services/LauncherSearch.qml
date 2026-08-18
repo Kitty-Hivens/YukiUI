@@ -1,9 +1,9 @@
 pragma Singleton
 
-import qs.modules.common
-import qs.modules.common.models
-import qs.modules.common.functions
-import qs.modules.systemSettings
+import qs.core
+import qs.core.models
+import qs.core.functions
+import qs.ii.systemSettings
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell

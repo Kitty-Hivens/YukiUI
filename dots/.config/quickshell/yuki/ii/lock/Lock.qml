@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.panels.lock
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.core.panels.lock
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland

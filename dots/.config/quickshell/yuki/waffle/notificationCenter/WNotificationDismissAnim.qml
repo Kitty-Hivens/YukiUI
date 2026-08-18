@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
-import qs.modules.waffle.looks
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.waffle.looks
 
 SequentialAnimation {
     id: root

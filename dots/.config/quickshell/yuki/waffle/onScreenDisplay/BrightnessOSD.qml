@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import qs.services
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.waffle.looks
 
 OSDValue {
     id: root

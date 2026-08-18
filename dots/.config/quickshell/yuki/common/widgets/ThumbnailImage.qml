@@ -1,9 +1,10 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.common.functions
+import qs.core
+import qs.common.widgets
+import qs.core.functions
+import qs.common
 
 /**
  * Thumbnail image. It currently generates to the right place at the right size, but does not handle metadata/maintenance on modification.

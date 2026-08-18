@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.modules.waffle.looks
+import qs.waffle.looks
 
 Rectangle {
     Layout.fillHeight: false

@@ -1,10 +1,11 @@
 pragma ComponentBehavior: Bound
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.services
-import qs.modules.ii.sidebarRight.calendar
-import qs.modules.ii.sidebarRight.todo
-import qs.modules.ii.sidebarRight.pomodoro
+import qs.core
+import qs.common.widgets
+import qs.core.services
+import qs.ii.sidebarRight.calendar
+import qs.ii.sidebarRight.todo
+import qs.ii.sidebarRight.pomodoro
+import qs.common
 import QtQuick
 import QtQuick.Layouts
 

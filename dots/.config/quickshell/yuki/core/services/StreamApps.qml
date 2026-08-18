@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
-import qs.modules.common.functions
+import qs.core
+import qs.core.functions
 
 /**
  * Which application an audio stream belongs to.

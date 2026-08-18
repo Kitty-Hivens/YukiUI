@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.services
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.waffle.looks
-import qs.modules.waffle.bar
+import qs.core.services
+import qs.core
+import qs.core.functions
+import qs.waffle.looks
+import qs.waffle.bar
 import Quickshell
 
 AppButton {

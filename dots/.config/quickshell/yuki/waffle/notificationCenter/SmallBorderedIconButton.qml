@@ -1,8 +1,8 @@
 import QtQuick
 import qs
-import qs.services
-import qs.modules.common
-import qs.modules.waffle.looks
+import qs.core.services
+import qs.core
+import qs.waffle.looks
 
 WBorderedButton {
     id: root

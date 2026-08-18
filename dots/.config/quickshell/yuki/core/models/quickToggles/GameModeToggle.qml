@@ -1,6 +1,6 @@
 import QtQuick
-import qs.modules.common
-import qs.services
+import qs.core
+import qs.core.services
 
 QuickToggleModel {
     id: root

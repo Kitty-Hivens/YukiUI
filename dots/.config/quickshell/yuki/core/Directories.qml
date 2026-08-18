@@ -1,8 +1,8 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
-import qs.services
-import qs.modules.common.functions
+import qs.core.services
+import qs.core.functions
 import QtCore
 import QtQuick
 import Quickshell

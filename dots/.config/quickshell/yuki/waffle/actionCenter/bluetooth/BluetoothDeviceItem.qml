@@ -4,12 +4,12 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 import qs
-import qs.services
-import qs.services.network
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.modules.waffle.looks
-import qs.modules.waffle.actionCenter
+import qs.core.services
+import qs.core.services.network
+import qs.core
+import qs.common.widgets
+import qs.waffle.looks
+import qs.waffle.actionCenter
 
 ExpandableChoiceButton {
     id: root

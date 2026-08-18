@@ -4,13 +4,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 
-import qs.modules.common.models.hyprland
+import qs.core.models.hyprland
 
 Singleton {
     id: root
 
-    readonly property string shaderPath: Quickshell.shellPath("services/hyprlandAntiFlashbangShader/anti-flashbang.glsl")
-    readonly property string weakShaderPath: Quickshell.shellPath("services/hyprlandAntiFlashbangShader/anti-flashbang-weak.glsl")
+    readonly property string shaderPath: Quickshell.shellPath("core/services/hyprlandAntiFlashbangShader/anti-flashbang.glsl")
+    readonly property string weakShaderPath: Quickshell.shellPath("core/services/hyprlandAntiFlashbangShader/anti-flashbang-weak.glsl")
     property bool enabled: confOpt.value == shaderPath || weak
     property bool weak: confOpt.value == weakShaderPath
 

@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.modules.common
+import qs.core
+import qs.common
 
 // Annotation similar to how Google Lens does it.
 Item {

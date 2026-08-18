@@ -5,8 +5,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 
-import qs.modules.common
-import qs.modules.common.functions
+import qs.core
+import qs.core.functions
 
 /**
  * Configs Hyprland

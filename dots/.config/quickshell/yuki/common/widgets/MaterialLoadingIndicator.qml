@@ -1,8 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.common.widgets
+import qs.core
+import qs.core.functions
+import qs.common.widgets
+import qs.common
 
 Rectangle {
     id: root

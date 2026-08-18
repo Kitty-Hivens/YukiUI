@@ -1,5 +1,6 @@
 import QtQuick
-import qs.modules.common as C
+import qs.core as C
+import qs.common
 
 // This is to enable future fancy styles for rectangles. Some ideas:
 // - normal rounded rect
