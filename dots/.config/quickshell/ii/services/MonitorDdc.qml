@@ -52,7 +52,11 @@ Singleton {
         return root.values[`${connector}\t${vcp}`]?.max ?? 100;
     }
 
-    readonly property string scriptDir: `${FileUtils.trimFileProtocol(Directories.config)}/quickshell/ii/scripts/displays`
+    /// Asked of the running shell rather than rebuilt from the config directory:
+    /// spelling out `quickshell/ii` hardcodes both the config name and the
+    /// assumption that the shell was launched from there, and `qs -p` elsewhere
+    /// makes neither true.
+    readonly property string scriptDir: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/displays"))
 
     function featuresFor(connector) {
         return root.monitors[connector]?.features ?? [];

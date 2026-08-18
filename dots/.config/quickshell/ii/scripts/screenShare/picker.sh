@@ -17,9 +17,14 @@ fifo="$(mktemp -u --tmpdir "xdph-share-picker.XXXXXX")"
 mkfifo "$fifo" || exit 1
 trap 'rm -f "$fifo"' EXIT
 
+# Which shell instance to talk to. Taken from where this script sits -- it lives
+# inside the config it addresses, two levels below its root -- rather than spelled
+# out, because the name is not fixed and a wrong one here fails silently: qs looks
+# for a "default" config, finds none, and the picker never opens.
+config_name="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)")"
+
 # Fire-and-return: the handler opens the panel and returns immediately.
-# -c ii selects the shell instance; without it qs looks for a "default" config and bails.
-if ! qs -c ii ipc call screenShare open "$allow_token" "$fifo" "$XDPH_WINDOW_SHARING_LIST" >/dev/null 2>&1; then
+if ! qs -c "$config_name" ipc call screenShare open "$allow_token" "$fifo" "$XDPH_WINDOW_SHARING_LIST" >/dev/null 2>&1; then
     exit 1
 fi
 

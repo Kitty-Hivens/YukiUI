@@ -104,7 +104,11 @@ Singleton {
             root.vrrConfig = parsed;
         }
     }
-    readonly property string scriptDir: `${root.configDir}/quickshell/ii/scripts/displays`
+    /// Asked of the running shell rather than rebuilt from the config directory:
+    /// spelling out `quickshell/ii` hardcodes both the config name and the
+    /// assumption that the shell was launched from there, and `qs -p` elsewhere
+    /// makes neither true.
+    readonly property string scriptDir: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/displays"))
 
     signal applyFailed(string reason)
     signal applied()
