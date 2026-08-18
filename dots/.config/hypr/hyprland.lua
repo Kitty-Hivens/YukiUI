@@ -18,7 +18,18 @@ require("hyprland.rules")
 require("hyprland.colors")
 require("hyprland.keybinds")
 
+-- Shell overrides --
+--
+-- Sourced before `custom`, not after. What the shell writes here is the rule
+-- set belonging to the environment that is up -- a default of that environment,
+-- not a decree. Sourced last it beat everything a person had written for
+-- themselves, and there was no way to disagree with it short of editing a file
+-- the header of that same file says not to edit.
+require("hyprland.shellOverrides.main")
+
 -- Custom configurations --
+--
+-- Yours, and last, so they win.
 if is_file_exists(HOME .. "/.config/hypr/custom/execs.lua") then
     require("custom.execs")
 end
@@ -39,6 +50,3 @@ end
 if is_file_exists(HOME .. "/.config/hypr/monitors.lua") then
     require("monitors")
 end
-
--- Shell overrides --
-require("hyprland.shellOverrides.main")
