@@ -213,8 +213,8 @@ class TranslationManager:
 def main():
     parser = argparse.ArgumentParser(description="Translation file management tool")
     parser.add_argument("--translations-dir", "-t", 
-                       default=".config/quickshell/translations",
-                       help="Translation files directory (default: .config/quickshell/translations)")
+                       default=".config/quickshell/yuki/translations",
+                       help="Translation files directory (default: .config/quickshell/yuki/translations)")
     parser.add_argument("--source-dir", "-s", 
                        default=".config/quickshell/yuki",
                        help="Source code directory (default: .config/quickshell/yuki)")

@@ -175,10 +175,10 @@ def sync_translations(translations_dir: str, source_lang: str = "en_US", target_
 def main():
     parser = argparse.ArgumentParser(description="Translation File Maintenance Helper")
     parser.add_argument("--translations-dir", "-t", 
-                       default=".config/quickshell/translations",
+                       default=".config/quickshell/yuki/translations",
                        help="Translation files directory")
     parser.add_argument("--source-dir", "-s", 
-                       default=".config/quickshell",
+                       default=".config/quickshell/yuki",
                        help="Source code directory")
     parser.add_argument("--clean", "-c", action="store_true",
                        help="Clean unused translation keys")
