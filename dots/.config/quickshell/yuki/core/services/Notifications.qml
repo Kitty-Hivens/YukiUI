@@ -106,7 +106,18 @@ Singleton {
     property var filePath: Directories.notificationsPath
     property list<Notif> list: []
     property var popupList: list.filter((notif) => notif.popup);
-    property bool popupInhibited: (GlobalStates?.sidebarRightOpen ?? false) || silent
+    /**
+     * Whether a panel listing notifications is on screen.
+     *
+     * This used to ask one environment's sidebar for itself, by name, from code
+     * that every environment shares -- and after the flag moved to its owner the
+     * question answered undefined, so popups arrived over the open list and the
+     * unread count climbed while it was being read. What matters here is that
+     * someone is looking at the list, not which surface shows it, so whichever
+     * desktop is up says so.
+     */
+    property bool viewerOpen: false
+    property bool popupInhibited: root.viewerOpen || root.silent
     property var latestTimeForApp: ({})
     Component {
         id: notifComponent

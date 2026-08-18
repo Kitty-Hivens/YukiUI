@@ -31,6 +31,7 @@ Singleton {
     // Opening the panel that shows notifications is what marks them seen; it was
     // done in the shell root back when one flag served both environments.
     onSidebarRightOpenChanged: {
+        Notifications.viewerOpen = root.sidebarRightOpen;
         if (root.sidebarRightOpen) {
             Notifications.timeoutAll();
             Notifications.markAllRead();
