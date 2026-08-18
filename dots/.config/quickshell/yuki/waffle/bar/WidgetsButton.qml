@@ -5,6 +5,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 AppButton {
     id: root
@@ -17,9 +18,9 @@ AppButton {
     implicitWidth: expandedForm ? 148 : (contentItem.implicitWidth + 24 + leftInset + rightInset)
     iconName: WIcons.weatherIconForCode(Weather.data.wCode)
 
-    checked: GlobalStates.widgetsOpen
+    checked: WStates.widgetsOpen
     onClicked: {
-        GlobalStates.widgetsOpen = !GlobalStates.widgetsOpen;
+        WStates.widgetsOpen = !WStates.widgetsOpen;
     }
     onDownChanged: {
         scaleAnim.duration = root.down ? 150 : 200;

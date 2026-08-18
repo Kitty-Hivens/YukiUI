@@ -8,6 +8,7 @@ import qs.core
 import qs.common.widgets
 import qs.waffle.looks
 import qs.waffle.widgets
+import qs.waffle
 
 // News as one card among the rest, rather than the half of the board a publisher's
 // feed occupies in the original. No reactions, no trends, no promoted anything --
@@ -89,7 +90,7 @@ WWidgetCard {
             onClicked: {
                 if (articleRow.article.link)
                     Qt.openUrlExternally(articleRow.article.link);
-                GlobalStates.widgetsOpen = false;
+                WStates.widgetsOpen = false;
             }
         }
 

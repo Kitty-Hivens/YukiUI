@@ -8,6 +8,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 
 Scope {
     id: root
@@ -29,12 +30,12 @@ Scope {
 
     function triggerBrightnessOsd() {
         root.currentIndicator = "brightness";
-        GlobalStates.osdBrightnessOpen = true;
+        WStates.osdBrightnessOpen = true;
     }
 
     function triggerVolumeOSD() {
         root.currentIndicator = "volume";
-        GlobalStates.osdVolumeOpen = true;
+        WStates.osdVolumeOpen = true;
     }
 
     // Shows whichever indicator was last in view, the way asking for "the OSD"
@@ -72,11 +73,11 @@ Scope {
         target: GlobalStates
 
         function onOsdBrightnessOpenChanged() {
-            if (GlobalStates.osdBrightnessOpen)
+            if (WStates.osdBrightnessOpen)
                 panelLoader.active = true;
         }
         function onOsdVolumeOpenChanged() {
-            if (GlobalStates.osdVolumeOpen)
+            if (WStates.osdVolumeOpen)
                 panelLoader.active = true;
         }
     }

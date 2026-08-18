@@ -17,16 +17,16 @@ Scope {
         target: GlobalStates
 
         function onSidebarLeftOpenChanged() {
-            if (GlobalStates.sidebarLeftOpen)
+            if (WStates.sidebarLeftOpen)
                 WPanels.keepOnly("sidebarLeftOpen");
-            if (GlobalStates.sidebarLeftOpen)
+            if (WStates.sidebarLeftOpen)
                 panelLoader.active = true;
         }
     }
 
     Loader {
         id: panelLoader
-        active: GlobalStates.sidebarLeftOpen
+        active: WStates.sidebarLeftOpen
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
@@ -58,7 +58,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onSidebarLeftOpenChanged() {
-                    if (!GlobalStates.sidebarLeftOpen)
+                    if (!WStates.sidebarLeftOpen)
                         content.close();
                 }
             }
@@ -68,7 +68,7 @@ Scope {
                 anchors.fill: parent
 
                 onClosed: {
-                    GlobalStates.sidebarLeftOpen = false;
+                    WStates.sidebarLeftOpen = false;
                     panelLoader.active = false;
                 }
             }
@@ -76,7 +76,7 @@ Scope {
     }
 
     function toggleOpen() {
-        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+        WStates.sidebarLeftOpen = !WStates.sidebarLeftOpen;
     }
 
     IpcHandler {
@@ -98,7 +98,7 @@ Scope {
         target: "mediaControls"
 
         function toggle(): void {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+            WStates.sidebarLeftOpen = !WStates.sidebarLeftOpen;
         }
     }
 
@@ -107,7 +107,7 @@ Scope {
         description: "Toggles media controls on press"
 
         onPressed: {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+            WStates.sidebarLeftOpen = !WStates.sidebarLeftOpen;
         }
     }
 }

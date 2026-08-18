@@ -4,6 +4,7 @@ import qs.core.services
 import qs
 import qs.core.functions
 import qs.common
+import qs.ii
 
 import QtQuick
 import QtQuick.Layouts
@@ -41,7 +42,7 @@ Item {
             } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
                 MprisController.next();
             } else if (event.button === Qt.LeftButton) {
-                GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+                IiStates.mediaControlsOpen = !IiStates.mediaControlsOpen
             }
         }
     }

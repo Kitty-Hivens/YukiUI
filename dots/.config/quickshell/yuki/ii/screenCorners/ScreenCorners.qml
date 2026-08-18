@@ -3,6 +3,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.services
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,10 +15,10 @@ Scope {
     id: screenCorners
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
     property var actionForCorner: ({
-        [RoundCorner.CornerEnum.TopLeft]: () => GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen,
-        [RoundCorner.CornerEnum.BottomLeft]: () => GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen,
-        [RoundCorner.CornerEnum.TopRight]: () => GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen,
-        [RoundCorner.CornerEnum.BottomRight]: () => GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+        [RoundCorner.CornerEnum.TopLeft]: () => IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen,
+        [RoundCorner.CornerEnum.BottomLeft]: () => IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen,
+        [RoundCorner.CornerEnum.TopRight]: () => IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen,
+        [RoundCorner.CornerEnum.BottomRight]: () => IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen
     })
 
     component CornerPanelWindow: PanelWindow {
@@ -120,9 +121,9 @@ Scope {
                         if (!Config.options.sidebar.cornerOpen.valueScroll)
                             return;
                         if (cornerWidget.isLeft)
-                            GlobalStates.osdBrightnessOpen = false;
+                            IiStates.osdBrightnessOpen = false;
                         else
-                            GlobalStates.osdVolumeOpen = false;
+                            IiStates.osdVolumeOpen = false;
                     }
 
                     Loader {

@@ -17,9 +17,9 @@ Scope {
         target: GlobalStates
 
         function onSearchOpenChanged() {
-            if (GlobalStates.searchOpen)
+            if (WStates.searchOpen)
                 WPanels.keepOnly("searchOpen");
-            if (GlobalStates.searchOpen) {
+            if (WStates.searchOpen) {
                 LauncherSearch.query = "";
                 panelLoader.active = true;
             }
@@ -28,7 +28,7 @@ Scope {
 
     Loader {
         id: panelLoader
-        active: GlobalStates.searchOpen
+        active: WStates.searchOpen
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
@@ -60,7 +60,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onSearchOpenChanged() {
-                    if (!GlobalStates.searchOpen)
+                    if (!WStates.searchOpen)
                         content.close();
                 }
             }
@@ -71,7 +71,7 @@ Scope {
                 focus: true
 
                 onClosed: {
-                    GlobalStates.searchOpen = false;
+                    WStates.searchOpen = false;
                     panelLoader.active = false;
                     LauncherSearch.query = "";
                 }
@@ -80,14 +80,14 @@ Scope {
     }
 
     function toggleClipboard() {
-        if (LauncherSearch.query.startsWith(Config.options.search.prefix.clipboard) || !GlobalStates.searchOpen) {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+        if (LauncherSearch.query.startsWith(Config.options.search.prefix.clipboard) || !WStates.searchOpen) {
+            WStates.searchOpen = !WStates.searchOpen;
         }
         LauncherSearch.ensurePrefix(Config.options.search.prefix.clipboard);
     }
     function toggleEmojis() {
-        if (LauncherSearch.query.startsWith(Config.options.search.prefix.emojis) || !GlobalStates.searchOpen) {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+        if (LauncherSearch.query.startsWith(Config.options.search.prefix.emojis) || !WStates.searchOpen) {
+            WStates.searchOpen = !WStates.searchOpen;
         }
         LauncherSearch.ensurePrefix(Config.options.search.prefix.emojis);
     }
@@ -96,13 +96,13 @@ Scope {
         target: "search"
 
         function toggle(): void {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+            WStates.searchOpen = !WStates.searchOpen;
         }
         function close(): void {
-            GlobalStates.searchOpen = false;
+            WStates.searchOpen = false;
         }
         function open(): void {
-            GlobalStates.searchOpen = true;
+            WStates.searchOpen = true;
         }
         function toggleReleaseInterrupt(): void {
             GlobalStates.superReleaseMightTrigger = false;
@@ -120,7 +120,7 @@ Scope {
         description: "Toggles search on press"
 
         onPressed: {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+            WStates.searchOpen = !WStates.searchOpen;
         }
     }
     GlobalShortcut {
@@ -136,7 +136,7 @@ Scope {
                 GlobalStates.superReleaseMightTrigger = true;
                 return;
             }
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+            WStates.searchOpen = !WStates.searchOpen;
         }
     }
     GlobalShortcut {

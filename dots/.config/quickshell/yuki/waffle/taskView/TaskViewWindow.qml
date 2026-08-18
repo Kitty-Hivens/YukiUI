@@ -11,6 +11,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 import "window-layout.js" as WindowLayout
 
 WMouseAreaButton {
@@ -68,9 +69,9 @@ WMouseAreaButton {
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     onClicked: event => {
         if (event.button === Qt.LeftButton) {
-            GlobalStates.overviewOpen = false;
+            WStates.overviewOpen = false;
             Hyprland.dispatch(`hl.dsp.focus({window = "address:${root.hyprlandClient?.address}"})`)
-            GlobalStates.overviewOpen = false;
+            WStates.overviewOpen = false;
         } else if (event.button === Qt.MiddleButton) {
             root.closeWindow();
             event.accepted = true;

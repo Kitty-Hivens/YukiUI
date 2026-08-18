@@ -11,6 +11,7 @@ import qs.core.functions
 import qs.waffle.looks
 import qs.waffle.startMenu.startPage
 import qs.waffle.startMenu.searchPage
+import qs.waffle
 
 WBarAttachedPanelContent {
     id: root
@@ -26,7 +27,7 @@ WBarAttachedPanelContent {
     StartMenuContext {
         id: context
         onLaunched: {
-            GlobalStates.searchOpen = false;
+            WStates.searchOpen = false;
         }
     }
 

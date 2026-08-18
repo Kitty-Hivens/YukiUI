@@ -5,6 +5,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.common
+import qs.ii
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -108,7 +109,7 @@ Item { // Window
     ScreencopyView {
         id: windowPreview
         anchors.fill: parent
-        captureSource: GlobalStates.overviewOpen ? root.toplevel : null
+        captureSource: IiStates.overviewOpen ? root.toplevel : null
         live: true
 
         // Color overlay for interactions

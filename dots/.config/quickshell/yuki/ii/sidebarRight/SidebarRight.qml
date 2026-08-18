@@ -2,6 +2,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.common
+import qs.ii
 import QtQuick
 import Quickshell.Io
 import Quickshell
@@ -17,16 +18,16 @@ Scope {
         // Don't map over a fullscreen game (see SidebarLeft): the panel would sit under it and
         // freeze the game's pointer lock. Gate on the real fullscreen, not GameMode.engaged, so
         // manual game mode still leaves the sidebar -- and its game-mode toggle -- reachable.
-        visible: GlobalStates.sidebarRightOpen && !GameMode.anyFullscreen
+        visible: IiStates.sidebarRightOpen && !GameMode.anyFullscreen
 
         function hide() {
-            GlobalStates.sidebarRightOpen = false;
+            IiStates.sidebarRightOpen = false;
         }
 
         exclusiveZone: 0
         implicitWidth: sidebarWidth
         WlrLayershell.namespace: "quickshell:sidebarRight"
-        WlrLayershell.keyboardFocus: GlobalStates.sidebarRightOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: IiStates.sidebarRightOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
 
         anchors {
@@ -56,7 +57,7 @@ Scope {
 
         Loader {
             id: sidebarContentLoader
-            active: GlobalStates.sidebarRightOpen || Config?.options.sidebar.keepRightSidebarLoaded
+            active: IiStates.sidebarRightOpen || Config?.options.sidebar.keepRightSidebarLoaded
             anchors {
                 fill: parent
                 margins: Appearance.sizes.hyprlandGapsOut
@@ -65,7 +66,7 @@ Scope {
             width: sidebarWidth - Appearance.sizes.hyprlandGapsOut - Appearance.sizes.elevationMargin
             height: parent.height - Appearance.sizes.hyprlandGapsOut * 2
 
-            focus: GlobalStates.sidebarRightOpen
+            focus: IiStates.sidebarRightOpen
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
                     panelWindow.hide();
@@ -80,15 +81,15 @@ Scope {
         target: "sidebarRight"
 
         function toggle(): void {
-            GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+            IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen;
         }
 
         function close(): void {
-            GlobalStates.sidebarRightOpen = false;
+            IiStates.sidebarRightOpen = false;
         }
 
         function open(): void {
-            GlobalStates.sidebarRightOpen = true;
+            IiStates.sidebarRightOpen = true;
         }
     }
 
@@ -97,7 +98,7 @@ Scope {
         description: "Toggles right sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+            IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen;
         }
     }
     GlobalShortcut {
@@ -105,7 +106,7 @@ Scope {
         description: "Opens right sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarRightOpen = true;
+            IiStates.sidebarRightOpen = true;
         }
     }
     GlobalShortcut {
@@ -113,7 +114,7 @@ Scope {
         description: "Closes right sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarRightOpen = false;
+            IiStates.sidebarRightOpen = false;
         }
     }
 }

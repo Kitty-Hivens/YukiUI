@@ -3,6 +3,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.core.functions
+import qs.waffle
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -17,7 +18,7 @@ Scope {
 
     Loader {
         id: sessionLoader
-        active: GlobalStates.sessionOpen
+        active: WStates.sessionOpen
         onActiveChanged: {
             if (sessionLoader.active) SessionWarnings.refresh();
         }
@@ -26,7 +27,7 @@ Scope {
             target: GlobalStates
             function onScreenLockedChanged() {
                 if (GlobalStates.screenLocked) {
-                    GlobalStates.sessionOpen = false;
+                    WStates.sessionOpen = false;
                 }
             }
         }
@@ -37,7 +38,7 @@ Scope {
             property string subtitle
             
             function hide() {
-                GlobalStates.sessionOpen = false;
+                WStates.sessionOpen = false;
             }
 
             exclusionMode: ExclusionMode.Ignore
@@ -74,15 +75,15 @@ Scope {
         target: "session"
 
         function toggle(): void {
-            GlobalStates.sessionOpen = !GlobalStates.sessionOpen;
+            WStates.sessionOpen = !WStates.sessionOpen;
         }
 
         function close(): void {
-            GlobalStates.sessionOpen = false
+            WStates.sessionOpen = false
         }
 
         function open(): void {
-            GlobalStates.sessionOpen = true
+            WStates.sessionOpen = true
         }
     }
 
@@ -91,7 +92,7 @@ Scope {
         description: "Toggles session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = !GlobalStates.sessionOpen;
+            WStates.sessionOpen = !WStates.sessionOpen;
         }
     }
 
@@ -100,7 +101,7 @@ Scope {
         description: "Opens session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = true
+            WStates.sessionOpen = true
         }
     }
 
@@ -109,7 +110,7 @@ Scope {
         description: "Closes session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = false
+            WStates.sessionOpen = false
         }
     }
 

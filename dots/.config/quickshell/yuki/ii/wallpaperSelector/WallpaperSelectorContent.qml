@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -59,7 +60,7 @@ MouseArea {
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
-            GlobalStates.wallpaperSelectorOpen = false;
+            IiStates.wallpaperSelectorOpen = false;
             event.accepted = true;
         } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) { // Intercept Ctrl+V to handle "paste to go to" in pickers
             root.handleFilePasting(event);
@@ -358,11 +359,11 @@ MouseArea {
                                 implicitWidth: height
                                 onClicked: {
                                     Wallpapers.openFallbackPicker(root.useDarkMode);
-                                    GlobalStates.wallpaperSelectorOpen = false;
+                                    IiStates.wallpaperSelectorOpen = false;
                                 }
                                 altAction: () => {
                                     Wallpapers.openFallbackPicker(root.useDarkMode);
-                                    GlobalStates.wallpaperSelectorOpen = false;
+                                    IiStates.wallpaperSelectorOpen = false;
                                     Config.options.wallpaperSelector.useSystemFileDialog = true;
                                 }
                                 text: "open_in_new"
@@ -428,7 +429,7 @@ MouseArea {
 
                         ToolbarPairedFab {
                             iconText: "close"
-                            onClicked: GlobalStates.wallpaperSelectorOpen = false;
+                            onClicked: IiStates.wallpaperSelectorOpen = false;
                             StyledToolTip {
                                 text: Translation.tr("Cancel wallpaper selection")
                             }
@@ -442,7 +443,7 @@ MouseArea {
     Connections {
         target: GlobalStates
         function onWallpaperSelectorOpenChanged() {
-            if (GlobalStates.wallpaperSelectorOpen && monitorIsFocused) {
+            if (IiStates.wallpaperSelectorOpen && monitorIsFocused) {
                 filterField.forceActiveFocus();
             }
         }
@@ -451,7 +452,7 @@ MouseArea {
     Connections {
         target: Wallpapers
         function onChanged() {
-            GlobalStates.wallpaperSelectorOpen = false;
+            IiStates.wallpaperSelectorOpen = false;
         }
     }
 }

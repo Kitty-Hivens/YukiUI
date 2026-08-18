@@ -3,6 +3,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.common.widgets
+import qs.waffle
 import Qt.labs.synchronizer
 import QtQuick
 import QtQuick.Controls
@@ -27,7 +28,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onOverviewOpenChanged() {
-                    if (GlobalStates.overviewOpen)
+                    if (WStates.overviewOpen)
                         panelLoader.active = true;
                 }
             }
@@ -69,14 +70,14 @@ Scope {
                     }
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Escape) {
-                            GlobalStates.overviewOpen = false;
+                            WStates.overviewOpen = false;
                         }
                     }
 
                     Connections {
                         target: GlobalStates
                         function onOverviewOpenChanged() {
-                            if (!GlobalStates.overviewOpen)
+                            if (!WStates.overviewOpen)
                                 taskViewContent.close();
                         }
                     }
@@ -93,16 +94,16 @@ Scope {
         target: "overview"
 
         function toggle(): void {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            WStates.overviewOpen = !WStates.overviewOpen;
         }
         function workspacesToggle(): void {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            WStates.overviewOpen = !WStates.overviewOpen;
         }
         function close(): void {
-            GlobalStates.overviewOpen = false;
+            WStates.overviewOpen = false;
         }
         function open(): void {
-            GlobalStates.overviewOpen = true;
+            WStates.overviewOpen = true;
         }
     }
 
@@ -111,7 +112,7 @@ Scope {
         description: "Toggles overview on press"
 
         onPressed: {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            WStates.overviewOpen = !WStates.overviewOpen;
         }
     }
 }

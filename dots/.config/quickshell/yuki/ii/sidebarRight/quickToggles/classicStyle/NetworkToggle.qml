@@ -4,6 +4,7 @@ import qs.common.widgets
 import qs.core.functions
 import qs.ii.sidebarRight.quickToggles
 import qs
+import qs.ii
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -15,7 +16,7 @@ QuickToggleButton {
     onClicked: Network.toggleWifi()
     altAction: () => {
         Quickshell.execDetached(["bash", "-c", `${Network.ethernet ? Config.options.apps.networkEthernet : Config.options.apps.network}`])
-        GlobalStates.sidebarRightOpen = false
+        IiStates.sidebarRightOpen = false
     }
     StyledToolTip {
         text: Translation.tr("%1 | Right-click to configure").arg(Network.networkName)

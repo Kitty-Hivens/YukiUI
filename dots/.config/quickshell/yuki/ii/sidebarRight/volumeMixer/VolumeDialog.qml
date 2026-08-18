@@ -3,6 +3,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.common.widgets
+import qs.ii
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -32,7 +33,7 @@ WindowDialog {
             buttonText: Translation.tr("Details")
             onClicked: {
                 Quickshell.execDetached(["bash", "-c", `${Config.options.apps.volumeMixer}`]);
-                GlobalStates.sidebarRightOpen = false;
+                IiStates.sidebarRightOpen = false;
             }
         }
 

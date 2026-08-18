@@ -3,6 +3,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.core.functions
+import qs.ii
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
@@ -19,7 +20,7 @@ QuickToggleButton {
     }
     altAction: () => {
         Quickshell.execDetached(["bash", "-c", `${Config.options.apps.bluetooth}`])
-        GlobalStates.sidebarRightOpen = false
+        IiStates.sidebarRightOpen = false
     }
     StyledToolTip {
         text: Translation.tr("%1 | Right-click to configure").arg(

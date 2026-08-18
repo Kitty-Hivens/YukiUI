@@ -18,6 +18,7 @@ import qs.ii.sidebarRight.nightLight
 import qs.ii.sidebarRight.volumeMixer
 import qs.ii.sidebarRight.wifiNetworks
 import qs.common
+import qs.ii
 
 Item {
     id: root
@@ -36,7 +37,7 @@ Item {
     Connections {
         target: GlobalStates
         function onSidebarRightOpenChanged() {
-            if (!GlobalStates.sidebarRightOpen) {
+            if (!IiStates.sidebarRightOpen) {
                 root.showWifiDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
@@ -291,7 +292,7 @@ Item {
                 toggled: false
                 buttonIcon: "tune"
                 onClicked: {
-                    GlobalStates.sidebarRightOpen = false;
+                    IiStates.sidebarRightOpen = false;
                     Quickshell.execDetached(["qs", "-p", root.systemSettingsQmlPath]);
                 }
                 StyledToolTip {
@@ -302,7 +303,7 @@ Item {
                 toggled: false
                 buttonIcon: "settings"
                 onClicked: {
-                    GlobalStates.sidebarRightOpen = false;
+                    IiStates.sidebarRightOpen = false;
                     Quickshell.execDetached(["qs", "-p", root.settingsQmlPath]);
                 }
                 StyledToolTip {
@@ -313,7 +314,7 @@ Item {
                 toggled: false
                 buttonIcon: "power_settings_new"
                 onClicked: {
-                    GlobalStates.sessionOpen = true;
+                    IiStates.sessionOpen = true;
                 }
                 StyledToolTip {
                     text: Translation.tr("Session")

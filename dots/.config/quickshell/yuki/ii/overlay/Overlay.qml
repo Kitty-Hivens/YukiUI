@@ -3,6 +3,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.services
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -20,19 +21,19 @@ Scope {
     
     Loader {
         id: overlayLoader
-        active: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets
+        active: IiStates.overlayOpen || OverlayContext.hasPinnedWidgets
         sourceComponent: PanelWindow {
             id: overlayWindow
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:overlay"
             WlrLayershell.layer: WlrLayer.Overlay
             // Use OnDemand for pinned widgets to allow focus switching with mouse clicks
-            WlrLayershell.keyboardFocus: GlobalStates.overlayOpen ? WlrKeyboardFocus.Exclusive : (OverlayContext.clickableWidgets.length > 0 ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
+            WlrLayershell.keyboardFocus: IiStates.overlayOpen ? WlrKeyboardFocus.Exclusive : (OverlayContext.clickableWidgets.length > 0 ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
             visible: true
             color: "transparent"
 
             mask: Region {
-                item: GlobalStates.overlayOpen ? overlayContent : null
+                item: IiStates.overlayOpen ? overlayContent : null
                 regions: OverlayContext.clickableWidgets.map((widget) => regionComponent.createObject(this, {
                     item: widget
                 }));
@@ -50,7 +51,7 @@ Scope {
                 windows: [overlayWindow]
                 active: false
                 onCleared: () => {
-                    if (!active) GlobalStates.overlayOpen = false;
+                    if (!active) IiStates.overlayOpen = false;
                 }
             }
 
@@ -65,7 +66,7 @@ Scope {
                 id: delayedGrabTimer
                 interval: Appearance.animation.elementMoveFast.duration
                 onTriggered: {
-                    grab.active = GlobalStates.overlayOpen;
+                    grab.active = IiStates.overlayOpen;
                 }
             }
 
@@ -80,7 +81,7 @@ Scope {
         target: "overlay"
 
         function toggle(): void {
-            GlobalStates.overlayOpen = !GlobalStates.overlayOpen;
+            IiStates.overlayOpen = !IiStates.overlayOpen;
         }
     }
 
@@ -89,7 +90,7 @@ Scope {
         description: "Toggles overlay on press"
 
         onPressed: {
-            GlobalStates.overlayOpen = !GlobalStates.overlayOpen;
+            IiStates.overlayOpen = !IiStates.overlayOpen;
         }
     }
 }

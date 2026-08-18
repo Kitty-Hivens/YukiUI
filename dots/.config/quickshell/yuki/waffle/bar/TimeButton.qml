@@ -4,6 +4,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 BarButton {
     id: root
@@ -12,9 +13,9 @@ BarButton {
     leftPadding: 12
     rightPadding: 22
 
-    checked: GlobalStates.sidebarRightOpen
+    checked: WStates.sidebarRightOpen
     onClicked: {
-        GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+        WStates.sidebarRightOpen = !WStates.sidebarRightOpen;
     }
 
     contentItem: Item {

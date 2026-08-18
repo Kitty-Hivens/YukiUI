@@ -4,6 +4,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.common
+import qs.ii
 
 RippleButton {
     id: root
@@ -24,16 +25,16 @@ RippleButton {
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
     colRippleToggled: Appearance.colors.colSecondaryContainerActive
-    toggled: GlobalStates.sidebarLeftOpen
+    toggled: IiStates.sidebarLeftOpen
 
     onPressed: {
-        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+        IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen;
     }
 
     Connections {
         target: Ai
         function onResponseFinished() {
-            if (GlobalStates.sidebarLeftOpen) return;
+            if (IiStates.sidebarLeftOpen) return;
             root.showPing = true;
         }
     }
@@ -41,7 +42,7 @@ RippleButton {
     Connections {
         target: Booru
         function onResponseFinished() {
-            if (GlobalStates.sidebarLeftOpen) return;
+            if (IiStates.sidebarLeftOpen) return;
             root.showPing = true;
         }
     }

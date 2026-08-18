@@ -10,6 +10,7 @@ import qs.core.functions
 import qs.core.models
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 import "window-layout.js" as WindowLayout
 
 Rectangle {
@@ -102,7 +103,7 @@ Rectangle {
         z: 0
         anchors.fill: parent
         onClicked: {
-            GlobalStates.overviewOpen = false;
+            WStates.overviewOpen = false;
         }
     }
 
@@ -293,7 +294,7 @@ Rectangle {
                     }
 
                     onClicked: {
-                        GlobalStates.overviewOpen = false;
+                        WStates.overviewOpen = false;
                         root.closed(); // Close immediately to avoid weird animations
                         Hyprland.dispatch(`hl.dsp.focus({workspace = ${workspaceItem.workspace}})`);
                     }

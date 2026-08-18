@@ -5,13 +5,14 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 
 BarButton {
     id: root
 
-    checked: GlobalStates.sidebarLeftOpen
+    checked: WStates.sidebarLeftOpen
     onClicked: {
-        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+        WStates.sidebarLeftOpen = !WStates.sidebarLeftOpen;
     }
 
     contentItem: Item {

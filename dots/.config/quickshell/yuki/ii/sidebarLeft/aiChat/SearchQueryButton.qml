@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Hyprland
@@ -27,7 +28,7 @@ RippleButton {
             url += ` -site:${site}`;
         }
         Qt.openUrlExternally(url);
-        GlobalStates.sidebarLeftOpen = false;
+        IiStates.sidebarLeftOpen = false;
     }
 
     contentItem: Item {

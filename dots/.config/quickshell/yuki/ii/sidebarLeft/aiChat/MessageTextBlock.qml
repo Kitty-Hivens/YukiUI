@@ -6,6 +6,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -171,7 +172,7 @@ ColumnLayout {
 
             onLinkActivated: (link) => {
                 Qt.openUrlExternally(link)
-                GlobalStates.sidebarLeftOpen = false
+                IiStates.sidebarLeftOpen = false
             }
 
             MouseArea { // Pointing hand for links

@@ -5,6 +5,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 AppButton {
     id: root
@@ -12,9 +13,9 @@ AppButton {
     iconName: checked ? "system-search-checked" : "system-search"
     separateLightDark: true
 
-    checked: GlobalStates.searchPanelOpen
+    checked: WStates.searchPanelOpen
     onClicked: {
-        GlobalStates.searchPanelOpen = !GlobalStates.searchPanelOpen;
+        WStates.searchPanelOpen = !WStates.searchPanelOpen;
     }
 
     BarToolTip {

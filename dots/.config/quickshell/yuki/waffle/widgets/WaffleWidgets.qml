@@ -18,16 +18,16 @@ Scope {
         target: GlobalStates
 
         function onWidgetsOpenChanged() {
-            if (GlobalStates.widgetsOpen)
+            if (WStates.widgetsOpen)
                 WPanels.keepOnly("widgetsOpen");
-            if (GlobalStates.widgetsOpen)
+            if (WStates.widgetsOpen)
                 panelLoader.active = true;
         }
     }
 
     Loader {
         id: panelLoader
-        active: GlobalStates.widgetsOpen
+        active: WStates.widgetsOpen
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
@@ -63,7 +63,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onWidgetsOpenChanged() {
-                    if (!GlobalStates.widgetsOpen)
+                    if (!WStates.widgetsOpen)
                         content.close();
                 }
             }
@@ -78,7 +78,7 @@ Scope {
                 // alone for the length of its own animation.
                 onClosing: BoardState.editing = false
                 onClosed: {
-                    GlobalStates.widgetsOpen = false;
+                    WStates.widgetsOpen = false;
                     panelLoader.active = false;
                 }
             }
@@ -89,13 +89,13 @@ Scope {
         target: "widgets"
 
         function toggle(): void {
-            GlobalStates.widgetsOpen = !GlobalStates.widgetsOpen;
+            WStates.widgetsOpen = !WStates.widgetsOpen;
         }
         function open(): void {
-            GlobalStates.widgetsOpen = true;
+            WStates.widgetsOpen = true;
         }
         function close(): void {
-            GlobalStates.widgetsOpen = false;
+            WStates.widgetsOpen = false;
         }
         function refreshFeed(): void {
             NewsFeed.refresh();
@@ -113,7 +113,7 @@ Scope {
         description: "Toggles the widgets board on press"
 
         onPressed: {
-            GlobalStates.widgetsOpen = !GlobalStates.widgetsOpen;
+            WStates.widgetsOpen = !WStates.widgetsOpen;
         }
     }
 }

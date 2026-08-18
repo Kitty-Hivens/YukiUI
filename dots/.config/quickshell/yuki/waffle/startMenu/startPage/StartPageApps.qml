@@ -9,6 +9,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 
 BodyRectangle {
     id: root
@@ -67,7 +68,7 @@ BodyRectangle {
             desktopEntries: Config.options.launcher.pinnedApps
                 .map(appId => AppSearch.entryFor(appId))
                 .filter(entry => entry !== null)
-            onEntryLaunched: GlobalStates.searchOpen = false
+            onEntryLaunched: WStates.searchOpen = false
         }
     }
 

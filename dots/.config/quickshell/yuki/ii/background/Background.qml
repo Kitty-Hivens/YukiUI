@@ -18,6 +18,7 @@ import qs.ii.background.widgets
 import qs.ii.background.widgets.clock
 import qs.ii.background.widgets.weather
 import qs.common
+import qs.ii
 
 Variants {
     id: root
@@ -154,7 +155,7 @@ Variants {
                     }
                     if (Config.options.background.parallax.enableSidebar) {
                         let sidebarFraction = bgRoot.parallaxRation / bgRoot.workspaceChunkSize / 2;
-                        usedFraction += (sidebarFraction * GlobalStates.sidebarRightOpen - sidebarFraction * GlobalStates.sidebarLeftOpen);
+                        usedFraction += (sidebarFraction * IiStates.sidebarRightOpen - sidebarFraction * IiStates.sidebarLeftOpen);
                     }
                     return Math.max(0, Math.min(1, usedFraction));
                 }

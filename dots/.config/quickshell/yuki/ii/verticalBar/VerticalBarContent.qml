@@ -10,6 +10,7 @@ import qs.common.widgets
 import qs.core.functions
 import qs.ii.bar as Bar
 import qs.common
+import qs.ii
 
 Item { // Bar content region
     id: root
@@ -57,10 +58,10 @@ Item { // Bar content region
 
         onScrollDown: Brightness.decreaseBrightness()
         onScrollUp: Brightness.increaseBrightness()
-        onMovedAway: GlobalStates.osdBrightnessOpen = false
+        onMovedAway: IiStates.osdBrightnessOpen = false
         onPressed: event => {
             if (event.button === Qt.LeftButton)
-                GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+                IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen;
         }
 
         ColumnLayout { // Content
@@ -121,7 +122,7 @@ Item { // Bar content region
 
                     onPressed: event => {
                         if (event.button === Qt.RightButton) {
-                            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+                            IiStates.overviewOpen = !IiStates.overviewOpen;
                         }
                     }
                 }
@@ -167,10 +168,10 @@ Item { // Bar content region
         
         onScrollDown: Audio.decrementVolume();
         onScrollUp: Audio.incrementVolume();
-        onMovedAway: GlobalStates.osdVolumeOpen = false;
+        onMovedAway: IiStates.osdVolumeOpen = false;
         onPressed: event => {
             if (event.button === Qt.LeftButton) {
-                GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+                IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen;
             }
         }
 
@@ -208,7 +209,7 @@ Item { // Bar content region
                 colBackgroundToggled: Appearance.colors.colSecondaryContainer
                 colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                 colRippleToggled: Appearance.colors.colSecondaryContainerActive
-                toggled: GlobalStates.sidebarRightOpen
+                toggled: IiStates.sidebarRightOpen
                 property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
                 Behavior on colText {
@@ -216,7 +217,7 @@ Item { // Bar content region
                 }
 
                 onPressed: {
-                    GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+                    IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen;
                 }
 
                 ColumnLayout {

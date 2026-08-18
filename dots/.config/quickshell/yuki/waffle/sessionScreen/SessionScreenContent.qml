@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.waffle.looks
+import qs.waffle
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -25,7 +26,7 @@ Item {
             focus: true
             text: Translation.tr("Lock")
             onClicked: {
-                GlobalStates.sessionOpen = false;
+                WStates.sessionOpen = false;
                 Session.lock();
             }
             KeyNavigation.up: powerButton
@@ -36,7 +37,7 @@ Item {
             focus: true
             text: Translation.tr("Sign out")
             onClicked: {
-                GlobalStates.sessionOpen = false;
+                WStates.sessionOpen = false;
                 Session.logout();
             }
             KeyNavigation.up: lockButton
@@ -48,7 +49,7 @@ Item {
             focus: true
             text: Translation.tr("Change password")
             onClicked: {
-                GlobalStates.sessionOpen = false;
+                WStates.sessionOpen = false;
                 Session.changePassword();
             }
             KeyNavigation.up: signOutButton
@@ -60,7 +61,7 @@ Item {
             focus: true
             text: Translation.tr("Task Manager")
             onClicked: {
-                GlobalStates.sessionOpen = false;
+                WStates.sessionOpen = false;
                 Session.launchTaskManager();
             }
             KeyNavigation.up: signOutButton
@@ -73,7 +74,7 @@ Item {
             Layout.leftMargin: 5
             Layout.rightMargin: 5
             Layout.topMargin: 38
-            onClicked: GlobalStates.sessionOpen = false
+            onClicked: WStates.sessionOpen = false
             KeyNavigation.up: taskManagerButton
             KeyNavigation.down: powerButton
         }

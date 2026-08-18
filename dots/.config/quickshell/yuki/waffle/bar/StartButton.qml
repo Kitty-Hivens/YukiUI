@@ -6,6 +6,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 // TODO: Replace the icon with QMLized svg (with /usr/lib/qt6/bin/svgtoqml) for proper micro-animation
 AppButton {
@@ -14,9 +15,9 @@ AppButton {
     leftInset: Config.options.waffles.bar.leftAlignApps ? 12 : 0
     iconName: down ? "start-here-pressed" : "start-here"
 
-    checked: GlobalStates.searchOpen
+    checked: WStates.searchOpen
     onClicked: {
-        GlobalStates.searchOpen = !GlobalStates.searchOpen;
+        WStates.searchOpen = !WStates.searchOpen;
     }
 
     BarToolTip {
@@ -54,7 +55,7 @@ AppButton {
             {
                 text: Translation.tr("Search"),
                 action: () => {
-                    GlobalStates.searchPanelOpen = true;
+                    WStates.searchPanelOpen = true;
                 }
             },
         ]

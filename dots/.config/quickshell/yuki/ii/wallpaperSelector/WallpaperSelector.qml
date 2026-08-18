@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -16,7 +17,7 @@ Scope {
 
     Loader {
         id: wallpaperSelectorLoader
-        active: GlobalStates.wallpaperSelectorOpen
+        active: IiStates.wallpaperSelectorOpen
 
         sourceComponent: PanelWindow {
             id: panelWindow
@@ -50,7 +51,7 @@ Scope {
             Connections {
                 target: GlobalFocusGrab
                 function onDismissed() {
-                    GlobalStates.wallpaperSelectorOpen = false;
+                    IiStates.wallpaperSelectorOpen = false;
                 }
             }
 
@@ -68,7 +69,7 @@ Scope {
             Wallpapers.openFallbackPicker(Appearance.m3colors.darkmode);
             return;
         }
-        GlobalStates.wallpaperSelectorOpen = !GlobalStates.wallpaperSelectorOpen
+        IiStates.wallpaperSelectorOpen = !IiStates.wallpaperSelectorOpen
     }
 
     IpcHandler {

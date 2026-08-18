@@ -8,6 +8,7 @@ import qs.core
 import qs.common.widgets
 import qs.common.widgets.widgetCanvas
 import qs.common
+import qs.ii
 
 Item {
     id: root
@@ -16,7 +17,7 @@ Item {
 
     Keys.onPressed: (event) => { // Esc to close
         if (event.key === Qt.Key_Escape) {
-            GlobalStates.overlayOpen = false;
+            IiStates.overlayOpen = false;
         }
     }
 
@@ -34,7 +35,7 @@ Item {
         anchors.fill: parent
         color: Appearance.colors.colScrim
         visible: Config.options.overlay.darkenScreen && opacity > 0
-        opacity: (GlobalStates.overlayOpen && root.scale !== initScale) ? 1 : 0
+        opacity: (IiStates.overlayOpen && root.scale !== initScale) ? 1 : 0
         Behavior on opacity {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
@@ -42,7 +43,7 @@ Item {
 
     WidgetCanvas {
         anchors.fill: parent
-        onClicked: GlobalStates.overlayOpen = false
+        onClicked: IiStates.overlayOpen = false
 
         OverlayTaskbar {
             anchors {

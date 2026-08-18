@@ -3,6 +3,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.common
+import qs.ii
 import Qt.labs.synchronizer
 import QtQuick
 import QtQuick.Controls
@@ -21,16 +22,16 @@ Scope {
         property string searchingText: ""
         readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
-        visible: GlobalStates.overviewOpen
+        visible: IiStates.overviewOpen
 
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "quickshell:overview"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: GlobalStates.overviewOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: IiStates.overviewOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
 
         mask: Region {
-            item: GlobalStates.overviewOpen ? backdropArea : null
+            item: IiStates.overviewOpen ? backdropArea : null
         }
 
         anchors {
@@ -43,18 +44,18 @@ Scope {
         Connections {
             target: GlobalStates
             function onOverviewOpenChanged() {
-                if (!GlobalStates.overviewOpen) {
+                if (!IiStates.overviewOpen) {
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
                     // Asked for here rather than after the grab is dropped, so
                     // the wait stays the one the service keeps and does not
                     // become two of them back to back.
-                    if (GlobalStates.overviewFocusHandled)
+                    if (IiStates.overviewFocusHandled)
                         FocusReturn.discard("overview");
                     else
                         FocusReturn.restore("overview");
                 } else {
-                    GlobalStates.overviewFocusHandled = false;
+                    IiStates.overviewFocusHandled = false;
                     FocusReturn.remember("overview");
                     if (!overviewScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
@@ -72,14 +73,14 @@ Scope {
             windows: (GlobalStates.oskOpen && GlobalStates.oskWindow) ? [panelWindow, GlobalStates.oskWindow] : [panelWindow]
             active: false
             onCleared: () => {
-                if (!active) GlobalStates.overviewOpen = false;
+                if (!active) IiStates.overviewOpen = false;
             }
         }
 
         Timer {
             id: delayedGrabTimer
             interval: Appearance.animation.elementMoveFast.duration
-            onTriggered: grab.active = GlobalStates.overviewOpen
+            onTriggered: grab.active = IiStates.overviewOpen
         }
         implicitWidth: columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight
@@ -94,12 +95,12 @@ Scope {
             anchors.fill: parent
             // Click on empty space (not the search bar or a workspace/window) dismisses the overview.
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
-            onClicked: GlobalStates.overviewOpen = false
+            onClicked: IiStates.overviewOpen = false
         }
 
         Column {
             id: columnLayout
-            visible: GlobalStates.overviewOpen
+            visible: IiStates.overviewOpen
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.top
@@ -108,7 +109,7 @@ Scope {
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
-                    GlobalStates.overviewOpen = false;
+                    IiStates.overviewOpen = false;
                 }
             }
 
@@ -123,7 +124,7 @@ Scope {
             Loader {
                 id: overviewLoader
                 anchors.horizontalCenter: parent.horizontalCenter
-                active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
+                active: IiStates.overviewOpen && (Config?.options.overview.enable ?? true)
                 sourceComponent: OverviewWidget {
                     screen: panelWindow.screen
                     visible: (panelWindow.searchingText == "")
@@ -133,39 +134,39 @@ Scope {
     }
 
     function toggleClipboard() {
-        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
-            GlobalStates.overviewOpen = false;
+        if (IiStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
+            IiStates.overviewOpen = false;
             return;
         }
         overviewScope.dontAutoCancelSearch = true;
         panelWindow.setSearchingText(Config.options.search.prefix.clipboard);
-        GlobalStates.overviewOpen = true;
+        IiStates.overviewOpen = true;
     }
 
     function toggleEmojis() {
-        if (GlobalStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
-            GlobalStates.overviewOpen = false;
+        if (IiStates.overviewOpen && overviewScope.dontAutoCancelSearch) {
+            IiStates.overviewOpen = false;
             return;
         }
         overviewScope.dontAutoCancelSearch = true;
         panelWindow.setSearchingText(Config.options.search.prefix.emojis);
-        GlobalStates.overviewOpen = true;
+        IiStates.overviewOpen = true;
     }
 
     IpcHandler {
         target: "search"
 
         function toggle() {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
         }
         function workspacesToggle() {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
         }
         function close() {
-            GlobalStates.overviewOpen = false;
+            IiStates.overviewOpen = false;
         }
         function open() {
-            GlobalStates.overviewOpen = true;
+            IiStates.overviewOpen = true;
         }
         function toggleReleaseInterrupt() {
             GlobalStates.superReleaseMightTrigger = false;
@@ -180,7 +181,7 @@ Scope {
         description: "Toggles search on press"
 
         onPressed: {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
         }
     }
     GlobalShortcut {
@@ -188,7 +189,7 @@ Scope {
         description: "Closes overview on press"
 
         onPressed: {
-            GlobalStates.overviewOpen = false;
+            IiStates.overviewOpen = false;
         }
     }
     GlobalShortcut {
@@ -196,7 +197,7 @@ Scope {
         description: "Toggles overview on press"
 
         onPressed: {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
         }
     }
     GlobalShortcut {
@@ -212,7 +213,7 @@ Scope {
                 GlobalStates.superReleaseMightTrigger = true;
                 return;
             }
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
         }
     }
     GlobalShortcut {

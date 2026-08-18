@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -62,7 +63,7 @@ WindowDialog {
             buttonText: Translation.tr("Details")
             onClicked: {
                 Quickshell.execDetached(["bash", "-c", `${Config.options.apps.bluetooth}`]);
-                GlobalStates.sidebarRightOpen = false;
+                IiStates.sidebarRightOpen = false;
             }
         }
 

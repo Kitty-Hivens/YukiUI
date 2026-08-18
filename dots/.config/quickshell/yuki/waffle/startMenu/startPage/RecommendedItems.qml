@@ -6,6 +6,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 /**
  * What the start menu suggests: the applications that arrived lately, then the
@@ -134,7 +135,7 @@ GridLayout {
                     recommendedItem.item.application.execute();
                 else
                     Qt.openUrlExternally(recommendedItem.item.url);
-                GlobalStates.searchOpen = false;
+                WStates.searchOpen = false;
             }
         }
     }

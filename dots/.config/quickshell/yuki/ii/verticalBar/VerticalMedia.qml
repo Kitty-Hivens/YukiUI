@@ -10,6 +10,7 @@ import Quickshell.Services.Mpris
 
 import qs.ii.bar as Bar
 import qs.common
+import qs.ii
 
 MouseArea {
     id: root
@@ -41,7 +42,7 @@ MouseArea {
         } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
             MprisController.next();
         } else if (event.button === Qt.LeftButton) {
-            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+            IiStates.mediaControlsOpen = !IiStates.mediaControlsOpen
         }
     }
 
@@ -72,7 +73,7 @@ MouseArea {
 
     Bar.StyledPopup {
         hoverTarget: root
-        active: GlobalStates.mediaControlsOpen ? false : root.containsMouse
+        active: IiStates.mediaControlsOpen ? false : root.containsMouse
 
         Column {
             anchors.centerIn: parent

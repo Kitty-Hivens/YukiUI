@@ -3,6 +3,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.common
+import qs.ii
 import QtQuick
 import Quickshell.Io
 import Quickshell
@@ -90,14 +91,14 @@ Scope { // Scope
             // Don't map over a fullscreen game: on Top it'd sit under it anyway, and it would grab
             // focus and freeze the game's pointer lock. Gate on the real fullscreen, not
             // GameMode.engaged, so manual game mode still leaves the sidebar reachable.
-            visible: GlobalStates.sidebarLeftOpen && !GameMode.anyFullscreen
+            visible: IiStates.sidebarLeftOpen && !GameMode.anyFullscreen
             
             property bool extend: false
             property real sidebarWidth: panelWindow.extend ? Appearance.sizes.sidebarWidthExtended : Appearance.sizes.sidebarWidth
             property var contentParent: sidebarLeftBackground
 
             function hide() {
-                GlobalStates.sidebarLeftOpen = false
+                IiStates.sidebarLeftOpen = false
             }
 
             exclusionMode: ExclusionMode.Normal
@@ -182,9 +183,9 @@ Scope { // Scope
             property var contentParent: detachedSidebarBackground
             color: "transparent"
 
-            visible: GlobalStates.sidebarLeftOpen
+            visible: IiStates.sidebarLeftOpen
             onVisibleChanged: {
-                if (!visible) GlobalStates.sidebarLeftOpen = false;
+                if (!visible) IiStates.sidebarLeftOpen = false;
             }
             
             Rectangle {
@@ -208,15 +209,15 @@ Scope { // Scope
         target: "sidebarLeft"
 
         function toggle(): void {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen
+            IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen
         }
 
         function close(): void {
-            GlobalStates.sidebarLeftOpen = false
+            IiStates.sidebarLeftOpen = false
         }
 
         function open(): void {
-            GlobalStates.sidebarLeftOpen = true
+            IiStates.sidebarLeftOpen = true
         }
     }
 
@@ -225,7 +226,7 @@ Scope { // Scope
         description: "Toggles left sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+            IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen;
         }
     }
 
@@ -234,7 +235,7 @@ Scope { // Scope
         description: "Opens left sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarLeftOpen = true;
+            IiStates.sidebarLeftOpen = true;
         }
     }
 
@@ -243,7 +244,7 @@ Scope { // Scope
         description: "Closes left sidebar on press"
 
         onPressed: {
-            GlobalStates.sidebarLeftOpen = false;
+            IiStates.sidebarLeftOpen = false;
         }
     }
 

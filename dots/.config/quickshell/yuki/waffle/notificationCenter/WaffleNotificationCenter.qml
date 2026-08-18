@@ -17,15 +17,15 @@ Scope {
         target: GlobalStates
 
         function onSidebarRightOpenChanged() {
-            if (GlobalStates.sidebarRightOpen)
+            if (WStates.sidebarRightOpen)
                 WPanels.keepOnly("sidebarRightOpen");
-            if (GlobalStates.sidebarRightOpen) panelLoader.active = true;
+            if (WStates.sidebarRightOpen) panelLoader.active = true;
         }
     }
 
     Loader {
         id: panelLoader
-        active: GlobalStates.sidebarRightOpen
+        active: WStates.sidebarRightOpen
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
@@ -57,7 +57,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onSidebarRightOpenChanged() {
-                    if (!GlobalStates.sidebarRightOpen) content.close();
+                    if (!WStates.sidebarRightOpen) content.close();
                 }
             }
 
@@ -66,7 +66,7 @@ Scope {
                 anchors.fill: parent
 
                 onClosed: {
-                    GlobalStates.sidebarRightOpen = false;
+                    WStates.sidebarRightOpen = false;
                     panelLoader.active = false;
                 }
             }
@@ -74,7 +74,7 @@ Scope {
     }
 
     function toggleOpen() {
-        GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+        WStates.sidebarRightOpen = !WStates.sidebarRightOpen;
     }
 
     IpcHandler {

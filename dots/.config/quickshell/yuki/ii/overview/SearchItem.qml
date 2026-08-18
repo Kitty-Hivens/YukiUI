@@ -6,6 +6,7 @@ import qs.core.models
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -105,7 +106,7 @@ RippleButton {
     }
 
     onClicked: {
-        GlobalStates.overviewOpen = false
+        IiStates.overviewOpen = false
         root.itemExecute()
     }
     Keys.onPressed: (event) => {

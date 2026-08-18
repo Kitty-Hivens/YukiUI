@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import qs
 import qs.core
+import qs.ii
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -10,7 +11,7 @@ Scope {
     id: root
 
     function dismiss() {
-        GlobalStates.regionSelectorOpen = false
+        IiStates.regionSelectorOpen = false
     }
 
     property var action: RegionSelection.SnipAction.Copy
@@ -21,7 +22,7 @@ Scope {
         delegate: Loader {
             id: regionSelectorLoader
             required property var modelData
-            active: GlobalStates.regionSelectorOpen
+            active: IiStates.regionSelectorOpen
 
             sourceComponent: RegionSelection {
                 screen: regionSelectorLoader.modelData
@@ -35,7 +36,7 @@ Scope {
     function screenshot() {
         root.action = RegionSelection.SnipAction.Copy
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        GlobalStates.regionSelectorOpen = true
+        IiStates.regionSelectorOpen = true
     }
 
     function search() {
@@ -45,29 +46,29 @@ Scope {
         } else {
             root.selectionMode = RegionSelection.SelectionMode.RectCorners
         }
-        GlobalStates.regionSelectorOpen = true
+        IiStates.regionSelectorOpen = true
     }
 
     function ocr() {
         root.action = RegionSelection.SnipAction.CharRecognition
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        GlobalStates.regionSelectorOpen = true
+        IiStates.regionSelectorOpen = true
     }
 
     function record() {
         root.action = RegionSelection.SnipAction.Record
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
         // If already open then re-trigger to stop recording
-        if (GlobalStates.regionSelectorOpen) GlobalStates.regionSelectorOpen = false
-        GlobalStates.regionSelectorOpen = true
+        if (IiStates.regionSelectorOpen) IiStates.regionSelectorOpen = false
+        IiStates.regionSelectorOpen = true
     }
 
     function recordWithSound() {
         root.action = RegionSelection.SnipAction.RecordWithSound
         root.selectionMode = RegionSelection.SelectionMode.RectCorners
         // If already open then re-trigger to stop recording
-        if (GlobalStates.regionSelectorOpen) GlobalStates.regionSelectorOpen = false
-        GlobalStates.regionSelectorOpen = true
+        if (IiStates.regionSelectorOpen) IiStates.regionSelectorOpen = false
+        IiStates.regionSelectorOpen = true
     }
 
     IpcHandler {

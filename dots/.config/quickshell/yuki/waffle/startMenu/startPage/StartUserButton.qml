@@ -10,6 +10,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 
 WBorderlessButton {
     id: userButton
@@ -127,7 +128,7 @@ WBorderlessButton {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser])
-                                        GlobalStates.searchOpen = false;
+                                        WStates.searchOpen = false;
                                     }
                                 }
                             }

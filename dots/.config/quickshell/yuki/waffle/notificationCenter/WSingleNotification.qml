@@ -8,6 +8,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.waffle.looks
+import qs.waffle
 
 MouseArea {
     id: root
@@ -249,7 +250,7 @@ MouseArea {
         textFormat: root.expanded ? Text.RichText : Text.StyledText
         onLinkActivated: link => {
             Qt.openUrlExternally(link);
-            GlobalStates.sidebarRightOpen = false;
+            WStates.sidebarRightOpen = false;
         }
     }
 

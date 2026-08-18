@@ -11,6 +11,7 @@ import qs.core.functions
 import qs.common.widgets
 import qs.waffle.looks
 import qs.waffle.actionCenter
+import qs.waffle
 
 Item {
     id: root
@@ -103,7 +104,7 @@ Item {
                 }
                 text: Translation.tr("More Internet settings")
                 onClicked: {
-                    GlobalStates.sidebarLeftOpen = false;
+                    WStates.sidebarLeftOpen = false;
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.network]);
                 }
             }

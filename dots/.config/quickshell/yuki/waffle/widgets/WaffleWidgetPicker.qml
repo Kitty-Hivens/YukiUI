@@ -8,6 +8,7 @@ import qs.core
 import qs.common.widgets
 import qs.waffle.looks
 import qs.waffle.widgets
+import qs.waffle
 
 // The widgets on offer, in a window of their own beside the board: two panels side
 // by side rather than one grown wider.
@@ -19,7 +20,7 @@ Scope {
 
         // Kept alive past the moment editing ends, so the panel can go back behind
         // the board instead of blinking out of existence.
-        readonly property bool shown: GlobalStates.widgetsOpen && BoardState.editing
+        readonly property bool shown: WStates.widgetsOpen && BoardState.editing
         active: false
         onShownChanged: {
             if (pickerLoader.shown)

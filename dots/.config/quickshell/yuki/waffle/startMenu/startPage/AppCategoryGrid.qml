@@ -9,6 +9,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.waffle.looks
+import qs.waffle
 
 Rectangle {
     id: root
@@ -213,7 +214,7 @@ Rectangle {
                                     columns: 4
                                     rows: 3
                                     desktopEntries: root.desktopEntries.slice(folderPage.index * 12, (folderPage.index + 1) * 12)
-                                    onEntryLaunched: GlobalStates.searchOpen = false
+                                    onEntryLaunched: WStates.searchOpen = false
                                 }
                             }
                         }
@@ -282,7 +283,7 @@ Rectangle {
         property bool pinnedTaskbar: TaskbarApps.isPinned(smallGridAppButton.desktopEntry.id);
 
         onClicked: {
-            GlobalStates.searchOpen = false;
+            WStates.searchOpen = false;
             desktopEntry.execute();
         }
 

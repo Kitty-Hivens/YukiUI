@@ -17,7 +17,7 @@ Scope {
         target: GlobalStates
 
         function onSearchPanelOpenChanged() {
-            if (!GlobalStates.searchPanelOpen)
+            if (!WStates.searchPanelOpen)
                 return;
             // The two panels sit in the same place and answer the same query, and
             // the rest of the panels hanging off the bar put each other away too.
@@ -29,7 +29,7 @@ Scope {
 
     Loader {
         id: panelLoader
-        active: GlobalStates.searchPanelOpen
+        active: WStates.searchPanelOpen
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
@@ -59,7 +59,7 @@ Scope {
             Connections {
                 target: GlobalStates
                 function onSearchPanelOpenChanged() {
-                    if (!GlobalStates.searchPanelOpen)
+                    if (!WStates.searchPanelOpen)
                         content.close();
                 }
             }
@@ -70,7 +70,7 @@ Scope {
                 focus: true
 
                 onClosed: {
-                    GlobalStates.searchPanelOpen = false;
+                    WStates.searchPanelOpen = false;
                     panelLoader.active = false;
                     LauncherSearch.query = "";
                 }
@@ -82,13 +82,13 @@ Scope {
         target: "searchPanel"
 
         function toggle(): void {
-            GlobalStates.searchPanelOpen = !GlobalStates.searchPanelOpen;
+            WStates.searchPanelOpen = !WStates.searchPanelOpen;
         }
         function open(): void {
-            GlobalStates.searchPanelOpen = true;
+            WStates.searchPanelOpen = true;
         }
         function close(): void {
-            GlobalStates.searchPanelOpen = false;
+            WStates.searchPanelOpen = false;
         }
     }
 
@@ -97,7 +97,7 @@ Scope {
         description: "Toggles the search panel on press"
 
         onPressed: {
-            GlobalStates.searchPanelOpen = !GlobalStates.searchPanelOpen;
+            WStates.searchPanelOpen = !WStates.searchPanelOpen;
         }
     }
 }

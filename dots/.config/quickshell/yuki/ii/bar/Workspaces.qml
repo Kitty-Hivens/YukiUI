@@ -6,6 +6,7 @@ import qs.core.models
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
@@ -67,7 +68,7 @@ ButtonMouseArea {
         if (mouse.button == Qt.LeftButton)
             switchWorkspaceToHovered();
         else if (mouse.button == Qt.RightButton)
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+            IiStates.overviewOpen = !IiStates.overviewOpen;
     }
     onWheel: event => {
         if (event.angleDelta.y < 0)

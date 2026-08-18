@@ -5,6 +5,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -80,10 +81,10 @@ Scope {
 
     Loader {
         id: mediaControlsLoader
-        active: GlobalStates.mediaControlsOpen
+        active: IiStates.mediaControlsOpen
         onActiveChanged: {
             if (!mediaControlsLoader.active && root.realPlayers.length === 0) {
-                GlobalStates.mediaControlsOpen = false;
+                IiStates.mediaControlsOpen = false;
             }
         }
 
@@ -147,7 +148,7 @@ Scope {
                     // is not the user dismissing anything.
                     if (!panelWindow.visible)
                         return;
-                    GlobalStates.mediaControlsOpen = false;
+                    IiStates.mediaControlsOpen = false;
                 }
             }
 
@@ -222,21 +223,21 @@ Scope {
         target: "mediaControls"
 
         // Drive GlobalStates, not mediaControlsLoader.active directly: the Loader's
-        // `active: GlobalStates.mediaControlsOpen` binding is the single source of truth,
+        // `active: IiStates.mediaControlsOpen` binding is the single source of truth,
         // and an imperative assignment here would clobber it, leaving the popup impossible
         // to dismiss via keybinds / click-outside afterwards.
         function toggle(): void {
-            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
-            if (GlobalStates.mediaControlsOpen)
+            IiStates.mediaControlsOpen = !IiStates.mediaControlsOpen;
+            if (IiStates.mediaControlsOpen)
                 Notifications.timeoutAll();
         }
 
         function close(): void {
-            GlobalStates.mediaControlsOpen = false;
+            IiStates.mediaControlsOpen = false;
         }
 
         function open(): void {
-            GlobalStates.mediaControlsOpen = true;
+            IiStates.mediaControlsOpen = true;
             Notifications.timeoutAll();
         }
     }
@@ -246,7 +247,7 @@ Scope {
         description: "Toggles media controls on press"
 
         onPressed: {
-            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
+            IiStates.mediaControlsOpen = !IiStates.mediaControlsOpen;
         }
     }
     GlobalShortcut {
@@ -254,7 +255,7 @@ Scope {
         description: "Opens media controls on press"
 
         onPressed: {
-            GlobalStates.mediaControlsOpen = true;
+            IiStates.mediaControlsOpen = true;
         }
     }
     GlobalShortcut {
@@ -262,7 +263,7 @@ Scope {
         description: "Closes media controls on press"
 
         onPressed: {
-            GlobalStates.mediaControlsOpen = false;
+            IiStates.mediaControlsOpen = false;
         }
     }
 }

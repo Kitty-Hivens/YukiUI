@@ -9,13 +9,14 @@ import qs.core
 import qs.common.widgets
 import qs.waffle.bar
 import qs.waffle.bar.tray
+import qs.waffle
 
 Scope {
     id: root
     
     LazyLoader {
         id: barLoader
-        active: GlobalStates.barOpen
+        active: WStates.barOpen
         component: Variants {
             model: Quickshell.screens
             delegate: PanelWindow { // Bar window
@@ -84,15 +85,15 @@ Scope {
         target: "bar"
 
         function toggle(): void {
-            GlobalStates.barOpen = !GlobalStates.barOpen
+            WStates.barOpen = !WStates.barOpen
         }
 
         function close(): void {
-            GlobalStates.barOpen = false
+            WStates.barOpen = false
         }
 
         function open(): void {
-            GlobalStates.barOpen = true
+            WStates.barOpen = true
         }
     }
 
@@ -101,7 +102,7 @@ Scope {
         description: "Toggles bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = !GlobalStates.barOpen;
+            WStates.barOpen = !WStates.barOpen;
         }
     }
 
@@ -110,7 +111,7 @@ Scope {
         description: "Opens bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = true;
+            WStates.barOpen = true;
         }
     }
 
@@ -119,7 +120,7 @@ Scope {
         description: "Closes bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = false;
+            WStates.barOpen = false;
         }
     }
 }

@@ -3,6 +3,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -33,7 +34,7 @@ Scope {
     ]
 
     function triggerOsd() {
-        GlobalStates.osdVolumeOpen = true;
+        IiStates.osdVolumeOpen = true;
         osdTimeout.restart();
     }
 
@@ -43,7 +44,7 @@ Scope {
         repeat: false
         running: false
         onTriggered: {
-            GlobalStates.osdVolumeOpen = false;
+            IiStates.osdVolumeOpen = false;
             root.protectionMessage = "";
         }
     }
@@ -95,7 +96,7 @@ Scope {
 
     Loader {
         id: osdLoader
-        active: GlobalStates.osdVolumeOpen
+        active: IiStates.osdVolumeOpen
 
         sourceComponent: PanelWindow {
             id: osdRoot
@@ -143,7 +144,7 @@ Scope {
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
-                        onEntered: GlobalStates.osdVolumeOpen = false
+                        onEntered: IiStates.osdVolumeOpen = false
                     }
 
                     Column {
@@ -212,11 +213,11 @@ Scope {
         }
 
         function hide() {
-            GlobalStates.osdVolumeOpen = false;
+            IiStates.osdVolumeOpen = false;
         }
 
         function toggle() {
-            GlobalStates.osdVolumeOpen = !GlobalStates.osdVolumeOpen;
+            IiStates.osdVolumeOpen = !IiStates.osdVolumeOpen;
         }
     }
     GlobalShortcut {
@@ -232,7 +233,7 @@ Scope {
         description: "Hides volume OSD on press"
 
         onPressed: {
-            GlobalStates.osdVolumeOpen = false;
+            IiStates.osdVolumeOpen = false;
         }
     }
 }

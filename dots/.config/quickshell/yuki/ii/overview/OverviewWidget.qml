@@ -5,6 +5,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -155,8 +156,8 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1) {
-                                        GlobalStates.overviewFocusHandled = true
-                                        GlobalStates.overviewOpen = false
+                                        IiStates.overviewFocusHandled = true
+                                        IiStates.overviewOpen = false
                                         Hyprland.dispatch(`hl.dsp.focus({ workspace = ${workspace.workspaceValue} })`)
                                     }
                                 }
@@ -300,8 +301,8 @@ Item {
                             if (!windowData) return;
 
                             if (event.button === Qt.LeftButton) {
-                                GlobalStates.overviewFocusHandled = true
-                                GlobalStates.overviewOpen = false
+                                IiStates.overviewFocusHandled = true
+                                IiStates.overviewOpen = false
                                 Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
                                 event.accepted = true
                             } else if (event.button === Qt.MiddleButton) {

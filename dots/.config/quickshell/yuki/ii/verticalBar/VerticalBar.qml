@@ -11,6 +11,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 
 Scope {
     id: bar
@@ -27,7 +28,7 @@ Scope {
         }
         LazyLoader {
             id: barLoader
-            active: GlobalStates.barOpen && !GlobalStates.screenLocked
+            active: IiStates.barOpen && !GlobalStates.screenLocked
             required property ShellScreen modelData
             component: PanelWindow { // Bar window
                 id: barRoot
@@ -214,15 +215,15 @@ Scope {
         target: "bar"
 
         function toggle(): void {
-            GlobalStates.barOpen = !GlobalStates.barOpen
+            IiStates.barOpen = !IiStates.barOpen
         }
 
         function close(): void {
-            GlobalStates.barOpen = false
+            IiStates.barOpen = false
         }
 
         function open(): void {
-            GlobalStates.barOpen = true
+            IiStates.barOpen = true
         }
     }
 
@@ -231,7 +232,7 @@ Scope {
         description: "Toggles bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = !GlobalStates.barOpen;
+            IiStates.barOpen = !IiStates.barOpen;
         }
     }
 
@@ -240,7 +241,7 @@ Scope {
         description: "Opens bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = true;
+            IiStates.barOpen = true;
         }
     }
 
@@ -249,7 +250,7 @@ Scope {
         description: "Closes bar on press"
 
         onPressed: {
-            GlobalStates.barOpen = false;
+            IiStates.barOpen = false;
         }
     }
 }

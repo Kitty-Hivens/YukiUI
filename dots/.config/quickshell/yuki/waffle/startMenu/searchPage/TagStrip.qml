@@ -9,6 +9,7 @@ import qs.core
 import qs.core.functions
 import qs.waffle.looks
 import qs.waffle.startMenu
+import qs.waffle
 
 RowLayout {
     id: root
@@ -74,7 +75,7 @@ RowLayout {
                 text: Translation.tr("Manage accounts")
                 onTriggered: {
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser])
-                    GlobalStates.searchOpen = false;
+                    WStates.searchOpen = false;
                 }
             }
         }

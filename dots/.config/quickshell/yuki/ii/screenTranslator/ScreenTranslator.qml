@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import qs
+import qs.ii
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -9,7 +10,7 @@ Scope {
     id: root
 
     function dismiss() {
-        GlobalStates.screenTranslatorOpen = false
+        IiStates.screenTranslatorOpen = false
     }
 
     readonly property var currentScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? null
@@ -21,7 +22,7 @@ Scope {
         Connections {
             target: GlobalStates
             function onScreenTranslatorOpenChanged() {
-                if (!GlobalStates.screenTranslatorOpen) {
+                if (!IiStates.screenTranslatorOpen) {
                     translatorLoader.active = false;
                 } else {
                     translatorLoader.lockedScreen = root.currentScreen
@@ -37,7 +38,7 @@ Scope {
     }
 
     function translate() {
-        GlobalStates.screenTranslatorOpen = true
+        IiStates.screenTranslatorOpen = true
     }
 
     IpcHandler {

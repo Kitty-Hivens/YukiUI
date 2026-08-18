@@ -4,6 +4,7 @@ import qs.core
 import qs.common.widgets
 import qs.core.functions
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -18,7 +19,7 @@ Scope {
 
     Loader {
         id: sessionLoader
-        active: GlobalStates.sessionOpen
+        active: IiStates.sessionOpen
         onActiveChanged: {
             if (sessionLoader.active)
                 SessionWarnings.refresh();
@@ -28,7 +29,7 @@ Scope {
             target: GlobalStates
             function onScreenLockedChanged() {
                 if (GlobalStates.screenLocked) {
-                    GlobalStates.sessionOpen = false;
+                    IiStates.sessionOpen = false;
                 }
             }
         }
@@ -39,7 +40,7 @@ Scope {
             property string subtitle
 
             function hide() {
-                GlobalStates.sessionOpen = false;
+                IiStates.sessionOpen = false;
             }
 
             exclusionMode: ExclusionMode.Ignore
@@ -298,15 +299,15 @@ Scope {
         target: "session"
 
         function toggle(): void {
-            GlobalStates.sessionOpen = !GlobalStates.sessionOpen;
+            IiStates.sessionOpen = !IiStates.sessionOpen;
         }
 
         function close(): void {
-            GlobalStates.sessionOpen = false;
+            IiStates.sessionOpen = false;
         }
 
         function open(): void {
-            GlobalStates.sessionOpen = true;
+            IiStates.sessionOpen = true;
         }
     }
 
@@ -315,7 +316,7 @@ Scope {
         description: "Toggles session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = !GlobalStates.sessionOpen;
+            IiStates.sessionOpen = !IiStates.sessionOpen;
         }
     }
 
@@ -324,7 +325,7 @@ Scope {
         description: "Opens session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = true;
+            IiStates.sessionOpen = true;
         }
     }
 
@@ -333,7 +334,7 @@ Scope {
         description: "Closes session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = false;
+            IiStates.sessionOpen = false;
         }
     }
 }

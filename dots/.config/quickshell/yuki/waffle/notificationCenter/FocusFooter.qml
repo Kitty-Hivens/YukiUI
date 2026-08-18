@@ -8,6 +8,7 @@ import qs.core.services
 import qs.core
 import qs.core.functions
 import qs.waffle.looks
+import qs.waffle
 
 FooterRectangle {
     Layout.fillWidth: true
@@ -64,7 +65,7 @@ FooterRectangle {
                     TimerService.resetPomodoro();
                 } else {
                     TimerService.togglePomodoro();
-                    GlobalStates.sidebarRightOpen = false;
+                    WStates.sidebarRightOpen = false;
                 }
             }
         }

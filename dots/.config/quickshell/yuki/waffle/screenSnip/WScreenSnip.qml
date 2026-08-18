@@ -4,6 +4,7 @@ import qs.core
 import qs.core.functions
 import qs.common.widgets
 import qs.core.services
+import qs.waffle
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -34,13 +35,13 @@ Scope {
         root.requestedImageAction = imageAction ?? WRegionSelectionPanel.ImageAction.Copy;
         root.requestedVideoAction = videoAction ?? WRegionSelectionPanel.VideoAction.Record;
         root.requestedScreen = Quickshell.screens.find(candidate => candidate.name === Hyprland.focusedMonitor?.name) ?? root.requestedScreen;
-        if (GlobalStates.regionSelectorOpen)
-            GlobalStates.regionSelectorOpen = false;
-        GlobalStates.regionSelectorOpen = true;
+        if (WStates.regionSelectorOpen)
+            WStates.regionSelectorOpen = false;
+        WStates.regionSelectorOpen = true;
     }
 
     function dismiss() {
-        GlobalStates.regionSelectorOpen = false;
+        WStates.regionSelectorOpen = false;
     }
 
     function screenshot() {
@@ -65,7 +66,7 @@ Scope {
 
     Loader {
         id: regionSelectorLoader
-        active: GlobalStates.regionSelectorOpen
+        active: WStates.regionSelectorOpen
 
         sourceComponent: WRegionSelectionPanel {
             // Taken as the panel is built and never rebound: the request cannot

@@ -5,6 +5,7 @@ import qs.common.widgets
 import qs.core.functions
 import qs.ii.sidebarLeft
 import qs.common
+import qs.ii
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -153,7 +154,7 @@ Rectangle {
             textFormat: Text.MarkdownText
             onLinkActivated: (link) => {
                 Qt.openUrlExternally(link)
-                GlobalStates.sidebarLeftOpen = false
+                IiStates.sidebarLeftOpen = false
             }
             PointingHandLinkHover {}
         }

@@ -13,6 +13,7 @@ import qs.core.utils
 import qs.common.widgets
 import qs.core.services
 import qs.common
+import qs.ii
 
 Item {
     id: root
@@ -126,7 +127,7 @@ Item {
                 color: root.textColor
                 onLinkActivated: (link) => {
                     Qt.openUrlExternally(link)
-                    GlobalStates.screenTranslatorOpen = false
+                    IiStates.screenTranslatorOpen = false
                 }
 
                 PointingHandLinkHover {}

@@ -10,6 +10,7 @@ import qs.core.functions
 import qs.waffle.looks
 import qs.waffle.startMenu
 import qs.waffle.startMenu.searchPage
+import qs.waffle
 
 WBarAttachedPanelContent {
     id: root
@@ -25,7 +26,7 @@ WBarAttachedPanelContent {
         id: context
         onLaunched: query => {
             root.rememberQuery(query);
-            GlobalStates.searchPanelOpen = false;
+            WStates.searchPanelOpen = false;
         }
     }
 

@@ -5,6 +5,7 @@ import qs
 import qs.core.services
 import qs.core
 import qs.waffle.looks
+import qs.waffle
 
 AppButton {
     id: root
@@ -13,9 +14,9 @@ AppButton {
     pressedScale: checked ? 5/6 : 1
     separateLightDark: true
 
-    checked: GlobalStates.overviewOpen
+    checked: WStates.overviewOpen
     onClicked: {
-        GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+        WStates.overviewOpen = !WStates.overviewOpen;
     }
 
     BarToolTip {

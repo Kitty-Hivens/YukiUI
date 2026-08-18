@@ -5,6 +5,7 @@ import qs
 import qs.core
 import qs.common.widgets
 import qs.common
+import qs.ii
 
 RippleButton {
     id: root
@@ -24,7 +25,7 @@ RippleButton {
     onClicked: {
         if (url) {
             Qt.openUrlExternally(url)
-            GlobalStates.sidebarLeftOpen = false
+            IiStates.sidebarLeftOpen = false
         }
     }
 
