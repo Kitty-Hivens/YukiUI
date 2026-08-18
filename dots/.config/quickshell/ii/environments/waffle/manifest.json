@@ -1,0 +1,6 @@
+{
+    "id": "waffle",
+    "name": "Waffle",
+    "apiVersion": 1,
+    "entry": "WaffleEnvironment.qml"
+}

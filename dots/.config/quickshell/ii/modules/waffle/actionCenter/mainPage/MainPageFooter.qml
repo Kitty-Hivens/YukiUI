@@ -35,19 +35,25 @@ FooterRectangle {
         }
     }
 
-    // Settings button
+    // Settings button.
+    //
+    // Kept and disabled rather than removed. The reference puts a gear in this
+    // corner and the footer's spacing was measured with it there, so taking it
+    // out would move everything beside it. What it used to open was the other
+    // family's settings window, whose only page under this family is a placeholder
+    // reading "under construction" -- a button that leads to a sign saying there is
+    // nothing here is worse than one that says so itself by being greyed out.
+    // Give it a target when Waffle has settings of its own.
     WBorderlessButton {
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
         anchors.rightMargin: 12
 
-        onClicked: {
-            GlobalStates.sidebarLeftOpen = false;
-            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("appearanceSettings.qml")]);
-        }
+        enabled: false
 
         contentItem: FluentIcon {
             icon: "settings"
+            color: Looks.colors.inactiveIcon
         }
     }
 }

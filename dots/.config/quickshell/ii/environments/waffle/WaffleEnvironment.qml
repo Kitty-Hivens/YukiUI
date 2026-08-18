@@ -19,12 +19,12 @@ import qs.modules.waffle.sessionScreen
 import qs.modules.waffle.taskView
 import qs.modules.waffle.widgets
 
-// Fallbacks
-import qs.modules.ii.cheatsheet
-import qs.modules.ii.onScreenKeyboard
-import qs.modules.ii.overlay
-import qs.modules.ii.screenTranslator
-import qs.modules.ii.wallpaperSelector
+// Nothing from the other environment is imported here, and that is the point.
+// A cheatsheet, an on-screen keyboard, the overlays, the screen translator and
+// the wallpaper picker used to be borrowed from Illogical Impulse. Every one of
+// them is drawn in Material You, so borrowing them put a second design system on
+// screen inside a Fluent desktop. A surface belongs to whoever draws it, and
+// those are drawn by ii. Waffle goes without until it has its own.
 
 Scope {
     // Touched here so it exists from the start: it is what keeps a panel from being
@@ -48,10 +48,4 @@ Scope {
     PanelLoader { component: WaffleTaskView {} }
     PanelLoader { component: WaffleWidgets {} }
     PanelLoader { component: WaffleWidgetPicker {} }
-
-    PanelLoader { component: Cheatsheet {} }
-    PanelLoader { component: OnScreenKeyboard {} }
-    PanelLoader { component: Overlay {} }
-    PanelLoader { component: ScreenTranslator {} }
-    PanelLoader { component: WallpaperSelector {} }
 }
