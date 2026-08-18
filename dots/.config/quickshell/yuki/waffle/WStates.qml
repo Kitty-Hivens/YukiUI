@@ -45,4 +45,39 @@ Singleton {
             root.sidebarRightOpen = false;
         }
     }
+
+    /** The environment these flags speak for. */
+    readonly property string environmentId: "waffle"
+
+    /**
+     * A panel of an environment that is not up is not open, whatever the flag
+     * last said.
+     *
+     * These singletons outlive the environment they describe: the registry
+     * destroys the object it built, not the module that was imported to build
+     * it. So a panel left open across a swap went on speaking for a desktop that
+     * no longer exists -- and because opening the notification list is what
+     * suppresses popups, the environment that replaced it came up with its
+     * notifications silently held back.
+     */
+    function closeAll() {
+        root.sidebarLeftOpen = false;
+        root.sidebarRightOpen = false;
+        root.osdBrightnessOpen = false;
+        root.osdVolumeOpen = false;
+        root.overviewOpen = false;
+        root.regionSelectorOpen = false;
+        root.sessionOpen = false;
+        root.searchOpen = false;
+        root.searchPanelOpen = false;
+        root.widgetsOpen = false;
+    }
+
+    Connections {
+        target: Environments
+        function onActiveIdChanged() {
+            if (Environments.activeId !== root.environmentId)
+                root.closeAll();
+        }
+    }
 }

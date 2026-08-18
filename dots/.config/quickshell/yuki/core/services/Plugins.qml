@@ -149,6 +149,13 @@ Singleton {
         function sync() {
             if (slot.pluginId.length === 0)
                 return;
+            // The deny list reads empty until the config has been read, and the
+            // manifest and the config are two independent reads with no order
+            // between them. Building in that window builds what is switched off
+            // -- which on a first run, where there is no config file to read at
+            // all, is every time.
+            if (!Config.ready)
+                return;
             const wanted = !root.isDisabled(slot.pluginId);
             if (wanted === (slot.instance !== null))
                 return;
@@ -186,6 +193,11 @@ Singleton {
 
         readonly property var disabledWatch: root.disabledIds
         onDisabledWatchChanged: slot.sync()
+
+        // Watched on its own: where nothing is switched off, the list reads the
+        // same before and after the config arrives, so it never signals.
+        readonly property bool configReady: Config.ready
+        onConfigReadyChanged: slot.sync()
 
         property FileView manifestFile: FileView {
             path: `${root.pluginPath}/${slot.directory}/manifest.json`
