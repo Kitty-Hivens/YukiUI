@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.core
 import qs.core.functions
 pragma Singleton
 pragma ComponentBehavior: Bound
