@@ -71,6 +71,103 @@ Singleton {
         return true;
     }
 
+    /**
+     * Sets a device's volume, for devices where the binding's own write does
+     * not reach the server.
+     *
+     * A node that belongs to a card has its volume written through the card's
+     * route rather than through the node. That write is only made when the
+     * route reports a volume step, and a Bluetooth route reports none -- so
+     * nothing is sent, while the value the binding hands back changes all the
+     * same. The slider moves and the sound does not. Measured: the binding read
+     * 0.30, was written 0.20, read back 0.20, and the server stayed at 0.30
+     * throughout, with neither of the two log lines that path prints.
+     *
+     * Collected rather than sent one at a time, because a wheel over the volume
+     * icon is a burst and each send is a process.
+     */
+    property var pendingVolumes: ({})
+
+    /**
+     * A jump large enough to be worth walking rather than taking in one step.
+     *
+     * A Bluetooth device applies the volume itself, the moment it is told, with
+     * no fade of its own -- so a large change arrives as a step, and on
+     * headphones that is felt rather than heard. Small changes, which is what
+     * turning a wheel produces, still go straight there: walking those would
+     * only add latency to something already gradual.
+     */
+    readonly property real rampThreshold: 0.05
+    readonly property real rampStep: 0.02
+    readonly property int rampInterval: 40
+
+    function setDeviceVolume(node, volume) {
+        if (!node?.name)
+            return;
+        const target = Math.max(0, Math.min(1, volume));
+        const next = Object.assign({}, root.pendingVolumes);
+        const known = next[node.name];
+        next[node.name] = {
+            isSink: node.isSink,
+            target: target,
+            // Where the walk starts from. Taken from the node only when no walk
+            // is already under way, since by then the node holds the last thing
+            // asked for rather than the last thing sent.
+            current: known?.current ?? (node.audio?.volume ?? target)
+        };
+        root.pendingVolumes = next;
+        volumeTimer.restart();
+    }
+
+    Timer {
+        id: volumeTimer
+        interval: root.rampInterval
+        onTriggered: {
+            const pending = root.pendingVolumes;
+            const next = ({});
+            const parts = [];
+            let moreToDo = false;
+
+            for (const name in pending) {
+                const entry = pending[name];
+                const distance = entry.target - entry.current;
+                let step = entry.target;
+                if (Math.abs(distance) > root.rampThreshold) {
+                    step = entry.current + Math.sign(distance) * Math.min(root.rampStep, Math.abs(distance));
+                    next[name] = {
+                        isSink: entry.isSink,
+                        target: entry.target,
+                        current: step
+                    };
+                    moreToDo = true;
+                }
+                const percent = Math.round(Math.max(0, Math.min(1, step)) * 100);
+                parts.push(`pactl ${entry.isSink ? "set-sink-volume" : "set-source-volume"} '${name}' ${percent}%`);
+            }
+
+            root.pendingVolumes = next;
+            if (parts.length > 0) {
+                // Not through run(): that asks for the whole card and port list
+                // to be read again, and none of it is what changed.
+                volumeProc.command = ["bash", "-c", parts.join("; ")];
+                volumeProc.running = true;
+            }
+            if (moreToDo)
+                volumeTimer.restart();
+        }
+    }
+
+    Process {
+        id: volumeProc
+        stderr: StdioCollector {
+            id: volumeError
+            onStreamFinished: {
+                if (volumeError.text.trim().length > 0)
+                    console.log("[AudioRouting]", volumeError.text.trim());
+            }
+        }
+    }
+
     function run(args) {
         commandProc.command = ["pactl"].concat(args);
         commandProc.running = true;

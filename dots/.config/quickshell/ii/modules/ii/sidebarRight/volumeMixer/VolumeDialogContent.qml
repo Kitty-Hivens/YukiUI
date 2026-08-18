@@ -55,7 +55,12 @@ ColumnLayout {
     StyledText {
         Layout.fillWidth: true
         Layout.leftMargin: 4
-        visible: root.isSink && Audio.processorInPath
+        // Against the device shown here, not against the processor existing
+        // anywhere: this line stands in for the level below and for what the
+        // picker is naming, and both of those only change when the processor
+        // holds the default. A processor merely present, with the default on
+        // hardware, hides nothing and wants no caption.
+        visible: root.isSink && Audio.managedByProcessor(root.currentDevice)
         text: Translation.tr("Sound passes through EasyEffects")
         elide: Text.ElideRight
         font.pixelSize: Appearance.font.pixelSize.smallie
@@ -97,7 +102,7 @@ ColumnLayout {
             value: root.currentDevice?.audio?.volume ?? 0
             onMoved: {
                 if (root.currentDevice?.audio)
-                    root.currentDevice.audio.volume = value;
+                    Audio.setDeviceVolume(root.currentDevice, value);
             }
         }
     }
@@ -116,6 +121,12 @@ ColumnLayout {
             } else {
                 Audio.setDefaultSource(item)
             }
+            // Choosing an item makes the box write its own index, which drops
+            // the binding above -- from then on it shows the choice rather than
+            // the device sound actually goes to, and a request pipewire never
+            // granted looks exactly like one it did. Putting the binding back
+            // costs the box its memory of the click, which is the point.
+            deviceSelector.currentIndex = Qt.binding(() => root.devices.findIndex(device => device.id === root.defaultEndpoint?.id))
         }
     }
 

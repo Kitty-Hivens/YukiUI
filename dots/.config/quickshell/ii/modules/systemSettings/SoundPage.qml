@@ -320,6 +320,7 @@ Item {
                             color: Appearance.colors.colSubtext
                         }
                         StyledComboBox {
+                            id: profileSelector
                             Layout.fillWidth: true
                             Layout.topMargin: 6
                             buttonIcon: "tune"
@@ -327,7 +328,13 @@ Item {
                                 ? profile.description
                                 : `${profile.description} — ${Translation.tr("not plugged in")}`)
                             currentIndex: cardEntry.profiles.findIndex(profile => profile.name === cardEntry.modelData.activeProfile)
-                            onActivated: index => AudioRouting.setCardProfile(cardEntry.modelData.name, cardEntry.profiles[index].name)
+                            onActivated: index => {
+                                AudioRouting.setCardProfile(cardEntry.modelData.name, cardEntry.profiles[index].name);
+                                // The box writes its own index on a choice, which
+                                // drops the binding above and leaves it showing the
+                                // profile asked for rather than the one in force.
+                                profileSelector.currentIndex = Qt.binding(() => cardEntry.profiles.findIndex(profile => profile.name === cardEntry.modelData.activeProfile));
+                            }
                         }
                     }
                 }

@@ -58,7 +58,7 @@ ColumnLayout {
             scrollable: true
             onMoved: {
                 if (Audio.sink)
-                    Audio.sink.audio.volume = value;
+                    Audio.setDeviceVolume(Audio.sink, value);
             }
         }
 

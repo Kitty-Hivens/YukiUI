@@ -74,7 +74,7 @@ Rectangle {
                 materialSymbol: "volume_up"
                 value: Audio.sink.audio.volume
                 onMoved: {
-                    Audio.sink.audio.volume = value
+                    Audio.setDeviceVolume(Audio.sink, value)
                 }
             }
         }
@@ -90,7 +90,7 @@ Rectangle {
                 materialSymbol: "mic"
                 value: Audio.source.audio.volume
                 onMoved: {
-                    Audio.source.audio.volume = value
+                    Audio.setDeviceVolume(Audio.source, value)
                 }
             }
         }

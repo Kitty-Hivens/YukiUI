@@ -113,13 +113,14 @@ ColumnLayout {
         value: root.node?.audio?.volume ?? 0
         onMoved: {
             if (root.node?.audio)
-                root.node.audio.volume = value;
+                Audio.setDeviceVolume(root.node, value);
         }
     }
 
     // A socket to pick only exists where the card has more than one, which is
     // where the choice is between the speakers and the headphone jack.
     StyledComboBox {
+        id: portSelector
         Layout.fillWidth: true
         Layout.topMargin: 6
         visible: root.ports.length > 1
@@ -128,6 +129,12 @@ ColumnLayout {
             ? port.description
             : `${port.description} — ${Translation.tr("not plugged in")}`)
         currentIndex: root.ports.findIndex(port => port.name === AudioRouting.activePortFor(root.node))
-        onActivated: index => AudioRouting.setPort(root.node, root.ports[index].name)
+        onActivated: index => {
+            AudioRouting.setPort(root.node, root.ports[index].name);
+            // The box writes its own index on a choice, which drops the binding
+            // above and leaves it showing what was asked for rather than what
+            // the card is on.
+            portSelector.currentIndex = Qt.binding(() => root.ports.findIndex(port => port.name === AudioRouting.activePortFor(root.node)));
+        }
     }
 }

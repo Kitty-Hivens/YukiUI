@@ -172,6 +172,42 @@ Singleton {
     // Signals
     signal sinkProtectionTriggered(string reason);
 
+    /**
+     * Whether the binding's own volume write is likely to be dropped.
+     *
+     * The real condition is not this one. A node belonging to a card has its
+     * volume written through the card's route, and that write is only made when
+     * the route reports a volume step; a Bluetooth route reports none, so the
+     * write is dropped while the value the binding hands back changes anyway.
+     * The step is not visible from QML, so what is tested here is the name --
+     * a stand-in that covers the case that was measured and nothing more. A
+     * device that fails the same way under another name would not be caught,
+     * and one named this way that works fine pays a redundant write.
+     */
+    function volumeNeedsRouting(node) {
+        return !(node?.isStream ?? false) && (node?.name ?? "").startsWith("bluez_");
+    }
+
+    /**
+     * Sets a device's volume by whichever path actually reaches pipewire.
+     *
+     * The binding is written either way, so the control answers under the
+     * finger; where that write goes nowhere it is sent again through
+     * [AudioRouting]. The server's own report lands a moment later and settles
+     * the number, so the two cannot disagree for long.
+     */
+    function setDeviceVolume(node, volume) {
+        if (!node?.audio)
+            return;
+        const clamped = Math.max(0, Math.min(1, volume));
+        // Routed before the binding is written, not after: the walk starts from
+        // where the device is now, and the binding stops holding that the moment
+        // it is given the destination.
+        if (root.volumeNeedsRouting(node))
+            AudioRouting.setDeviceVolume(node, clamped);
+        node.audio.volume = clamped;
+    }
+
     // Controls
     function toggleMute() {
         Audio.sink.audio.muted = !Audio.sink.audio.muted
@@ -183,12 +219,12 @@ Singleton {
 
     function incrementVolume() {
         const step = Audio.value < 0.1 ? 0.01 : 0.02;
-        Audio.sink.audio.volume = Math.min(1, Audio.sink.audio.volume + step);
+        root.setDeviceVolume(Audio.sink, Audio.sink.audio.volume + step);
     }
 
     function decrementVolume() {
         const step = Audio.value < 0.1 ? 0.01 : 0.02;
-        Audio.sink.audio.volume = Math.max(0, Audio.sink.audio.volume - step);
+        root.setDeviceVolume(Audio.sink, Audio.sink.audio.volume - step);
     }
 
     /**
