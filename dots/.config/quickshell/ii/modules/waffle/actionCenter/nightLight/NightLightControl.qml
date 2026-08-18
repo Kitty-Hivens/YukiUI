@@ -33,7 +33,7 @@ Item {
                     title: Translation.tr("Eye protection")
                 }
 
-                StyledFlickable {
+                WFlickable {
                     id: flickable
                     Layout.fillHeight: true
                     Layout.fillWidth: true

@@ -56,7 +56,7 @@ BodyRectangle {
             color: BoardLooks.rule
         }
 
-        StyledFlickable {
+        WFlickable {
             id: offerFlickable
             Layout.fillWidth: true
             Layout.fillHeight: true

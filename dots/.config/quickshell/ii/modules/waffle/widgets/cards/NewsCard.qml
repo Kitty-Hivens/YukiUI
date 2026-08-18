@@ -26,7 +26,7 @@ WWidgetCard {
 
     property int shownArticles: 4
 
-    StyledFlickable {
+    WFlickable {
         id: storyList
         anchors {
             left: parent.left

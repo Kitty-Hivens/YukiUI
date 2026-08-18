@@ -31,7 +31,7 @@ Item {
                     title: root.output ? Translation.tr("Sound output") : Translation.tr("Sound input")
                 }
 
-                StyledFlickable {
+                WFlickable {
                     id: flickable
                     Layout.fillHeight: true
                     Layout.fillWidth: true

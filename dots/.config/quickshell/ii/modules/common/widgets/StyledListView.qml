@@ -29,7 +29,12 @@ ListView {
 
     maximumFlickVelocity: 3500
     boundsBehavior: Flickable.DragOverBounds
-    ScrollBar.vertical: StyledScrollBar {}
+    /// The scrollbar, as a property rather than as a child, so that a family with a
+    /// look of its own can put its own there. Left as a structural child this was the
+    /// one thing a Fluent panel could not opt out of: it wrote its own scrollbar,
+    /// reached for this container, and got the Material one anyway.
+    property ScrollBar scrollBar: StyledScrollBar {}
+    ScrollBar.vertical: root.scrollBar
 
     MouseArea {
         visible: Config?.options.interactions.scrolling.fasterTouchpadScroll

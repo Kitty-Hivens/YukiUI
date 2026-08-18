@@ -79,6 +79,8 @@ Item {
                 }
 
                 StyledListView {
+                    // Kept for its animations; the scrollbar is ours.
+                    scrollBar: WScrollBar {}
                     id: listView
                     Layout.fillHeight: true
                     Layout.fillWidth: true
