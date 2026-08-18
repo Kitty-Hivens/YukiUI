@@ -14,7 +14,7 @@ Scope {
     id: root
 
     Connections {
-        target: GlobalStates
+        target: WStates
 
         function onSearchPanelOpenChanged() {
             if (!WStates.searchPanelOpen)
@@ -57,7 +57,7 @@ Scope {
             }
 
             Connections {
-                target: GlobalStates
+                target: WStates
                 function onSearchPanelOpenChanged() {
                     if (!WStates.searchPanelOpen)
                         content.close();

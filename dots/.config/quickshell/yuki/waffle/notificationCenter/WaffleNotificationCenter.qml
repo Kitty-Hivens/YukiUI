@@ -14,7 +14,7 @@ Scope {
     id: root
 
     Connections {
-        target: GlobalStates
+        target: WStates
 
         function onSidebarRightOpenChanged() {
             if (WStates.sidebarRightOpen)
@@ -55,7 +55,7 @@ Scope {
             }
 
             Connections {
-                target: GlobalStates
+                target: WStates
                 function onSidebarRightOpenChanged() {
                     if (!WStates.sidebarRightOpen) content.close();
                 }

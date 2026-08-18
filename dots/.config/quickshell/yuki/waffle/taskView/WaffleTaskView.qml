@@ -26,7 +26,7 @@ Scope {
             required property var modelData
             active: false
             Connections {
-                target: GlobalStates
+                target: WStates
                 function onOverviewOpenChanged() {
                     if (WStates.overviewOpen)
                         panelLoader.active = true;
@@ -75,7 +75,7 @@ Scope {
                     }
 
                     Connections {
-                        target: GlobalStates
+                        target: WStates
                         function onOverviewOpenChanged() {
                             if (!WStates.overviewOpen)
                                 taskViewContent.close();

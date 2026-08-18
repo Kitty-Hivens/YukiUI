@@ -56,7 +56,7 @@ Scope {
             }
 
             Connections {
-                target: GlobalStates
+                target: IiStates
                 function onOverlayOpenChanged() {
                     delayedGrabTimer.restart();
                 }

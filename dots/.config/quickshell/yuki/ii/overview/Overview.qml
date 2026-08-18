@@ -42,7 +42,7 @@ Scope {
         }
 
         Connections {
-            target: GlobalStates
+            target: IiStates
             function onOverviewOpenChanged() {
                 if (!IiStates.overviewOpen) {
                     searchWidget.disableExpandAnimation();

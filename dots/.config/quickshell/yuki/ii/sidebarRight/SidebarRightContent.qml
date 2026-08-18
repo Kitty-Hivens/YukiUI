@@ -35,7 +35,7 @@ Item {
     property bool editMode: false
 
     Connections {
-        target: GlobalStates
+        target: IiStates
         function onSidebarRightOpenChanged() {
             if (!IiStates.sidebarRightOpen) {
                 root.showWifiDialog = false;

@@ -70,7 +70,7 @@ Scope {
 
     // Open when global state changes
     Connections {
-        target: GlobalStates
+        target: WStates
 
         function onOsdBrightnessOpenChanged() {
             if (WStates.osdBrightnessOpen)
@@ -89,7 +89,7 @@ Scope {
         onActiveChanged: {
             if (active) return;
             root.indicators.forEach(i => {
-                GlobalStates[i.globalStateValue] = false;
+                WStates[i.globalStateValue] = false;
             });
         }
         sourceComponent: PanelWindow {
@@ -121,7 +121,7 @@ Scope {
                     target: osdIndicatorLoader.item
                     function onClosed() {
                         panelLoader.active = false;
-                        GlobalStates[root.indicators.find(i => i.id === root.currentIndicator)?.globalStateValue] = false;
+                        WStates[root.indicators.find(i => i.id === root.currentIndicator)?.globalStateValue] = false;
                     }
                 }
 

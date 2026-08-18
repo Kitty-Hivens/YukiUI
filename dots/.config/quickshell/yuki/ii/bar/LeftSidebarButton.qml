@@ -48,7 +48,7 @@ RippleButton {
     }
 
     Connections {
-        target: GlobalStates
+        target: IiStates
         function onSidebarLeftOpenChanged() {
             root.showPing = false;
         }

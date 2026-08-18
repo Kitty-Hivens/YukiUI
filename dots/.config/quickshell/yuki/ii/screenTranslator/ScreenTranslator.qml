@@ -20,7 +20,7 @@ Scope {
         property var lockedScreen
         active: false
         Connections {
-            target: GlobalStates
+            target: IiStates
             function onScreenTranslatorOpenChanged() {
                 if (!IiStates.screenTranslatorOpen) {
                     translatorLoader.active = false;

@@ -29,8 +29,8 @@ Singleton {
 
     function keepOnly(state) {
         for (const other of root.exclusive) {
-            if (other !== state && GlobalStates[other])
-                GlobalStates[other] = false;
+            if (other !== state && WStates[other])
+                WStates[other] = false;
         }
         root.enforce();
     }
@@ -41,15 +41,15 @@ Singleton {
         if (!root.blocked)
             return;
         for (const state of root.mappable) {
-            if (GlobalStates[state])
-                GlobalStates[state] = false;
+            if (WStates[state])
+                WStates[state] = false;
         }
     }
 
     onBlockedChanged: root.enforce()
 
     Connections {
-        target: GlobalStates
+        target: WStates
         function onSearchOpenChanged() {
             root.enforce();
         }

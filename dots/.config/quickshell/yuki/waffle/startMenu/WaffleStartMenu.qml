@@ -14,7 +14,7 @@ Scope {
     id: root
 
     Connections {
-        target: GlobalStates
+        target: WStates
 
         function onSearchOpenChanged() {
             if (WStates.searchOpen)
@@ -58,7 +58,7 @@ Scope {
             }
 
             Connections {
-                target: GlobalStates
+                target: WStates
                 function onSearchOpenChanged() {
                     if (!WStates.searchOpen)
                         content.close();

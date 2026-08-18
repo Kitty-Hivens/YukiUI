@@ -441,7 +441,7 @@ MouseArea {
     }
 
     Connections {
-        target: GlobalStates
+        target: IiStates
         function onWallpaperSelectorOpenChanged() {
             if (IiStates.wallpaperSelectorOpen && monitorIsFocused) {
                 filterField.forceActiveFocus();
