@@ -121,9 +121,9 @@ Scope {
                         if (!Config.options.sidebar.cornerOpen.valueScroll)
                             return;
                         if (cornerWidget.isLeft)
-                            IiStates.osdBrightnessOpen = false;
+                            IiStates.osdOpen = false;
                         else
-                            IiStates.osdVolumeOpen = false;
+                            IiStates.osdOpen = false;
                     }
 
                     Loader {

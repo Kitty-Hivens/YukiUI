@@ -34,7 +34,7 @@ Scope {
     ]
 
     function triggerOsd() {
-        IiStates.osdVolumeOpen = true;
+        IiStates.osdOpen = true;
         osdTimeout.restart();
     }
 
@@ -44,7 +44,7 @@ Scope {
         repeat: false
         running: false
         onTriggered: {
-            IiStates.osdVolumeOpen = false;
+            IiStates.osdOpen = false;
             root.protectionMessage = "";
         }
     }
@@ -96,7 +96,7 @@ Scope {
 
     Loader {
         id: osdLoader
-        active: IiStates.osdVolumeOpen
+        active: IiStates.osdOpen
 
         sourceComponent: PanelWindow {
             id: osdRoot
@@ -144,7 +144,7 @@ Scope {
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
-                        onEntered: IiStates.osdVolumeOpen = false
+                        onEntered: IiStates.osdOpen = false
                     }
 
                     Column {
@@ -213,11 +213,11 @@ Scope {
         }
 
         function hide() {
-            IiStates.osdVolumeOpen = false;
+            IiStates.osdOpen = false;
         }
 
         function toggle() {
-            IiStates.osdVolumeOpen = !IiStates.osdVolumeOpen;
+            IiStates.osdOpen = !IiStates.osdOpen;
         }
     }
     GlobalShortcut {
@@ -233,7 +233,7 @@ Scope {
         description: "Hides volume OSD on press"
 
         onPressed: {
-            IiStates.osdVolumeOpen = false;
+            IiStates.osdOpen = false;
         }
     }
 }

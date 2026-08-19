@@ -63,7 +63,7 @@ Item { // Bar content region
 
         onScrollDown: Brightness.decreaseBrightness()
         onScrollUp: Brightness.increaseBrightness()
-        onMovedAway: IiStates.osdBrightnessOpen = false
+        onMovedAway: IiStates.osdOpen = false
         onPressed: event => {
             if (event.button === Qt.LeftButton)
                 IiStates.sidebarLeftOpen = !IiStates.sidebarLeftOpen;
@@ -203,7 +203,7 @@ Item { // Bar content region
 
         onScrollDown: Audio.decrementVolume();
         onScrollUp: Audio.incrementVolume();
-        onMovedAway: IiStates.osdVolumeOpen = false;
+        onMovedAway: IiStates.osdOpen = false;
         onPressed: event => {
             if (event.button === Qt.LeftButton) {
                 IiStates.sidebarRightOpen = !IiStates.sidebarRightOpen;

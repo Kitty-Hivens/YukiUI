@@ -22,8 +22,16 @@ Singleton {
     property bool sidebarLeftOpen: false
     property bool sidebarRightOpen: false
     property bool mediaControlsOpen: false
-    property bool osdBrightnessOpen: false
-    property bool osdVolumeOpen: false
+    /**
+     * The on-screen display is up.
+     *
+     * One window shows volume, brightness or gamma, whichever was touched last,
+     * so there is one flag rather than one per indicator. There used to be a
+     * second, written by the handlers that dismiss the display after a
+     * brightness scroll and read by nothing -- so brightness stayed on screen
+     * where volume went away.
+     */
+    property bool osdOpen: false
     property bool overlayOpen: false
     property bool overviewOpen: false
     property bool overviewFocusHandled: false
@@ -69,8 +77,7 @@ Singleton {
         root.sidebarLeftOpen = false;
         root.sidebarRightOpen = false;
         root.mediaControlsOpen = false;
-        root.osdBrightnessOpen = false;
-        root.osdVolumeOpen = false;
+        root.osdOpen = false;
         root.overlayOpen = false;
         root.overviewOpen = false;
         root.overviewFocusHandled = false;
