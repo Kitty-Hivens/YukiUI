@@ -80,4 +80,6 @@ case "${SKIP_HYPRLAND}" in
     ;;
 esac
 
-install_file "dots/.local/share/icons/illogical-impulse.svg" "${XDG_DATA_HOME}"/icons/illogical-impulse.svg
+# Into the theme, not beside it: the shell asks for this icon by name, and a
+# name is only resolved under a theme directory.
+install_file "dots/.local/share/icons/hicolor/scalable/apps/illogical-impulse.svg" "${XDG_DATA_HOME}"/icons/hicolor/scalable/apps/illogical-impulse.svg
