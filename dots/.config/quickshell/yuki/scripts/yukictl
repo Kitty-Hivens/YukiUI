@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Manage the shell's environments and plugins from a terminal.
+#
+# The registries live in the running shell -- they are what is on disk crossed
+# with what the config allows -- so this asks the shell rather than reading the
+# files a second time and disagreeing with it.
+set -uo pipefail
+
+# The name of the config this belongs to, taken from where the script lives: it
+# sits one level under the shell root, and spelling the name out here would tie
+# the script to a directory it does not control. The path is resolved first,
+# because called through a symlink on PATH the source names the link, whose
+# directory has nothing to do with the shell.
+self="$(realpath "${BASH_SOURCE[0]}")"
+config_name="$(basename "$(cd "$(dirname "$self")/.." && pwd)")"
+
+usage() {
+    cat <<EOF
+usage: yukictl <command>
+
+  plugins list                what is installed, what runs, what is wrong
+  plugins enable <id>         build it from now on
+  plugins disable <id>        take it down and leave it down
+
+  env list                    installed environments and which one is up
+  env use <id>                switch to it, turning it back on if it was off
+
+An environment is a part of the shell and exactly one is up. A plugin adds to
+whatever is already there and every one enabled is built.
+EOF
+}
+
+call() {
+    local out
+    if ! out="$(qs -c "$config_name" ipc call "$@" 2>&1)"; then
+        echo "the shell is not answering on config '$config_name'." >&2
+        echo "start it, or check the name: qs -c $config_name" >&2
+        return 1
+    fi
+    [ -n "$out" ] && printf '%s\n' "$out"
+    return 0
+}
+
+need_id() {
+    if [ -z "${1:-}" ]; then
+        echo "which one? give an id -- 'yukictl $2 list' shows them" >&2
+        return 1
+    fi
+}
+
+case "${1:-}" in
+    plugins|plugin)
+        case "${2:-list}" in
+            list)    call plugins list ;;
+            enable)  need_id "${3:-}" plugins && call plugins enable "$3" ;;
+            disable) need_id "${3:-}" plugins && call plugins disable "$3" ;;
+            *)       echo "unknown: plugins ${2}" >&2; usage >&2; exit 2 ;;
+        esac
+        ;;
+    env|environments|environment)
+        case "${2:-list}" in
+            list) call environments list ;;
+            use)  need_id "${3:-}" env && call environments use "$3" ;;
+            *)    echo "unknown: env ${2}" >&2; usage >&2; exit 2 ;;
+        esac
+        ;;
+    -h|--help|help|"")
+        usage
+        ;;
+    *)
+        echo "unknown command: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+esac

@@ -45,6 +45,34 @@ QtObject {
      */
     property bool contentsUnreadable: false
 
+    /** A write asked for before the file had been read, held until it has been. */
+    property bool writePending: false
+    onReadyChanged: {
+        if (root.ready && root.writePending)
+            writeTimer.restart();
+    }
+
+    /**
+     * Whether a key from the manifest can be a property name at all.
+     *
+     * The adapter is generated as QML source, so a key goes in where an
+     * identifier is expected. A hyphen ends the declaration early and a leading
+     * capital is refused outright, and either one used to take the whole set
+     * down with it -- the plugin then ran on its defaults and never wrote a file.
+     */
+    function validKey(key) {
+        // `saveRequested` is the adapter's own, see buildAdapter.
+        return /^[a-z_][A-Za-z0-9_]*$/.test(key) && key !== "saveRequested";
+    }
+
+    function usableKeys(object, where) {
+        const keys = Object.keys(object ?? {});
+        const good = keys.filter(key => root.validKey(key));
+        for (const key of keys.filter(key => !root.validKey(key)))
+            console.warn(`[PluginSettings] ${root.pluginId}: ${where}"${key}" cannot be a setting name, skipped -- names start with a lower-case letter and hold letters, digits and underscores`);
+        return good;
+    }
+
     function quote(text) {
         return `"${String(text).replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
     }
@@ -60,20 +88,26 @@ QtObject {
             return Number.isInteger(value) ? `${pad}property int ${key}: ${value}` : `${pad}property real ${key}: ${value}`;
         if (typeof value === "string")
             return `${pad}property string ${key}: ${root.quote(value)}`;
+        // A list stays a var: there is no list equivalent of JsonObject to hide
+        // behind. Changed in place it raises no signal, so a plugin that pushes
+        // to one has to say `settings.saveRequested()` afterwards.
         if (Array.isArray(value))
             return `${pad}property var ${key}: ${JSON.stringify(value)}`;
         // An object becomes a nested JsonObject rather than a var, because a var
         // changed in place raises no signal and the change is then never saved.
-        const inner = Object.keys(value).map(child => root.declarationFor(child, value[child], indent + 4)).join("\n");
+        const inner = root.usableKeys(value, `${key}.`).map(child => root.declarationFor(child, value[child], indent + 4)).join("\n");
         return `${pad}property JsonObject ${key}: JsonObject {\n${inner}\n${pad}}`;
     }
 
     function buildAdapter() {
-        const keys = Object.keys(root.schema ?? {});
+        const keys = root.usableKeys(root.schema, "");
         if (keys.length === 0)
             return null;
         const body = keys.map(key => root.declarationFor(key, root.schema[key], 4)).join("\n");
-        const text = `import Quickshell.Io\n\nJsonAdapter {\n${body}\n}\n`;
+        // A list is a var, and a var changed in place raises no signal, so the
+        // change would never be written. Rather than leave that as a rule to
+        // remember, the adapter carries a way to ask: `settings.saveRequested()`.
+        const text = `import Quickshell.Io\n\nJsonAdapter {\n    signal saveRequested()\n${body}\n}\n`;
         try {
             return Qt.createQmlObject(text, root, `plugin-settings-${root.pluginId}`);
         } catch (error) {
@@ -87,8 +121,10 @@ QtObject {
     // hand a late adapter nothing.
     Component.onCompleted: {
         root.values = root.buildAdapter();
-        if (root.values !== null)
-            fileView.path = root.path;
+        if (root.values === null)
+            return;
+        root.values.saveRequested.connect(() => writeTimer.restart());
+        fileView.path = root.path;
     }
 
     property FileView fileView: FileView {
@@ -105,8 +141,13 @@ QtObject {
             root.ready = true;
         }
         onLoadFailed: error => {
-            if (error !== FileViewError.FileNotFound)
+            if (error !== FileViewError.FileNotFound) {
+                // Anything other than absence -- permissions, a directory in the
+                // way -- leaves this unable to save. Said out loud, because the
+                // symptom otherwise is settings that simply do not stick.
+                console.error(`[PluginSettings] ${root.pluginId}: the settings file could not be read, so nothing will be saved`);
                 return;
+            }
             // First run for this plugin. Nothing to lose, so the defaults are
             // written out and the directory made on the way.
             root.ready = true;
@@ -132,8 +173,18 @@ QtObject {
         id: writeTimer
         interval: 50
         onTriggered: {
-            if (!root.ready || root.contentsUnreadable)
+            // Not over contents that could not be read, and not before they have
+            // been read at all: the adapter writes every setting at once, so one
+            // changed while the file was still loading would put the defaults for
+            // all the others over it. Held instead of dropped -- see [Config],
+            // which follows the same rule for the shell's own file.
+            if (root.contentsUnreadable)
                 return;
+            if (!root.ready) {
+                root.writePending = true;
+                return;
+            }
+            root.writePending = false;
             fileView.writeAdapter();
         }
     }

@@ -91,10 +91,12 @@ ShellRoot {
         }
     }
 
-    // The swap takes two beats, so that for one of them no environment is alive. An
-    // IpcHandler registers once, when it is built: one raised while the one it
-    // replaces still holds `search` and `session` is refused those targets for good,
-    // and the keybinds that call them go on reaching the environment being torn down.
+    // The swap takes two beats, so that for one of them no environment is alive.
+    // Two environments claim the same ipc targets, and a handler raised while the
+    // one it replaces still holds them does not get them. The target is handed on
+    // when its holder goes away, so nothing is lost for good -- but until then the
+    // new environment is up with handlers that answer nothing, and the keybinds
+    // that call them go on reaching the environment being torn down.
     Timer {
         id: environmentSwapTimer
         interval: 1

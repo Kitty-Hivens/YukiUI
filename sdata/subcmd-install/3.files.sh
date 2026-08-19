@@ -197,6 +197,19 @@ function install_wallpaper_portal_service(){
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
   realpath -se "$target" >> "${INSTALLED_LISTFILE}"
 }
+function install_shell_cli(){
+  # A command on PATH for managing the shell's environments and plugins.
+  # Linked rather than copied: the script reads the config name off its own
+  # location, so a copy elsewhere would have to be told that name a second time
+  # and would then be free to disagree with it.
+  local source="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/yukictl"
+  local target="${HOME}/.local/bin/yukictl"
+  if [ ! -e "$source" ]; then return 0; fi
+  x mkdir -p "$(dirname "$target")"
+  x ln -sf "$source" "$target"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  realpath -se "$target" >> "${INSTALLED_LISTFILE}"
+}
 function install_google_sans_flex(){
   local font_name="Google Sans Flex"
   local src_name="google-sans-flex"
@@ -254,6 +267,9 @@ esac
 
 showfun install_wallpaper_portal_service
 v install_wallpaper_portal_service
+
+showfun install_shell_cli
+v install_shell_cli
 
 if [[ ! "$OS_GROUP_ID" == "fedora" ]]; then
   showfun install_google_sans_flex

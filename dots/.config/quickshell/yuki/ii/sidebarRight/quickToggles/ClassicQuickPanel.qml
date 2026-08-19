@@ -32,7 +32,7 @@ AbstractQuickPanel {
             }
         }
         NightLight {}
-        GameMode {
+        GameModeButton {
             altAction: () => {
                 root.openGameModeDialog();
             }

@@ -31,7 +31,7 @@ Singleton {
     readonly property url environmentFolder: Qt.resolvedUrl(Quickshell.shellPath("environments"))
 
     /** id -> { id, name, url }. Replaced rather than mutated, so bindings hear it. */
-    property var manifests: ({})
+    property var manifests: Object.create(null)
 
     readonly property list<string> ids: Object.keys(root.manifests).sort()
 
@@ -40,7 +40,7 @@ Singleton {
     function load() {}
 
     function has(id) {
-        return root.manifests[id] !== undefined;
+        return Object.prototype.hasOwnProperty.call(root.manifests, id);
     }
 
     function nameOf(id) {
@@ -74,8 +74,38 @@ Singleton {
      * off, because an empty desktop is worse than an unwanted one.
      */
     readonly property string fallbackId: {
-        const pool = root.offeredIds.length > 0 ? root.offeredIds : root.ids;
+        const usable = id => root.failedIds.indexOf(id) === -1;
+        const offered = root.offeredIds.filter(usable);
+        const pool = offered.length > 0 ? offered : root.ids.filter(usable);
         return pool.length > 0 ? pool[0] : "";
+    }
+
+    /**
+     * Environments whose entry would not build.
+     *
+     * Being installed was taken as being usable, so a manifest naming an entry
+     * with a syntax error, or naming a file that is not there, left the desktop
+     * empty for good: the mount failed, nothing else was tried, and the name in
+     * the config went on resolving to the same broken environment. One that
+     * fails is set aside so the fallback can reach past it, and a shell with a
+     * broken environment comes up on another rather than on nothing.
+     */
+    property var failedIds: []
+
+    /** Why a directory under `environments/` is not on offer, keyed by directory. */
+    property var problems: Object.create(null)
+
+    function reject(directory, reason) {
+        console.warn(`[Environments] ${directory}: ${reason}`);
+        const next = Object.assign(Object.create(null), root.problems);
+        next[directory] = reason;
+        root.problems = next;
+    }
+
+    function noteFailure(id, reason) {
+        console.warn(`[Environments] ${id}: ${reason}`);
+        if (root.failedIds.indexOf(id) === -1)
+            root.failedIds = root.failedIds.concat([id]);
     }
 
     /**
@@ -84,7 +114,7 @@ Singleton {
      * not evict someone who is already using it.
      */
     function resolve(id) {
-        return root.has(id) ? id : root.fallbackId;
+        return (root.has(id) && root.failedIds.indexOf(id) === -1) ? id : root.fallbackId;
     }
 
     /** Which one should be up. Driven by the shell, which paces the swap. */
@@ -106,14 +136,14 @@ Singleton {
             console.warn(`[Environments] ${id} is not installed, nothing mounted`);
             return;
         }
-        const component = Qt.createComponent(manifest.url);
-        if (component.status === Component.Error) {
-            console.warn(`[Environments] ${id}: ${component.errorString()}`);
+        const component = Qt.createComponent(manifest.url, Component.PreferSynchronous);
+        if (component.status !== Component.Ready) {
+            root.noteFailure(id, component.status === Component.Error ? component.errorString() : "the entry did not finish building");
             return;
         }
         const object = component.createObject(root);
         if (!object) {
-            console.warn(`[Environments] ${id}: the entry built nothing`);
+            root.noteFailure(id, "the entry built nothing");
             return;
         }
         root.active = object;
@@ -121,13 +151,13 @@ Singleton {
     }
 
     function register(manifest) {
-        const next = Object.assign({}, root.manifests);
+        const next = Object.assign(Object.create(null), root.manifests);
         next[manifest.id] = manifest;
         root.manifests = next;
     }
 
     function unregister(id) {
-        const next = Object.assign({}, root.manifests);
+        const next = Object.assign(Object.create(null), root.manifests);
         delete next[id];
         root.manifests = next;
     }
@@ -144,15 +174,23 @@ Singleton {
             try {
                 manifest = JSON.parse(text);
             } catch (error) {
-                console.warn(`[Environments] ${slot.directory}: manifest is not JSON, skipped`);
+                root.reject(slot.directory, "the manifest is not JSON");
+                return;
+            }
+            if (!Plugins.usableId(manifest?.id)) {
+                root.reject(slot.directory, `"${manifest?.id}" cannot be an id -- letters, digits, dashes and underscores only`);
+                return;
+            }
+            if (!Plugins.usableEntry(manifest?.entry)) {
+                root.reject(slot.directory, `"${manifest?.entry}" cannot be an entry -- a path inside this directory, with no ".." in it`);
                 return;
             }
             if (!manifest?.id || !manifest?.entry) {
-                console.warn(`[Environments] ${slot.directory}: manifest names no id or no entry, skipped`);
+                root.reject(slot.directory, "the manifest names no id or no entry");
                 return;
             }
             if (manifest.apiVersion !== root.apiVersion) {
-                console.warn(`[Environments] ${manifest.id}: wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}, skipped`);
+                root.reject(slot.directory, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
                 return;
             }
             slot.environmentId = manifest.id;
@@ -166,7 +204,7 @@ Singleton {
         property FileView manifestFile: FileView {
             path: `${root.environmentPath}/${slot.directory}/manifest.json`
             onLoaded: slot.read(text())
-            onLoadFailed: console.warn(`[Environments] ${slot.directory}: no manifest, skipped`)
+            onLoadFailed: root.reject(slot.directory, "there is no manifest here")
         }
 
         Component.onDestruction: {
@@ -186,6 +224,42 @@ Singleton {
         delegate: Slot {
             required property string fileName
             directory: fileName
+        }
+    }
+
+    /** What is installed, which one is up, and what is wrong with the rest. */
+    function report(): string {
+        const rows = root.ids.map(id => {
+            const state = id === root.activeId ? "active"
+                : (root.failedIds.indexOf(id) !== -1 ? "broken"
+                : (root.isOffered(id) ? "offered" : "off"));
+            return [id, state, root.nameOf(id)];
+        });
+        for (const directory of Object.keys(root.problems))
+            rows.push(["-", "broken", `${directory}  -- ${root.problems[directory]}`]);
+        if (rows.length === 0)
+            return "no environments installed";
+        const width = Math.max(...rows.map(row => row[0].length));
+        return rows.map(row => `${row[0].padEnd(width)}  ${row[1].padEnd(7)}  ${row[2]}`).join("\n");
+    }
+
+    IpcHandler {
+        target: "environments"
+
+        function list(): string {
+            return root.report();
+        }
+        function use(id: string): string {
+            if (!Config.ready)
+                return "the config has not been read yet, try again";
+            if (!root.has(id))
+                return `no environment here is called "${id}"`;
+            if (root.failedIds.indexOf(id) !== -1)
+                return `${id} did not build, so it is not offered -- see the journal for why`;
+            // Turned back on if it was off: asking for it by name is asking for it.
+            Config.options.disabledEnvironments = Config.options.disabledEnvironments.filter(other => other !== id);
+            Config.options.panelFamily = id;
+            return `switching to ${id}`;
         }
     }
 }
