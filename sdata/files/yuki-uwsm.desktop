@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=YukiUI (uwsm-managed)
+Comment=Hyprland session with the YukiUI shell
+Exec=uwsm start -e -D Hyprland yuki.desktop
+TryExec=uwsm
+Type=Application
+DesktopNames=Hyprland

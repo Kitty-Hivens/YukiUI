@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=YukiUI
+Comment=Hyprland session with the YukiUI shell
+Exec=/usr/bin/start-hyprland --path @EXEC@
+TryExec=/usr/bin/start-hyprland
+Type=Application
+DesktopNames=Hyprland
+Keywords=tiling;wayland;compositor;

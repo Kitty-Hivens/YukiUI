@@ -197,6 +197,30 @@ function install_wallpaper_portal_service(){
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
   realpath -se "$target" >> "${INSTALLED_LISTFILE}"
 }
+function install_session_entry(){
+  # The Wayland session YukiUI is entered through. Written rather than copied for
+  # the same reason as the service above: Exec takes an absolute path and expands
+  # nothing, and the launcher it points at lives under the user's config.
+  #
+  # That launcher is the whole point of shipping a session of our own. Hyprland's
+  # own entry runs start-hyprland bare, and start-hyprland answers a crash by
+  # restarting the compositor in safe mode, which comes up on a generated stock
+  # config with none of the session's autostart. Naming the launcher with --path
+  # puts that decision where every login screen and every login shell reads it,
+  # instead of in one shell profile.
+  #
+  # A pair, the way Hyprland ships one: the plain entry is what uwsm is pointed
+  # at, the uwsm one is what a login screen has to offer, because a session
+  # started outside uwsm comes up without the units the shell is launched into.
+  local exec_path="${XDG_CONFIG_HOME}/hypr/hyprland/scripts/launch_compositor.sh"
+  local target_dir="${XDG_DATA_HOME}/wayland-sessions"
+  x mkdir -p "$target_dir"
+  sed "s|@EXEC@|${exec_path}|" sdata/files/yuki.desktop.in > "${target_dir}/yuki.desktop"
+  x cp -f sdata/files/yuki-uwsm.desktop "${target_dir}/yuki-uwsm.desktop"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  realpath -se "${target_dir}/yuki.desktop" >> "${INSTALLED_LISTFILE}"
+  realpath -se "${target_dir}/yuki-uwsm.desktop" >> "${INSTALLED_LISTFILE}"
+}
 function install_shell_cli(){
   # A command on PATH for managing the shell's environments and plugins.
   # Linked rather than copied: the script reads the config name off its own
@@ -299,6 +323,9 @@ esac
 showfun install_wallpaper_portal_service
 v install_wallpaper_portal_service
 
+showfun install_session_entry
+v install_session_entry
+
 showfun install_shell_cli
 v install_shell_cli
 
@@ -325,8 +352,9 @@ printf "\n"
 printf "\n"
 printf "${STY_CYAN}[$0]: Finished${STY_RST}\n"
 printf "\n"
-printf "${STY_CYAN}When starting Hyprland from your display manager (login screen) ${STY_RED} SELECT THE UWSM SESSION ${STY_RST}\n"
-printf "${STY_CYAN}The shell is started as a uwsm unit, so a plain Hyprland session leaves you without it.${STY_RST}\n"
+printf "${STY_CYAN}When starting from your display manager (login screen) ${STY_RED} SELECT \"YukiUI (uwsm-managed)\" ${STY_RST}\n"
+printf "${STY_CYAN}The shell is started as a uwsm unit, so a plain session leaves you without it. The YukiUI${STY_RST}\n"
+printf "${STY_CYAN}sessions also carry the launcher that keeps a crash restart on your own config.${STY_RST}\n"
 printf "\n"
 printf "${STY_CYAN}If you are already running Hyprland,${STY_RST}\n"
 printf "${STY_CYAN}Press ${STY_INVERT} Ctrl+Super+T ${STY_RST}${STY_CYAN} to select a wallpaper${STY_RST}\n"
