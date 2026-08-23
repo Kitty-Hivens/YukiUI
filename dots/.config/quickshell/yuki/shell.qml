@@ -39,6 +39,7 @@ ShellRoot {
         Plugins.load()
         Environments.load()
         MaterialThemeLoader.reapplyTheme()
+        EnvironmentTheming.load()
         Hyprsunset.load()
         FirstRunExperience.load()
         ConflictKiller.load()

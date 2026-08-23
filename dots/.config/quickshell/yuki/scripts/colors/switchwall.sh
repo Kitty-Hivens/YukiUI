@@ -16,12 +16,15 @@ SHELL_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # config rather than asked of a running shell. An environment that declares none
 # leaves both empty and the defaults below stand, which is what every environment
 # did before any of them could declare anything.
+family_id=""
 family_theming_matugen=""
 family_theming_apply=""
+family_stamp="$STATE_DIR/user/generated/themed-family.txt"
 resolve_family_theming() {
     local family manifest base rel
     family=$(jq -r '.panelFamily // empty' "$SHELL_CONFIG_FILE" 2>/dev/null)
     [[ -n "$family" ]] || return 0
+    family_id="$family"
     base="$SHELL_ROOT/environments/$family"
     manifest="$base/manifest.json"
     [[ -f "$manifest" ]] || return 0
@@ -36,6 +39,21 @@ resolve_family_theming() {
         family_theming_apply="$base/$rel"
     fi
     return 0
+}
+
+# Whether the world already wears this environment's theming. Asked by the shell
+# on every settle, including the first of the session, so that a shell coming up
+# on an environment the files were not written for repaints once -- and so that
+# holding the cycle key costs one matugen run rather than one per press.
+family_theming_is_current() {
+    [[ -f "$family_stamp" ]] || return 1
+    [[ "$(cat "$family_stamp" 2>/dev/null)" == "$family_id" ]]
+}
+
+stamp_family_theming() {
+    [[ -n "$family_id" ]] || return 0
+    mkdir -p "$(dirname "$family_stamp")"
+    printf '%s\n' "$family_id" > "$family_stamp"
 }
 
 # matugen wants concrete paths and the shell's own path is not fixed, so the
@@ -339,7 +357,6 @@ switch() {
     generate_colors_material_args+=(--termscheme "$terminalscheme" --blend_bg_fg)
     generate_colors_material_args+=(--cache "$STATE_DIR/user/generated/color.txt")
 
-    resolve_family_theming
     pre_process "$mode_flag"
 
     # Check if app and shell theming is enabled in config
@@ -369,6 +386,7 @@ switch() {
     if [[ -n "$family_theming_apply" ]]; then
         bash "$family_theming_apply" "$mode_flag"
     fi
+    stamp_family_theming
     source "$(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate"
     python3 "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
         > "$STATE_DIR"/user/generated/material_colors.scss
@@ -388,6 +406,7 @@ main() {
     color_flag=""
     color=""
     noswitch_flag=""
+    family_guard_flag=""
 
     get_type_from_config() {
         jq -r '.appearance.palette.type' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "auto"
@@ -453,6 +472,10 @@ main() {
                 imgpath="$2"
                 shift 2
                 ;;
+            --if-family-changed)
+                family_guard_flag="1"
+                shift
+                ;;
             --noswitch)
                 noswitch_flag="1"
                 imgpath=$(jq -r '.background.wallpaperPath' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "")
@@ -466,6 +489,11 @@ main() {
                 ;;
         esac
     done
+
+    resolve_family_theming
+    if [[ -n "$family_guard_flag" ]] && family_theming_is_current; then
+        exit 0
+    fi
 
     # If accentColor is set in config, use it
     config_color="$(get_accent_color_from_config)"
