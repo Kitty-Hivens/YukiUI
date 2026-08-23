@@ -10,9 +10,10 @@ import qs.common
 GroupButton {
     id: root
     
-    // Info to be passed to by repeater
-    required property int buttonIndex
-    required property var buttonData
+    // Info to be passed to by repeater. The type name is what identifies a tile
+    // here: it is what the config keeps, and the one thing that stays the same
+    // while rows are rebuilt around it.
+    required property string buttonType
     required property bool expandedSize
     required property real baseCellWidth
     required property real baseCellHeight
@@ -24,11 +25,15 @@ GroupButton {
 
     // Declared in specific toggles
     property QuickToggleModel toggleModel
-    property string name: toggleModel?.name ?? ""
-    property string statusText: (toggleModel?.hasStatusText) ? (toggleModel?.statusText || (toggled ? Translation.tr("On") : Translation.tr("Off"))) : ""
-    property string tooltipText: toggleModel?.tooltipText ?? ""
-    property string buttonIcon: toggleModel?.icon ?? "close"
-    property bool available: toggleModel?.available ?? true
+    /// Nothing answers to this type: no branch of the panel, no plugin. Drawn all
+    /// the same, so that it can be taken out of the panel again.
+    property bool unknownType: false
+    property string name: root.unknownType ? root.buttonType : (toggleModel?.name ?? "")
+    property string statusText: root.unknownType ? Translation.tr("Unavailable")
+        : ((toggleModel?.hasStatusText) ? (toggleModel?.statusText || (toggled ? Translation.tr("On") : Translation.tr("Off"))) : "")
+    property string tooltipText: root.unknownType ? Translation.tr("%1 is not installed").arg(root.buttonType) : (toggleModel?.tooltipText ?? "")
+    property string buttonIcon: root.unknownType ? "extension_off" : (toggleModel?.icon ?? "close")
+    property bool available: root.unknownType ? false : (toggleModel?.available ?? true)
     toggled: toggleModel?.toggled ?? false
     property var mainAction: toggleModel?.mainAction ?? null
     altAction: toggleModel?.hasMenu ? (() => root.openMenu()) : (toggleModel?.altAction ?? null)
@@ -71,7 +76,7 @@ GroupButton {
 
     onClicked: {
         if (root.expandedSize && root.altAction) root.altAction();
-        else root.mainAction();
+        else if (root.mainAction) root.mainAction();
     }
 
     contentItem: RowLayout {
@@ -97,7 +102,7 @@ GroupButton {
             implicitWidth: iconBackground.implicitWidth
             cursorShape: Qt.PointingHandCursor
 
-            onClicked: root.mainAction()
+            onClicked: if (root.mainAction) root.mainAction()
 
             Rectangle {
                 id: iconBackground
@@ -187,35 +192,49 @@ GroupButton {
         hoverEnabled: true
         acceptedButtons: Qt.AllButtons
 
+        // The list is replaced rather than changed in place in all three of these.
+        // Changing it in place does reach the file, but it signals every step on
+        // the way: a two-step swap made the config hold one toggle twice, and the
+        // panel rebuilt itself on that torn state before the second step landed --
+        // a duplicate tile on screen, from a list that was never meant to have one.
+        //
+        // The position is looked up by type rather than by a place in the rows,
+        // because rows skip empty entries and are laid out by tile size, so past
+        // the first of either the two do not line up.
+        function positionOf(toggleList, buttonType) {
+            return toggleList.findIndex(toggle => toggle?.type === buttonType);
+        }
+
         function toggleEnabled() {
-            const index = root.buttonIndex;
             const toggleList = Config.options.sidebar.quickToggles.android.toggles;
-            const buttonType = root.buttonData.type;
-            if (!toggleList.find(toggle => toggle.type === buttonType)) {
-                toggleList.push({ type: buttonType, size: 1 });
-            } else {
-                toggleList.splice(index, 1);
-            }
+            const buttonType = root.buttonType;
+            const position = editModeInteraction.positionOf(toggleList, buttonType);
+            Config.options.sidebar.quickToggles.android.toggles = (position === -1)
+                ? toggleList.concat([{ type: buttonType, size: 1 }])
+                : toggleList.filter((toggle, i) => i !== position);
         }
 
         function toggleSize() {
-            const index = root.buttonIndex;
             const toggleList = Config.options.sidebar.quickToggles.android.toggles;
-            const buttonType = root.buttonData.type;
-            if (!toggleList.find(toggle => toggle.type === buttonType)) return;
-            toggleList[index].size = 3 - toggleList[index].size; // Alternate between 1 and 2
+            const buttonType = root.buttonType;
+            const position = editModeInteraction.positionOf(toggleList, buttonType);
+            if (position === -1) return;
+            Config.options.sidebar.quickToggles.android.toggles = toggleList.map((toggle, i) => (i === position)
+                ? { type: toggle.type, size: 3 - toggle.size } // Alternate between 1 and 2
+                : toggle);
         }
 
         function movePositionBy(offset) {
-            const index = root.buttonIndex;
             const toggleList = Config.options.sidebar.quickToggles.android.toggles;
-            const buttonType = root.buttonData.type;
-            const targetIndex = index + offset;
-            if (!toggleList.find(toggle => toggle.type === buttonType)) return;
-            if (targetIndex < 0 || targetIndex >= toggleList.length) return;
-            const temp = toggleList[index];
-            toggleList[index] = toggleList[targetIndex];
-            toggleList[targetIndex] = temp;
+            const buttonType = root.buttonType;
+            const position = editModeInteraction.positionOf(toggleList, buttonType);
+            if (position === -1) return;
+            const targetPosition = position + offset;
+            if (targetPosition < 0 || targetPosition >= toggleList.length) return;
+            const next = toggleList.slice();
+            next[position] = toggleList[targetPosition];
+            next[targetPosition] = toggleList[position];
+            Config.options.sidebar.quickToggles.android.toggles = next;
         }
 
         onReleased: (event) => {
@@ -229,9 +248,6 @@ GroupButton {
             toggleSize();
         }
         onWheel: (event) => {
-            const index = root.buttonIndex;
-            const toggleList = Config.options.sidebar.quickToggles.android.toggles;
-            const buttonType = root.buttonData.type;
             if (event.angleDelta.y < 0) { // Move to right
                 movePositionBy(1);
             } else if (event.angleDelta.y > 0) { // Move to left

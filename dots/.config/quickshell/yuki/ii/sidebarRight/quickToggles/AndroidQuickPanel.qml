@@ -34,9 +34,28 @@ AbstractQuickPanel {
     // second half is why this is not a constant: a plugin that is not there
     // must not leave a name in the pool that nothing can draw.
     readonly property list<string> builtInToggleTypes: ["network", "bluetooth", "idleInhibitor", "easyEffects", "nightLight", "darkMode", "gameMode", "screenSnip", "colorPicker", "onScreenKeyboard", "mic", "audio", "notifications", "powerProfile","musicRecognition", "antiFlashbang"]
-    readonly property list<string> availableToggleTypes: root.builtInToggleTypes.concat(Plugins.quickToggleIds)
+    // Deduplicated: a plugin is free to take an id a built-in toggle already uses,
+    // and the name landing in this pool twice puts two identical tiles in the row
+    // of unused ones -- which the row cannot tell apart.
+    readonly property list<string> availableToggleTypes: root.builtInToggleTypes
+        .concat(Plugins.quickToggleIds.filter(id => root.builtInToggleTypes.indexOf(id) === -1))
     readonly property int columns: Config.options.sidebar.quickToggles.android.columns
-    readonly property list<var> toggles: Config.ready ? Config.options.sidebar.quickToggles.android.toggles : []
+    // Read through a filter rather than straight: an entry with no type is dead
+    // weight, and the same type twice is a state the panel cannot draw -- rows are
+    // keyed by type, and two rows keyed alike is undefined. A config that already
+    // holds one (the older edit code could write it) is drawn as the one tile it
+    // was meant to be.
+    readonly property list<var> toggles: {
+        if (!Config.ready)
+            return [];
+        const seen = [];
+        return Config.options.sidebar.quickToggles.android.toggles.filter(toggle => {
+            if (!toggle?.type || seen.indexOf(toggle.type) !== -1)
+                return false;
+            seen.push(toggle.type);
+            return true;
+        });
+    }
     readonly property list<var> toggleRows: toggleRowsForList(toggles)
     readonly property list<var> unusedToggles: {
         const types = availableToggleTypes.filter(type => !toggles.some(toggle => (toggle && toggle.type === type)))
@@ -50,7 +69,9 @@ AbstractQuickPanel {
         var totalSize = 0; // Total cols taken in current row
         for (var i = 0; i < togglesList.length; i++) {
             if (!togglesList[i]) continue;
-            if (totalSize + togglesList[i].size > columns) {
+            // An empty row is never opened: a first tile wider than the panel used
+            // to push one, which drew as a gap above everything else.
+            if (row.length > 0 && totalSize + togglesList[i].size > columns) {
                 rows.push(row);
                 row = [];
                 totalSize = 0;
@@ -85,23 +106,20 @@ AbstractQuickPanel {
                     id: toggleRow
                     required property int index
                     property var modelData: root.toggleRows[index]
-                    property int startingIndex: {
-                        const rows = root.toggleRows;
-                        let sum = 0;
-                        for (let i = 0; i < index; i++) {
-                            sum += rows[i].length;
-                        }
-                        return sum;
-                    }
                     spacing: root.spacing
 
                     Repeater {
+                        // Type names rather than the entries themselves. Reading an
+                        // entry builds a fresh object every time, so no two reads are
+                        // the same object and the model could not tell one tile from
+                        // another: it rewrote rows in place instead of moving them,
+                        // and a delegate built for one kind of toggle stayed to draw
+                        // the next -- the tile that was removed still on screen, its
+                        // neighbour gone, and a click landing on neither.
                         model: ScriptModel {
-                            values: toggleRow?.modelData ?? []
-                            objectProp: "type"
+                            values: (toggleRow?.modelData ?? []).map(toggle => toggle.type)
                         }
                         delegate: AndroidToggleDelegateChooser {
-                            startingIndex: toggleRow.startingIndex
                             editMode: root.editMode
                             baseCellWidth: root.baseCellWidth
                             baseCellHeight: root.baseCellHeight
@@ -150,11 +168,9 @@ AbstractQuickPanel {
 
                         Repeater {
                             model: ScriptModel {
-                                values: unusedToggleRow?.modelData ?? []
-                                objectProp: "type"
+                                values: (unusedToggleRow?.modelData ?? []).map(toggle => toggle.type)
                             }
                             delegate: AndroidToggleDelegateChooser {
-                                startingIndex: -1
                                 editMode: root.editMode
                                 baseCellWidth: root.baseCellWidth
                                 baseCellHeight: root.baseCellHeight

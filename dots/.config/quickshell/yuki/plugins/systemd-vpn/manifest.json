@@ -1,0 +1,11 @@
+{
+    "id": "systemdVpn",
+    "name": "VPN",
+    "apiVersion": 1,
+    "entry": "Plugin.qml",
+    "config": {
+        "label": "VPN",
+        "unit": "",
+        "alsoStop": ""
+    }
+}
