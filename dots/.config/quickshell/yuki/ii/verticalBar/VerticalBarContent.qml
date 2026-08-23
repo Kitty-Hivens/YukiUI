@@ -278,6 +278,21 @@ Item { // Bar content region
                         text: Network.materialSymbol
                         iconSize: Appearance.font.pixelSize.larger
                         color: rightSidebarButton.colText
+
+                        // Same as in the horizontal bar: the tunnel badges the icon of
+                        // the connection it runs over.
+                        MaterialSymbol {
+                            visible: Network.vpnActive
+                            anchors {
+                                right: parent.right
+                                bottom: parent.bottom
+                                rightMargin: -3
+                                bottomMargin: -2
+                            }
+                            text: "lock"
+                            iconSize: Appearance.font.pixelSize.smallest
+                            color: parent.color
+                        }
                     }
                     MaterialSymbol {
                         Layout.topMargin: indicatorsColumnLayout.realSpacing

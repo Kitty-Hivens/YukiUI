@@ -157,8 +157,10 @@ Item {
         shownPropertyString: "showWifiDialog"
         dialog: WifiDialog {}
         onShownChanged: {
-            if (!shown) return;
-            Network.enableWifi();
+            // The radio is left as it was found: opening the list to look at it used
+            // to switch wifi back on, and the dialog carries a switch of its own for
+            // when that is what was wanted.
+            if (!shown || Network.wifiStatus === "disabled") return;
             Network.rescanWifi();
         }
     }

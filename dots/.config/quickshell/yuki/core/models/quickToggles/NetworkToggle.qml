@@ -6,8 +6,9 @@ import qs.common.widgets
 
 QuickToggleModel {
     name: Translation.tr("Internet")
-    statusText: Network.networkName
-    tooltipText: Translation.tr("%1 | Right-click to configure").arg(Network.networkName)
+    statusText: Network.vpnActive ? Translation.tr("VPN | %1").arg(Network.networkName) : Network.networkName
+    tooltipText: (Network.vpnActive ? Translation.tr("Through %1").arg(Network.vpnDevice) + "\n" : "")
+        + Translation.tr("%1 | Right-click to configure").arg(Network.networkName)
     icon: Network.materialSymbol
 
     toggled: Network.wifiStatus !== "disabled"

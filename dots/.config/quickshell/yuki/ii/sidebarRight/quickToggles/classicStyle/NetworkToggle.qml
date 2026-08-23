@@ -19,6 +19,7 @@ QuickToggleButton {
         IiStates.sidebarRightOpen = false
     }
     StyledToolTip {
-        text: Translation.tr("%1 | Right-click to configure").arg(Network.networkName)
+        text: (Network.vpnActive ? Translation.tr("Through %1").arg(Network.vpnDevice) + "\n" : "")
+            + Translation.tr("%1 | Right-click to configure").arg(Network.networkName)
     }
 }

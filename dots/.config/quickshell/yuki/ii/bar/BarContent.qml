@@ -308,6 +308,22 @@ Item { // Bar content region
                         text: Network.materialSymbol
                         iconSize: Appearance.font.pixelSize.larger
                         color: rightSidebarButton.colText
+
+                        // A tunnel is not a connection of its own, so it rides on the
+                        // icon of the one it runs over rather than taking a slot of
+                        // its own in a row that is already busy.
+                        MaterialSymbol {
+                            visible: Network.vpnActive
+                            anchors {
+                                right: parent.right
+                                bottom: parent.bottom
+                                rightMargin: -3
+                                bottomMargin: -2
+                            }
+                            text: "lock"
+                            iconSize: Appearance.font.pixelSize.smallest
+                            color: parent.color
+                        }
                     }
                     MaterialSymbol {
                         Layout.leftMargin: indicatorsRowLayout.realSpacing
