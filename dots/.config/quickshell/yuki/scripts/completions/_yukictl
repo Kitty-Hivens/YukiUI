@@ -1,0 +1,65 @@
+#compdef yukictl
+
+# What a shell may offer after `yukictl`.
+#
+# The ids are asked of the command itself, which asks the running shell for
+# them: the registries live there, so a completion that walked the directories
+# would be a second opinion about what is installed. What each id is doing is
+# printed beside it, and is carried through as the description.
+
+_yukictl_ids() {
+    local -a candidates
+    local row
+    for row in ${(f)"$(yukictl __complete $1 2>/dev/null)"}; do
+        candidates+=( "${row%%$'\t'*}:${row#*$'\t'}" )
+    done
+    _describe -t ids id candidates
+}
+
+_yukictl() {
+    local state
+    _arguments -C '1: :->command' '2: :->action' '3: :->id'
+
+    case $state in
+        command)
+            local -a commands
+            commands=(
+                'plugins:what is built on top of the shell'
+                'env:the part of the shell that is up'
+                'help:what all of this does'
+            )
+            _describe -t commands command commands
+            ;;
+        action)
+            local -a actions
+            case $words[2] in
+                plugins|plugin)
+                    actions=(
+                        'list:what is installed, what runs, what is wrong'
+                        'enable:build it from now on'
+                        'disable:take it down and leave it down'
+                    )
+                    ;;
+                env|environment|environments)
+                    actions=(
+                        'list:installed environments and which one is up'
+                        'use:switch to it, turning it back on if it was off'
+                    )
+                    ;;
+            esac
+            _describe -t actions action actions
+            ;;
+        id)
+            case $words[2] in
+                plugins|plugin)
+                    [[ $words[3] == (enable|disable) ]] && _yukictl_ids plugins
+                    ;;
+                env|environment|environments)
+                    [[ $words[3] == use ]] && _yukictl_ids env
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_yukictl "$@"

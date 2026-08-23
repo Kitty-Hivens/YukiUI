@@ -210,6 +210,37 @@ function install_shell_cli(){
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
   realpath -se "$target" >> "${INSTALLED_LISTFILE}"
 }
+function install_shell_completions(){
+  # Completions for the command above, one file per shell. Linked for the same
+  # reason it is: they ask `yukictl` for the names rather than reading the
+  # directories themselves, so they answer for whichever config is installed.
+  #
+  # After the copying step rather than before it, because that step keeps
+  # ~/.config/fish in step with the dotfiles and takes with it whatever they do
+  # not carry -- a link written there first would not survive it.
+  local source_dir="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/completions"
+  if [ ! -d "$source_dir" ]; then return 0; fi
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  local pair source target
+  for pair in \
+    "yukictl.fish:${XDG_CONFIG_HOME}/fish/completions/yukictl.fish" \
+    "yukictl.bash:${XDG_DATA_HOME}/bash-completion/completions/yukictl" \
+    "_yukictl:${XDG_DATA_HOME}/zsh/site-functions/_yukictl"; do
+    source="${source_dir}/${pair%%:*}"
+    target="${pair#*:}"
+    if [ ! -e "$source" ]; then continue; fi
+    x mkdir -p "$(dirname "$target")"
+    x ln -sf "$source" "$target"
+    realpath -se "$target" >> "${INSTALLED_LISTFILE}"
+  done
+  # bash and fish read the directories above on their own; zsh reads a list it
+  # is given, and this is not on it, so the file sits there unreachable until
+  # someone says the word.
+  if command -v zsh > /dev/null 2>&1; then
+    printf "${STY_BLUE}[$0]: For completion in zsh, add this line to your .zshrc:${STY_RST}\n"
+    printf "${STY_BLUE}  fpath=(${XDG_DATA_HOME}/zsh/site-functions \$fpath)${STY_RST}\n"
+  fi
+}
 function install_google_sans_flex(){
   local font_name="Google Sans Flex"
   local src_name="google-sans-flex"
@@ -270,6 +301,9 @@ v install_wallpaper_portal_service
 
 showfun install_shell_cli
 v install_shell_cli
+
+showfun install_shell_completions
+v install_shell_completions
 
 if [[ ! "$OS_GROUP_ID" == "fedora" ]]; then
   showfun install_google_sans_flex

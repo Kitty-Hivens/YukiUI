@@ -48,6 +48,26 @@ need_id() {
     fi
 }
 
+# The ids a shell's completion may offer, one per line, followed by a tab and
+# what the registry says about that one. Taken from the same report a person
+# reads, so a completion cannot offer a name the commands would then refuse.
+#
+# A row is a column of text meant for eyes: an id, a state, and whatever else
+# that row has to say. Rows naming no id -- a directory turned away before it
+# declared one -- have nothing to offer, and the state is what tells a row of
+# the report apart from a line saying nothing is installed.
+complete_ids() {
+    local out
+    out="$(qs -c "$config_name" ipc call "$1" list 2>/dev/null)" || return 0
+    awk '$1 != "-" && $2 ~ /^(running|off|broken|pending|active|offered)$/ {
+        id = $1
+        $1 = ""
+        sub(/^ +/, "")
+        gsub(/  +/, " ")
+        printf "%s\t%s\n", id, $0
+    }' <<<"$out"
+}
+
 case "${1:-}" in
     plugins|plugin)
         case "${2:-list}" in
@@ -66,6 +86,15 @@ case "${1:-}" in
         ;;
     -h|--help|help|"")
         usage
+        ;;
+    # Undocumented on purpose: this answers a shell that is completing a word,
+    # not a person. Silence when the shell is down, because a prompt is no
+    # place to be told about it.
+    __complete)
+        case "${2:-}" in
+            plugins) complete_ids plugins ;;
+            env)     complete_ids environments ;;
+        esac
         ;;
     *)
         echo "unknown command: $1" >&2

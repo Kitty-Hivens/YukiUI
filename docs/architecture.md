@@ -187,6 +187,11 @@ The command lives at `scripts/yukictl` inside the config and is linked into
 `~/.local/bin` on install, so it follows whichever config directory it was
 installed from rather than naming one.
 
+Completing a word asks the shell for the ids, the same way the commands do, so
+what is offered is what can be acted on. The files are in `scripts/completions`
+-- one for bash, fish and zsh -- and are linked into place on install. zsh reads
+only the directories it is given, so the installer prints the line to add.
+
 `list` also prints why a directory was turned away -- a broken manifest, a
 mismatched `apiVersion`, a duplicate id -- which is otherwise only a line in the
 journal.
