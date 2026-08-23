@@ -9,6 +9,45 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHELL_CONFIG_FILE="$XDG_CONFIG_HOME/illogical-impulse/config.json"
 MATUGEN_DIR="$XDG_CONFIG_HOME/matugen"
 terminalscheme="$SCRIPT_DIR/terminal/scheme-base.json"
+SHELL_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Whose theming to apply. This script runs on its own -- from a keybind, from the
+# installer, before the shell is up at all -- so the environment is read from the
+# config rather than asked of a running shell. An environment that declares none
+# leaves both empty and the defaults below stand, which is what every environment
+# did before any of them could declare anything.
+family_theming_matugen=""
+family_theming_apply=""
+resolve_family_theming() {
+    local family manifest base rel
+    family=$(jq -r '.panelFamily // empty' "$SHELL_CONFIG_FILE" 2>/dev/null)
+    [[ -n "$family" ]] || return 0
+    base="$SHELL_ROOT/environments/$family"
+    manifest="$base/manifest.json"
+    [[ -f "$manifest" ]] || return 0
+    # Read the same way the shell reads `entry`: a path inside the environment's
+    # own directory, with no ".." in it.
+    rel=$(jq -r '.theming.matugen // empty' "$manifest" 2>/dev/null)
+    if [[ -n "$rel" && "$rel" != *..* && -f "$base/$rel" ]]; then
+        family_theming_matugen="$base/$rel"
+    fi
+    rel=$(jq -r '.theming.apply // empty' "$manifest" 2>/dev/null)
+    if [[ -n "$rel" && "$rel" != *..* && -f "$base/$rel" ]]; then
+        family_theming_apply="$base/$rel"
+    fi
+    return 0
+}
+
+# matugen wants concrete paths and the shell's own path is not fixed, so the
+# environment states its templates relative to itself and the config is rendered
+# per run.
+render_matugen_config() {
+    local source="$1" rendered
+    rendered="${XDG_RUNTIME_DIR:-/tmp}/quickshell/matugen.toml"
+    mkdir -p "$(dirname "$rendered")"
+    sed "s|@THEMING@|$(dirname "$source")|g" "$source" > "$rendered"
+    printf '%s' "$rendered"
+}
 
 # Which mode the palette already on disk was built for, by the same test the shell
 # applies to it: the background's HSL lightness. This is what is actually on screen,
@@ -32,15 +71,21 @@ palette_mode() {
 
 pre_process() {
     local mode_flag="$1"
-    # Set GNOME color-scheme, GTK theme and icon theme by mode
-    if [[ "$mode_flag" == "dark" ]]; then
-        gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
-        gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
-        gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
-    elif [[ "$mode_flag" == "light" ]]; then
-        gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'
-        gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3'
-        gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
+    # The toolkit theme, the icon set and the Qt style are the environment's to
+    # state, so they moved to its own hook and are applied after matugen has
+    # written what that hook reads. Only an environment that declares no theming
+    # is answered here, and then by what the shell did before environments could
+    # declare any.
+    if [[ -z "$family_theming_apply" ]]; then
+        if [[ "$mode_flag" == "dark" ]]; then
+            gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+            gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
+            gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
+        elif [[ "$mode_flag" == "light" ]]; then
+            gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'
+            gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3'
+            gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
+        fi
     fi
 
     if [ ! -d "$CACHE_DIR"/user/generated ]; then
@@ -294,6 +339,7 @@ switch() {
     generate_colors_material_args+=(--termscheme "$terminalscheme" --blend_bg_fg)
     generate_colors_material_args+=(--cache "$STATE_DIR/user/generated/color.txt")
 
+    resolve_family_theming
     pre_process "$mode_flag"
 
     # Check if app and shell theming is enabled in config
@@ -315,7 +361,14 @@ switch() {
         [[ "$term_fg_boost" != "null" && -n "$term_fg_boost" ]] && generate_colors_material_args+=(--term_fg_boost "$term_fg_boost")
     fi
 
-    matugen "${matugen_args[@]}"
+    if [[ -n "$family_theming_matugen" ]]; then
+        matugen -c "$(render_matugen_config "$family_theming_matugen")" "${matugen_args[@]}"
+    else
+        matugen "${matugen_args[@]}"
+    fi
+    if [[ -n "$family_theming_apply" ]]; then
+        bash "$family_theming_apply" "$mode_flag"
+    fi
     source "$(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate"
     python3 "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
         > "$STATE_DIR"/user/generated/material_colors.scss

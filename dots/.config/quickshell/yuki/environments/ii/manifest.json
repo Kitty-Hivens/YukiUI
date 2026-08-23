@@ -2,5 +2,9 @@
     "id": "ii",
     "name": "Illogical Impulse",
     "apiVersion": 1,
-    "entry": "IiEnvironment.qml"
+    "entry": "IiEnvironment.qml",
+    "theming": {
+        "matugen": "theming/matugen.toml",
+        "apply": "theming/apply.sh"
+    }
 }

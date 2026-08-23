@@ -1,0 +1,43 @@
+# What Illogical Impulse asks matugen to write.
+#
+# Rendered before use: @THEMING@ becomes this directory, so an environment can
+# keep its templates beside its panels rather than in a tree that outlives it.
+# The templates still reachable at ~/.config/matugen are the ones no environment
+# has claimed yet; they move here as each one is written.
+
+[config]
+version_check = false
+
+[templates.m3colors]
+input_path = '~/.config/matugen/templates/colors.json'
+output_path = '~/.local/state/quickshell/user/generated/colors.json'
+
+[templates.hyprland]
+input_path = '~/.config/matugen/templates/hyprland/colors.lua'
+output_path = '~/.config/hypr/hyprland/colors.lua'
+
+[templates.hyprlock]
+input_path = '~/.config/matugen/templates/hyprland/hyprlock-colors.conf'
+output_path = '~/.config/hypr/hyprlock/colors.conf'
+
+[templates.fuzzel]
+input_path = '~/.config/matugen/templates/fuzzel/fuzzel_theme.ini'
+output_path = '~/.config/fuzzel/fuzzel_theme.ini'
+
+[templates.gtk3]
+input_path = '~/.config/matugen/templates/gtk-3.0/gtk.css'
+output_path = '~/.config/gtk-3.0/gtk.css'
+
+[templates.gtk4]
+input_path = '~/.config/matugen/templates/gtk-4.0/gtk.css'
+output_path = '~/.config/gtk-4.0/gtk.css'
+
+[templates.wallpaper]
+input_path = '~/.config/matugen/templates/wallpaper.txt'
+output_path = '~/.local/state/quickshell/user/generated/wallpaper/path.txt'
+
+# Not written straight to ~/.config/kdeglobals: applications write there too, so
+# apply.sh folds this in group by group instead of replacing the file.
+[templates.kdeglobals]
+input_path = '@THEMING@/kdeglobals.colors'
+output_path = '~/.local/state/quickshell/user/generated/kdeglobals.colors'
