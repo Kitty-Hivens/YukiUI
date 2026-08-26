@@ -66,7 +66,10 @@ Singleton {
 			Component.onDestruction: {
 				if (root.trackedPlayer == null || !root.trackedPlayer.isPlaying) {
 					for (const player of root.players) {
-						if (player.isPlaying) {
+						// Guarded: this runs while a player is being destroyed and the
+						// list can still hand out that entry, which is what wrote a type
+						// error into the journal every time a tab stopped playing.
+						if (player?.isPlaying) {
 							root.trackedPlayer = player;
 							break;
 						}
