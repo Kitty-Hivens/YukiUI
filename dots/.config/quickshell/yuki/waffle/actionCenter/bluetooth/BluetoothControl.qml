@@ -113,7 +113,7 @@ Item {
                 text: Translation.tr("More Bluetooth settings")
                 onClicked: {
                     WStates.sidebarLeftOpen = false;
-                    Quickshell.execDetached(["bash", "-c", Config.options.apps.bluetooth]);
+                    Session.openSystemSettings("bluetooth", Config.options.apps.bluetooth);
                 }
             }
             WBorderlessButton {

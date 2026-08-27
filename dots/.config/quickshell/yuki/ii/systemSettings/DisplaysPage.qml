@@ -669,9 +669,15 @@ Item {
                         // whatever is connected -- including a screen that offers
                         // no DDC controls at all. Facts, not settings.
                         ContentSubsection {
+                            id: displayFacts
                             visible: MonitorDdc.infoFor(root.selectedName).length > 0
                             title: Translation.tr("About this display")
 
+                            // Named, and referred to by that name below: with bound
+                            // component behaviour a delegate does not see the
+                            // properties of the thing it sits in, so the unqualified
+                            // read failed and every fact was labelled with its raw
+                            // key instead of its word.
                             readonly property var infoLabels: ({
                                 "model": Translation.tr("Model"),
                                 "vendor": Translation.tr("Made by"),
@@ -690,7 +696,7 @@ Item {
                                     Layout.fillWidth: true
                                     spacing: 8
                                     StyledText {
-                                        text: infoLabels[modelData.key] ?? modelData.key
+                                        text: displayFacts.infoLabels[modelData.key] ?? modelData.key
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         color: Appearance.colors.colSubtext
                                     }

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core.functions
 
 /**
  * Provides some system info: distro, username, and what the machine is.
@@ -28,6 +29,8 @@ Singleton {
     property string cpuModel: ""
     property int cpuThreads: 0
     property string deviceModel: ""
+    /** Every display adapter the machine has, named, and joined where there is more than one. */
+    property string graphics: ""
 
     // A board that was never given a name still answers the question, with
     // whatever the vendor left in the field. Those strings name no device.
@@ -139,6 +142,20 @@ Singleton {
             // outcome here rather than a failure.
             deviceModel = root.describeDevice(root.readFile(fileDmiVendor),
                 root.readFile(fileDmiProduct), root.readFile(fileDmiVersion))
+        }
+    }
+
+    // Read once, from the ids the kernel exposes rather than from a tool: what a
+    // display adapter is does not change while the session runs.
+    Process {
+        id: getGraphics
+        running: true
+        command: ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/system/gpu_name.sh"))]
+        stdout: StdioCollector {
+            id: graphicsCollector
+            onStreamFinished: {
+                root.graphics = graphicsCollector.text.trim().split("\n").filter(line => line.length > 0).join(" · ")
+            }
         }
     }
 

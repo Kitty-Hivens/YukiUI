@@ -171,6 +171,10 @@ ApplicationWindow {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.margins: 20
+                        // The heading stands on the same axis as the column below
+                        // it, which is what makes centring the column legible
+                        // instead of loose.
+                        Layout.leftMargin: SystemPages.contentInset(width + 40)
                         Layout.bottomMargin: 0
                         spacing: 12
 

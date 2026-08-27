@@ -5,6 +5,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import qs.core.services
 import qs.core
+import qs.core.functions
+import qs.ii.systemSettings
 import qs.common.widgets
 import qs.common
 
@@ -35,29 +37,8 @@ Item {
         StreamApps.subscribers--;
     }
 
-    component Heading: StyledText {
-        Layout.fillWidth: true
-        Layout.topMargin: 4
-        font.pixelSize: Appearance.font.pixelSize.smallie
-        font.weight: Font.Medium
-        color: Appearance.colors.colSubtext
-    }
 
-    component Divider: Rectangle {
-        Layout.fillWidth: true
-        Layout.topMargin: 12
-        Layout.bottomMargin: 12
-        implicitHeight: 1
-        color: Appearance.colors.colLayer0Border
-    }
 
-    component Empty: StyledText {
-        Layout.fillWidth: true
-        Layout.topMargin: 2
-        Layout.bottomMargin: 2
-        font.pixelSize: Appearance.font.pixelSize.small
-        color: Appearance.colors.colSubtext
-    }
 
     StyledFlickable {
         id: pageFlick
@@ -69,18 +50,24 @@ Item {
         ColumnLayout {
             id: pageColumn
             y: 16
-            x: Math.max(20, (pageFlick.width - width) / 2)
-            // Narrower than the overview: a volume slider stretched across a
-            // wide window is a long throw for a small adjustment.
-            width: Math.min(pageFlick.width - 40, 880)
+            x: SystemPages.contentInset(pageFlick.width)
+            width: SystemPages.contentWidth(pageFlick.width)
             spacing: 16
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Output")
             }
 
             SystemCard {
                 Layout.fillWidth: true
+
+                // A card with an empty list in it is a box with nothing in it,
+                // which reads as a page that has not finished loading rather than
+                // as a machine with nothing to play through.
+                PageNote {
+                    visible: Audio.hardwareDevices(true).length === 0
+                    text: Translation.tr("Nothing to play through")
+                }
 
                 Repeater {
                     model: Audio.hardwareDevices(true)
@@ -91,7 +78,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: parent.index > 0
                         }
                         AudioDeviceRow {
@@ -107,12 +94,17 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Input")
             }
 
             SystemCard {
                 Layout.fillWidth: true
+
+                PageNote {
+                    visible: Audio.hardwareDevices(false).length === 0
+                    text: Translation.tr("Nothing to record from")
+                }
 
                 Repeater {
                     model: Audio.hardwareDevices(false)
@@ -123,7 +115,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: parent.index > 0
                         }
                         AudioDeviceRow {
@@ -136,7 +128,7 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 visible: root.processors.length > 0
                 text: Translation.tr("Processing")
             }
@@ -157,7 +149,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: processorEntry.index > 0
                         }
 
@@ -212,14 +204,14 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Playing")
             }
 
             SystemCard {
                 Layout.fillWidth: true
 
-                Empty {
+                PageNote {
                     visible: root.outputStreams.length === 0
                     text: Translation.tr("Nothing is playing")
                 }
@@ -233,7 +225,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: parent.index > 0
                         }
                         AudioStreamRow {
@@ -244,14 +236,14 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Recording")
             }
 
             SystemCard {
                 Layout.fillWidth: true
 
-                Empty {
+                PageNote {
                     visible: root.inputStreams.length === 0
                     text: Translation.tr("Nothing is recording")
                 }
@@ -265,7 +257,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: parent.index > 0
                         }
                         AudioStreamRow {
@@ -276,14 +268,65 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
+                text: Translation.tr("System sounds")
+            }
+
+            // The shell's own noises, as opposed to what the machine can play:
+            // which theme they come from, and which of them are made at all.
+            SystemCard {
+                Layout.fillWidth: true
+
+                ContentSubsection {
+                    title: Translation.tr("Theme")
+                    MaterialTextArea {
+                        Layout.fillWidth: true
+                        text: Config.options.sounds.theme
+                        wrapMode: TextEdit.NoWrap
+                        onTextChanged: Config.options.sounds.theme = text
+                    }
+                }
+
+                ConfigSwitch {
+                    id: batterySound
+                    text: Translation.tr("Battery")
+                    buttonIcon: "battery_android_full"
+                    Binding {
+                        target: batterySound
+                        property: "checked"
+                        value: Config.options.sounds.battery
+                        restoreMode: Binding.RestoreBindingOrValue
+                    }
+                    onCheckedChanged: {
+                        if (checked !== Config.options.sounds.battery)
+                            Config.options.sounds.battery = checked;
+                    }
+                }
+                ConfigSwitch {
+                    id: pomodoroSound
+                    text: Translation.tr("Pomodoro")
+                    buttonIcon: "av_timer"
+                    Binding {
+                        target: pomodoroSound
+                        property: "checked"
+                        value: Config.options.sounds.pomodoro
+                        restoreMode: Binding.RestoreBindingOrValue
+                    }
+                    onCheckedChanged: {
+                        if (checked !== Config.options.sounds.pomodoro)
+                            Config.options.sounds.pomodoro = checked;
+                    }
+                }
+            }
+
+            PageHeading {
                 text: Translation.tr("Hardware")
             }
 
             SystemCard {
                 Layout.fillWidth: true
 
-                Empty {
+                PageNote {
                     visible: AudioRouting.cards.length === 0
                     text: Translation.tr("No sound cards were found")
                 }
@@ -299,7 +342,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 0
 
-                        Divider {
+                        PageDivider {
                             visible: cardEntry.index > 0
                         }
 

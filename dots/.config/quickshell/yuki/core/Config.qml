@@ -228,18 +228,27 @@ Singleton {
             }
 
             property JsonObject apps: JsonObject {
-                property string bluetooth: "overskride"
+                // Empty means the shell's own bluetooth settings. A command named
+                // here still wins, which is how overskride or blueman comes back.
+                property string bluetooth: ""
                 property string changePassword: "kitty -1 --hold=yes fish -i -c 'passwd'"
-                property string network: "kitty -1 nmtui"
+                // Empty means the shell's own network settings, which cover wifi,
+                // tethering, VPN profiles and the daemon underneath. A command named
+                // here still wins, which is how nmtui or anything else comes back.
+                property string network: ""
                 property string manageUser: "kcmshell6 kcm_users"
-                property string networkEthernet: "kitty -1 nmtui"
+                property string networkEthernet: ""
                 property string taskManager: "resources"
                 property string terminal: "kitty -1" // This is only for shell actions
                 property string update: "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
-                // The shell's own sound settings, opened on the page this
-                // button means. pavucontrol stays a one line change away for
-                // anyone who wants it back.
-                property string volumeMixer: `YUKIUI_SETTINGS_PAGE=sound qs -p ${Quickshell.shellPath("systemSettings.qml")}`
+                // Empty means the shell's own sound settings. It is not spelled
+                // out as a command because a default is written into the user's
+                // config file the first time anything is saved, and this one
+                // carried an absolute path to the shell -- so moving the shell
+                // left every existing config pointing at a file that was no
+                // longer there, and the button did nothing. Naming a command here
+                // still overrides it, which is how pavucontrol comes back.
+                property string volumeMixer: ""
             }
 
             property JsonObject background: JsonObject {

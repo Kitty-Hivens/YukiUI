@@ -8,8 +8,11 @@ import qs.common
 
 /**
  * A way into one section of the settings, carrying what that section currently
- * holds. Full width rather than a tile: the status line is the reason to open
- * it, and a grid would crop it.
+ * holds.
+ *
+ * Wide rather than square: what the section holds is a phrase and not a figure,
+ * and it is the reason to open the section at all, so the row is laid out to
+ * have room for it beside the name rather than under a tile.
  */
 Rectangle {
     id: root

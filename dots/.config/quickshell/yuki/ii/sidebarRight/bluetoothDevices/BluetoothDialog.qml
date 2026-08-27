@@ -62,7 +62,7 @@ WindowDialog {
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {
-                Quickshell.execDetached(["bash", "-c", `${Config.options.apps.bluetooth}`]);
+                Session.openSystemSettings("bluetooth", Config.options.apps.bluetooth);
                 IiStates.sidebarRightOpen = false;
             }
         }

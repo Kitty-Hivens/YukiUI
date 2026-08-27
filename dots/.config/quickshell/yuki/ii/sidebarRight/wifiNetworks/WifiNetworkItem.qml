@@ -204,9 +204,13 @@ DialogListItem {
             DialogButton {
                 visible: root.saved
                 buttonText: Translation.tr("Forget")
+                // A destructive TEXT button: the label carries the warning and the
+                // background only takes a state layer. colErrorHover is 85% of the
+                // pure error colour, so using it here put red text on a red fill.
                 colText: Appearance.colors.colError
-                colBackgroundHover: Appearance.colors.colErrorHover
-                colRipple: Appearance.colors.colErrorActive
+                colBackground: ColorUtils.transparentize(Appearance.colors.colError, 1)
+                colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colError, 0.92)
+                colRipple: ColorUtils.transparentize(Appearance.colors.colError, 0.88)
                 onClicked: Network.forgetWifiNetwork(root.wifiNetwork)
             }
 

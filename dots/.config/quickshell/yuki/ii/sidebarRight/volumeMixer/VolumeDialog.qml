@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.core.services
 import qs.core
+import qs.core.functions
 import qs.common.widgets
 import qs.ii
 import QtQuick
@@ -32,7 +33,7 @@ WindowDialog {
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {
-                Quickshell.execDetached(["bash", "-c", `${Config.options.apps.volumeMixer}`]);
+                Session.openSystemSettings("sound", Config.options.apps.volumeMixer);
                 IiStates.sidebarRightOpen = false;
             }
         }

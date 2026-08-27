@@ -61,6 +61,10 @@ Item {
             value: SystemInfo.cpuModel
         },
         {
+            label: Translation.tr("Graphics"),
+            value: SystemInfo.graphics
+        },
+        {
             label: Translation.tr("RAM"),
             value: ResourceUsage.maxAvailableMemoryString
         },
@@ -80,13 +84,6 @@ Item {
         // A machine that reports nothing for a field is not worth a blank row.
     ].filter(fact => fact.value.length > 0)
 
-    component Heading: StyledText {
-        Layout.fillWidth: true
-        Layout.topMargin: 4
-        font.pixelSize: Appearance.font.pixelSize.smallie
-        font.weight: Font.Medium
-        color: Appearance.colors.colSubtext
-    }
 
     StyledFlickable {
         id: pageFlick
@@ -100,8 +97,11 @@ Item {
             // Positioned rather than anchored: inside a flickable the content
             // item is what scrolls, so filling it would pin the page in place.
             y: 16
-            x: Math.max(20, (pageFlick.width - width) / 2)
-            width: Math.min(pageFlick.width - 40, 1180)
+            // Left edge shared with the page header above it rather than centred:
+            // centred, the column drifted away from the heading it belongs to and
+            // left a hole down the left of a wide window.
+            x: SystemPages.contentInset(pageFlick.width)
+            width: SystemPages.contentWidth(pageFlick.width)
             spacing: 16
 
             SystemCard {
@@ -149,11 +149,22 @@ Item {
                         }
                     }
 
-                    ColumnLayout {
+                    // Two columns of facts where there is room, which is both
+                    // shorter than a single stack and wide enough to close the gap
+                    // that opened between the machine's name and its numbers.
+                    //
+                    // Filled downwards rather than across, so the break between the
+                    // columns falls where the facts themselves divide: what the
+                    // machine is made of on one side, what is running on it on the
+                    // other.
+                    GridLayout {
                         Layout.fillWidth: !root.wide
-                        Layout.preferredWidth: root.wide ? 430 : -1
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 3
+                        Layout.preferredWidth: root.wide ? 820 : -1
+                        Layout.alignment: Qt.AlignVCenter
+                        flow: GridLayout.TopToBottom
+                        rows: root.wide ? Math.ceil(root.facts.length / 2) : root.facts.length
+                        columnSpacing: 40
+                        rowSpacing: 3
 
                         Repeater {
                             model: root.facts
@@ -199,7 +210,7 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Resources")
             }
 
@@ -258,21 +269,31 @@ Item {
                 }
             }
 
-            Heading {
+            PageHeading {
                 text: Translation.tr("Settings")
             }
 
-            Repeater {
-                model: root.sections
+            // Two abreast where there is room. Down one column they ran past the
+            // bottom of the window, so half of what the page is for was reached by
+            // scrolling past the other half.
+            GridLayout {
+                Layout.fillWidth: true
+                columns: root.wide ? 2 : 1
+                columnSpacing: 12
+                rowSpacing: 12
 
-                delegate: SectionRow {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    icon: modelData.icon
-                    title: modelData.name
-                    description: modelData.description
-                    status: modelData.status
-                    onClicked: root.navigate(modelData.component)
+                Repeater {
+                    model: root.sections
+
+                    delegate: SectionRow {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        icon: modelData.icon
+                        title: modelData.name
+                        description: modelData.description
+                        status: modelData.status
+                        onClicked: root.navigate(modelData.component)
+                    }
                 }
             }
         }

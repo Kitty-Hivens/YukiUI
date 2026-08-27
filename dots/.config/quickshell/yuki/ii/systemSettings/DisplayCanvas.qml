@@ -145,6 +145,8 @@ Item {
             property int liveY: 0
             property bool dragging: false
             property bool blocked: false
+            /** False until the first position is in place, so arriving is not a move. */
+            property bool settled: false
 
             visible: tile.entry !== null
             activeFocusOnTab: true
@@ -167,16 +169,26 @@ Item {
                     tile.liveX = tile.entry.x;
                     tile.liveY = tile.entry.y;
                 }
+                // Placed first, allowed to move afterwards. Otherwise arriving at
+                // the page is a change like any other and every display slides in
+                // from wherever the first frame put it.
+                Qt.callLater(() => tile.settled = true);
             }
 
             // Expressive spatial curve: a display shoved out of an illegal spot
             // should read as pushed back, not as jumping.
-            Behavior on x {
-                enabled: !tile.dragging
+            //
+            // On where the display is rather than on where it is drawn: the two
+            // differ by the canvas, and a canvas that has been resized has not
+            // moved anything -- it is the same arrangement at a different scale.
+            // Animated on the drawn position, resizing the window sent every
+            // display travelling across the canvas.
+            Behavior on liveX {
+                enabled: tile.settled && !tile.dragging
                 animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
             }
-            Behavior on y {
-                enabled: !tile.dragging
+            Behavior on liveY {
+                enabled: tile.settled && !tile.dragging
                 animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
             }
 

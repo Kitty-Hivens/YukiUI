@@ -25,12 +25,20 @@ Rectangle {
     signal pageSelected(string component)
 
     // Matched the way the launcher matches, so a half remembered or mistyped
-    // name still finds the page instead of returning nothing.
+    // name still finds the page instead of returning nothing -- and against what
+    // a page is about as well as what it is called, because the words somebody
+    // types are the ones inside the page rather than the eight on the rail.
     readonly property var searchable: {
         const flat = [];
         for (const group of root.groups)
             for (const page of group.pages)
-                flat.push({ name: page.name, icon: page.icon, component: page.component });
+                flat.push({
+                    name: page.name,
+                    description: page.description,
+                    keywords: page.keywords,
+                    icon: page.icon,
+                    component: page.component
+                });
         return flat;
     }
 
@@ -48,7 +56,7 @@ Rectangle {
             }
             return out;
         }
-        return Fuzzy.go(query, root.searchable, { all: false, key: "name" })
+        return Fuzzy.go(query, root.searchable, { all: false, keys: ["name", "description", "keywords"] })
             .map(result => Object.assign({ section: false }, result.obj));
     }
 
@@ -127,7 +135,11 @@ Rectangle {
                     RippleButton {
                         id: navButton
                         readonly property bool current: root.currentComponent === modelData.component
-                        implicitHeight: 42
+                        // Only a search result carries one. A rail of eight names
+                        // needs no explaining; a result that matched on a word
+                        // inside the page does.
+                        readonly property string subtitle: modelData.description ?? ""
+                        implicitHeight: navButton.subtitle.length > 0 ? 54 : 42
                         buttonRadius: height / 2
                         toggled: navButton.current
                         colBackgroundToggled: Appearance.colors.colSecondaryContainer
@@ -147,13 +159,27 @@ Rectangle {
                                 fill: navButton.current ? 1 : 0
                                 color: navButton.current ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1
                             }
-                            StyledText {
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignLeft
-                                text: modelData.name
-                                elide: Text.ElideRight
-                                font.pixelSize: Appearance.font.pixelSize.normal
-                                color: navButton.current ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1
+                                spacing: 0
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignLeft
+                                    text: modelData.name
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.normal
+                                    color: navButton.current ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    visible: navButton.subtitle.length > 0
+                                    horizontalAlignment: Text.AlignLeft
+                                    text: navButton.subtitle
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                    color: Appearance.colors.colSubtext
+                                }
                             }
                         }
                     }

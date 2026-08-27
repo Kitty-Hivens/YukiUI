@@ -133,7 +133,8 @@ Singleton {
     readonly property var preparedSettingsPages: SystemPages.pages.map(page => ({
                 page: page,
                 name: Fuzzy.prepare(page.name),
-                description: Fuzzy.prepare(page.description)
+                description: Fuzzy.prepare(page.description),
+                keywords: Fuzzy.prepare(page.keywords)
             }))
 
     property string mathResult: ""
@@ -335,7 +336,7 @@ Singleton {
         });
         const settingsResultObjects = Fuzzy.go(StringUtils.cleanPrefix(root.query, Config.options.search.prefix.app), root.preparedSettingsPages, {
             all: false,
-            keys: ["name", "description"]
+            keys: ["name", "description", "keywords"]
         }).map(entry => {
             const page = entry.obj.page;
             return resultComp.createObject(null, {

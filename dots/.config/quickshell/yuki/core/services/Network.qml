@@ -32,7 +32,13 @@ Singleton {
         "802-11-wireless": "wifi",
         "bluetooth": "bluetooth",
         "gsm": "cellular",
-        "cdma": "cellular"
+        "cdma": "cellular",
+        // A tunnel is not one of the channels above -- it rides on whichever of
+        // them is up -- but it is still a profile someone brings up and takes
+        // down, so it is named here to be listed as one.
+        "vpn": "vpn",
+        "wireguard": "vpn",
+        "tun": "vpn"
     })
     /// Fastest first: with several channels up, this is the one whose name and icon
     /// describe the connection.
@@ -68,6 +74,11 @@ Singleton {
     /// tethering, a modem -- as {uuid, name, channel, active}. Wifi is left out: it
     /// has a list of live access points rather than of profiles.
     property list<var> otherConnections: []
+    /// Tunnels as saved profiles: wireguard, openvpn, and the tun devices a unit
+    /// outside NetworkManager brings up but still registers as a connection. Kept
+    /// apart from [otherConnections] because a tunnel is not an alternative to
+    /// them -- it sits on top of whichever one is carrying the machine.
+    property list<var> vpnConnections: []
     /// The connection an up/down is running for, so a view can say which row is busy.
     property string busyConnectionUuid: ""
     /// The unit that actually drives wifi, taken from what NetworkManager is
@@ -246,6 +257,58 @@ Singleton {
             return;
         root.busyConnectionUuid = uuid;
         connectionDownProc.exec(["nmcli", "connection", "down", "uuid", uuid]);
+    }
+
+    /// A tunnel brought in from a file, which is how a VPN profile comes to exist
+    /// without an editor for it: NetworkManager reads the vendor's own config and
+    /// makes a profile of it.
+    ///
+    /// What kind of config it is is decided by looking inside rather than by the
+    /// extension: wireguard and openvpn configs both end in .conf often enough
+    /// that the name is a guess, and importing as the wrong kind fails with a
+    /// message about the file rather than about the guess.
+    property string vpnImportError: ""
+    property string vpnImported: ""
+    readonly property bool vpnImporting: vpnImportProc.running
+
+    function importVpnConfig(path: string): void {
+        if (root.vpnImporting || path.length === 0)
+            return;
+        root.vpnImportError = "";
+        root.vpnImported = "";
+        vpnImportProc.lastError = "";
+        vpnImportProc.exec(["bash", "-c",
+            'file="$1"\n'
+            + 'if head -n 40 "$file" | grep -qi "^[[:space:]]*\\[Interface\\]"; then kind=wireguard; else kind=openvpn; fi\n'
+            + 'exec nmcli connection import type "$kind" file "$file"',
+            "import-vpn", path]);
+    }
+
+    Process {
+        id: vpnImportProc
+        property string lastError: ""
+        stdout: StdioCollector {
+            id: vpnImportOut
+            onStreamFinished: {
+                const named = /Connection '([^']+)'/.exec(vpnImportOut.text);
+                if (named)
+                    root.vpnImported = named[1];
+            }
+        }
+        stderr: StdioCollector {
+            id: vpnImportErr
+            onStreamFinished: {
+                const lines = vpnImportErr.text.trim().split("\n").filter(line => line.trim().length > 0);
+                vpnImportProc.lastError = lines.length > 0 ? lines[lines.length - 1].replace(/^Error:\s*/, "") : "";
+            }
+        }
+        // Decided on the exit code rather than on whether anything was written to
+        // stderr: nmcli warns on a successful import often enough that a warning
+        // would otherwise read as a failure.
+        onExited: exitCode => {
+            root.vpnImportError = exitCode === 0 ? "" : vpnImportProc.lastError;
+            root.update();
+        }
     }
 
     /// Restarts the wifi backend. The scan list comes from that daemon, so when it
@@ -642,6 +705,14 @@ Singleton {
                     // Wifi has its own list, and ethernet is not something to pick
                     // from a list -- it is up whenever the cable is in.
                     .filter(c => c.channel === "bluetooth" || c.channel === "cellular");
+                root.vpnConnections = profiles
+                    .map(fields => ({
+                        uuid: fields[0],
+                        name: fields[1],
+                        channel: root.connectionTypeChannels[fields[2]] ?? "",
+                        active: fields[3] === "yes"
+                    }))
+                    .filter(c => c.channel === "vpn");
             }
         }
     }

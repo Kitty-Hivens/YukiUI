@@ -53,9 +53,23 @@ Singleton {
 
     readonly property list<string> runningIds: Object.keys(root.loaded).sort()
 
+    /**
+     * Whether this process is the one that runs plugins.
+     *
+     * Manifests are read anywhere -- that is how a settings window lists what is
+     * installed and what it is set to. Building the entries is another matter: a
+     * second process that built them would start a second copy of every plugin,
+     * with its processes and its shortcuts, behind the back of the shell already
+     * running them. So only the process that says so hosts them.
+     */
+    property bool hosting: false
+
     // Woken from shell.qml, like the other services that have to be running
-    // before anything asks them a question.
-    function load() {}
+    // before anything asks them a question. Saying it is also what marks this
+    // process as the host.
+    function load() {
+        root.hosting = true;
+    }
 
     function get(id) {
         return root.loaded[id] ?? null;
@@ -184,6 +198,8 @@ Singleton {
 
         required property string directory
         property string pluginId: ""
+        /** What the manifest calls itself, for a surface that lists plugins. */
+        property string name: ""
         property string entryUrl: ""
         property var instance: null
         /** Defaults the manifest declared, or null when it declared none. */
@@ -222,10 +238,22 @@ Singleton {
                 return;
             }
             slot.pluginId = manifest.id;
+            slot.name = typeof manifest.name === "string" ? manifest.name : "";
             slot.entryUrl = `${root.pluginFolder}/${slot.directory}/${manifest.entry}`;
             slot.configSchema = (manifest.config && typeof manifest.config === "object" && !Array.isArray(manifest.config))
                 ? manifest.config
                 : null;
+            // Built here rather than on the way to loading the plugin: settings are
+            // host code reading a file, not plugin code, and a surface that offers
+            // to configure something has to be able to do it while it is switched
+            // off -- otherwise a plugin that needs a setting before it can work
+            // cannot be given one.
+            if (slot.settings === null && slot.configSchema !== null) {
+                slot.settings = settingsComponent.createObject(slot, {
+                    pluginId: slot.pluginId,
+                    schema: slot.configSchema
+                });
+            }
             slot.sync();
         }
 
@@ -247,7 +275,7 @@ Singleton {
             // all, is every time.
             if (!Config.ready)
                 return;
-            const wanted = !root.isDisabled(slot.pluginId);
+            const wanted = root.hosting && !root.isDisabled(slot.pluginId);
             if (wanted === (slot.instance !== null))
                 return;
             if (!wanted) {
@@ -256,12 +284,6 @@ Singleton {
                 slot.instance = null;
                 console.log(`[Plugins] ${slot.pluginId} unloaded`);
                 return;
-            }
-            if (slot.settings === null && slot.configSchema !== null) {
-                slot.settings = settingsComponent.createObject(slot, {
-                    pluginId: slot.pluginId,
-                    schema: slot.configSchema
-                });
             }
             const component = Qt.createComponent(slot.entryUrl);
             if (component.status === Component.Error) {
@@ -290,6 +312,9 @@ Singleton {
         // same before and after the config arrives, so it never signals.
         readonly property bool configReady: Config.ready
         onConfigReadyChanged: slot.sync()
+
+        readonly property bool hostingWatch: root.hosting
+        onHostingWatchChanged: slot.sync()
 
         property FileView manifestFile: FileView {
             path: `${root.pluginPath}/${slot.directory}/manifest.json`
@@ -356,6 +381,33 @@ Singleton {
             required property string modelData
             directory: modelData
         }
+    }
+
+    /**
+     * One row per installed plugin: what it is, whether it runs, why it does not,
+     * and the settings it declared.
+     *
+     * The model already held all of this and nothing could ask it, which is why
+     * turning a plugin off meant editing the config by hand and configuring one
+     * meant editing a second file by hand.
+     */
+    readonly property list<var> entries: {
+        const rows = [];
+        for (let i = 0; i < (root.slots?.count ?? 0); i++) {
+            const slot = root.slots.objectAt(i);
+            if (!slot)
+                continue;
+            rows.push({
+                id: slot.pluginId,
+                name: slot.name.length > 0 ? slot.name : (slot.pluginId.length > 0 ? slot.pluginId : slot.directory),
+                directory: slot.directory,
+                problem: root.problems[slot.directory] ?? "",
+                running: slot.instance !== null,
+                schema: slot.configSchema,
+                settings: slot.settings?.values ?? null
+            });
+        }
+        return rows;
     }
 
     /**

@@ -64,7 +64,7 @@ Item {
 
                 onClicked: {
                     WStates.sidebarLeftOpen = false;
-                    Quickshell.execDetached(["bash", "-c", Config.options.apps.volumeMixer]);
+                    Session.openSystemSettings("sound", Config.options.apps.volumeMixer);
                 }
 
                 contentItem: Item {

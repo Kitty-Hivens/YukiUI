@@ -2,6 +2,7 @@ import qs
 import qs.core.services
 import qs.core.services.network
 import qs.core
+import qs.core.functions
 import qs.common.widgets
 import qs.common
 import qs.ii
@@ -165,7 +166,7 @@ WindowDialog {
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {
-                Quickshell.execDetached(["bash", "-c", `${Network.ethernet ? Config.options.apps.networkEthernet : Config.options.apps.network}`]);
+                Session.openSystemSettings("network", Network.ethernet ? Config.options.apps.networkEthernet : Config.options.apps.network);
                 IiStates.sidebarRightOpen = false;
             }
         }

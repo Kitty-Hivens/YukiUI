@@ -69,7 +69,9 @@ Singleton {
         Quickshell.execDetached([
             "notify-send", 
             Translation.tr("Critically low battery"), 
-            Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options.battery.suspend), 
+            root.allowAutomaticSuspend
+                ? Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options.battery.suspend)
+                : Translation.tr("Please charge!"), 
             "-u", "critical",
             "-a", "Shell",
             "--hint=int:transient:1",

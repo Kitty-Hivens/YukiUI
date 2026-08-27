@@ -115,6 +115,10 @@ ColumnLayout {
 
     StyledSlider {
         Layout.fillWidth: true
+        // Capped rather than letting the page stay narrow for its sake: a volume
+        // slider stretched across a wide window is a long throw for a small
+        // adjustment, and that is the slider's problem, not the page's.
+        Layout.maximumWidth: 640
         Layout.leftMargin: 4
         Layout.rightMargin: 4
         configuration: StyledSlider.Configuration.S

@@ -105,7 +105,7 @@ Item {
                 text: Translation.tr("More Internet settings")
                 onClicked: {
                     WStates.sidebarLeftOpen = false;
-                    Quickshell.execDetached(["bash", "-c", Config.options.apps.network]);
+                    Session.openSystemSettings("network", Config.options.apps.network);
                 }
             }
             WBorderlessButton {
