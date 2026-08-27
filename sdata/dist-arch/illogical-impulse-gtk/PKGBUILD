@@ -8,7 +8,6 @@ license=(None)
 depends=(
   gnome-keyring
   networkmanager
-  overskride-bin
   nautilus
   resources
   hyprpolkitagent

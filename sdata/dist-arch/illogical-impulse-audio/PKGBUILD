@@ -7,7 +7,6 @@ arch=(any)
 license=(None)
 depends=(
   cava
-  pavucontrol
   wireplumber
   pipewire-pulse
   libdbusmenu-gtk3

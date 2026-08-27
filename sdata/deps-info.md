@@ -12,8 +12,6 @@ Tips:
 ## illogical-impulse-audio
 - `cava`
   - Used in Quickshell config.
-- `pavucontrol`
-  - Used in Hyprland and Quickshell config.
 - `wireplumber`
   - Not explicitly used.
 - `pipewire-pulse`
@@ -117,9 +115,7 @@ Tips:
 - `gnome-keyring`
   - Provide executable `gnome-keyring-daemon`, used in Hyprland and Quickshell config.
 - `networkmanager`
-  - Network backend; `nmtui` is the configured `apps.network`.
-- `overskride-bin`
-  - GTK/Adwaita Bluetooth manager (`apps.bluetooth`); replaces bluedevil.
+  - Network backend, read and driven by the shell's own network page.
 - `nautilus`
   - File manager; replaces dolphin.
 - `resources`
