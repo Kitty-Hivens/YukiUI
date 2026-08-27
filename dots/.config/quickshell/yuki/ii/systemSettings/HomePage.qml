@@ -209,23 +209,27 @@ Item {
                 columnSpacing: 12
                 rowSpacing: 12
 
+                // A tile that has nothing yet says so. Until the first reading
+                // lands there is no figure to round, and rounding what is not
+                // there is how a window that had just opened claimed the memory
+                // was full.
                 StatTile {
                     Layout.fillWidth: true
                     icon: "developer_board"
                     label: Translation.tr("CPU")
-                    value: root.percent(ResourceUsage.cpuUsage)
+                    value: ResourceUsage.cpuReady ? root.percent(ResourceUsage.cpuUsage) : "--"
                     detail: root.cpuClock.length > 0
                         ? `${root.cpuClock} · ${Translation.tr("Threads: %1").arg(SystemInfo.cpuThreads)}`
                         : Translation.tr("Threads: %1").arg(SystemInfo.cpuThreads)
-                    fraction: ResourceUsage.cpuUsage
+                    fraction: ResourceUsage.cpuReady ? ResourceUsage.cpuUsage : 0
                     history: ResourceUsage.cpuUsageHistory
                 }
                 StatTile {
                     Layout.fillWidth: true
                     icon: "memory"
                     label: Translation.tr("RAM")
-                    value: root.percent(ResourceUsage.memoryUsedPercentage)
-                    detail: root.pairGb(ResourceUsage.memoryUsed, ResourceUsage.memoryTotal)
+                    value: ResourceUsage.ready ? root.percent(ResourceUsage.memoryUsedPercentage) : "--"
+                    detail: ResourceUsage.ready ? root.pairGb(ResourceUsage.memoryUsed, ResourceUsage.memoryTotal) : ""
                     fraction: ResourceUsage.memoryUsedPercentage
                     history: ResourceUsage.memoryUsageHistory
                 }
@@ -234,8 +238,10 @@ Item {
                     icon: "swap_horiz"
                     label: Translation.tr("Swap")
                     value: ResourceUsage.swapTotal > 0 ? root.percent(ResourceUsage.swapUsedPercentage) : "--"
-                    detail: ResourceUsage.swapTotal > 0
-                        ? root.pairGb(ResourceUsage.swapUsed, ResourceUsage.swapTotal)
+                    // Absent and unread are not the same thing, and only one of
+                    // them is worth telling somebody about.
+                    detail: !ResourceUsage.ready ? ""
+                        : ResourceUsage.swapTotal > 0 ? root.pairGb(ResourceUsage.swapUsed, ResourceUsage.swapTotal)
                         : Translation.tr("Not configured")
                     fraction: ResourceUsage.swapUsedPercentage
                     history: ResourceUsage.swapTotal > 0 ? ResourceUsage.swapUsageHistory : []
