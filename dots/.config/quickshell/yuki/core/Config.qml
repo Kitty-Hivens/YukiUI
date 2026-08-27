@@ -496,7 +496,12 @@ Singleton {
                 // had no ceiling and is rewritten whole on every new one, so
                 // left alone it grows for as long as nobody clears it.
                 property int keep: 200
-                property JsonObject monitor: JsonObject {
+                // Named the way the two places that read it have named it since
+                // the rename that never reached this file: the switch wrote to a
+                // key that did not exist, so it threw instead of writing, and the
+                // popup asked for the same missing key through a guard and got
+                // false every time. Nothing was ever stored under the old name.
+                property JsonObject forceMonitor: JsonObject {
                     property bool enable: false
                     property string name: "" // Name of the monitor to show notifications on, like "eDP-1". Find out with 'hyprctl monitors' command
                 }
