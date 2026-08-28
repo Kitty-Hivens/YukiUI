@@ -29,10 +29,11 @@ Item {
     readonly property bool empty: root.knownCount === 0 && BluetoothStatus.unpairedDevices.length === 0
 
     // Discovery is stopped on the way out. Left running it keeps the radio busy
-    // and the battery draining for a window nobody is looking at any more.
+    // and the battery draining for a window nobody is looking at any more --
+    // but not while a pairing is still riding on the scan.
     Component.onDestruction: {
-        if (root.adapter && root.adapter.discovering)
-            root.adapter.discovering = false;
+        if (root.adapter?.discovering)
+            BluetoothStatus.stopDiscovery();
     }
 
     StyledFlickable {
@@ -105,8 +106,10 @@ Item {
                         materialIcon: root.discovering ? "stop" : "search"
                         mainText: root.discovering ? Translation.tr("Stop") : Translation.tr("Search")
                         onClicked: {
-                            if (root.adapter)
-                                root.adapter.discovering = !root.adapter.discovering;
+                            if (root.discovering)
+                                BluetoothStatus.stopDiscovery();
+                            else
+                                BluetoothStatus.startDiscovery();
                         }
                     }
                 }
@@ -194,8 +197,10 @@ Item {
                 actionIcon: root.discovering ? "stop" : "search"
                 actionText: root.discovering ? Translation.tr("Stop") : Translation.tr("Search")
                 onActionClicked: {
-                    if (root.adapter)
-                        root.adapter.discovering = !root.adapter.discovering;
+                    if (root.discovering)
+                        BluetoothStatus.stopDiscovery();
+                    else
+                        BluetoothStatus.startDiscovery();
                 }
             }
 

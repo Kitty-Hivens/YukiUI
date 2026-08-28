@@ -96,7 +96,7 @@ DialogListItem {
                     if (root.device?.paired) {
                         root.device?.forget();
                     } else {
-                        root.device?.pair();
+                        BluetoothStatus.pair(root.device);
                     }
                 }
             }

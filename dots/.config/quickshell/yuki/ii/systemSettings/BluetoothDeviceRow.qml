@@ -148,7 +148,7 @@ ColumnLayout {
                     else if (root.paired)
                         root.device?.connect();
                     else
-                        root.device?.pair();
+                        BluetoothStatus.pair(root.device);
                 }
             }
         }

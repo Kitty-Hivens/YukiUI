@@ -19,12 +19,12 @@ Item {
 
     Component.onCompleted: {
         if (Bluetooth.defaultAdapter?.enabled)
-            Bluetooth.defaultAdapter.discovering = true;
+            BluetoothStatus.startDiscovery();
     }
-    Component.onDestruction: {
-        if (Bluetooth.defaultAdapter)
-            Bluetooth.defaultAdapter.discovering = false;
-    }
+    // Not while a pairing is still riding on the scan: this panel closes the
+    // moment the pairing prompt takes focus, which is in the middle of the
+    // pairing it just started.
+    Component.onDestruction: BluetoothStatus.stopDiscovery()
 
     WPanelPageColumn {
         anchors.fill: parent
@@ -65,7 +65,10 @@ Item {
                                 if (!adapter)
                                     return;
                                 adapter.enabled = wanted;
-                                adapter.discovering = wanted;
+                                if (wanted)
+                                    BluetoothStatus.startDiscovery();
+                                else
+                                    BluetoothStatus.stopDiscovery();
                             }
                         }
                     }
@@ -122,9 +125,7 @@ Item {
                 anchors.rightMargin: 12
                 enabled: !Bluetooth.defaultAdapter?.discovering && Bluetooth.defaultAdapter?.enabled
 
-                onClicked: {
-                    Bluetooth.defaultAdapter.discovering = true;
-                }
+                onClicked: BluetoothStatus.startDiscovery()
 
                 contentItem: FluentIcon {
                     icon: "arrow-counterclockwise"
