@@ -24,7 +24,7 @@ ExpandableChoiceButton {
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             Layout.alignment: Qt.AlignTop
-            icon: WIcons.bluetoothDeviceIcon(root?.device)
+            icon: WIcons.bluetoothDeviceIcon(root.device?.icon ?? "")
             implicitSize: 18
         }
 

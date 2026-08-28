@@ -3,6 +3,7 @@ import Quickshell
 
 import qs.core
 import qs.ii.background
+import qs.ii.bluetoothPairing
 import qs.ii.bar
 import qs.ii.cheatsheet
 import qs.ii.dock
@@ -27,6 +28,7 @@ import qs.ii.wallpaperSelector
 Scope {
     PanelLoader { extraCondition: !Config.options.bar.vertical; component: Bar {} }
     PanelLoader { component: Background {} }
+    PanelLoader { component: BluetoothPairing {} }
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
     PanelLoader { component: Lock {} }

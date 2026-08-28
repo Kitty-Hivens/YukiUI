@@ -32,6 +32,9 @@ Tips:
 ## illogical-impulse-basic
 - `bc`
   - Used in `quickshell/yuki/scripts/colors/switchwall.sh` for example.
+- `bluez`
+  - The bluetooth daemon. The shell talks to it directly for the bar indicator, the
+    quick toggles, the settings page and the pairing agent.
 - `coreutils`
   - Too many executables involved, not sure where been used.
 - `cliphist`
@@ -147,6 +150,9 @@ Tips:
   - Not explicitly used.
 - `gobject-introspection`
   - Not explicitly used.
+- `python-gobject`
+  - The `gi` bindings. Used by `quickshell/yuki/scripts/portal/wallpaper-portal.py`
+    and `quickshell/yuki/scripts/bluetooth/pairing-agent.py`.
 
 ## illogical-impulse-screencapture
 - `hyprshot`

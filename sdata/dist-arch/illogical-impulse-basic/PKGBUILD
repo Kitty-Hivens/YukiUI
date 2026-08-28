@@ -7,6 +7,7 @@ arch=(any)
 license=(None)
 depends=(
   bc
+  bluez
   coreutils
   cliphist
   cmake

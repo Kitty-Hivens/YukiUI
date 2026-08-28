@@ -1062,5 +1062,17 @@
   "Choose a VPN configuration": "Выберите конфигурацию VPN",
   "VPN configuration": "Конфигурация VPN",
   "%1 until full": "%1 до полного",
-  "%1 left": "Осталось %1"
+  "%1 left": "Осталось %1",
+  "Pair with %1?": "Сопрячь с %1?",
+  "Let %1 connect?": "Разрешить %1 подключиться?",
+  "Check that this same code is showing on the device": "Проверьте, что на устройстве показан тот же код",
+  "%1 is asking to pair with this computer": "%1 запрашивает сопряжение с этим компьютером",
+  "Type this code on the device": "Введите этот код на устройстве",
+  "Type the code showing on the device": "Введите код, показанный на устройстве",
+  "Type the PIN the device is set to": "Введите PIN, заданный на устройстве",
+  "It is asking to use %1": "Запрашивается доступ к %1",
+  "PIN": "PIN",
+  "Code": "Код",
+  "Allow": "Разрешить",
+  "Deny": "Запретить"
 }

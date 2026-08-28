@@ -805,5 +805,17 @@
   "Choose a VPN configuration": "Choose a VPN configuration",
   "VPN configuration": "VPN configuration",
   "%1 until full": "%1 until full",
-  "%1 left": "%1 left"
+  "%1 left": "%1 left",
+  "Pair with %1?": "Pair with %1?",
+  "Let %1 connect?": "Let %1 connect?",
+  "Check that this same code is showing on the device": "Check that this same code is showing on the device",
+  "%1 is asking to pair with this computer": "%1 is asking to pair with this computer",
+  "Type this code on the device": "Type this code on the device",
+  "Type the code showing on the device": "Type the code showing on the device",
+  "Type the PIN the device is set to": "Type the PIN the device is set to",
+  "It is asking to use %1": "It is asking to use %1",
+  "PIN": "PIN",
+  "Code": "Code",
+  "Allow": "Allow",
+  "Deny": "Deny"
 }

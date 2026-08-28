@@ -37,6 +37,7 @@ ShellRoot {
 
     Component.onCompleted: {
         Plugins.load()
+        BluetoothAgent.load()
         Environments.load()
         MaterialThemeLoader.reapplyTheme()
         EnvironmentTheming.load()

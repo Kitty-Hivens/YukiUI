@@ -171,8 +171,7 @@ Singleton {
         return icon;
     }
 
-    function bluetoothDeviceIcon(device) {
-        const systemIconName = device?.icon || "";
+    function bluetoothDeviceIcon(systemIconName: string): string {
         if (systemIconName.includes("headset") || systemIconName.includes("headphones"))
             return "headphones";
         if (systemIconName.includes("audio"))

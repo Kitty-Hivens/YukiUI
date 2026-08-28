@@ -6,6 +6,7 @@ import qs.waffle
 import qs.waffle.actionCenter
 import qs.waffle.background
 import qs.waffle.bar
+import qs.waffle.bluetoothPairing
 import qs.waffle.lock
 import qs.waffle.notificationCenter
 import qs.waffle.notificationPopup
@@ -35,6 +36,7 @@ Scope {
     PanelLoader { component: WaffleActionCenter {} }
     PanelLoader { component: WaffleBar {} }
     PanelLoader { component: WaffleBackground {} }
+    PanelLoader { component: WaffleBluetoothPairing {} }
     PanelLoader { component: WaffleLock {} }
     PanelLoader { component: WaffleNotificationCenter {} }
     PanelLoader { component: WaffleNotificationPopup {} }
