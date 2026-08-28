@@ -25,7 +25,7 @@ Singleton {
         if (systemIconName.includes("audio"))
             return "speaker";
         if (systemIconName.includes("phone"))
-            return "smartphone";
+            return "mobile";
         if (systemIconName.includes("mouse"))
             return "mouse";
         if (systemIconName.includes("keyboard"))
