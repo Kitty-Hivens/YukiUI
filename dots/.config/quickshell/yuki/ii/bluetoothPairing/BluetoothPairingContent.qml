@@ -38,10 +38,8 @@ Item {
             return Translation.tr("Type the code showing on the device");
         if (BluetoothAgent.kind === "pin")
             return Translation.tr("Type the PIN the device is set to");
-        if (BluetoothAgent.kind === "service") {
-            const service = BluetoothAgent.request?.service ?? "";
-            return Translation.tr("It is asking to use %1").arg(service.length > 0 ? service : (BluetoothAgent.request?.uuid ?? ""));
-        }
+        if (BluetoothAgent.kind === "service")
+            return Translation.tr("It is asking to use %1").arg(BluetoothAgent.services.join(", "));
         return "";
     }
 
@@ -157,8 +155,20 @@ Item {
                 // decide here is whether to give up on it.
                 visible: !BluetoothAgent.showingCode
                 enabled: !root.typing || inputField.text.length > 0
-                buttonText: BluetoothAgent.kind === "service" ? Translation.tr("Allow") : Translation.tr("Pair")
+                buttonText: BluetoothAgent.kind === "service" ? Translation.tr("Allow once") : Translation.tr("Pair")
                 onClicked: root.submit()
+            }
+            // Answering about the device instead of about this one profile, and
+            // the answer worth offering: a device asks once per profile it
+            // wants, and asks again every time it comes back.
+            DialogButton {
+                visible: BluetoothAgent.kind === "service"
+                buttonText: Translation.tr("Always allow")
+                colBackground: Appearance.colors.colPrimary
+                colBackgroundHover: Appearance.colors.colPrimaryHover
+                colRipple: Appearance.colors.colPrimaryActive
+                colText: Appearance.colors.colOnPrimary
+                onClicked: BluetoothAgent.acceptAlways()
             }
         }
     }

@@ -23,14 +23,50 @@ Singleton {
     id: root
 
     /**
-     * What is being asked, straight from the agent, or nothing.
+     * Everything BlueZ is waiting on, oldest first.
+     *
+     * A queue rather than one at a time: a device coming back asks separately
+     * for every profile it wants, and an unanswered question dropped to make
+     * room for the next leaves BlueZ waiting on an answer nobody can give.
+     */
+    property var pending: []
+
+    /**
+     * The one being asked, straight from the agent, or nothing.
      *
      * Carries `id`, `kind`, the device's `name`, `address` and `icon`, and
      * whichever of `passkey`, `pincode`, `uuid` and `service` the kind has.
      */
-    property var request: null
+    readonly property var request: root.pending.length > 0 ? root.pending[0] : null
     readonly property bool active: root.request !== null
     readonly property string kind: root.request?.kind ?? ""
+
+    /**
+     * The questions answered together with the one on screen.
+     *
+     * A headset wants its audio, its remote control and its handsfree profile,
+     * and asks about each one by itself. They are one question to the person
+     * being asked, so they are put as one and answered as one.
+     */
+    readonly property var groupedIds: {
+        if (!root.request)
+            return [];
+        if (root.request.kind !== "service")
+            return [root.request.id];
+        return root.pending
+            .filter(entry => entry.kind === "service" && entry.device === root.request.device)
+            .map(entry => entry.id);
+    }
+
+    /** What those questions are asking for, named once each. */
+    readonly property var services: {
+        if (!root.request || root.request.kind !== "service")
+            return [];
+        const named = root.pending
+            .filter(entry => entry.kind === "service" && entry.device === root.request.device)
+            .map(entry => (entry.service ?? "").length > 0 ? entry.service : (entry.uuid ?? ""));
+        return named.filter((name, index) => named.indexOf(name) === index);
+    }
 
     /** Something to type: six digits BlueZ wants back, or a PIN of any length. */
     readonly property bool awaitingInput: root.kind === "passkey" || root.kind === "pin"
@@ -66,8 +102,18 @@ Singleton {
     }
 
     function accept(value) {
-        root.send(root.request?.id, true, value ?? "");
-        root.request = null;
+        root.answer(true, value ?? "", false);
+    }
+
+    /**
+     * Yes, and stop asking about this device.
+     *
+     * Trusting is what the question is really about the third time it is put:
+     * the profiles a device wants are its own business once the person has said
+     * the device itself is welcome.
+     */
+    function acceptAlways() {
+        root.answer(true, "", true);
     }
 
     function reject() {
@@ -80,17 +126,26 @@ Singleton {
         // now rather than waiting out the timeout that guards it.
         if (root.device && root.device === BluetoothStatus.pairingDevice)
             BluetoothStatus.settlePairing();
-        root.send(root.request?.id, false, "");
-        root.request = null;
+        root.answer(false, "", false);
     }
 
-    function send(id, accepted, value) {
+    function answer(accepted, value, always) {
+        const ids = root.groupedIds;
+        if (ids.length === 0)
+            return;
+        for (const id of ids)
+            root.send(id, accepted, value, always);
+        root.pending = root.pending.filter(entry => ids.indexOf(entry.id) === -1);
+    }
+
+    function send(id, accepted, value, always) {
         if (id === undefined || id === null)
             return;
         agent.write(JSON.stringify({
             id: id,
             accept: accepted,
-            value: value
+            value: value,
+            trust: always === true
         }) + "\n");
     }
 
@@ -108,16 +163,21 @@ Singleton {
             root.registered = true;
             break;
         case "ask":
-        case "show":
-            // BlueZ asks one thing at a time, but a question left behind would
-            // keep it waiting for an answer nobody can give any more.
-            if (root.request && root.request.id !== message.id)
-                root.send(root.request.id, false, "");
-            root.request = message;
+        case "show": {
+            // A display says itself again for every digit typed on the far end,
+            // which is the same question with a new count, not a second one.
+            const at = root.pending.findIndex(entry => entry.id === message.id);
+            if (at === -1) {
+                root.pending = root.pending.concat([message]);
+                break;
+            }
+            const next = root.pending.slice();
+            next[at] = message;
+            root.pending = next;
             break;
+        }
         case "done":
-            if (root.request?.id === message.id)
-                root.request = null;
+            root.pending = root.pending.filter(entry => entry.id !== message.id);
             break;
         case "error":
             console.error("[BluetoothAgent]", message.message);
@@ -132,8 +192,7 @@ Singleton {
         function onPairingChanged() {
             if (root.device?.pairing)
                 return;
-            root.send(root.request?.id, false, "");
-            root.request = null;
+            root.answer(false, "", false);
         }
     }
 
@@ -167,7 +226,7 @@ Singleton {
         }
 
         onExited: (exitCode, exitStatus) => {
-            root.request = null;
+            root.pending = [];
             root.registered = false;
 
             if (Date.now() - root.startedAt >= root.settledMs)

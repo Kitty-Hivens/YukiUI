@@ -40,10 +40,8 @@ Rectangle {
             return Translation.tr("Type the code showing on the device");
         if (BluetoothAgent.kind === "pin")
             return Translation.tr("Type the PIN the device is set to");
-        if (BluetoothAgent.kind === "service") {
-            const service = BluetoothAgent.request?.service ?? "";
-            return Translation.tr("It is asking to use %1").arg(service.length > 0 ? service : (BluetoothAgent.request?.uuid ?? ""));
-        }
+        if (BluetoothAgent.kind === "service")
+            return Translation.tr("It is asking to use %1").arg(BluetoothAgent.services.join(", "));
         return "";
     }
 
@@ -205,6 +203,18 @@ Rectangle {
                     spacing: 8
                     uniformCellSizes: true
 
+                    // Answering about the device instead of about this one
+                    // profile: a device asks once per profile it wants, and
+                    // asks again every time it comes back.
+                    WButton {
+                        Layout.fillWidth: true
+                        implicitHeight: 32
+                        horizontalAlignment: Text.AlignHCenter
+                        checked: true
+                        visible: BluetoothAgent.kind === "service"
+                        text: Translation.tr("Always allow")
+                        onClicked: BluetoothAgent.acceptAlways()
+                    }
                     WButton {
                         Layout.fillWidth: true
                         implicitHeight: 32
@@ -214,14 +224,15 @@ Rectangle {
                         // answered by being typed on the other device.
                         visible: !BluetoothAgent.showingCode
                         enabled: !root.typing || inputField.text.length > 0
-                        text: BluetoothAgent.kind === "service" ? Translation.tr("Allow") : Translation.tr("Pair")
+                        text: BluetoothAgent.kind === "service" ? Translation.tr("Allow once") : Translation.tr("Pair")
                         onClicked: root.submit()
                     }
                     WButton {
                         Layout.fillWidth: true
                         implicitHeight: 32
+                        colBackground: Looks.colors.bg1
                         horizontalAlignment: Text.AlignHCenter
-                        checked: true
+                        checked: BluetoothAgent.kind !== "service"
                         text: BluetoothAgent.kind === "service" ? Translation.tr("Deny") : Translation.tr("Cancel")
                         onClicked: BluetoothAgent.reject()
                     }

@@ -817,5 +817,7 @@
   "PIN": "PIN",
   "Code": "Code",
   "Allow": "Allow",
-  "Deny": "Deny"
+  "Deny": "Deny",
+  "Allow once": "Allow once",
+  "Always allow": "Always allow"
 }

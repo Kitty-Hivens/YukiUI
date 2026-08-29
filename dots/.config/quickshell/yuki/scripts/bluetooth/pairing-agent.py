@@ -23,6 +23,7 @@ Down:
 
     {"id": 1, "accept": true}
     {"id": 1, "accept": true, "value": "492817"}
+    {"id": 1, "accept": true, "trust": true}
     {"id": 1, "accept": false}
 """
 
@@ -146,6 +147,10 @@ class State:
     kinds = {}
     devices = {}
     displays = {}
+    # Devices the person has said "always" about. Kept here as well as on the
+    # device, because Trusted is set over the bus and the next profile can ask
+    # before that write has landed.
+    always = set()
 
 
 def log(message):
@@ -284,9 +289,12 @@ def answer(connection, message):
     else:
         invocation.return_value(None)
 
-    # Not for "service": allowing one profile once is not the same as vouching
-    # for the device, and that request only ever reaches an already-paired one.
-    if kind in ("confirm", "authorize", "passkey", "pin"):
+    # Allowing one profile once is not the same as vouching for the device, so
+    # a service is only trusted when the answer says so. A pairing always is:
+    # the person has just said yes to the device itself.
+    if message.get("trust"):
+        State.always.add(path)
+    if message.get("trust") or kind in ("confirm", "authorize", "passkey", "pin"):
         trust(connection, path)
 
 
@@ -322,8 +330,8 @@ def on_method_call(connection, sender, object_path, interface_name, method_name,
         path, uuid = parameters.unpack()
         # A device the person has already vouched for is not asked about again:
         # that is what trusting one is for, and a headset reconnecting asks for
-        # its profiles every single time.
-        if device_properties(connection, path).get("Trusted"):
+        # its profiles every single time -- one request per profile.
+        if path in State.always or device_properties(connection, path).get("Trusted"):
             invocation.return_value(None)
             return
         ask(connection, "service", path, invocation, uuid=uuid, service=service_name(uuid))
