@@ -67,8 +67,12 @@ Item {
     }
 
     WindowDialog {
+        id: dialog
         anchors.centerIn: parent
-        backgroundWidth: 450
+        // Wide enough for its own buttons. Three answers in a language that
+        // spells them out is wider than the card, and the row was drawn over
+        // the edge of it rather than being allowed to set the width.
+        backgroundWidth: Math.max(450, buttonRow.implicitWidth + Appearance.rounding.large * 2)
         show: false
         Component.onCompleted: show = true
         onDismiss: BluetoothAgent.reject()
@@ -140,6 +144,7 @@ Item {
         }
 
         WindowDialogButtonRow {
+            id: buttonRow
             Layout.bottomMargin: 10
 
             Item {

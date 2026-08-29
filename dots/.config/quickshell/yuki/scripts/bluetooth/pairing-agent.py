@@ -68,28 +68,84 @@ CANCELED = "org.bluez.Error.Canceled"
 
 PASSKEY_MAX = 999999
 
-# What a device is asking permission to use. Deliberately not translated: these
-# are the profiles' own names, the same ones every other bluetooth tool prints,
-# and the prompt shows the name beside the raw UUID rather than instead of it.
+# What a device is asking permission to use.
+#
+# BlueZ authorizes by the *profile's* UUID, which is not the set a device
+# advertises in SDP: a headset offering Audio Sink (0x110b) is authorized for
+# Advanced Audio Distribution (0x110d). Both sides are here for that reason.
+#
+# Deliberately not translated, and worded exactly as bluetoothctl prints them --
+# these are the profiles' own names, so what the prompt says can be matched
+# against what every other bluetooth tool says.
 SERVICE_NAMES = {
-    "00001105": "Object Push",
-    "00001106": "File Transfer",
-    "00001108": "Headset",
-    "0000110a": "Audio Source",
-    "0000110b": "Audio Sink",
-    "0000110c": "Remote Control Target",
-    "0000110e": "Remote Control",
-    "00001112": "Headset Audio Gateway",
-    "0000111e": "Handsfree",
-    "0000111f": "Handsfree Audio Gateway",
-    "00001124": "Human Interface Device",
-    "0000112f": "Phone Book Access",
-    "00001132": "Message Access",
-    "00001133": "Message Notification",
-    "00001200": "Device Identification",
-    "0000180f": "Battery",
-    "00001812": "Human Interface Device",
+    "1000": "Service Discovery Server",
+    "1001": "Browse Group Descriptor",
+    "1002": "Public Browse Group",
+    "1101": "Serial Port",
+    "1102": "LAN Access Using PPP",
+    "1103": "Dialup Networking",
+    "1104": "IrMC Sync",
+    "1105": "OBEX Object Push",
+    "1106": "OBEX File Transfer",
+    "1107": "IrMC Sync Command",
+    "1108": "Headset",
+    "1109": "Cordless Telephony",
+    "110a": "Audio Source",
+    "110b": "Audio Sink",
+    "110c": "A/V Remote Control Target",
+    "110d": "Advanced Audio Distribution",
+    "110e": "A/V Remote Control",
+    "110f": "A/V Remote Control Controller",
+    "1110": "Intercom",
+    "1111": "Fax",
+    "1112": "Headset AG",
+    "1113": "WAP",
+    "1114": "WAP Client",
+    "1115": "PANU",
+    "1116": "NAP",
+    "1117": "GN",
+    "1118": "Direct Printing",
+    "1119": "Reference Printing",
+    "111a": "Imaging",
+    "111b": "Imaging Responder",
+    "111c": "Imaging Automatic Archive",
+    "111d": "Imaging Reference Objects",
+    "111e": "Handsfree",
+    "111f": "Handsfree Audio Gateway",
+    "1120": "Direct Printing Reference Objects",
+    "1121": "Reflected UI",
+    "1122": "Basic Printing",
+    "1123": "Printing Status",
+    "1124": "Human Interface Device",
+    "1125": "Hardcopy Cable Replacement",
+    "1126": "HCR Print",
+    "1127": "HCR Scan",
+    "1128": "Common ISDN Access",
+    "112d": "SIM Access",
+    "112e": "Phonebook Access Client",
+    "112f": "Phonebook Access Server",
+    "1130": "Phonebook Access",
+    "1131": "Headset HS",
+    "1132": "Message Access Server",
+    "1133": "Message Notification Server",
+    "1134": "Message Access",
+    "1135": "GNSS",
+    "1136": "GNSS Server",
+    "1200": "PnP Information",
+    "1201": "Generic Networking",
+    "1202": "Generic File Transfer",
+    "1203": "Generic Audio",
+    "1204": "Generic Telephony",
+    "1800": "Generic Access Profile",
+    "1801": "Generic Attribute Profile",
+    "180a": "Device Information",
+    "180f": "Battery",
+    "1812": "Human Interface Device",
+    "1813": "Scan Parameters",
 }
+
+# Everything the SIG assigns sits in this range; anything else is the vendor's own.
+BLUETOOTH_BASE_SUFFIX = "-0000-1000-8000-00805f9b34fb"
 
 INTROSPECTION_XML = """
 <node>
@@ -163,7 +219,17 @@ def emit(payload):
 
 
 def service_name(uuid):
-    return SERVICE_NAMES.get(uuid.lower()[:8], "")
+    """A name a person can read, never a bare UUID.
+
+    A UUID spelled out in full is thirty-six characters that say nothing and do
+    not fit in a sentence. An assigned one that is not in the table above is at
+    least named by its short form; a vendor's own is named for what it is.
+    """
+    lowered = uuid.lower()
+    if not lowered.endswith(BLUETOOTH_BASE_SUFFIX):
+        return "Vendor specific"
+    short = lowered[4:8]
+    return SERVICE_NAMES.get(short, f"0x{short}")
 
 
 def device_properties(connection, path):
