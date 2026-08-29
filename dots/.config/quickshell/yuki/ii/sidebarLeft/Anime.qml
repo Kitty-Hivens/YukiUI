@@ -26,6 +26,51 @@ Item {
     property var suggestionQuery: ""
     property var suggestionList: []
 
+    // Zoom. The grid packs images into rows that fill the width, so the only thing
+    // there is to scale is how short a row may get -- see BooruResponse.
+    readonly property real defaultImageRowHeight: 190
+    readonly property real minImageRowHeight: 100
+    readonly property real maxImageRowHeight: 600
+    readonly property real zoomKeyStep: 1.2
+    property real imageRowHeight: Persistent.states.booru.minRowHeight > 0
+        ? Persistent.states.booru.minRowHeight : root.defaultImageRowHeight
+    // What the grid is actually laid out at. A step rebuilds the rows of every
+    // response on screen, so the wheel moves the stored height freely and only a
+    // pause in scrolling reaches the layout.
+    property real committedImageRowHeight: root.imageRowHeight
+    // Relayout regroups every row, so a held contentY would land somewhere
+    // unrelated. What survives a zoom is the share of the feed already scrolled past.
+    property real zoomScrollAnchor: -1
+
+    function zoomBy(factor) {
+        Persistent.states.booru.minRowHeight = Math.round(Math.max(root.minImageRowHeight,
+            Math.min(root.maxImageRowHeight, root.imageRowHeight * factor)));
+    }
+
+    onImageRowHeightChanged: zoomCommitTimer.restart()
+
+    Timer {
+        id: zoomCommitTimer
+        interval: 120
+        onTriggered: {
+            root.zoomScrollAnchor = booruResponseListView.contentHeight > 0
+                ? booruResponseListView.contentY / booruResponseListView.contentHeight : -1;
+            root.committedImageRowHeight = root.imageRowHeight;
+            zoomScrollRestoreTimer.restart();
+        }
+    }
+
+    Timer {
+        id: zoomScrollRestoreTimer
+        interval: 50
+        onTriggered: {
+            if (root.zoomScrollAnchor < 0) return;
+            const maxY = Math.max(0, booruResponseListView.contentHeight - booruResponseListView.height);
+            booruResponseListView.contentY = Math.max(0, Math.min(root.zoomScrollAnchor * booruResponseListView.contentHeight, maxY));
+            root.zoomScrollAnchor = -1;
+        }
+    }
+
     property bool pullLoading: false
     property int pullLoadingGap: 80
     property real normalizedPullDistance: Math.max(0, (1 - Math.exp(-booruResponseListView.verticalOvershoot / 50)) * booruResponseListView.dragging)
@@ -139,6 +184,18 @@ Item {
         if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_O) {
             Booru.clearResponses()
         }
+        if (event.modifiers & Qt.ControlModifier) {
+            if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+                root.zoomBy(root.zoomKeyStep)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Minus) {
+                root.zoomBy(1 / root.zoomKeyStep)
+                event.accepted = true
+            } else if (event.key === Qt.Key_0) {
+                Persistent.states.booru.minRowHeight = 0
+                event.accepted = true
+            }
+        }
     }
 
 
@@ -196,6 +253,7 @@ Item {
                 delegate: BooruResponse {
                     responseData: modelData
                     tagInputField: root.inputField
+                    rowTooShortThreshold: root.committedImageRowHeight
                     previewDownloadPath: root.previewDownloadPath
                     downloadPath: root.downloadPath
                     nsfwPath: root.nsfwPath
@@ -223,6 +281,19 @@ Item {
             ScrollToBottomButton {
                 z: 3
                 target: booruResponseListView
+            }
+
+            Item { // Ctrl+wheel zoom. Above the list, whose own wheel handling accepts everything
+                anchors.fill: parent
+                z: 5
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    acceptedModifiers: Qt.ControlModifier
+                    // Proportional to the delta so a wheel notch is one firm step and a
+                    // touchpad stays smooth, multiplicative so every step feels the same size.
+                    onWheel: event => root.zoomBy(Math.pow(1.0015, event.angleDelta.y))
+                }
             }
 
             MaterialLoadingIndicator {

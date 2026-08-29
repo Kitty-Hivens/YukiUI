@@ -128,6 +128,10 @@ Singleton {
             property JsonObject booru: JsonObject {
                 property bool allowNsfw: false
                 property string provider: "yandere"
+                /// Zoom of the image grid, as the shortest a row of images may get,
+                /// in pixels. Rows are packed to fill the width, so this is what
+                /// decides how many end up side by side. Zero means unset.
+                property int minRowHeight: 0
             }
 
             property JsonObject idle: JsonObject {

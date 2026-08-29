@@ -29,6 +29,15 @@ Button {
     property string filePath: `${root.previewDownloadPath}/${root.previewFileName}`
     property int maxTagStringLineLength: 50
     property real imageRadius: Appearance.rounding.small
+    /// Widths a picture may be decoded at. Zoom moves the row height continuously,
+    /// but the pixmap cache is keyed by source size: following the row exactly would
+    /// decode every picture on every step, and fetch the remote ones again with it,
+    /// there being no http cache underneath. A step within a rung costs nothing.
+    readonly property var decodeWidths: [256, 384, 512, 768]
+    readonly property int decodeWidth: {
+        const drawnWidth = root.rowHeight * root.imageData.aspect_ratio;
+        return root.decodeWidths.find(width => width >= drawnWidth) ?? root.decodeWidths[root.decodeWidths.length - 1];
+    }
 
     property bool showActions: false
     // Prefer the medium-res sample over the ~150px preview so the grid isn't upscaled to mush.
@@ -78,6 +87,10 @@ Button {
             width: root.rowHeight * modelData.aspect_ratio
             height: root.rowHeight
             fillMode: Image.PreserveAspectFit
+            sourceSize: {
+                const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
+                return Qt.size(root.decodeWidth * dpr, 0);
+            }
             // A manually downloaded picture has no remote fallback worth trying: the
             // provider is on the list precisely because Image can't fetch it itself.
             primarySource: root.manualDownload ? root.downloadedPath : root.remoteSource
