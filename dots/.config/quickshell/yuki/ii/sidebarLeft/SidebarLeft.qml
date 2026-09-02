@@ -90,8 +90,9 @@ Scope { // Scope
             id: panelWindow
             // Don't map over a fullscreen game: on Top it'd sit under it anyway, and it would grab
             // focus and freeze the game's pointer lock. Gate on the real fullscreen, not
-            // GameMode.engaged, so manual game mode still leaves the sidebar reachable.
-            visible: IiStates.sidebarLeftOpen && !GameMode.anyFullscreen
+            // GameMode.engaged, so manual game mode still leaves the sidebar reachable, and on
+            // the fullscreen of this screen rather than of any of them.
+            visible: IiStates.sidebarLeftOpen && !GameMode.fullscreenOn(panelWindow.screen?.name)
             
             property bool extend: false
             property real sidebarWidth: panelWindow.extend ? Appearance.sizes.sidebarWidthExtended : Appearance.sizes.sidebarWidth

@@ -17,8 +17,9 @@ Scope {
         id: panelWindow
         // Don't map over a fullscreen game (see SidebarLeft): the panel would sit under it and
         // freeze the game's pointer lock. Gate on the real fullscreen, not GameMode.engaged, so
-        // manual game mode still leaves the sidebar -- and its game-mode toggle -- reachable.
-        visible: IiStates.sidebarRightOpen && !GameMode.anyFullscreen
+        // manual game mode still leaves the sidebar and its game-mode toggle reachable, and on
+        // the fullscreen of this screen rather than of any of them.
+        visible: IiStates.sidebarRightOpen && !GameMode.fullscreenOn(panelWindow.screen?.name)
 
         function hide() {
             IiStates.sidebarRightOpen = false;
