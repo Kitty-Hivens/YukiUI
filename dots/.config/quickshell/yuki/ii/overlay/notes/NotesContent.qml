@@ -252,6 +252,22 @@ OverlayBackground {
         onTriggered: saveContent()
     }
 
+    /**
+     * The last half second of typing, which the debounce above still owes the
+     * file.
+     *
+     * This widget is torn down the moment the overlay closes, and the timer goes
+     * with it: Escape within half a second of the last keystroke threw those
+     * keystrokes away. The write is switched to a blocking one first, because an
+     * asynchronous one started here has no object left to finish on.
+     */
+    Component.onDestruction: {
+        if (!saveDebounce.running) return;
+        saveDebounce.stop();
+        noteFile.blockWrites = true;
+        root.saveContent();
+    }
+
     Timer {
         id: copyListDebounce
         interval: 100
