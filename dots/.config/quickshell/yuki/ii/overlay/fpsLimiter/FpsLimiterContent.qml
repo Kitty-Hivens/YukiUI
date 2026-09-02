@@ -35,23 +35,17 @@ OverlayBackground {
             return;
         }
 
-        var cfgPaths = [
-            "~/.config/MangoHud/MangoHud.conf",
-        ]; // MangoHud config files
-
-        var updateCommands = cfgPaths.map(path => {
-            return "if grep -q '^fps_limit=' " + path + "; " +
-            "then sed -i 's/^fps_limit=.*/fps_limit=" + fpsValue + "/' " + path + "; " +
-            "else echo 'fps_limit=" + fpsValue + "' >> " + path + "; fi";
-        }).join("; ");
-
-        var cmd = updateCommands + "; pkill -SIGUSR2 mangohud";
-
-        fpsSetter.command = ["bash", "-c", cmd];
-        fpsSetter.startDetached();
-
-        root.currentState = FpsLimiterContent.State.Success;
-        iconResetTimer.restart();
+        // MangoHud's config directory does not exist until MangoHud itself has
+        // written something there, and it is wherever XDG says rather than a
+        // literal ~/.config -- appending a line to a file in a directory that is
+        // not there is how this wrote nothing at all and said it had worked.
+        fpsSetter.command = ["bash", "-c",
+            'cfg="${XDG_CONFIG_HOME:-$HOME/.config}/MangoHud/MangoHud.conf"; ' +
+            'mkdir -p "$(dirname "$cfg")" && touch "$cfg" || exit 1; ' +
+            'if grep -q "^fps_limit=" "$cfg"; ' +
+            `then sed -i "s/^fps_limit=.*/fps_limit=${fpsValue}/" "$cfg"; ` +
+            `else printf "fps_limit=%s\\n" "${fpsValue}" >> "$cfg"; fi`];
+        fpsSetter.running = true;
 
         // Clear the field after applying
         fpsField.text = "";
@@ -59,6 +53,22 @@ OverlayBackground {
 
     Process {
         id: fpsSetter
+        /**
+         * Waited on rather than detached, and no longer signalled afterwards.
+         *
+         * The tick used to be drawn the moment the command was handed over, so it
+         * said the limit had been written whether or not anything had been. The
+         * command that followed the write was `pkill -SIGUSR2 mangohud`, which
+         * could never reach the HUD: it lives inside the game's own process
+         * through LD_PRELOAD, `mangohud` on PATH is a shell wrapper, and the
+         * library installs no handler for that signal -- so the one process the
+         * pattern could ever have matched would have been killed by it. The limit
+         * is read when a game starts, and that is when it now takes effect.
+         */
+        onExited: (exitCode, exitStatus) => {
+            root.currentState = exitCode === 0 ? FpsLimiterContent.State.Success : FpsLimiterContent.State.Error;
+            iconResetTimer.restart();
+        }
     }
 
     RowLayout {
