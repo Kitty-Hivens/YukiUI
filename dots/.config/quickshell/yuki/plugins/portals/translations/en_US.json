@@ -1,0 +1,20 @@
+{
+  "Configuration in force": "Configuration in force",
+  "Present but not read here: %1": "Present but not read here: %1",
+  "Could not read the portal configuration": "Could not read the portal configuration",
+  "Restart portal service": "Restart portal service",
+  "A change is written but not in force. Restarting cancels whatever a portal is in the middle of.": "A change is written but not in force. Restarting cancels whatever a portal is in the middle of.",
+  "Set here": "Set here",
+  "Following the default": "Following the default",
+  "Tried in order: %1. The first one that implements the interface answers it.": "Tried in order: %1. The first one that implements the interface answers it.",
+  "No default is set, so an interface without a rule of its own is answered by nobody.": "No default is set, so an interface without a rule of its own is answered by nobody.",
+  "not installed: %1": "not installed: %1",
+  "Default": "Default",
+  "Off": "Off",
+  "Portals": "Portals",
+  "Which backend answers each portal request": "Which backend answers each portal request",
+  "portal, xdg-desktop-portal, backend, file chooser, screenshot, screencast, wallpaper, settings, notification, secret": "portal, xdg-desktop-portal, backend, file chooser, screenshot, screencast, wallpaper, settings, notification, secret",
+  "Nothing selected": "Nothing selected",
+  "Nothing in the preference list implements these, so an application asking for one gets no answer. Some are only wanted by a remote desktop session and are meant to be empty here.": "Nothing in the preference list implements these, so an application asking for one gets no answer. Some are only wanted by a remote desktop session and are meant to be empty here.",
+  "A backend offered below only declares the interface. Whether it can serve it here is another matter -- some are written against their own compositor.": "A backend offered below only declares the interface. Whether it can serve it here is another matter -- some are written against their own compositor."
+}

@@ -1,0 +1,16 @@
+{
+    "id": "portals",
+    "name": "Portals",
+    "apiVersion": 1,
+    "entry": "Plugin.qml",
+    "settingsPage": {
+        "key": "portals",
+        "name": "Portals",
+        "icon": "swap_horiz",
+        "description": "Which backend answers each portal request",
+        "keywords": "portal, xdg-desktop-portal, backend, file chooser, screenshot, screencast, wallpaper, settings, notification, secret",
+        "group": "shell",
+        "order": 10,
+        "entry": "SettingsPage.qml"
+    }
+}

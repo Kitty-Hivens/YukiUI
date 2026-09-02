@@ -1,0 +1,20 @@
+{
+  "Configuration in force": "Действующая конфигурация",
+  "Present but not read here: %1": "Есть на диске, но здесь не читается: %1",
+  "Could not read the portal configuration": "Не удалось прочитать конфигурацию порталов",
+  "Restart portal service": "Перезапустить службу порталов",
+  "A change is written but not in force. Restarting cancels whatever a portal is in the middle of.": "Изменение записано, но ещё не действует. Перезапуск оборвёт то, что портал делает прямо сейчас.",
+  "Set here": "Задано вручную",
+  "Following the default": "По умолчанию",
+  "Tried in order: %1. The first one that implements the interface answers it.": "Перебираются по порядку: %1. Отвечает первый, кто реализует интерфейс.",
+  "No default is set, so an interface without a rule of its own is answered by nobody.": "Умолчание не задано, поэтому интерфейс без собственного правила не обслуживает никто.",
+  "not installed: %1": "не установлен: %1",
+  "Default": "По умолчанию",
+  "Off": "Выкл",
+  "Portals": "Порталы",
+  "Which backend answers each portal request": "Какой бэкенд отвечает на запросы порталов",
+  "portal, xdg-desktop-portal, backend, file chooser, screenshot, screencast, wallpaper, settings, notification, secret": "портал, бэкенд, выбор файла, снимок экрана, запись экрана, обои, уведомления, пароли",
+  "Nothing selected": "Ничего не выбрано",
+  "Nothing in the preference list implements these, so an application asking for one gets no answer. Some are only wanted by a remote desktop session and are meant to be empty here.": "Ни один бэкенд из списка предпочтений их не реализует, поэтому приложение, запросившее такой интерфейс, ответа не получит. Часть из них нужна только сессии удалённого рабочего стола и здесь пустует по замыслу.",
+  "A backend offered below only declares the interface. Whether it can serve it here is another matter -- some are written against their own compositor.": "Бэкенд из списка ниже лишь объявляет интерфейс. Сможет ли он обслужить его здесь — вопрос отдельный: некоторые написаны под свой композитор."
+}

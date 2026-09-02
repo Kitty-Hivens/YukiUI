@@ -82,9 +82,9 @@ Singleton {
     /**
      * Installed and turned on are different answers.
      *
-     * A plugin found on disk but named here is never built, so `ids` lists what
-     * is running rather than what is present. `installedIds` is the other half,
-     * for a surface that has to offer the switch.
+     * A plugin found on disk but named here is never built. It stays in `ids`
+     * and in `installedIds` all the same: what is installed is one question and
+     * what is running is another, and `runningIds` answers the second.
      */
     readonly property list<string> disabledIds: Config.ready ? Config.options.disabledPlugins : []
 
@@ -142,6 +142,49 @@ Singleton {
     function usableEntry(entry) {
         return typeof entry === "string" && entry.length > 0
             && !entry.startsWith("/") && entry.split("/").indexOf("..") === -1;
+    }
+
+    /**
+     * The settings page a manifest declares, checked, or null when it declares none.
+     *
+     * Refused the same way a bad id or a bad entry is refused -- by taking the
+     * whole plugin down -- rather than by dropping the page quietly. A page that
+     * silently fails to appear is indistinguishable from a host that does not
+     * support pages yet, and that is the harder of the two to debug.
+     *
+     * `key` is checked as strictly as an id: it is what `componentFor` matches on
+     * and what goes into YUKIUI_SETTINGS_PAGE when something opens the window at
+     * a particular page.
+     */
+    function readPage(directory, declared) {
+        if (declared === undefined || declared === null)
+            return null;
+        if (typeof declared !== "object" || Array.isArray(declared)) {
+            root.reject(directory, "settingsPage has to be an object");
+            return null;
+        }
+        if (!root.usableId(declared.key)) {
+            root.reject(directory, `"${declared.key}" cannot be a page key -- letters, digits, dashes and underscores only`);
+            return null;
+        }
+        if (!root.usableEntry(declared.entry)) {
+            root.reject(directory, `"${declared.entry}" cannot be a page -- a path inside this directory, with no ".." in it`);
+            return null;
+        }
+        if (typeof declared.name !== "string" || declared.name.length === 0) {
+            root.reject(directory, "a settings page needs a name");
+            return null;
+        }
+        return {
+            key: declared.key,
+            name: declared.name,
+            icon: typeof declared.icon === "string" && declared.icon.length > 0 ? declared.icon : "extension",
+            description: typeof declared.description === "string" ? declared.description : "",
+            keywords: typeof declared.keywords === "string" ? declared.keywords : "",
+            group: typeof declared.group === "string" ? declared.group : "",
+            order: typeof declared.order === "number" ? declared.order : 0,
+            entry: declared.entry
+        };
     }
 
     function reject(directory, reason) {
@@ -204,6 +247,8 @@ Singleton {
         property var instance: null
         /** Defaults the manifest declared, or null when it declared none. */
         property var configSchema: null
+        /** The settings page the manifest declared, or null when it declared none. */
+        property var settingsPage: null
         property var settings: null
 
         function build(text) {
@@ -243,6 +288,11 @@ Singleton {
             slot.configSchema = (manifest.config && typeof manifest.config === "object" && !Array.isArray(manifest.config))
                 ? manifest.config
                 : null;
+            slot.settingsPage = root.readPage(slot.directory, manifest.settingsPage);
+            // readPage refuses by rejecting the directory, and a rejected plugin
+            // is not one to carry on building.
+            if (manifest.settingsPage !== undefined && slot.settingsPage === null)
+                return;
             // Built here rather than on the way to loading the plugin: settings are
             // host code reading a file, not plugin code, and a surface that offers
             // to configure something has to be able to do it while it is switched
@@ -408,6 +458,48 @@ Singleton {
             });
         }
         return rows;
+    }
+
+    /**
+     * The settings pages installed plugins contribute, ready for a page catalogue.
+     *
+     * Read off the manifests rather than off the built instances, so this answers
+     * in the settings window too -- that process reads manifests but deliberately
+     * hosts nothing, and a page whose existence depended on the plugin running
+     * would be missing from the one window that has to show it.
+     *
+     * `component` is a path from the shell root, which is what a Loader in the
+     * settings window resolves against, the same as the built-in pages.
+     *
+     * A plugin that is switched off contributes nothing: its page would open on
+     * a service that is not running.
+     */
+    readonly property list<var> pageEntries: {
+        const pages = [];
+        for (let i = 0; i < (root.slots?.count ?? 0); i++) {
+            const slot = root.slots.objectAt(i);
+            if (!slot || slot.pluginId.length === 0 || slot.settingsPage === null)
+                continue;
+            if (root.isDisabled(slot.pluginId))
+                continue;
+            const page = slot.settingsPage;
+            pages.push({
+                key: page.key,
+                name: page.name,
+                icon: page.icon,
+                description: page.description,
+                keywords: page.keywords,
+                group: page.group,
+                order: page.order,
+                component: `plugins/${slot.directory}/${page.entry}`,
+                pluginId: slot.pluginId
+            });
+        }
+        // By declared order, then by name, so two plugins that both say nothing
+        // about where they go still land in a stable sequence rather than in
+        // whatever order the directories were read.
+        pages.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+        return pages;
     }
 
     /**
