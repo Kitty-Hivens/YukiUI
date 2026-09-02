@@ -14,6 +14,24 @@ Singleton {
     readonly property bool anyFullscreen: Hyprland.workspaces.values.some(ws =>
         ws.active && ws.toplevels.values.some(t => t.wayland?.fullscreen))
 
+    /**
+     * Whether a window is fullscreen on one particular screen.
+     *
+     * A workspace is active on its own monitor, so every monitor has one, and
+     * asking whether any active workspace holds a fullscreen window asks about
+     * all of them at once. Panels that step aside for a game were stepping aside
+     * on every screen the moment a game went fullscreen on one of them, which on
+     * a docked machine means the sidebar stops opening on the screen being
+     * worked on. A panel is only in the way on the screen it is drawn on.
+     */
+    function fullscreenOn(monitorName) {
+        if (!monitorName)
+            return root.anyFullscreen;
+        return Hyprland.workspaces.values.some(ws => ws.active
+            && ws.monitor?.name === monitorName
+            && ws.toplevels.values.some(t => t.wayland?.fullscreen));
+    }
+
     readonly property bool engaged: Config.options.gameMode.active
         || (Config.options.gameMode.autoOnFullscreen && root.anyFullscreen)
 
