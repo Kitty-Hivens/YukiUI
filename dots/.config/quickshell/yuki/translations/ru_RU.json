@@ -1093,5 +1093,9 @@
   "Could not read the application defaults": "Не удалось прочитать приложения по умолчанию",
   "Reading what is installed...": "Читаю, что установлено...",
   "%1 of %2": "%1 из %2",
-  "Whole-category handlers first. A number means the application takes only part of the group and leaves the rest where they are.": "Сверху те, кто закрывает категорию целиком. Число значит, что приложение возьмёт лишь часть группы, а остальное останется как было."
+  "Whole-category handlers first. A number means the application takes only part of the group and leaves the rest where they are.": "Сверху те, кто закрывает категорию целиком. Число значит, что приложение возьмёт лишь часть группы, а остальное останется как было.",
+  "Desktop changed": "Рабочий стол изменился",
+  "%1 did not start (%2), so %3 is running instead": "%1 не запустился (%2), поэтому работает %3",
+  "it is not installed": "не установлен",
+  "it is unavailable": "недоступен"
 }

@@ -81,7 +81,7 @@ Singleton {
     }
 
     /**
-     * Environments whose entry would not build.
+     * Environments whose entry would not build, and why, keyed by id.
      *
      * Being installed was taken as being usable, so a manifest naming an entry
      * with a syntax error, or naming a file that is not there, left the desktop
@@ -89,8 +89,15 @@ Singleton {
      * the config went on resolving to the same broken environment. One that
      * fails is set aside so the fallback can reach past it, and a shell with a
      * broken environment comes up on another rather than on nothing.
+     *
+     * The reason is kept rather than only logged. It went to the journal and
+     * nowhere else, so a desktop that came up wearing a different face could
+     * answer that it was broken but not what was wrong with it, and the one
+     * question worth answering needed the log to answer.
      */
-    property var failedIds: []
+    property var failures: Object.create(null)
+
+    readonly property list<string> failedIds: Object.keys(root.failures)
 
     /** Why a directory under `environments/` is not on offer, keyed by directory. */
     property var problems: Object.create(null)
@@ -104,8 +111,11 @@ Singleton {
 
     function noteFailure(id, reason) {
         console.warn(`[Environments] ${id}: ${reason}`);
-        if (root.failedIds.indexOf(id) === -1)
-            root.failedIds = root.failedIds.concat([id]);
+        if (root.failures[id] !== undefined)
+            return;
+        const next = Object.assign(Object.create(null), root.failures);
+        next[id] = reason;
+        root.failures = next;
     }
 
     /**
@@ -148,6 +158,65 @@ Singleton {
         }
         root.active = object;
         console.log(`[Environments] ${id} mounted`);
+    }
+
+    /**
+     * What the config asked for, when that is not what came up. Empty otherwise.
+     *
+     * `resolve` answers with the fallback rather than the name in the config,
+     * which is what keeps a broken or uninstalled environment from leaving the
+     * desktop empty. It answered in silence: the desktop changed face, the
+     * reason sat in the journal, and working out what had happened was left to
+     * whoever was sitting in front of it.
+     */
+    readonly property string substitutedId: {
+        if (!Config.ready || root.activeId.length === 0)
+            return "";
+        const asked = Config.options.panelFamily;
+        return asked !== root.activeId ? asked : "";
+    }
+
+    function whySubstituted(id) {
+        if (root.failures[id] !== undefined)
+            return root.failures[id];
+        if (!root.has(id))
+            return Translation.tr("it is not installed");
+        return Translation.tr("it is unavailable");
+    }
+
+    /**
+     * Said once per substitution, and late on purpose.
+     *
+     * The notification daemon is this shell, and the surface that draws a
+     * notification belongs to an environment. Announcing at the moment of the
+     * swap would be speaking while the only thing that could listen is still
+     * being built.
+     *
+     * Cleared when the substitution ends, so an environment that breaks again
+     * after being repaired is announced again rather than once for good.
+     */
+    property string announcedId: ""
+
+    onSubstitutedIdChanged: {
+        if (root.substitutedId.length === 0) {
+            announcer.stop();
+            root.announcedId = "";
+            return;
+        }
+        announcer.restart();
+    }
+
+    Timer {
+        id: announcer
+
+        interval: 3000
+        onTriggered: {
+            const asked = root.substitutedId;
+            if (asked.length === 0 || asked === root.announcedId)
+                return;
+            root.announcedId = asked;
+            Quickshell.execDetached(["notify-send", Translation.tr("Desktop changed"), Translation.tr("%1 did not start (%2), so %3 is running instead").arg(root.nameOf(asked)).arg(root.whySubstituted(asked)).arg(root.nameOf(root.activeId)), "-a", "Shell"]);
+        }
     }
 
     function register(manifest) {
@@ -230,10 +299,11 @@ Singleton {
     /** What is installed, which one is up, and what is wrong with the rest. */
     function report(): string {
         const rows = root.ids.map(id => {
+            const failure = root.failures[id];
             const state = id === root.activeId ? "active"
-                : (root.failedIds.indexOf(id) !== -1 ? "broken"
+                : (failure !== undefined ? "broken"
                 : (root.isOffered(id) ? "offered" : "off"));
-            return [id, state, root.nameOf(id)];
+            return [id, state, failure !== undefined ? `${root.nameOf(id)}  -- ${failure}` : root.nameOf(id)];
         });
         for (const directory of Object.keys(root.problems))
             rows.push(["-", "broken", `${directory}  -- ${root.problems[directory]}`]);

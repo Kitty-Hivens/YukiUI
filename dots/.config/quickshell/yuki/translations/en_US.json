@@ -818,5 +818,9 @@
   "Allow": "Allow",
   "Deny": "Deny",
   "Allow once": "Allow once",
-  "Always allow": "Always allow"
+  "Always allow": "Always allow",
+  "Desktop changed": "Desktop changed",
+  "%1 did not start (%2), so %3 is running instead": "%1 did not start (%2), so %3 is running instead",
+  "it is not installed": "it is not installed",
+  "it is unavailable": "it is unavailable"
 }
