@@ -17,7 +17,22 @@ Canvas {
     property real fillOpacity: 0.5
     property var alignment: Graph.Alignment.Left
 
-    onValuesChanged: root.requestPaint()
+    /**
+     * A Canvas repaints when asked whether or not anyone can see it, and these
+     * are fed by a poller that runs for as long as the shell does -- so a graph
+     * in a widget that is closed, or on a tab nobody is on, went on redrawing
+     * itself once a tick. Drawn on the way onto the screen instead, so it still
+     * shows the values it sat out, and drawn once it is ready as well: a request
+     * made while the canvas has nowhere to draw is dropped, and the next value
+     * is a poll interval away.
+     */
+    function repaintIfVisible() {
+        if (root.visible) root.requestPaint();
+    }
+    onValuesChanged: root.repaintIfVisible()
+    onVisibleChanged: root.repaintIfVisible()
+    onAvailableChanged: root.repaintIfVisible()
+    Component.onCompleted: root.repaintIfVisible()
     onPaint: {
         var ctx = getContext("2d")
         ctx.clearRect(0, 0, width, height)
