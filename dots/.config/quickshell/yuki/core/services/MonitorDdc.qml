@@ -158,8 +158,6 @@ Singleton {
         root.readNextConnector();
     }
 
-    property var readQueue: []
-
     function readNextConnector() {
         if (readValues.connectorQueue.length === 0)
             return;

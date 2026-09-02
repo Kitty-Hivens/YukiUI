@@ -24,8 +24,6 @@ Singleton {
     /// Woken from shell.qml, since a singleton nobody has asked for is not watching.
     function load() {}
 
-    property string appliedFor: ""
-
     Connections {
         target: Environments
         function onActiveIdChanged() {
@@ -46,7 +44,6 @@ Singleton {
             const id = Environments.activeId;
             if (id.length === 0)
                 return;
-            root.appliedFor = id;
             Quickshell.execDetached([
                 Directories.wallpaperSwitchScriptPath,
                 "--noswitch",
