@@ -279,11 +279,15 @@ OverlayBackground {
         id: noteFile
         path: Qt.resolvedUrl(Directories.notesPath)
         onLoaded: {
-            root.content = noteFile.text();
-            if (root.content !== root.content) {
+            // The text that came back against the text on screen. Comparing the
+            // buffer with itself, which is what this did once it had already been
+            // overwritten, is never true, so the caret went back to the start on
+            // every reload of the file.
+            const incoming = noteFile.text();
+            if (incoming !== root.content) {
                 const previousCursor = textInput.cursorPosition;
                 const previousAnchor = textInput.selectionStart;
-                root.content = root.content;
+                root.content = incoming;
                 applySelection(previousCursor, previousAnchor);
             }
             if (pendingReload) {
