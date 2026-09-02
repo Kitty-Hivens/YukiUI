@@ -23,10 +23,15 @@ ColumnLayout {
     readonly property bool deviceMuted: root.currentDevice?.audio?.muted ?? false
     spacing: 16
 
-    // Naming an application costs a look at its process, so it happens while
-    // the mixer is open and not for every notification chime.
-    Component.onCompleted: StreamApps.subscribers++
-    Component.onDestruction: StreamApps.subscribers--
+    // Naming an application costs a look at its process, so it happens while the
+    // mixer is on screen and not for every notification chime. Counted while it
+    // is visible rather than while it exists: a swipe view builds every page at
+    // once, and an overlay widget that has been dismissed is still alive behind
+    // the window it was drawn in, so existing was not the same as being watched.
+    readonly property bool watchingStreams: root.visible
+    onWatchingStreamsChanged: StreamApps.subscribers += root.watchingStreams ? 1 : -1
+    Component.onCompleted: if (root.watchingStreams) StreamApps.subscribers++
+    Component.onDestruction: if (root.watchingStreams) StreamApps.subscribers--
 
     DialogSectionListView {
         Layout.fillHeight: true
