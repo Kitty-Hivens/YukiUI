@@ -72,11 +72,15 @@ Item {
         let args = code.split(";");
         for (let i = 0; i < args.length; i+= 2) {
             let key = args[i];
-            let value = args[i+1];
             let targetKey = root.propertyMap[key];
-            let targetType = typeof root[targetKey];
+            // Asked before the value is read, not after. A key nobody knows named
+            // no property, and a code that ends on a key has no value to give it,
+            // and both used to reach the assignment as an undefined turned into a
+            // NaN in a property counted in pixels.
+            if (targetKey === undefined || i + 1 >= args.length) continue;
 
-            if (targetKey === undefined) continue;
+            let value = args[i+1];
+            let targetType = typeof root[targetKey];
 
             if (targetType === "number") {
                 value = parseFloat(value);
