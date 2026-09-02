@@ -58,8 +58,10 @@ AbstractOverlayWidget {
     animateXPos: !dragHandler.active
     animateYPos: !dragHandler.active
     z: dragHandler.active ? 2 : 1
+    /// Which resize cursor the press started on, kept for as long as it lasts.
+    property int heldCursorShape: Qt.ArrowCursor
     cursorShape: {
-        if (dragHandler.active) return root.resizing ? cursorShape : Qt.ArrowCursor;
+        if (dragHandler.active) return root.resizing ? root.heldCursorShape : Qt.ArrowCursor;
         if (resizeMargin < mouseX && mouseX < width - resizeMargin &&
             resizeMargin < mouseY && mouseY < height - resizeMargin) {
             return Qt.ArrowCursor;
@@ -80,12 +82,6 @@ AbstractOverlayWidget {
     y: Math.round(persistentStateEntry.y) // Round or it'll be blurry
     pinned: persistentStateEntry.pinned
     clickthrough: persistentStateEntry.clickthrough
-    drag {
-        minimumX: 0
-        minimumY: 0
-        maximumX: root.parent?.width - root.width
-        maximumY: root.parent?.height - root.height
-    }
     opacity: (IiStates.overlayOpen || !clickthrough) ? 1.0 : Config.options.overlay.clickthroughOpacity
 
     // Guarded states & registration funcs
@@ -131,6 +127,7 @@ AbstractOverlayWidget {
             return;
         }
         // Resizing setup
+        root.heldCursorShape = root.cursorShape;
         root.resizing = true;
         root.resizeXDirection = getXResizeDirection(event.x);
         root.resizeYDirection = getYResizeDirection(event.y);
@@ -140,6 +137,15 @@ AbstractOverlayWidget {
             root.resizeYDirection = event.y < root.height / 2 ? -1 : 1;
         }
     }
+    /**
+     * A press on the border that never turned into a drag.
+     *
+     * The handler below never went active, so its release never ran either, and
+     * the resize stayed armed: the next drag then resized the widget instead of
+     * moving it, along the axis of whichever border was clicked before, and saved
+     * the size that came out of it.
+     */
+    onReleased: root.resizing = false
     onPositionChanged: (event) => {
         if (!resizing) return;
         contentContainer.implicitWidth = Math.max(root.persistentStateEntry.width + dragHandler.xAxis.activeValue * root.resizeXDirection, root.minimumWidth);
@@ -186,6 +192,40 @@ AbstractOverlayWidget {
         persistentStateEntry.y = Math.round(yPos);
         persistentStateEntry.width = Math.round(width);
         persistentStateEntry.height = Math.round(height);
+    }
+
+    /**
+     * Positions are absolute pixels, kept across restarts and monitor changes,
+     * and nothing bounds them on the way in -- only the drag does, which is no
+     * help for a widget that is already past the edge and cannot be grabbed.
+     * The saved spot of a widget from a wide screen is off a narrow one.
+     */
+    function clampIntoCanvas() {
+        const canvas = root.parent;
+        if (!canvas || canvas.width <= 0 || canvas.height <= 0) return;
+        if (root.width <= 0 || root.height <= 0) return;
+        const wantedX = Math.min(Math.max(root.x, 0), Math.max(0, canvas.width - root.width));
+        const wantedY = Math.min(Math.max(root.y, 0), Math.max(0, canvas.height - root.height));
+        if (wantedX === root.x && wantedY === root.y) return;
+        root.x = wantedX;
+        root.y = wantedY;
+        root.savePosition();
+    }
+
+    // Waited out: size and placement both settle over several passes as the
+    // content lays itself out, and clamping against a half-built box moves a
+    // widget that was never out of bounds.
+    Timer {
+        id: clampTimer
+        interval: 0
+        onTriggered: root.clampIntoCanvas()
+    }
+    onWidthChanged: clampTimer.restart()
+    onHeightChanged: clampTimer.restart()
+    Connections {
+        target: root.parent
+        function onWidthChanged() { clampTimer.restart(); }
+        function onHeightChanged() { clampTimer.restart(); }
     }
 
     function center() {
