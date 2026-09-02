@@ -209,7 +209,9 @@ AbstractOverlayWidget {
         if (wantedX === root.x && wantedY === root.y) return;
         root.x = wantedX;
         root.y = wantedY;
-        root.savePosition();
+        // Position only. The defaults of savePosition read the size back out of
+        // the content container, and being moved is not being resized.
+        root.savePosition(wantedX, wantedY, root.persistentStateEntry.width, root.persistentStateEntry.height);
     }
 
     // Waited out: size and placement both settle over several passes as the
