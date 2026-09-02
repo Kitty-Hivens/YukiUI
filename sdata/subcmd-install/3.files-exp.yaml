@@ -1,6 +1,6 @@
 # The possible values of `mode`: (by default `sync`)
 # - `sync`: Make the destination completely the same as the source.
-# - `soft`: Skip existing files when copying
+# - `soft`: Copy over the destination without deleting anything it has that the source does not. Existing files ARE overwritten; what this skips is the deletion, not the copy.
 # - `hard`: Overwrite existing files when copying
 # - `soft-backup`: If target file exists, copy source file to `*.new`. Do not create `*.new` but skip coyping when source and target HASH values are exactly the same.
 # - `hard-backup`: If target file exists, create backup by renaming it to `*.old.<n>` where `<n>` is a number increment from 1 to prevent backup gets overwritten when running twice. (Keep in mind that this script must be idempotent.) Also must compare the actual file content by using MD5 HASH value to prevent generating lots of `*.old.<n>`s when runnng multiple times. Do not create backup but skip coyping when source and target HASH values are exactly the same.
@@ -13,9 +13,23 @@ user_preferences:
   keybindings: "default" # default | vim
 patterns:
   # Always install these files
+  #
+  # `plugins` is held out of the sync above and copied without deleting below.
+  # `sync` is rsync --delete, so everything under the shell config that this
+  # repository does not carry is removed -- and a plugin somebody installed
+  # themselves is exactly that. rsync is not given --delete-excluded, so what is
+  # excluded here is left alone at the destination rather than taken from it.
+  #
+  # The plugins this repository does ship still update, because the second
+  # pattern overwrites them. What it does not do is remove a directory nobody
+  # here names.
   - from: "dots/.config/quickshell/yuki"
     to: "$XDG_CONFIG_HOME/quickshell/yuki"
     mode: "sync"
+    excludes: ["/plugins"]
+  - from: "dots/.config/quickshell/yuki/plugins"
+    to: "$XDG_CONFIG_HOME/quickshell/yuki/plugins"
+    mode: "soft"
   # Conditionally install these files
   - from: "dots/.config/fish"
     to: "$XDG_CONFIG_HOME/fish"
