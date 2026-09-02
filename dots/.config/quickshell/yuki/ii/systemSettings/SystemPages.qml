@@ -24,79 +24,70 @@ Singleton {
     readonly property string powerComponent: "ii/systemSettings/PowerPage.qml"
     readonly property string inputComponent: "ii/systemSettings/InputPage.qml"
     readonly property string localeComponent: "ii/systemSettings/LocalePage.qml"
+    readonly property string defaultAppsComponent: "ii/systemSettings/DefaultAppsPage.qml"
 
     /**
-     * A line of live state per page.
+     * A line of live state for one page, read only when something asks.
      *
-     * It lives with the page entry rather than on the home page, so a section
-     * can say what it currently holds without the home page having to know how
-     * to read any of it.
+     * A function rather than a property per page, because this catalogue is read
+     * in the shell process as well: the launcher searches it. Written as
+     * bindings, merely naming the catalogue there instantiated every service they
+     * touch, the display service among them, which polls the compositor twice a
+     * second for as long as it exists. A binding that calls this still follows
+     * whatever the call read, so nothing is lost by the move.
      */
-    readonly property string displaysStatus: {
-        const active = Displays.outputs.filter(output => !output.disabled);
-        if (active.length === 1)
-            return `${active[0].name} · ${active[0].width}x${active[0].height}`;
-        if (active.length > 1)
-            return Translation.tr("%1 connected").arg(active.length);
+    function statusFor(key) {
+        if (key === "displays") {
+            const active = Displays.outputs.filter(output => !output.disabled);
+            if (active.length === 1)
+                return `${active[0].name} \u00b7 ${active[0].width}x${active[0].height}`;
+            if (active.length > 1)
+                return Translation.tr("%1 connected").arg(active.length);
+            return "";
+        }
+        // What carries the machine online, named the way the bar names it. Not the
+        // signal strength as well: that moves on its own every few seconds.
+        if (key === "network") {
+            if (!Network.connected)
+                return Translation.tr("Not connected");
+            return Network.networkName.length > 0 ? Network.networkName : Network.connectionType;
+        }
+        // The device sound currently goes to. Deliberately not the volume as
+        // well: that changes on every scroll of the wheel.
+        if (key === "sound")
+            return Audio.sink ? Audio.friendlyDeviceName(Audio.sink) : "";
+        // The charge, or nothing at all on a machine that runs from the wall.
+        if (key === "power") {
+            if (!Battery.available)
+                return "";
+            const percent = Math.round(Battery.percentage * 100);
+            return Battery.isCharging ? Translation.tr("%1%, charging").arg(percent) : Translation.tr("%1%").arg(percent);
+        }
+        // What the adapter is doing, in as few words as the row has room for. Not
+        // the device names: with three connected they do not fit, and the count is
+        // what the row is being scanned for anyway.
+        if (key === "bluetooth") {
+            if (!BluetoothStatus.available)
+                return "";
+            if (!BluetoothStatus.enabled)
+                return Translation.tr("Off");
+            const connected = BluetoothStatus.activeDeviceCount;
+            if (connected === 1)
+                return BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("%1 connected").arg(1);
+            return connected > 0 ? Translation.tr("%1 connected").arg(connected) : Translation.tr("On");
+        }
+        // Read from the service the bar indicator already keeps running rather
+        // than from the one the page uses, so this does not start a second reader
+        // of the same two files for a line of text.
+        if (key === "input")
+            return HyprlandXkb.layoutCodes.join(", ");
+        if (key === "plugins") {
+            const total = Plugins.entries.length;
+            if (total === 0)
+                return "";
+            return Translation.tr("%1 of %2 on").arg(Plugins.entries.filter(entry => !Plugins.isDisabled(entry.id)).length).arg(total);
+        }
         return "";
-    }
-
-    /**
-     * What carries the machine online, named the way the bar names it. Not the
-     * signal strength as well: that moves on its own every few seconds, and the
-     * whole page list is rebuilt whenever a status does.
-     */
-    readonly property string networkStatus: {
-        if (!Network.connected)
-            return Translation.tr("Not connected");
-        return Network.networkName.length > 0 ? Network.networkName : Network.connectionType;
-    }
-
-    // The device sound currently goes to. Deliberately not the volume as well:
-    // that changes on every scroll of the wheel, and the whole page list is
-    // rebuilt whenever a status does.
-    readonly property string soundStatus: Audio.sink ? Audio.friendlyDeviceName(Audio.sink) : ""
-
-    /** The charge, or nothing at all on a machine that runs from the wall. */
-    readonly property string powerStatus: {
-        if (!Battery.available)
-            return "";
-        const percent = Math.round(Battery.percentage * 100);
-        return Battery.isCharging ? Translation.tr("%1%, charging").arg(percent) : Translation.tr("%1%").arg(percent);
-    }
-
-    /**
-     * What the adapter is doing, in as few words as the row has room for. Not the
-     * device names: with three connected they do not fit, and the count is what
-     * the row is being scanned for anyway.
-     */
-    readonly property string bluetoothStatus: {
-        if (!BluetoothStatus.available)
-            return "";
-        if (!BluetoothStatus.enabled)
-            return Translation.tr("Off");
-        const connected = BluetoothStatus.activeDeviceCount;
-        if (connected === 1)
-            return BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("%1 connected").arg(1);
-        return connected > 0 ? Translation.tr("%1 connected").arg(connected) : Translation.tr("On");
-    }
-
-    /**
-     * The layouts in the order they are cycled.
-     *
-     * Read from the service the bar indicator already keeps running rather than
-     * from the one the page uses: this catalogue is read by the launcher too, in
-     * the shell process, and asking there would start a second reader of the
-     * same two files for a line of text.
-     */
-    readonly property string inputStatus: HyprlandXkb.layoutCodes.join(", ")
-
-    /** How many of the installed plugins are switched on. */
-    readonly property string pluginsStatus: {
-        const total = Plugins.entries.length;
-        if (total === 0)
-            return "";
-        return Translation.tr("%1 of %2 on").arg(Plugins.entries.filter(entry => !Plugins.isDisabled(entry.id)).length).arg(total);
     }
 
     /**
@@ -107,8 +98,9 @@ Singleton {
      * inside a page are not a second list to keep in step with this one. Never
      * shown; only matched against.
      */
-    readonly property var groups: [
+    readonly property var staticGroups: [
         {
+            id: "home",
             // Unnamed: the way in needs no heading above it.
             name: "",
             pages: [
@@ -121,12 +113,12 @@ Singleton {
                     icon: "home",
                     description: Translation.tr("Overview of this system"),
                     keywords: Translation.tr("About this system, overview, hostname, distro, kernel, uptime, processor, memory, RAM, swap, storage, disk"),
-                    component: root.homeComponent,
-                    status: ""
+                    component: root.homeComponent
                 }
             ]
         },
         {
+            id: "hardware",
             name: Translation.tr("Hardware"),
             pages: [
                 {
@@ -135,8 +127,7 @@ Singleton {
                     icon: "monitor",
                     description: Translation.tr("Arrangement, modes, colour"),
                     keywords: Translation.tr("Monitor, screen, resolution, refresh rate, scale, rotation, position, brightness, arrangement"),
-                    component: root.displaysComponent,
-                    status: root.displaysStatus
+                    component: root.displaysComponent
                 },
                 {
                     key: "sound",
@@ -144,8 +135,7 @@ Singleton {
                     icon: "volume_up",
                     description: Translation.tr("Devices, applications and profiles"),
                     keywords: Translation.tr("Audio, volume, output, input, microphone, speakers, headphones, PipeWire, card, profile, playing, recording, system sounds"),
-                    component: root.soundComponent,
-                    status: root.soundStatus
+                    component: root.soundComponent
                 },
                 {
                     key: "input",
@@ -153,8 +143,7 @@ Singleton {
                     icon: "keyboard",
                     description: Translation.tr("Layouts, key repeat and the touchpad"),
                     keywords: Translation.tr("Keyboard, layout, xkb, language switch, Caps Lock, key repeat, touchpad, scrolling, mouse"),
-                    component: root.inputComponent,
-                    status: root.inputStatus
+                    component: root.inputComponent
                 },
                 {
                     key: "bluetooth",
@@ -162,8 +151,7 @@ Singleton {
                     icon: "bluetooth",
                     description: Translation.tr("Devices, pairing and what is connected"),
                     keywords: Translation.tr("Bluetooth, pairing, headset, adapter, nearby devices"),
-                    component: root.bluetoothComponent,
-                    status: root.bluetoothStatus
+                    component: root.bluetoothComponent
                 },
                 {
                     key: "power",
@@ -171,8 +159,7 @@ Singleton {
                     icon: "battery_full",
                     description: Translation.tr("Battery, profile and what happens when left alone"),
                     keywords: Translation.tr("Battery, charge, profile, performance, power saver, idle, hypridle, lock screen, screen off, DPMS, suspend, sleep"),
-                    component: root.powerComponent,
-                    status: root.powerStatus
+                    component: root.powerComponent
                 },
                 {
                     key: "network",
@@ -180,8 +167,7 @@ Singleton {
                     icon: "wifi",
                     description: Translation.tr("Wi-Fi, tethering and saved connections"),
                     keywords: Translation.tr("Wi-Fi, ethernet, internet, connection, VPN, tethering, hotspot, NetworkManager, scan"),
-                    component: root.networkComponent,
-                    status: root.networkStatus
+                    component: root.networkComponent
                 }
             ]
         },
@@ -190,6 +176,7 @@ Singleton {
             // a date, and what has been added to it. Kept apart, each was a
             // heading over a single row, and three headings over seven entries is
             // a hierarchy standing in for a list.
+            id: "shell",
             name: Translation.tr("Shell"),
             pages: [
                 {
@@ -198,8 +185,18 @@ Singleton {
                     icon: "translate",
                     description: Translation.tr("What the shell speaks and how it writes the date"),
                     keywords: Translation.tr("Language, locale, translation, clock, time, date format, timezone, network time, calendar"),
-                    component: root.localeComponent,
-                    status: ""
+                    component: root.localeComponent
+                },
+                {
+                    // Not a hardware page and not one of the shell's own, but a
+                    // group for a single entry would be a heading standing in for
+                    // a list. It sits with the other desktop-wide settings.
+                    key: "defaults",
+                    name: Translation.tr("Default applications"),
+                    icon: "apps",
+                    description: Translation.tr("What opens pictures, video, documents and links"),
+                    keywords: Translation.tr("Default, open with, association, MIME type, handler, browser, mail, file manager, image viewer, player, editor, archive"),
+                    component: root.defaultAppsComponent
                 },
                 {
                     key: "plugins",
@@ -207,12 +204,53 @@ Singleton {
                     icon: "extension",
                     description: Translation.tr("What is installed, what runs, and what each one is set to"),
                     keywords: Translation.tr("Plugins, extensions, add-ons, manifest, registry"),
-                    component: root.pluginsComponent,
-                    status: root.pluginsStatus
+                    component: root.pluginsComponent
                 }
             ]
         }
     ]
+
+    /**
+     * Where a page goes when the plugin that brought it does not say, or names a
+     * group this window does not have. The shell group is where what has been
+     * added to the shell already lives.
+     */
+    readonly property string fallbackGroup: "shell"
+
+    /**
+     * The pages above, plus the ones installed plugins declare.
+     *
+     * Contributed entries carry no status line. The built-in ones read a service
+     * for theirs, which is a live binding and cannot come out of an inert
+     * manifest; a page that wants one will need somewhere to put a binding, and
+     * that is a second contribution point rather than a field in a JSON file.
+     */
+    readonly property var groups: {
+        const contributed = Plugins.pageEntries;
+        if (contributed.length === 0)
+            return root.staticGroups;
+        const known = root.staticGroups.map(group => group.id);
+        return root.staticGroups.map(group => {
+            const extra = contributed.filter(page => {
+                const wanted = known.indexOf(page.group) !== -1 ? page.group : root.fallbackGroup;
+                return wanted === group.id;
+            }).map(page => ({
+                key: page.key,
+                // Translated through the same catalogue as everything else: a
+                // plugin ships English in its manifest, and a language that has
+                // the string renders it, while one that does not falls back to
+                // what the manifest said.
+                name: Translation.tr(page.name),
+                icon: page.icon,
+                description: page.description.length > 0 ? Translation.tr(page.description) : "",
+                keywords: page.keywords.length > 0 ? Translation.tr(page.keywords) : "",
+                component: page.component
+            }));
+            if (extra.length === 0)
+                return group;
+            return { id: group.id, name: group.name, pages: group.pages.concat(extra) };
+        });
+    }
 
     /**
      * How wide a page's content is, and where its left edge sits.

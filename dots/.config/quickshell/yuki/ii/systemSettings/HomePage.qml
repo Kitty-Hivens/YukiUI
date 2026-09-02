@@ -200,12 +200,15 @@ Item {
                     RippleButtonWithIcon {
                         materialIcon: "format_paint"
                         mainText: Translation.tr("Appearance")
-                        onClicked: Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("appearanceSettings.qml")])
+                        // This is a process of its own, so the request goes to
+                        // the shell over ipc and the desktop that is up answers it.
+                        // Nothing here draws that window or knows whose it is.
+                        onClicked: Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "surfaces", "open", "appearance", ""])
                     }
                     RippleButtonWithIcon {
                         materialIcon: "edit"
                         mainText: Translation.tr("Config file")
-                        onClicked: Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`)
+                        onClicked: Qt.openUrlExternally(`file://${Directories.shellConfigPath}`)
                     }
                 }
             }
@@ -291,7 +294,7 @@ Item {
                         icon: modelData.icon
                         title: modelData.name
                         description: modelData.description
-                        status: modelData.status
+                        status: SystemPages.statusFor(modelData.key)
                         onClicked: root.navigate(modelData.component)
                     }
                 }
