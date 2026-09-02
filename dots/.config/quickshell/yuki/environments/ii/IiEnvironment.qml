@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.core
+import qs.ii
 import qs.ii.background
 import qs.ii.bluetoothPairing
 import qs.ii.bar
@@ -26,6 +27,10 @@ import qs.ii.verticalBar
 import qs.ii.wallpaperSelector
 
 Scope {
+    // Answers core's requests for the windows this desktop owns but does not
+    // draw, and hands core the pages they offer. See [Surfaces].
+    IiSurfaces {}
+
     PanelLoader { extraCondition: !Config.options.bar.vertical; component: Bar {} }
     PanelLoader { component: Background {} }
     PanelLoader { component: BluetoothPairing {} }

@@ -3,7 +3,6 @@ pragma Singleton
 import qs.core
 import qs.core.models
 import qs.core.functions
-import qs.ii.systemSettings
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
@@ -125,12 +124,16 @@ Singleton {
     property var allActions: searchActions.concat(userActionScripts)
 
     /**
-     * The settings window's own pages, ready to be matched against.
+     * The pages the active desktop's settings offer, ready to be matched against.
+     *
+     * Taken from [Surfaces] rather than from a desktop by name: settings belong to
+     * whichever one is running, and a desktop without any leaves this empty rather
+     * than lending somebody else's.
      *
      * Both the page's name and the line describing what it holds are searched, so
      * that "volume" reaches the sound page even though the word is not its title.
      */
-    readonly property var preparedSettingsPages: SystemPages.pages.map(page => ({
+    readonly property var preparedSettingsPages: Surfaces.pages.map(page => ({
                 page: page,
                 name: Fuzzy.prepare(page.name),
                 description: Fuzzy.prepare(page.description),
@@ -347,11 +350,7 @@ Singleton {
                 verb: Translation.tr("Open"),
                 comment: page.description,
                 execute: () => {
-                    // The settings window is its own shell process, and the page it
-                    // lands on comes from the environment. Handed over as arguments
-                    // rather than through a shell, so a path with a space in it is
-                    // not something anyone has to think about.
-                    Quickshell.execDetached(["env", `YUKIUI_SETTINGS_PAGE=${page.key}`, "qs", "-p", Quickshell.shellPath("systemSettings.qml")]);
+                    Surfaces.open("settings", page.key);
                 }
             });
         });
