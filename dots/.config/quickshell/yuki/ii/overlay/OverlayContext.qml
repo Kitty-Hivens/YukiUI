@@ -8,7 +8,20 @@ Singleton {
     
     signal requestCenter(string identifier)
 
-    readonly property list<var> availableWidgets: [
+    /**
+     * The widgets there are, and the objects that stand for them.
+     *
+     * Held as a var rather than a list<var> because the identity of the entries
+     * is load bearing. Reading a list<var> marshals it through a variant list
+     * and hands back fresh objects every time, so the model that lists the open
+     * widgets saw every row as changed on every evaluation. Its reconciliation
+     * answers that by overwriting rows positionally without looking at the key
+     * again, which leaves a delegate built for one widget holding another one's
+     * entry: a widget drawn with its own contents under someone else's title, at
+     * someone else's saved position. With the identity stable the comparison
+     * reaches the key and the rows are moved and removed instead.
+     */
+    readonly property var availableWidgets: [
         { identifier: "crosshair", materialSymbol: "point_scan" },
         { identifier: "fpsLimiter", materialSymbol: "animation" },
         { identifier: "floatingImage", materialSymbol: "imagesmode" },

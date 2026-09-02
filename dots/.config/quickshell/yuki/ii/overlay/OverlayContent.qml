@@ -55,9 +55,12 @@ Item {
 
         Repeater {
             model: ScriptModel {
-                values: Persistent.states.overlay.open.map(identifier => {
-                    return OverlayContext.availableWidgets.find(w => w.identifier === identifier);
-                })
+                // An identifier the saved state still names but this build no
+                // longer has resolves to nothing, and an empty row reaches the
+                // model as a value that compares equal to every other empty one.
+                values: Persistent.states.overlay.open
+                    .map(identifier => OverlayContext.availableWidgets.find(w => w.identifier === identifier))
+                    .filter(widget => widget !== undefined)
                 objectProp: "identifier"
             }
             delegate: OverlayWidgetDelegateChooser {
