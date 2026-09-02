@@ -16,26 +16,31 @@ StyledOverlayWidget {
     id: root
     minimumWidth: 300
     minimumHeight: 200
-    property list<var> resources: [
-        {
-            "icon": "planner_review",
-            "name": Translation.tr("CPU"),
-            "history": ResourceUsage.cpuUsageHistory,
-            "maxAvailableString": ResourceUsage.maxAvailableCpuString
-        },
-        {
-            "icon": "memory",
-            "name": Translation.tr("RAM"),
-            "history": ResourceUsage.memoryUsageHistory,
-            "maxAvailableString": ResourceUsage.maxAvailableMemoryString
-        },
-        {
-            "icon": "swap_horiz",
-            "name": Translation.tr("Swap"),
-            "history": ResourceUsage.swapUsageHistory,
-            "maxAvailableString": ResourceUsage.maxAvailableSwapString
-        },
+    /**
+     * What the tabs are, and nothing that moves.
+     *
+     * The readings used to sit in here beside the names, so a list of three
+     * objects was rebuilt on every poll and every tab button rebuilt its icon and
+     * its label along with it, once a tick, for a reading only one of them shows.
+     * The readings are looked up for whichever tab is open instead.
+     */
+    readonly property var resources: [
+        { "icon": "planner_review", "name": Translation.tr("CPU") },
+        { "icon": "memory", "name": Translation.tr("RAM") },
+        { "icon": "swap_horiz", "name": Translation.tr("Swap") },
     ]
+
+    function historyFor(index) {
+        if (index === 1) return ResourceUsage.memoryUsageHistory;
+        if (index === 2) return ResourceUsage.swapUsageHistory;
+        return ResourceUsage.cpuUsageHistory;
+    }
+
+    function maxAvailableFor(index) {
+        if (index === 1) return ResourceUsage.maxAvailableMemoryString;
+        if (index === 2) return ResourceUsage.maxAvailableSwapString;
+        return ResourceUsage.maxAvailableCpuString;
+    }
 
     contentItem: OverlayBackground {
         id: contentItem
@@ -55,6 +60,10 @@ StyledOverlayWidget {
                 currentIndex: Persistent.states.overlay.resources.tabIndex
                 onCurrentIndexChanged: {
                     Persistent.states.overlay.resources.tabIndex = tabBar.currentIndex;
+                    // Clicking a tab writes the index and drops the binding, so
+                    // the tab stops following the saved state. The value just
+                    // written is the one the binding gives back.
+                    tabBar.currentIndex = Qt.binding(() => Persistent.states.overlay.resources.tabIndex);
                 }
 
                 Repeater {
@@ -70,8 +79,8 @@ StyledOverlayWidget {
 
             ResourceSummary {
                 Layout.margins: 8
-                history: root.resources[tabBar.currentIndex]?.history ?? []
-                maxAvailableString: root.resources[tabBar.currentIndex]?.maxAvailableString ?? "--"
+                history: root.historyFor(tabBar.currentIndex)
+                maxAvailableString: root.maxAvailableFor(tabBar.currentIndex)
             }
         }
     }
@@ -87,7 +96,12 @@ StyledOverlayWidget {
         ColumnLayout {
             spacing: 2
             StyledText {
-                text: (resourceSummary.history[resourceSummary.history.length - 1] * 100).toFixed(1) + "%"
+                // Nothing read yet is not nought per cent, and multiplying the
+                // end of an empty history put a NaN on screen until the first
+                // reading landed.
+                text: resourceSummary.history.length > 0
+                    ? (resourceSummary.history[resourceSummary.history.length - 1] * 100).toFixed(1) + "%"
+                    : "--"
                 font {
                     family: Appearance.font.family.numbers
                     variableAxes: Appearance.font.variableAxes.numbers
@@ -123,7 +137,7 @@ StyledOverlayWidget {
             }
             Graph {
                 anchors.fill: parent
-                values: root.resources[tabBar.currentIndex]?.history ?? []
+                values: root.historyFor(tabBar.currentIndex)
                 points: ResourceUsage.historyLength
                 alignment: Graph.Alignment.Right
             }
