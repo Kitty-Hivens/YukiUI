@@ -6,7 +6,11 @@ import Quickshell.Io
 import Quickshell.Wayland
 
 /**
- * A nice wrapper for date and time strings.
+ * Keeps the machine awake while something asks it to.
+ *
+ * The inhibitor only counts while its surface is mapped, so it hangs off a loader
+ * driven by the flag rather than being made once. The compositor closes that
+ * surface when its monitor goes away, which is what the respawn below is for.
  */
 Singleton {
     id: root

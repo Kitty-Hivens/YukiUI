@@ -28,8 +28,9 @@ resolve_family_theming() {
     base="$SHELL_ROOT/environments/$family"
     manifest="$base/manifest.json"
     [[ -f "$manifest" ]] || return 0
-    # Read the same way the shell reads `entry`: a path inside the environment's
-    # own directory, with no ".." in it.
+    # A path inside the environment's own directory. Not quite the shell's own
+    # check (Plugins.usableEntry): that one refuses a leading slash too, and reads
+    # ".." as a path segment rather than as a substring.
     rel=$(jq -r '.theming.matugen // empty' "$manifest" 2>/dev/null)
     if [[ -n "$rel" && "$rel" != *..* && -f "$base/$rel" ]]; then
         family_theming_matugen="$base/$rel"

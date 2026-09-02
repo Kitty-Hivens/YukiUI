@@ -18,7 +18,9 @@ import qs.waffle.bar.tray
  * It is created once and kept, rather than appearing for the duration of a drag:
  * a window that is born and destroyed inside an interaction is the same shape as
  * the teardown that segfaulted the shell when the bar was made to unmap under
- * fullscreen windows, and that cause is still unknown.
+ * fullscreen windows. That one was tracked down (a live binding left for the
+ * teardown to walk back into, see WaffleBar and Tasks), but the shape is avoided
+ * here rather than audited, since nothing needs this window to come and go.
  *
  * It takes no input at all -- the mask is empty, so presses reach the bar beneath
  * and the gesture is still driven by the button it started on. It shares the bar's

@@ -13,7 +13,7 @@ import qs.ii
 
 /*
  * To make an overlay widget:
- * 1. Create a modules/overlay/<yourWidget>/<YourWidget>.qml, using this as the base class and declare your widget content as contentItem
+ * 1. Create an ii/overlay/<yourWidget>/<YourWidget>.qml, using this as the base class and declare your widget content as contentItem
  * 2. Add an entry to OverlayContext.availableWidgets with identifier=<yourWidgetIdentifier>
  * 3. Add an entry in Persistent.states.overlay.<yourWidgetIdentifier> with x, y, width, height, pinned, clickthrough properties set to reasonable defaults
  * 4. Add an entry in OverlayWidgetDelegateChooser with roleValue=<yourWidgetIdentifier> and Declare your widget in there
