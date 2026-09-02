@@ -4,7 +4,9 @@ import Quickshell
 import Qt5Compat.GraphicalEffects
 import qs.core
 import qs.core.functions
+import qs.core.services
 import qs.core.utils
+import qs.common.widgets
 import qs.ii.overlay
 import qs.common
 
@@ -18,6 +20,7 @@ StyledOverlayWidget {
     property real scaleFactor: Config.options.overlay.floatingImage.scale
     property int imageWidth: 0
     property int imageHeight: 0
+    readonly property bool hasImage: root.imageWidth > 0 && root.imageHeight > 0
 
     // Override to always save 0 size
     function savePosition(xPos = root.x, yPos = root.y, width = 0, height = 0) {
@@ -29,23 +32,25 @@ StyledOverlayWidget {
 
     onImageSourceChanged: {
         imageDownloader.running = false;
+        animatedImage.source = "";
+        root.imageWidth = 0;
+        root.imageHeight = 0;
+        if (root.imageSource.length === 0)
+            return;
         imageDownloader.sourceUrl = root.imageSource;
         imageDownloader.filePath = Qt.resolvedUrl(Directories.tempImages + "/" + Qt.md5(root.imageSource))
         imageDownloader.running = true;
-    }
-    onScaleFactorChanged: {
-        setSize();
-    }
-
-    function setSize() {
-        bg.implicitWidth = root.imageWidth * root.scaleFactor;
-        bg.implicitHeight = root.imageHeight * root.scaleFactor;
     }
 
     contentItem: OverlayBackground {
         id: bg
         color: ColorUtils.transparentize(Appearance.m3colors.m3surfaceContainer, root.actuallyPinned ? 1 : 0)
         radius: root.contentRadius
+
+        // Sized from the picture rather than by assigning into these, so that a
+        // widget with no picture still has somewhere to say so.
+        implicitWidth: root.hasImage ? root.imageWidth * root.scaleFactor : placeholder.implicitWidth + 32
+        implicitHeight: root.hasImage ? root.imageHeight * root.scaleFactor : placeholder.implicitHeight + 32
 
         WheelHandler {
             onWheel: (event) => {
@@ -68,15 +73,28 @@ StyledOverlayWidget {
             }
         }
 
+        StyledText {
+            id: placeholder
+            anchors.centerIn: parent
+            visible: !root.hasImage
+            horizontalAlignment: Text.AlignHCenter
+            color: Appearance.colors.colSubtext
+            text: root.imageSource.length === 0
+                ? Translation.tr("No picture set.\nName one in the overlay settings.")
+                : Translation.tr("Could not load the picture.")
+        }
+
         AnimatedImage {
             id: animatedImage
             anchors.centerIn: parent
+            visible: root.hasImage
             width: root.imageWidth * root.scaleFactor
             height: root.imageHeight * root.scaleFactor
-            sourceSize: {
-                const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
-                return Qt.size(width * dpr, height * dpr);
-            }
+            // The size it was decoded at, not the size it is drawn at. Reading
+            // the window for a pixel ratio here is a live binding onto a window
+            // that gets destroyed under it, and tying it to the drawn size made
+            // every notch of the scroll wheel decode the picture again.
+            sourceSize: root.hasImage ? Qt.size(root.imageWidth, root.imageHeight) : undefined
 
             playing: visible
             asynchronous: true
@@ -90,7 +108,6 @@ StyledOverlayWidget {
                 onDone: (path, width, height) => {
                     root.imageWidth = width;
                     root.imageHeight = height;
-                    root.setSize();
                     animatedImage.source = path;
                 }
             }

@@ -35,7 +35,9 @@ Process {
         return ` -H 'Referer: ${StringUtils.shellSingleQuoteEscape(referer)}'`;
     }
 
-    running: true
+    // Nothing to fetch without an address, and curl called with an empty one
+    // still goes out and still fails.
+    running: root.sourceUrl.length > 0
     // --fail --remove-on-error so a host that answers with an error page doesn't
     // leave that page cached under the picture's name for good.
     command: ["bash", "-c",

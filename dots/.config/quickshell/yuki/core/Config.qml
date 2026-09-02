@@ -530,7 +530,10 @@ Singleton {
                 property bool darkenScreen: true
                 property real clickthroughOpacity: 0.8
                 property JsonObject floatingImage: JsonObject {
-                    property string imageSource: "https://media.tenor.com/H5U5bJzj3oAAAAAi/kukuru.gif"
+                    // Empty by default. The widget fetches whatever address is
+                    // here as soon as it is built, and shipping one means the
+                    // desktop reaches a stranger's server on its own account.
+                    property string imageSource: ""
                     property real scale: 0.5
                 }
             }
