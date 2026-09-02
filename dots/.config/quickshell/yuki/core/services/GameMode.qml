@@ -36,8 +36,13 @@ Singleton {
      * mode. A reload also drops every other keyword set while the session ran,
      * which is not this service's to discard.
      */
-    readonly property list<string> visualKeywords: ["animations:enabled", "decoration:shadow:enabled", "decoration:blur:enabled", "general:gaps_in", "general:gaps_out", "general:border_size", "decoration:rounding", "general:allow_tearing"]
+    readonly property list<string> visualKeywords: ["animations:enabled", "decoration:shadow:enabled", "decoration:blur:enabled", "general:gaps_in", "general:gaps_out", "general:border_size", "decoration:rounding"]
 
+    /**
+     * Tearing is not among these. It belongs to the display, which is where it is
+     * set and where it is turned off again, and a mode that switched it on for
+     * the length of a game overrode that choice without saying so.
+     */
     readonly property var visualValues: ({
         "animations:enabled": "0",
         "decoration:shadow:enabled": "0",
@@ -45,8 +50,7 @@ Singleton {
         "general:gaps_in": "0",
         "general:gaps_out": "0",
         "general:border_size": "1",
-        "decoration:rounding": "0",
-        "general:allow_tearing": "1"
+        "decoration:rounding": "0"
     })
 
     /** Filled the first time the mode engages, so it holds the desktop's own values. */
