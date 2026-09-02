@@ -19,6 +19,23 @@ ApplicationWindow {
     id: root
     property real contentPadding: 8
 
+    // Which desktop these settings belong to.
+    //
+    // Bound rather than told, the way a panel decides whether to be on screen at
+    // all: the bar reads the fullscreen state and unmaps itself, and this reads
+    // the family and closes itself. Nothing owns this window. It is a shell process
+    // of its own, and a process cannot be held by the object tree that
+    // asked for it, because a reload destroys that tree without the desktop
+    // having changed at all.
+    //
+    // Only on a change: a window someone started by hand while another desktop
+    // is up was asked for on purpose, and refusing to open is not this rule's
+    // business. Leaving through close() rather than quitting, so whatever the
+    // window still owes (a display layout waiting to be confirmed) is settled by
+    // onClosing on the way out.
+    readonly property bool mine: Config.options?.panelFamily === "ii"
+    onMineChanged: if (!root.mine) root.close()
+
     readonly property var groups: SystemPages.groups
     readonly property var pages: SystemPages.pages
     // Opened from elsewhere in the shell, the window can be asked to start on

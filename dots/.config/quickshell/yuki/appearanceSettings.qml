@@ -14,20 +14,28 @@ import Quickshell
 import qs.core.services
 import qs.core
 import qs.common.widgets
-import qs.core.functions as CF
 import qs.common
 
 ApplicationWindow {
     id: root
-    property string firstRunFilePath: CF.FileUtils.trimFileProtocol(`${Directories.state}/user/first_run.txt`)
-    property string firstRunFileContent: "This file is just here to confirm you've been greeted :>"
     property real contentPadding: 8
-    property bool showNextTime: false
-    // Which desktop family's settings to show, tied to the live panelFamily
-    // (reactive): running ii -> Illogical Impulse settings, running Waffle -> Waffle settings.
-    readonly property string activeFamily: Config.options?.panelFamily ?? "ii"
-
-    readonly property var iiPages: [
+    // Which desktop these settings belong to.
+    //
+    // Bound rather than told, the way a panel decides whether to be on screen at
+    // all: the bar reads the fullscreen state and unmaps itself, and this reads
+    // the family and closes itself. Nothing owns this window. It is a shell process
+    // of its own, and a process cannot be held by the object tree that
+    // asked for it, because a reload destroys that tree without the desktop
+    // having changed at all.
+    //
+    // Only on a change: a window someone started by hand while another desktop
+    // is up was asked for on purpose, and refusing to open is not this rule's
+    // business. Leaving through close() rather than quitting, so whatever the
+    // window still owes (a display layout waiting to be confirmed) is settled by
+    // onClosing on the way out.
+    readonly property bool mine: Config.options?.panelFamily === "ii"
+    onMineChanged: if (!root.mine) root.close()
+    readonly property var pages: [
         { name: Translation.tr("Quick"), icon: "instant_mix", component: "ii/settings/QuickConfig.qml" },
         { name: Translation.tr("General"), icon: "browse", component: "ii/settings/GeneralConfig.qml" },
         { name: Translation.tr("Bar"), icon: "toast", iconRotation: 180, component: "ii/settings/BarConfig.qml" },
@@ -37,14 +45,7 @@ ApplicationWindow {
         { name: Translation.tr("Advanced"), icon: "construction", component: "ii/settings/AdvancedConfig.qml" },
         { name: Translation.tr("System"), icon: "info", component: "ii/settings/About.qml" }
     ]
-    readonly property var wafflePages: [
-        { name: "Waffle", icon: "grid_view", component: "ii/settings/WaffleConfig.qml" }
-    ]
-    readonly property var currentPages: activeFamily === "waffle" ? wafflePages : iiPages
     property int currentPage: 0
-
-    // Reset to the first page when the family changes.
-    onActiveFamilyChanged: currentPage = 0
 
     visible: true
     onClosing: Qt.quit()
@@ -72,7 +73,7 @@ ApplicationWindow {
         Keys.onPressed: (event) => {
             if (event.modifiers === Qt.ControlModifier) {
                 if (event.key === Qt.Key_PageDown) {
-                    root.currentPage = Math.min(root.currentPage + 1, root.currentPages.length - 1)
+                    root.currentPage = Math.min(root.currentPage + 1, root.pages.length - 1)
                     event.accepted = true;
                 }
                 else if (event.key === Qt.Key_PageUp) {
@@ -80,11 +81,11 @@ ApplicationWindow {
                     event.accepted = true;
                 }
                 else if (event.key === Qt.Key_Tab) {
-                    root.currentPage = (root.currentPage + 1) % root.currentPages.length;
+                    root.currentPage = (root.currentPage + 1) % root.pages.length;
                     event.accepted = true;
                 }
                 else if (event.key === Qt.Key_Backtab) {
-                    root.currentPage = (root.currentPage - 1 + root.currentPages.length) % root.currentPages.length;
+                    root.currentPage = (root.currentPage - 1 + root.pages.length) % root.pages.length;
                     event.accepted = true;
                 }
             }
@@ -173,10 +174,10 @@ ApplicationWindow {
                         buttonText: justCopied ? Translation.tr("Path copied") : Translation.tr("Config file")
                         expanded: navRail.expanded
                         downAction: () => {
-                            Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`);
+                            Qt.openUrlExternally(`file://${Directories.shellConfigPath}`);
                         }
                         altAction: () => {
-                            Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
+                            Quickshell.clipboardText = Directories.shellConfigPath;
                             fab.justCopied = true;
                             revertTextTimer.restart()
                         }
@@ -194,17 +195,12 @@ ApplicationWindow {
                         }
                     }
 
-                    // Pages of the current surface (family settings, or System).
-                    // Hidden for single-page surfaces (e.g. the System placeholder),
-                    // where the lone page would just duplicate the header/System toggle.
-                    // Returns automatically once a surface has real sub-pages.
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 15
                         spacing: 0
-                        visible: root.currentPages.length > 1
                         Repeater {
-                            model: root.currentPages
+                            model: root.pages
                             NavigationRailButton {
                                 required property var index
                                 required property var modelData
@@ -234,16 +230,12 @@ ApplicationWindow {
 
                     active: Config.ready
                     Component.onCompleted: {
-                        source = root.currentPages[0].component
+                        source = root.pages[0].component
                     }
 
                     Connections {
                         target: root
                         function onCurrentPageChanged() {
-                            switchAnim.complete();
-                            switchAnim.start();
-                        }
-                        function onActiveFamilyChanged() {
                             switchAnim.complete();
                             switchAnim.start();
                         }
@@ -265,7 +257,7 @@ ApplicationWindow {
                             PropertyAction {
                                 target: pageLoader
                                 property: "source"
-                                value: root.currentPages[root.currentPage].component
+                                value: root.pages[root.currentPage].component
                             }
                             PropertyAction {
                                 target: pageLoader
