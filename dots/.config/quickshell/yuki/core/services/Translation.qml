@@ -4,12 +4,35 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
+import qs.core.functions
 
 Singleton {
     id: root
 
     property var translations: ({})
     property var generatedTranslations: ({})
+    /**
+     * What installed plugins say in the current language, merged into one map.
+     *
+     * A plugin ships English in its manifest and its QML, and its own
+     * `translations/<language>.json` beside them. Without this a plugin could not
+     * be translated at all -- the two maps above are the shell's own files, and
+     * putting a plugin's strings in them would leave dead entries behind when it
+     * is uninstalled.
+     *
+     * Replaced rather than mutated, so a binding reading it is told when a
+     * plugin's file arrives.
+     */
+    property var pluginTranslations: ({})
+
+    function takePluginTranslations(directory, data) {
+        const next = Object.assign({}, root.pluginTranslations);
+        // Keyed on nothing: the maps are flat and two plugins declaring the same
+        // English string want the same Russian one. Last read wins, which for
+        // identical strings is a distinction without a difference.
+        Object.assign(next, data ?? {});
+        root.pluginTranslations = next;
+    }
     property var availableLanguages: ["en_US"]
     property var availableGeneratedLanguages: []
     property var allAvailableLanguages: {
@@ -85,16 +108,64 @@ Singleton {
         // Special cases
         if (!text) return "";
         var key = text.toString();
-        if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key)))
+        if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key) && !root?.pluginTranslations?.hasOwnProperty(key)))
             return key;
-        
-        // Normal cases
-        var translation = root.translations[key] || root.generatedTranslations[key] || key;
+
+        // Normal cases. A plugin comes last on purpose: a word the shell already
+        // has ("Off", "Default") keeps the shell's wording everywhere, and only
+        // what is genuinely the plugin's own comes from the plugin.
+        // Subscripted through the optional operator, like the guard above it. The
+        // guard used to be the proof that one of the two shell maps held the key
+        // and was therefore a map at all; a third source can satisfy it on its
+        // own, and a map that has not been read yet is null rather than empty.
+        var translation = root.translations?.[key] || root.generatedTranslations?.[key] || root.pluginTranslations?.[key] || key;
         // print(key, "-> [", root.translations[key], root.generatedTranslations[key], key, "] ->", translation);
         if (translation.endsWith(root.translationKeepSuffix)) {
             translation = translation.substring(0, translation.length - root.translationKeepSuffix.length).trim();
         }
         return translation;
+    }
+
+    /**
+     * One plugin's file for the current language.
+     *
+     * The path is bound rather than assigned, unlike the two readers above: those
+     * carry a documented history of a binding being overwritten, which does not
+     * apply to a component created per directory and never assigned to.
+     */
+    component PluginTranslation: QtObject {
+        id: pluginTranslation
+        required property string directory
+
+        readonly property FileView file: FileView {
+            // Most plugins ship no translations at all, and most of those that do
+            // will not have this language. Absence is the normal case here, so it
+            // is handled below rather than announced.
+            printErrors: false
+            path: root.languageCode.length > 0
+                ? `${root.pluginTranslationsRoot}/${pluginTranslation.directory}/translations/${root.languageCode}.json`
+                : ""
+            onLoaded: {
+                try {
+                    root.takePluginTranslations(pluginTranslation.directory, JSON.parse(text()));
+                } catch (error) {
+                    console.log(`[Translation] ${pluginTranslation.directory}: translations are not JSON`);
+                }
+            }
+            // A plugin that ships no translation for this language is the normal
+            // case, not a fault: it falls back to the English in its own source.
+            onLoadFailed: root.takePluginTranslations(pluginTranslation.directory, {})
+        }
+    }
+
+    readonly property string pluginTranslationsRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("plugins"))
+
+    property Instantiator pluginReaders: Instantiator {
+        model: Plugins.directories
+        delegate: PluginTranslation {
+            required property string modelData
+            directory: modelData
+        }
     }
 
     component TranslationScanner: Process {
