@@ -31,6 +31,11 @@ StyledOverlayWidget {
                 currentIndex: Persistent.states.overlay.volumeMixer.tabIndex
                 onCurrentIndexChanged: {
                     Persistent.states.overlay.volumeMixer.tabIndex = tabBar.currentIndex;
+                    // A tab writes its own index when it is clicked, which drops
+                    // the binding above, and from then on the bar and the pages
+                    // only agree by accident. Putting it back costs nothing: the
+                    // saved index is the one just written.
+                    tabBar.currentIndex = Qt.binding(() => Persistent.states.overlay.volumeMixer.tabIndex);
                 }
 
                 SecondaryTabButton {
@@ -49,6 +54,8 @@ StyledOverlayWidget {
                 currentIndex: Persistent.states.overlay.volumeMixer.tabIndex
                 onCurrentIndexChanged: {
                     Persistent.states.overlay.volumeMixer.tabIndex = swipeView.currentIndex;
+                    // Swiping writes the index the same way a tab click does.
+                    swipeView.currentIndex = Qt.binding(() => Persistent.states.overlay.volumeMixer.tabIndex);
                 }
                 clip: true
 
