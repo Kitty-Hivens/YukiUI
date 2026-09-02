@@ -7,7 +7,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.core
 import qs.core.functions
-import "../../ii/systemSettings/arrange.js" as Arrange
+import "../functions/arrange.js" as Arrange
 
 /**
  * Output layout model.

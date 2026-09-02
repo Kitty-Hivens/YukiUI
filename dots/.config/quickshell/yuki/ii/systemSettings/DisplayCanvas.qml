@@ -6,7 +6,7 @@ import qs.core.services
 import qs.core
 import qs.common.widgets
 import qs.common
-import "arrange.js" as Arrange
+import "../../core/functions/arrange.js" as Arrange
 
 /**
  * Arrangement canvas. Renders the plan it is given and reports moves back;
