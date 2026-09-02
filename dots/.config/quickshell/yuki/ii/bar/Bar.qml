@@ -34,8 +34,20 @@ Scope {
                 screen: barLoader.modelData
 
                 // Unmap under a fullscreen window on this monitor so Hyprland can direct-scanout it (proper VRR)
-                property bool fullscreenOnThisMonitor: Hyprland.workspaces.values.some(ws => ws.active && ws.monitor?.name == barLoader.modelData.name && ws.toplevels.values.some(w => w.wayland?.fullscreen))
+                property bool fullscreenOnThisMonitor: GameMode.fullscreenOn(barLoader.modelData.name)
                 visible: !(Config?.options.bar.hideWhenFullscreen && fullscreenOnThisMonitor)
+
+                /// Named to the shared grab only while it is on screen. Hyprland drops a
+                /// grab that names an unmapped surface, and the drop reaches the shell as a
+                /// dismissal, which closes every panel that answers to one. See the same
+                /// guard on the media controls.
+                function syncGrabRegistration() {
+                    if (barRoot.visible)
+                        GlobalFocusGrab.addPersistent(barRoot);
+                    else
+                        GlobalFocusGrab.removePersistent(barRoot);
+                }
+                onVisibleChanged: barRoot.syncGrabRegistration()
 
                 Timer {
                     id: showBarTimer
@@ -83,7 +95,7 @@ Scope {
 
                 // Include in focus grab
                 Component.onCompleted: {
-                    GlobalFocusGrab.addPersistent(barRoot);
+                    barRoot.syncGrabRegistration();
                 }
                 Component.onDestruction: {
                     GlobalFocusGrab.removePersistent(barRoot);

@@ -29,10 +29,12 @@ Variants {
 
         required property var modelData
 
-        // Hide when fullscreen
-        property list<HyprlandWorkspace> workspacesForMonitor: Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
-        property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
-        visible: GlobalStates.screenLocked || (!(activeWorkspaceWithFullscreen != undefined)) || !Config?.options.background.hideWhenFullscreen
+        // Hide when fullscreen. Asked of the screen by name: the monitor object is
+        // null before Hyprland has reported it and across a hotplug, and reading a
+        // name off it there threw, which leaves the binding holding whatever it
+        // last worked out until something else happens to re-run it.
+        readonly property bool fullscreenHere: GameMode.fullscreenOn(bgRoot.modelData.name)
+        visible: GlobalStates.screenLocked || !fullscreenHere || !Config?.options.background.hideWhenFullscreen
 
         // Workspaces
         property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)

@@ -96,9 +96,7 @@ Scope {
             // surface still mapped there is one Hyprland cannot direct-scanout past.
             // Only the window goes -- whether the controls are open is left alone, so
             // they come back by themselves afterwards rather than needing reopening.
-            readonly property bool fullscreenOnThisMonitor: Hyprland.workspaces.values.some(ws =>
-                ws.active && ws.monitor?.name == panelWindow.screen?.name
-                && ws.toplevels.values.some(w => w.wayland?.fullscreen))
+            readonly property bool fullscreenOnThisMonitor: GameMode.fullscreenOn(panelWindow.screen?.name)
             visible: !(Config?.options.bar.hideWhenFullscreen && panelWindow.fullscreenOnThisMonitor)
 
             exclusionMode: ExclusionMode.Ignore

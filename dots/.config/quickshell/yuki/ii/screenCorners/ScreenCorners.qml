@@ -144,12 +144,11 @@ Scope {
         Scope {
             id: monitorScope
             required property var modelData
-            property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)
-
-            // Hide when fullscreen
-            property list<HyprlandWorkspace> workspacesForMonitor: Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
-            property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
-            property bool fullscreen: activeWorkspaceWithFullscreen != undefined
+            // Hide when fullscreen. By screen name rather than through the monitor
+            // object, which is null until Hyprland reports it and again across a
+            // hotplug, where reading a name off it threw and left the corners at
+            // whatever they last were.
+            readonly property bool fullscreen: GameMode.fullscreenOn(monitorScope.modelData.name)
 
             CornerPanelWindow {
                 screen: modelData

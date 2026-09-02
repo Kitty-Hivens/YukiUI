@@ -62,6 +62,13 @@ Scope {
                     Appearance.sizes.baseVerticalBarWidth + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                 WlrLayershell.namespace: "quickshell:verticalBar"
                 // WlrLayershell.layer: WlrLayer.Overlay // TODO enable this when bar can hide when fullscreen
+
+                // Steps aside for a fullscreen window on its own monitor, the way the
+                // horizontal bar does. It did not, so the setting that says the bar gets
+                // out of the way of a game did nothing at all in this layout, and the
+                // strip it reserves stayed reserved.
+                property bool fullscreenOnThisMonitor: GameMode.fullscreenOn(barLoader.modelData.name)
+                visible: !(Config?.options.bar.hideWhenFullscreen && fullscreenOnThisMonitor)
                 implicitWidth: Appearance.sizes.verticalBarWidth + Appearance.rounding.screenRounding
                 mask: Region {
                     item: hoverMaskRegion
@@ -76,9 +83,18 @@ Scope {
                     bottom: true
                 }
 
-                // Include in focus grab
+                /// Named to the shared grab only while it is on screen, for the reason
+                /// spelled out on the media controls: Hyprland drops a grab that names an
+                /// unmapped surface, and that drop reaches the shell as a dismissal.
+                function syncGrabRegistration() {
+                    if (barRoot.visible)
+                        GlobalFocusGrab.addPersistent(barRoot);
+                    else
+                        GlobalFocusGrab.removePersistent(barRoot);
+                }
+                onVisibleChanged: barRoot.syncGrabRegistration()
                 Component.onCompleted: {
-                    GlobalFocusGrab.addPersistent(barRoot);
+                    barRoot.syncGrabRegistration();
                 }
                 Component.onDestruction: {
                     GlobalFocusGrab.removePersistent(barRoot);
