@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import Quickshell
+import qs.core
 
 Singleton {
     id: root
@@ -16,21 +17,27 @@ Singleton {
         { identifier: "notes", materialSymbol: "note_stack" },
         { identifier: "volumeMixer", materialSymbol: "volume_up" },
     ]
-    
+
+    /**
+     * Which of the open widgets stay on screen once the overlay is dismissed.
+     *
+     * Read from the saved state rather than from the widgets. The widgets are
+     * drawn inside the window this answer decides whether to build, so asking
+     * them was circular: nothing counted as pinned until the window was up, and
+     * the window only went up because something counted as pinned. A pinned
+     * widget was therefore gone after every restart of the shell until the
+     * overlay had been opened by hand once, which is not what pinning promises.
+     *
+     * The state file is written the moment a pin is toggled, so it can answer
+     * before any widget exists -- and it still answers for a widget that has
+     * just been destroyed, which the widgets themselves cannot do.
+     */
+    readonly property list<string> pinnedWidgetIdentifiers: Persistent.states.overlay.open
+        .filter(identifier => Persistent.states.overlay[identifier]?.pinned ?? false)
+
     readonly property bool hasPinnedWidgets: root.pinnedWidgetIdentifiers.length > 0
 
-    property list<string> pinnedWidgetIdentifiers: []
     property list<var> clickableWidgets: []
-
-    function pin(identifier: string, pin = true) {
-        if (pin) {
-            if (!root.pinnedWidgetIdentifiers.includes(identifier)) {
-                root.pinnedWidgetIdentifiers.push(identifier)
-            }
-        } else {
-            root.pinnedWidgetIdentifiers = root.pinnedWidgetIdentifiers.filter(id => id !== identifier)
-        }
-    }
 
     function registerClickableWidget(widget: var, clickable = true) {
         if (clickable) {

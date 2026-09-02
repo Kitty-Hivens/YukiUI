@@ -89,23 +89,28 @@ AbstractOverlayWidget {
     opacity: (IiStates.overlayOpen || !clickthrough) ? 1.0 : Config.options.overlay.clickthroughOpacity
 
     // Guarded states & registration funcs
-    property bool open: Persistent.states.overlay.open
-    property bool actuallyPinned: pinned && open
-    property bool actuallyClickable: !clickthrough && actuallyPinned && open
-    onActuallyPinnedChanged: reportPinnedState();
+    readonly property bool open: Persistent.states.overlay.open.includes(root.identifier)
+    readonly property bool actuallyPinned: pinned && open
+    readonly property bool actuallyClickable: !clickthrough && actuallyPinned
     onActuallyClickableChanged: reportClickableState();
-    function reportPinnedState() {
-        OverlayContext.pin(identifier, actuallyPinned);
-    }
     function reportClickableState() {
         OverlayContext.registerClickableWidget(contentItem, actuallyClickable);
     }
 
     // Self-registeration with OverlayContext
-    Component.onCompleted: {
-        reportPinnedState();
-        reportClickableState();
-    }
+    Component.onCompleted: reportClickableState()
+
+    /**
+     * Closing a widget destroys it, and a destroyed object announces nothing.
+     *
+     * Left registered, its content item stayed in the clickable list for the
+     * rest of the session as an entry that reads back as null without the list
+     * ever saying it changed. The window went on claiming keyboard focus for it,
+     * and the compositor went on catching clicks in the rectangle where it used
+     * to be: Quickshell drops a destroyed item from a region without telling the
+     * window to work its input area out again.
+     */
+    Component.onDestruction: OverlayContext.registerClickableWidget(contentItem, false)
 
     Connections {
         target: OverlayContext
