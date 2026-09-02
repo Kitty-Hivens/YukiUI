@@ -37,7 +37,7 @@ OverlayBackground {
 
         // MangoHud's config directory does not exist until MangoHud itself has
         // written something there, and it is wherever XDG says rather than a
-        // literal ~/.config -- appending a line to a file in a directory that is
+        // literal ~/.config. Appending a line to a file in a directory that is
         // not there is how this wrote nothing at all and said it had worked.
         fpsSetter.command = ["bash", "-c",
             'cfg="${XDG_CONFIG_HOME:-$HOME/.config}/MangoHud/MangoHud.conf"; ' +
@@ -61,7 +61,7 @@ OverlayBackground {
          * command that followed the write was `pkill -SIGUSR2 mangohud`, which
          * could never reach the HUD: it lives inside the game's own process
          * through LD_PRELOAD, `mangohud` on PATH is a shell wrapper, and the
-         * library installs no handler for that signal -- so the one process the
+         * library installs no handler for that signal, so the one process the
          * pattern could ever have matched would have been killed by it. The limit
          * is read when a game starts, and that is when it now takes effect.
          */

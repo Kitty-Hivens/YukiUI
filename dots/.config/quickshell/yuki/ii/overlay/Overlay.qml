@@ -21,7 +21,7 @@ Scope {
 
     function toggle() {
         // Nothing of this desktop belongs over the lock screen, and the window
-        // below is unmapped there anyway -- a flag left on would come back up
+        // below is unmapped there anyway, and a flag left on would come back up
         // with the session and with a focus grab nobody asked for.
         if (GlobalStates.screenLocked) return;
         IiStates.overlayOpen = !IiStates.overlayOpen;
@@ -58,7 +58,7 @@ Scope {
      *
      * The window used to be a Loader gated on the same flag that opens the
      * overlay, so everything inside it that listened for that flag was created by
-     * the very change it wanted to hear -- and Qt does not deliver a signal to a
+     * the very change it wanted to hear, and Qt does not deliver a signal to a
      * connection made while it is being emitted. The focus grab below was
      * therefore never armed on a plain open, and the overlay closed on a click
      * outside only because the canvas behind the widgets happens to cover the

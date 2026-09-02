@@ -19,7 +19,7 @@ Canvas {
 
     /**
      * A Canvas repaints when asked whether or not anyone can see it, and these
-     * are fed by a poller that runs for as long as the shell does -- so a graph
+     * are fed by a poller that runs for as long as the shell does, so a graph
      * in a widget that is closed, or on a tab nobody is on, went on redrawing
      * itself once a tick. Drawn on the way onto the screen instead, so it still
      * shows the values it sat out, and drawn once it is ready as well: a request

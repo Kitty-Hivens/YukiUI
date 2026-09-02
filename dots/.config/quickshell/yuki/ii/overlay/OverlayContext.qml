@@ -29,7 +29,7 @@ Singleton {
      * overlay had been opened by hand once, which is not what pinning promises.
      *
      * The state file is written the moment a pin is toggled, so it can answer
-     * before any widget exists -- and it still answers for a widget that has
+     * before any widget exists, and it still answers for a widget that has
      * just been destroyed, which the widgets themselves cannot do.
      */
     readonly property list<string> pinnedWidgetIdentifiers: Persistent.states.overlay.open

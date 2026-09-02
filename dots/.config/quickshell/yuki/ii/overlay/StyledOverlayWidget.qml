@@ -196,7 +196,7 @@ AbstractOverlayWidget {
 
     /**
      * Positions are absolute pixels, kept across restarts and monitor changes,
-     * and nothing bounds them on the way in -- only the drag does, which is no
+     * and nothing bounds them on the way in. The drag bounds them, which is no
      * help for a widget that is already past the edge and cannot be grabbed.
      * The saved spot of a widget from a wide screen is off a narrow one.
      */
