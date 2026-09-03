@@ -134,6 +134,14 @@ Singleton {
                 property int minRowHeight: 0
             }
 
+            property JsonObject gameMode: JsonObject {
+                /// What the compositor settings held before game mode overwrote
+                /// them, as json. Kept on disk because a shell that restarts while
+                /// the mode is on can only read the mode's own values back off the
+                /// compositor, and would have nothing to put back.
+                property string visualBefore: ""
+            }
+
             property JsonObject idle: JsonObject {
                 property bool inhibit: false
             }
