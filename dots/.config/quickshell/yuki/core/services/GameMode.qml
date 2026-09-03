@@ -11,6 +11,16 @@ Singleton {
 
     function load() {}
 
+    /**
+     * Whether a window is fullscreen anywhere.
+     *
+     * A window that has merely been told it is fullscreen does not count, and is
+     * not meant to. The spoof bind leaves the compositor's own state at none, so
+     * the window keeps its size and its place in the layout and only its own
+     * behaviour changes, which leaves nothing for a panel to be in the way of.
+     * The compositor reports fullscreen over the foreign toplevel protocol only
+     * for windows it holds fullscreen itself, so that is what this reads.
+     */
     readonly property bool anyFullscreen: Hyprland.workspaces.values.some(ws =>
         ws.active && ws.toplevels.values.some(t => t.wayland?.fullscreen))
 
