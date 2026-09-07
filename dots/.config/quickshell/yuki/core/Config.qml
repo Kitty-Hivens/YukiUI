@@ -468,6 +468,12 @@ Singleton {
                 property bool visual: true
                 property bool system: true
                 property bool wallpaper: true
+                /// How long a game has to hold a screen before the shell gives up its
+                /// windows on it, in seconds, or nought to keep them for good. Standing
+                /// aside is instant either way, this is only about letting the surfaces
+                /// go, which is the part that costs a rebuild to undo and which measured
+                /// out as buying nothing. See GameMode.standDownOn.
+                property int standDownDelay: 0
             }
 
             property JsonObject lock: JsonObject {

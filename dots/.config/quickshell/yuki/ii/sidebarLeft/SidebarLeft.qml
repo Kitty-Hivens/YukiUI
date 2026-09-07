@@ -92,7 +92,16 @@ Scope { // Scope
             // focus and freeze the game's pointer lock. Gate on the real fullscreen, not
             // GameMode.engaged, so manual game mode still leaves the sidebar reachable, and on
             // the fullscreen of this screen rather than of any of them.
-            visible: IiStates.sidebarLeftOpen && !GameMode.fullscreenOn(panelWindow.screen?.name)
+            visible: IiStates.sidebarLeftOpen && !GameMode.fullscreenOn(panelWindow.screenName)
+
+            /// See SidebarRight: the screen is kept out of the visibility binding
+            /// so the window is not asked where it is while deciding whether it is
+            /// anywhere.
+            property string screenName: ""
+            onScreenChanged: if (panelWindow.screen)
+                panelWindow.screenName = panelWindow.screen.name
+            Component.onCompleted: if (panelWindow.screen)
+                panelWindow.screenName = panelWindow.screen.name
             
             property bool extend: false
             property real sidebarWidth: panelWindow.extend ? Appearance.sizes.sidebarWidthExtended : Appearance.sizes.sidebarWidth

@@ -46,7 +46,7 @@ WindowDialog {
             text: Translation.tr("Visual performance")
             checked: Config.options.gameMode.visual
             onCheckedChanged: Config.options.gameMode.visual = checked
-            StyledToolTip { text: Translation.tr("No animations, blur, shadows, rounding or gaps; allow tearing") }
+            StyledToolTip { text: Translation.tr("No animations, blur, shadows, rounding or gaps") }
         }
 
         ConfigSwitch {

@@ -34,7 +34,19 @@ Variants {
         // name off it there threw, which leaves the binding holding whatever it
         // last worked out until something else happens to re-run it.
         readonly property bool fullscreenHere: GameMode.fullscreenOn(bgRoot.modelData.name)
-        visible: GlobalStates.screenLocked || !fullscreenHere || !Config?.options.background.hideWhenFullscreen
+
+        // Drawing stops as soon as a game has the screen. Nothing of this window can
+        // be seen then, since it sits under the game, but every frame it submits is
+        // one the compositor has to collect instead of leaving the screen to the
+        // game, and the clock on the wallpaper ticking is enough to submit them.
+        updatesEnabled: GlobalStates.screenLocked || !fullscreenHere || !Config?.options.background.hideWhenFullscreen
+
+        // The same question asked patiently, and by default never answered yes. The
+        // window is covered whole, so letting it go early hides nothing that was
+        // visible, while building it again means the wallpaper, its blur and every
+        // widget on it. See GameMode.standDownOn.
+        readonly property bool standDownHere: GameMode.standDownOn(bgRoot.modelData.name)
+        visible: GlobalStates.screenLocked || !standDownHere || !Config?.options.background.hideWhenFullscreen
 
         // Workspaces
         property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)

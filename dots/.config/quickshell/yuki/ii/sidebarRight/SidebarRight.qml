@@ -19,7 +19,18 @@ Scope {
         // freeze the game's pointer lock. Gate on the real fullscreen, not GameMode.engaged, so
         // manual game mode still leaves the sidebar and its game-mode toggle reachable, and on
         // the fullscreen of this screen rather than of any of them.
-        visible: IiStates.sidebarRightOpen && !GameMode.fullscreenOn(panelWindow.screen?.name)
+        visible: IiStates.sidebarRightOpen && !GameMode.fullscreenOn(panelWindow.screenName)
+
+        /// The screen this panel is on, kept as a value of its own. Read straight
+        /// out of the visibility binding it asks the window where it is as part of
+        /// deciding whether it is anywhere at all, which Qt reports as a binding
+        /// loop, and a hidden window answers that with no screen, so the question
+        /// silently widens to every screen at the one moment it matters.
+        property string screenName: ""
+        onScreenChanged: if (panelWindow.screen)
+            panelWindow.screenName = panelWindow.screen.name
+        Component.onCompleted: if (panelWindow.screen)
+            panelWindow.screenName = panelWindow.screen.name
 
         function hide() {
             IiStates.sidebarRightOpen = false;

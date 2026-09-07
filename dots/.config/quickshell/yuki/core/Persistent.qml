@@ -135,11 +135,16 @@ Singleton {
             }
 
             property JsonObject gameMode: JsonObject {
-                /// What the compositor settings held before game mode overwrote
-                /// them, as json. Kept on disk because a shell that restarts while
-                /// the mode is on can only read the mode's own values back off the
-                /// compositor, and would have nothing to put back.
-                property string visualBefore: ""
+                /// What the desktop's own compositor settings look like, as json.
+                /// Kept on disk because a shell that starts while the mode is on
+                /// can only read the mode's own values back off the compositor,
+                /// and would have nothing to put back.
+                property string desktopVisual: ""
+                /// Whether those settings are currently overwritten by the mode.
+                /// A session that ended mid-game leaves them overwritten, and
+                /// without this the next shell cannot tell that apart from a
+                /// desktop somebody chose to configure that way.
+                property bool visualApplied: false
             }
 
             property JsonObject idle: JsonObject {
