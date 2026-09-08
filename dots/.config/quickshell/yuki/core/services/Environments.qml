@@ -27,10 +27,25 @@ Singleton {
     /** The one API generation this host knows how to build. */
     readonly property int apiVersion: 1
 
-    readonly property string environmentPath: FileUtils.trimFileProtocol(Quickshell.shellPath("environments"))
-    readonly property url environmentFolder: Qt.resolvedUrl(Quickshell.shellPath("environments"))
+    /**
+     * Where desktops are looked for, and which copy wins when both hold one.
+     *
+     * Two roots, for the reason given in [Plugins]: the tree the shell is read
+     * from belongs to whatever installed it, and is no place to keep something a
+     * person added. A copy in the home root shadows one that ships with the
+     * shell.
+     *
+     * What a desktop kept here may import is narrower than it looks. Its entry
+     * is loaded by url, which works anywhere on disk and keeps `qs.*`, so it can
+     * import whatever the shell's own tree already registers. What it cannot do
+     * is have its own subdirectories reached by module name: only the scanner
+     * writes those, and it walks the static import graph from the shell root. A
+     * desktop kept here addresses its own files by relative url.
+     */
+    readonly property string systemRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("environments"))
+    readonly property string homeRoot: Directories.userEnvironments
 
-    /** id -> { id, name, url }. Replaced rather than mutated, so bindings hear it. */
+    /** id -> { id, name, url, home }. Replaced rather than mutated, so bindings hear it. */
     property var manifests: Object.create(null)
 
     readonly property list<string> ids: Object.keys(root.manifests).sort()
@@ -99,13 +114,26 @@ Singleton {
 
     readonly property list<string> failedIds: Object.keys(root.failures)
 
-    /** Why a directory under `environments/` is not on offer, keyed by directory. */
+    /**
+     * Why a directory is not on offer, keyed by its full path.
+     *
+     * By the path and not by the name: the same name can appear under both
+     * roots, and somebody's own copy of a desktop is exactly that case.
+     */
     property var problems: Object.create(null)
 
-    function reject(directory, reason) {
-        console.warn(`[Environments] ${directory}: ${reason}`);
+    function reject(place, reason) {
+        console.warn(`[Environments] ${place}: ${reason}`);
         const next = Object.assign(Object.create(null), root.problems);
-        next[directory] = reason;
+        next[place] = reason;
+        root.problems = next;
+    }
+
+    function clearProblem(place) {
+        if (root.problems[place] === undefined)
+            return;
+        const next = Object.assign(Object.create(null), root.problems);
+        delete next[place];
         root.problems = next;
     }
 
@@ -219,79 +247,143 @@ Singleton {
         }
     }
 
+    /** Whether the entry was taken. Refused only in favour of a home copy. */
     function register(manifest) {
+        const held = root.manifests[manifest.id];
+        // Which manifest was read first is not a decision anybody made, so the
+        // root decides instead.
+        if (held !== undefined && held.url !== manifest.url && held.home && !manifest.home)
+            return false;
         const next = Object.assign(Object.create(null), root.manifests);
         next[manifest.id] = manifest;
         root.manifests = next;
+        return true;
     }
 
-    function unregister(id) {
+    /** Removes the entry only if it is still the one this directory registered. */
+    function unregister(id, url) {
+        if (root.manifests[id]?.url !== url)
+            return;
         const next = Object.assign(Object.create(null), root.manifests);
         delete next[id];
         root.manifests = next;
+        Qt.callLater(root.reconsider);
     }
 
-    /** One directory under `environments/`, however far it gets. */
+    /**
+     * Offers every shadowed directory the id it was refused.
+     *
+     * Reached when an entry is removed, which is what happens when the directory
+     * that held the id goes away. Without it, deleting your own copy of a
+     * desktop left the one shipped with the shell unreachable until the next
+     * reload.
+     */
+    function reconsider() {
+        for (const instantiator of [root.homeSlots, root.systemSlots])
+            for (let i = 0; i < (instantiator?.count ?? 0); i++) {
+                const slot = instantiator.objectAt(i);
+                if (slot?.shadowed)
+                    slot.read(slot.manifestText);
+            }
+    }
+
+    /** One directory under one of the roots, however far it gets. */
     component Slot: QtObject {
         id: slot
 
+        required property string base
         required property string directory
+        /** Both roots can hold a directory of the same name, so this is what
+         *  names one of them. */
+        readonly property string place: `${slot.base}/${slot.directory}`
+        readonly property bool fromHome: slot.base === root.homeRoot
+        /** Kept so a directory refused in favour of a home copy can be offered
+         *  its id back without the manifest being read a second time. */
+        property string manifestText: ""
+        property bool shadowed: false
         property string environmentId: ""
+        property string entryUrl: ""
 
         function read(text) {
+            slot.manifestText = text;
+            slot.shadowed = false;
+            root.clearProblem(slot.place);
             let manifest;
             try {
                 manifest = JSON.parse(text);
             } catch (error) {
-                root.reject(slot.directory, "the manifest is not JSON");
+                root.reject(slot.place, "the manifest is not JSON");
                 return;
             }
             if (!Plugins.usableId(manifest?.id)) {
-                root.reject(slot.directory, `"${manifest?.id}" cannot be an id -- letters, digits, dashes and underscores only`);
+                root.reject(slot.place, `"${manifest?.id}" cannot be an id -- letters, digits, dashes and underscores only`);
                 return;
             }
             if (!Plugins.usableEntry(manifest?.entry)) {
-                root.reject(slot.directory, `"${manifest?.entry}" cannot be an entry -- a path inside this directory, with no ".." in it`);
+                root.reject(slot.place, `"${manifest?.entry}" cannot be an entry -- a path inside this directory, with no ".." in it`);
                 return;
             }
             if (!manifest?.id || !manifest?.entry) {
-                root.reject(slot.directory, "the manifest names no id or no entry");
+                root.reject(slot.place, "the manifest names no id or no entry");
                 return;
             }
             if (manifest.apiVersion !== root.apiVersion) {
-                root.reject(slot.directory, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
+                root.reject(slot.place, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
                 return;
             }
             slot.environmentId = manifest.id;
-            root.register({
+            slot.entryUrl = `file://${slot.place}/${manifest.entry}`;
+            const taken = root.register({
                 id: manifest.id,
                 name: manifest.name ?? manifest.id,
-                url: `${root.environmentFolder}/${slot.directory}/${manifest.entry}`
+                url: slot.entryUrl,
+                home: slot.fromHome
             });
+            if (!taken) {
+                slot.shadowed = true;
+                root.reject(slot.place, `"${manifest.id}" is taken by ${root.manifests[manifest.id].url}`);
+            }
         }
 
         property FileView manifestFile: FileView {
-            path: `${root.environmentPath}/${slot.directory}/manifest.json`
+            path: `${slot.place}/manifest.json`
             onLoaded: slot.read(text())
-            onLoadFailed: root.reject(slot.directory, "there is no manifest here")
+            onLoadFailed: root.reject(slot.place, "there is no manifest here")
         }
 
         Component.onDestruction: {
+            // Said first, and for a directory that never got an id as well: a
+            // reason otherwise outlives the directory it was about, and this
+            // one's report reads the problem list directly.
+            root.clearProblem(slot.place);
             if (slot.environmentId.length > 0)
-                root.unregister(slot.environmentId);
+                root.unregister(slot.environmentId, slot.entryUrl);
         }
     }
 
-    property Instantiator slots: Instantiator {
-        model: FolderListModel {
-            folder: root.environmentFolder
-            showDirs: true
-            showFiles: false
-            showDotAndDotDot: false
-            sortField: FolderListModel.Name
-        }
+    component Listing: FolderListModel {
+        required property string base
+        folder: `file://${base}`
+        showDirs: true
+        showFiles: false
+        showDotAndDotDot: false
+        sortField: FolderListModel.Name
+    }
+
+    property Instantiator homeSlots: Instantiator {
+        model: Listing { base: root.homeRoot }
         delegate: Slot {
             required property string fileName
+            base: root.homeRoot
+            directory: fileName
+        }
+    }
+
+    property Instantiator systemSlots: Instantiator {
+        model: Listing { base: root.systemRoot }
+        delegate: Slot {
+            required property string fileName
+            base: root.systemRoot
             directory: fileName
         }
     }
@@ -305,8 +397,8 @@ Singleton {
                 : (root.isOffered(id) ? "offered" : "off"));
             return [id, state, failure !== undefined ? `${root.nameOf(id)}  -- ${failure}` : root.nameOf(id)];
         });
-        for (const directory of Object.keys(root.problems))
-            rows.push(["-", "broken", `${directory}  -- ${root.problems[directory]}`]);
+        for (const place of Object.keys(root.problems))
+            rows.push(["-", "broken", `${place}  -- ${root.problems[place]}`]);
         if (rows.length === 0)
             return "no environments installed";
         const width = Math.max(...rows.map(row => row[0].length));

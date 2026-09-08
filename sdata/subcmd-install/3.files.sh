@@ -187,6 +187,34 @@ function install_dir__sync_exclude(){
   fi
   v rsync_dir__sync_exclude $s $t "$@"
 }
+function move_user_extensions(){
+  # Plugins and desktops somebody added used to sit inside the shell's own tree,
+  # among the ones this repository ships. Copying could not keep that tree in
+  # step without taking them along, so it was held back from doing so, and a
+  # plugin this repository dropped stayed on the machine for ever.
+  #
+  # They have a root of their own now. Anything under the old location that this
+  # repository does not carry is moved there before the copying step runs, since
+  # that step is about to remove whatever it does not recognise.
+  local old_root="${XDG_CONFIG_HOME}/quickshell/yuki"
+  local new_root="${XDG_CONFIG_HOME}/yuki"
+  local kind dir name
+  for kind in plugins environments; do
+    if [ ! -d "${old_root}/${kind}" ]; then continue; fi
+    for dir in "${old_root}/${kind}"/*; do
+      if [ ! -d "$dir" ]; then continue; fi
+      name="$(basename "$dir")"
+      if [ -d "dots/.config/quickshell/yuki/${kind}/${name}" ]; then continue; fi
+      if [ -e "${new_root}/${kind}/${name}" ]; then
+        printf "${STY_YELLOW}[$0]: \"${new_root}/${kind}/${name}\" already exists, leaving \"$dir\" alone.${STY_RST}\n"
+        continue
+      fi
+      printf "${STY_BLUE}[$0]: Moving ${kind}/${name} to ${new_root}/${kind}/${STY_RST}\n"
+      x mkdir -p "${new_root}/${kind}"
+      v mv "$dir" "${new_root}/${kind}/"
+    done
+  done
+}
 function install_wallpaper_portal_service(){
   # D-Bus activation of the wallpaper portal backend. Written rather than copied
   # because Exec takes an absolute path and expands nothing.
@@ -314,6 +342,11 @@ v auto_update_git_submodule
 
 # Backup
 if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
+
+# Before the copying, not after: the step below keeps the shell tree in step with
+# this repository, which means removing what it does not carry.
+showfun move_user_extensions
+v move_user_extensions
 
 case "${EXPERIMENTAL_FILES_SCRIPT}" in
   true)source sdata/subcmd-install/3.files-exp.sh;;

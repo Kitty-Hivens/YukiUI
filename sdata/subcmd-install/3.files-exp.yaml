@@ -14,30 +14,19 @@ user_preferences:
 patterns:
   # Always install these files
   #
-  # `plugins` and `environments` are held out of the sync above and copied
-  # without deleting below. `sync` is rsync --delete, so everything under the
-  # shell config that this repository does not carry is removed -- and a plugin
-  # or a desktop somebody added themselves is exactly that. rsync is not given
-  # --delete-excluded, so what is excluded here is left alone at the destination
-  # rather than taken from it.
+  # The whole shell tree in one sync, `plugins` and `environments` included.
+  # They used to be held out of it and copied without deleting, because a plugin
+  # or a desktop somebody added lived among the ones shipped here and rsync
+  # --delete would have taken it. That kept a person's own files inside somebody
+  # else's tree, and it never removed anything: a plugin this repository dropped
+  # stayed on the machine for good.
   #
-  # What this repository does ship in both still updates, because the patterns
-  # below overwrite it. What they do not do is remove a directory nobody here
-  # names.
-  #
-  # `environments` holds manifests and entry points, seven files. A desktop that
-  # ships with the shell keeps its own tree at the top level, so a third-party
-  # one added here is self-contained rather than sitting among ours.
+  # Those files have a root of their own now, $XDG_CONFIG_HOME/yuki, which this
+  # never touches. So the shell tree can be kept in step the way every other
+  # directory here is.
   - from: "dots/.config/quickshell/yuki"
     to: "$XDG_CONFIG_HOME/quickshell/yuki"
     mode: "sync"
-    excludes: ["/plugins", "/environments"]
-  - from: "dots/.config/quickshell/yuki/plugins"
-    to: "$XDG_CONFIG_HOME/quickshell/yuki/plugins"
-    mode: "soft"
-  - from: "dots/.config/quickshell/yuki/environments"
-    to: "$XDG_CONFIG_HOME/quickshell/yuki/environments"
-    mode: "soft"
   # Conditionally install these files
   - from: "dots/.config/fish"
     to: "$XDG_CONFIG_HOME/fish"

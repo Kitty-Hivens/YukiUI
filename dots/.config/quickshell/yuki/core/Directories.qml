@@ -43,6 +43,20 @@ Singleton {
     property string booruDownloadsNsfw: FileUtils.trimFileProtocol(Directories.pictures + "/homework/🌶️")
     property string latexOutput: FileUtils.trimFileProtocol(`${Directories.cache}/media/latex`)
     property string shellConfig: FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse`)
+    /**
+     * The person's own half of the shell root.
+     *
+     * The tree the shell itself is read from belongs to whatever installed it: a
+     * copy of it is kept in step with the repository, so it removes whatever the
+     * repository does not carry, and where the shell arrives from a store it
+     * cannot be written to at all. Neither is a place to keep a plugin or a
+     * desktop somebody added, so those live here instead.
+     *
+     * See [Plugins] and [Environments], which look in both.
+     */
+    property string userShellRoot: FileUtils.trimFileProtocol(`${Directories.config}/yuki`)
+    property string userPlugins: `${Directories.userShellRoot}/plugins`
+    property string userEnvironments: `${Directories.userShellRoot}/environments`
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
 	property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.json`)
@@ -67,6 +81,10 @@ Singleton {
     // Cleanup on init
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
+        // Made here rather than left to whoever first drops something in, so the
+        // folder models watching them have something to watch from the start.
+        Quickshell.execDetached(["mkdir", "-p", `${userPlugins}`])
+        Quickshell.execDetached(["mkdir", "-p", `${userEnvironments}`])
         Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${coverArt}'; mkdir -p '${coverArt}'`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${booruPreviews}'; mkdir -p '${booruPreviews}'`])

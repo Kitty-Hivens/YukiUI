@@ -932,6 +932,7 @@
   "%1 of %2 running": "Работает %1 из %2",
   "A plugin switched off is never built, so it cannot start a process or claim a shortcut while it is off": "Выключенный плагин не собирается вовсе: пока он выключен, он не может ни запустить процесс, ни занять сочетание клавиш",
   "Installed in": "Установлены в",
+  "Your plugins": "Ваши плагины",
   "Not built": "Не собран",
   "Installed": "Установленные",
   "Drop a directory with a manifest into the plugins folder and it appears here": "Положите каталог с манифестом в папку плагинов, и он появится здесь",

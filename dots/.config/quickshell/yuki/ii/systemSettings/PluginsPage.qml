@@ -50,8 +50,11 @@ Item {
                 subtitle: Translation.tr("A plugin switched off is never built, so it cannot start a process or claim a shortcut while it is off")
 
                 FactRow {
-                    label: Translation.tr("Installed in")
-                    value: Plugins.pluginPath
+                    // The home root, not the shell's own: that one is kept in
+                    // step with whatever installed the shell, so anything put
+                    // there is removed by the next update.
+                    label: Translation.tr("Your plugins")
+                    value: Plugins.homeRoot
                 }
                 FactRow {
                     label: Translation.tr("Not built")
@@ -90,7 +93,7 @@ Item {
                 message: Translation.tr("Drop a directory with a manifest into the plugins folder and it appears here")
                 actionIcon: "folder_open"
                 actionText: Translation.tr("Open the folder")
-                onActionClicked: Qt.openUrlExternally(`file://${Plugins.pluginPath}`)
+                onActionClicked: Qt.openUrlExternally(`file://${Plugins.homeRoot}`)
             }
         }
     }

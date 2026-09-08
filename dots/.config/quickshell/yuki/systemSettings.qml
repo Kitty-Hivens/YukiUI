@@ -225,7 +225,9 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: Config.ready
-                        source: root.currentPageData?.component ?? ""
+                        // The url and not the identity: a page a plugin brought
+                        // has no path from the shell root to resolve against.
+                        source: root.currentPageData?.url ?? ""
                     }
 
                     // The home page lists the other sections, but which one is

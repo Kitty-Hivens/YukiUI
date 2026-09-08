@@ -10,7 +10,7 @@ import qs.core
 import qs.core.functions
 
 /**
- * Builds what is found in `plugins/`, and nothing that is not.
+ * Builds the plugins found under either root, and nothing that is not.
  *
  * A static `import` cannot express "optional": a directory that is not there is
  * a load failure for the whole shell rather than a feature that is absent. So
@@ -29,8 +29,21 @@ Singleton {
     /** The one API generation this host knows how to build. */
     readonly property int apiVersion: 1
 
-    readonly property string pluginPath: FileUtils.trimFileProtocol(Quickshell.shellPath("plugins"))
-    readonly property url pluginFolder: Qt.resolvedUrl(Quickshell.shellPath("plugins"))
+    /**
+     * Where plugins are looked for, and which copy wins when both hold one.
+     *
+     * Two roots rather than one. The tree the shell is read from belongs to
+     * whatever installed it: a copy of it is kept in step with the repository,
+     * so it removes whatever the repository does not carry, and where the shell
+     * arrives from a store it cannot be written to at all. So what a person
+     * installs lives in a root of their own, [Directories.userPlugins].
+     *
+     * The home root comes first, and a directory there declaring the same id as
+     * one that ships with the shell takes it. Putting it there was a deliberate
+     * act, and refusing it would be overruling that.
+     */
+    readonly property string systemRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("plugins"))
+    readonly property string homeRoot: Directories.userPlugins
 
     /**
      * id -> whatever the plugin's entry built.
@@ -118,7 +131,11 @@ Singleton {
     property var claims: Object.create(null)
 
     /**
-     * Why a directory under `plugins/` is not running, keyed by directory name.
+     * Why a directory is not running, keyed by its full path.
+     *
+     * By the path and not by the name: the same name can appear under both
+     * roots, and a person's own copy of a plugin is exactly the case where it
+     * does.
      *
      * A refusal used to exist only as a line in the journal, which is to say it
      * did not exist for anyone who was not watching one. What a person sees is a
@@ -156,23 +173,23 @@ Singleton {
      * and what goes into YUKIUI_SETTINGS_PAGE when something opens the window at
      * a particular page.
      */
-    function readPage(directory, declared) {
+    function readPage(place, declared) {
         if (declared === undefined || declared === null)
             return null;
         if (typeof declared !== "object" || Array.isArray(declared)) {
-            root.reject(directory, "settingsPage has to be an object");
+            root.reject(place, "settingsPage has to be an object");
             return null;
         }
         if (!root.usableId(declared.key)) {
-            root.reject(directory, `"${declared.key}" cannot be a page key -- letters, digits, dashes and underscores only`);
+            root.reject(place, `"${declared.key}" cannot be a page key -- letters, digits, dashes and underscores only`);
             return null;
         }
         if (!root.usableEntry(declared.entry)) {
-            root.reject(directory, `"${declared.entry}" cannot be a page -- a path inside this directory, with no ".." in it`);
+            root.reject(place, `"${declared.entry}" cannot be a page -- a path inside this directory, with no ".." in it`);
             return null;
         }
         if (typeof declared.name !== "string" || declared.name.length === 0) {
-            root.reject(directory, "a settings page needs a name");
+            root.reject(place, "a settings page needs a name");
             return null;
         }
         return {
@@ -203,8 +220,18 @@ Singleton {
     }
 
     function claim(id, holder) {
-        if (root.claims[id] !== undefined && root.claims[id] !== holder)
-            return false;
+        const held = root.claims[id];
+        if (held === holder)
+            return true;
+        if (held !== undefined) {
+            // Which manifest was read first is not a decision anybody made: the
+            // two reads are independent and either can finish ahead of the
+            // other. So the root decides, and a copy in the home one takes the
+            // id from a copy that ships with the shell.
+            if (!holder.fromHome || held.fromHome)
+                return false;
+            held.standDown(`"${id}" is taken by ${holder.place}`);
+        }
         const next = Object.assign(Object.create(null), root.claims);
         next[id] = holder;
         root.claims = next;
@@ -217,6 +244,23 @@ Singleton {
         const next = Object.assign(Object.create(null), root.claims);
         delete next[id];
         root.claims = next;
+        Qt.callLater(root.reconsider);
+    }
+
+    /**
+     * Offers every stood-down directory the id it gave up.
+     *
+     * Reached when a claim is released, which is what happens when the directory
+     * that took an id is removed. Without it, deleting your own copy of a plugin
+     * left the one shipped with the shell inert until the next reload, which is
+     * a strange way for an uninstall to behave.
+     */
+    function reconsider() {
+        for (let i = 0; i < (root.slots?.count ?? 0); i++) {
+            const slot = root.slots.objectAt(i);
+            if (slot?.stoodDown)
+                slot.build(slot.manifestText);
+        }
     }
 
     function register(id, instance) {
@@ -235,11 +279,21 @@ Singleton {
         PluginSettings {}
     }
 
-    /** One directory under `plugins/`, however far it gets. */
+    /** One directory under one of the roots, however far it gets. */
     component Slot: QtObject {
         id: slot
 
+        required property string base
         required property string directory
+        /** Both roots can hold a directory of the same name, so this is what
+         *  names one of them: it keys the problem list and it is what a refusal
+         *  points at. */
+        readonly property string place: `${slot.base}/${slot.directory}`
+        readonly property bool fromHome: slot.base === root.homeRoot
+        /** Kept so a directory that gave up its id can be offered it back
+         *  without waiting for the manifest to be read a second time. */
+        property string manifestText: ""
+        property bool stoodDown: false
         property string pluginId: ""
         /** What the manifest calls itself, for a surface that lists plugins. */
         property string name: ""
@@ -252,43 +306,46 @@ Singleton {
         property var settings: null
 
         function build(text) {
+            slot.manifestText = text;
+            slot.stoodDown = false;
+            root.clearProblem(slot.place);
             let manifest;
             try {
                 manifest = JSON.parse(text);
             } catch (error) {
-                root.reject(slot.directory, "the manifest is not JSON");
+                root.reject(slot.place, "the manifest is not JSON");
                 return;
             }
             if (!root.usableId(manifest?.id)) {
-                root.reject(slot.directory, `"${manifest?.id}" cannot be an id -- letters, digits, dashes and underscores only`);
+                root.reject(slot.place, `"${manifest?.id}" cannot be an id -- letters, digits, dashes and underscores only`);
                 return;
             }
             if (!root.usableEntry(manifest?.entry)) {
-                root.reject(slot.directory, `"${manifest?.entry}" cannot be an entry -- a path inside this directory, with no ".." in it`);
+                root.reject(slot.place, `"${manifest?.entry}" cannot be an entry -- a path inside this directory, with no ".." in it`);
                 return;
             }
             if (!manifest?.id || !manifest?.entry) {
-                root.reject(slot.directory, "the manifest names no id or no entry");
+                root.reject(slot.place, "the manifest names no id or no entry");
                 return;
             }
             // Refused rather than attempted. A plugin written against another
             // generation of this host fails somewhere inside itself instead,
             // and that failure is much harder to read than this line.
             if (manifest.apiVersion !== root.apiVersion) {
-                root.reject(slot.directory, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
+                root.reject(slot.place, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
                 return;
             }
             if (!root.claim(manifest.id, slot)) {
-                root.reject(slot.directory, `the id "${manifest.id}" is already held by another directory`);
+                root.reject(slot.place, `"${manifest.id}" is taken by ${root.claims[manifest.id].place}`);
                 return;
             }
             slot.pluginId = manifest.id;
             slot.name = typeof manifest.name === "string" ? manifest.name : "";
-            slot.entryUrl = `${root.pluginFolder}/${slot.directory}/${manifest.entry}`;
+            slot.entryUrl = `file://${slot.place}/${manifest.entry}`;
             slot.configSchema = (manifest.config && typeof manifest.config === "object" && !Array.isArray(manifest.config))
                 ? manifest.config
                 : null;
-            slot.settingsPage = root.readPage(slot.directory, manifest.settingsPage);
+            slot.settingsPage = root.readPage(slot.place, manifest.settingsPage);
             // readPage refuses by rejecting the directory, and a rejected plugin
             // is not one to carry on building.
             if (manifest.settingsPage !== undefined && slot.settingsPage === null)
@@ -337,7 +394,7 @@ Singleton {
             }
             const component = Qt.createComponent(slot.entryUrl);
             if (component.status === Component.Error) {
-                root.reject(slot.directory, component.errorString());
+                root.reject(slot.place, component.errorString());
                 return;
             }
             // Handed in at construction rather than assigned after, so a plugin
@@ -346,13 +403,30 @@ Singleton {
                 settings: slot.settings?.values ?? null
             });
             if (!instance) {
-                root.reject(slot.directory, "the entry built nothing");
+                root.reject(slot.place, "the entry built nothing");
                 return;
             }
             slot.instance = instance;
-            root.clearProblem(slot.directory);
+            root.clearProblem(slot.place);
             root.register(slot.pluginId, instance);
             console.log(`[Plugins] ${slot.pluginId} loaded`);
+        }
+
+        /**
+         * Gives the id up to another directory that holds it.
+         *
+         * The manifest is kept, so this is not final: if the directory that took
+         * the id goes away, [reconsider] offers this one its place back.
+         */
+        function standDown(reason) {
+            if (slot.instance !== null) {
+                root.unregister(slot.pluginId);
+                slot.instance.destroy();
+                slot.instance = null;
+            }
+            slot.pluginId = "";
+            slot.stoodDown = true;
+            root.reject(slot.place, reason);
         }
 
         readonly property var disabledWatch: root.disabledIds
@@ -367,12 +441,16 @@ Singleton {
         onHostingWatchChanged: slot.sync()
 
         property FileView manifestFile: FileView {
-            path: `${root.pluginPath}/${slot.directory}/manifest.json`
+            path: `${slot.place}/manifest.json`
             onLoaded: slot.build(text())
-            onLoadFailed: root.reject(slot.directory, "there is no manifest here")
+            onLoadFailed: root.reject(slot.place, "there is no manifest here")
         }
 
         Component.onDestruction: {
+            // Said before the early return: a directory turned away never had an
+            // id, and its reason would otherwise outlive it in the problem list
+            // with nothing left on disk to answer for it.
+            root.clearProblem(slot.place);
             if (slot.pluginId.length === 0)
                 return;
             if (slot.instance !== null)
@@ -382,9 +460,9 @@ Singleton {
     }
 
     /**
-     * The directory names, replaced only when they actually differ.
+     * One root, and the directory names under it, replaced only when they differ.
      *
-     * The folder model resets on any change under `plugins/`, and a slot list
+     * The folder model resets on any change under the root, and a slot list
      * driven straight off it was destroyed and rebuilt entire every time:
      * processes restarted, shortcuts were dropped and registered again, and
      * contributed toggles vanished from the panels while it happened. A file
@@ -395,41 +473,69 @@ Singleton {
      * set of directories is not what it was. Bursts are collected first, because
      * an install writes many files and each one is a reset.
      */
-    property var directories: []
+    component Tree: QtObject {
+        id: tree
 
-    function rescan() {
-        const names = [];
-        for (let i = 0; i < folders.count; i++)
-            names.push(folders.get(i, "fileName"));
-        names.sort();
-        const same = names.length === root.directories.length
-            && names.every((name, i) => name === root.directories[i]);
-        if (same)
-            return;
-        root.directories = names;
+        required property string base
+        property var names: []
+
+        function rescan() {
+            const found = [];
+            for (let i = 0; i < listing.count; i++)
+                found.push(listing.get(i, "fileName"));
+            found.sort();
+            const same = found.length === tree.names.length
+                && found.every((name, i) => name === tree.names[i]);
+            if (same)
+                return;
+            tree.names = found;
+        }
+
+        property Timer settleTimer: Timer {
+            id: settleTimer
+            interval: 100
+            onTriggered: tree.rescan()
+        }
+
+        // A root that is not there reads as empty rather than as a fault. The
+        // home one is made at startup by [Directories], so by the time anybody
+        // has something to drop into it there is a directory to watch.
+        property FolderListModel listing: FolderListModel {
+            id: listing
+            folder: `file://${tree.base}`
+            showDirs: true
+            showFiles: false
+            showDotAndDotDot: false
+            sortField: FolderListModel.Name
+            onCountChanged: settleTimer.restart()
+            onStatusChanged: if (status === FolderListModel.Ready) settleTimer.restart()
+        }
     }
 
-    property Timer settleTimer: Timer {
-        interval: 100
-        onTriggered: root.rescan()
-    }
+    property Tree homeTree: Tree { base: root.homeRoot }
+    property Tree systemTree: Tree { base: root.systemRoot }
 
-    property FolderListModel folders: FolderListModel {
-        id: folders
-        folder: root.pluginFolder
-        showDirs: true
-        showFiles: false
-        showDotAndDotDot: false
-        sortField: FolderListModel.Name
-        onCountChanged: settleTimer.restart()
-        onStatusChanged: if (status === FolderListModel.Ready) settleTimer.restart()
+    /**
+     * Every directory found, home first, as { base, name }.
+     *
+     * The pair rather than the name alone, because the name no longer says where
+     * the directory is and two of them can share it.
+     */
+    readonly property var directories: {
+        const out = [];
+        for (const name of root.homeTree.names)
+            out.push({ base: root.homeRoot, name: name });
+        for (const name of root.systemTree.names)
+            out.push({ base: root.systemRoot, name: name });
+        return out;
     }
 
     property Instantiator slots: Instantiator {
         model: root.directories
         delegate: Slot {
-            required property string modelData
-            directory: modelData
+            required property var modelData
+            base: modelData.base
+            directory: modelData.name
         }
     }
 
@@ -451,7 +557,7 @@ Singleton {
                 id: slot.pluginId,
                 name: slot.name.length > 0 ? slot.name : (slot.pluginId.length > 0 ? slot.pluginId : slot.directory),
                 directory: slot.directory,
-                problem: root.problems[slot.directory] ?? "",
+                problem: root.problems[slot.place] ?? "",
                 running: slot.instance !== null,
                 schema: slot.configSchema,
                 settings: slot.settings?.values ?? null
@@ -468,8 +574,11 @@ Singleton {
      * hosts nothing, and a page whose existence depended on the plugin running
      * would be missing from the one window that has to show it.
      *
-     * `component` is a path from the shell root, which is what a Loader in the
-     * settings window resolves against, the same as the built-in pages.
+     * `component` names the page and nothing else. It used to be a path from the
+     * shell root, which made it both the identity the window compares to know
+     * which page is open and the thing its loader loads. A plugin in the home
+     * root has no path from the shell root at all, so the two are separate: this
+     * is the identity, and `url` is what gets loaded.
      *
      * A plugin that is switched off contributes nothing: its page would open on
      * a service that is not running.
@@ -491,7 +600,8 @@ Singleton {
                 keywords: page.keywords,
                 group: page.group,
                 order: page.order,
-                component: `plugins/${slot.directory}/${page.entry}`,
+                component: `plugin:${slot.pluginId}:${page.key}`,
+                url: `file://${slot.place}/${page.entry}`,
                 pluginId: slot.pluginId
             });
         }
@@ -515,10 +625,10 @@ Singleton {
             const slot = root.slots.objectAt(i);
             if (!slot)
                 continue;
-            const problem = root.problems[slot.directory] ?? "";
+            const problem = root.problems[slot.place] ?? "";
             const id = slot.pluginId.length > 0 ? slot.pluginId : "-";
             const state = slot.instance !== null ? "running" : (problem.length > 0 ? "broken" : (root.isDisabled(id) ? "off" : "pending"));
-            rows.push([id, state, slot.directory, problem]);
+            rows.push([id, state, slot.place, problem]);
         }
         if (rows.length === 0)
             return "no plugins installed";

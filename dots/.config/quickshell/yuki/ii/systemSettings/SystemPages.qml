@@ -220,6 +220,13 @@ Singleton {
     /**
      * The pages above, plus the ones installed plugins declare.
      *
+     * Every row leaves here carrying both `component` and `url`. `component`
+     * names the page and is what the window compares to know which one is open;
+     * `url` is what its loader loads. For a page that ships with the window the
+     * two are the same string, and for one contributed by a plugin they cannot
+     * be: a plugin installed in the home root has no path from the shell root at
+     * all.
+     *
      * Contributed entries carry no status line. The built-in ones read a service
      * for theirs, which is a live binding and cannot come out of an inert
      * manifest; a page that wants one will need somewhere to put a binding, and
@@ -227,10 +234,9 @@ Singleton {
      */
     readonly property var groups: {
         const contributed = Plugins.pageEntries;
-        if (contributed.length === 0)
-            return root.staticGroups;
         const known = root.staticGroups.map(group => group.id);
         return root.staticGroups.map(group => {
+            const own = group.pages.map(page => Object.assign({}, page, { url: page.component }));
             const extra = contributed.filter(page => {
                 const wanted = known.indexOf(page.group) !== -1 ? page.group : root.fallbackGroup;
                 return wanted === group.id;
@@ -244,11 +250,10 @@ Singleton {
                 icon: page.icon,
                 description: page.description.length > 0 ? Translation.tr(page.description) : "",
                 keywords: page.keywords.length > 0 ? Translation.tr(page.keywords) : "",
-                component: page.component
+                component: page.component,
+                url: page.url
             }));
-            if (extra.length === 0)
-                return group;
-            return { id: group.id, name: group.name, pages: group.pages.concat(extra) };
+            return { id: group.id, name: group.name, pages: own.concat(extra) };
         });
     }
 

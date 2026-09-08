@@ -676,6 +676,7 @@
   "%1 of %2 running": "%1 of %2 running",
   "A plugin switched off is never built, so it cannot start a process or claim a shortcut while it is off": "A plugin switched off is never built, so it cannot start a process or claim a shortcut while it is off",
   "Installed in": "Installed in",
+  "Your plugins": "Your plugins",
   "Not built": "Not built",
   "Installed": "Installed",
   "Drop a directory with a manifest into the plugins folder and it appears here": "Drop a directory with a manifest into the plugins folder and it appears here",

@@ -135,6 +135,9 @@ Singleton {
      */
     component PluginTranslation: QtObject {
         id: pluginTranslation
+        /** The root the directory was found under. Plugins live under two of
+         *  them, so the name alone no longer says where the file is. */
+        required property string base
         required property string directory
 
         readonly property FileView file: FileView {
@@ -143,7 +146,7 @@ Singleton {
             // is handled below rather than announced.
             printErrors: false
             path: root.languageCode.length > 0
-                ? `${root.pluginTranslationsRoot}/${pluginTranslation.directory}/translations/${root.languageCode}.json`
+                ? `${pluginTranslation.base}/${pluginTranslation.directory}/translations/${root.languageCode}.json`
                 : ""
             onLoaded: {
                 try {
@@ -158,13 +161,12 @@ Singleton {
         }
     }
 
-    readonly property string pluginTranslationsRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("plugins"))
-
     property Instantiator pluginReaders: Instantiator {
         model: Plugins.directories
         delegate: PluginTranslation {
-            required property string modelData
-            directory: modelData
+            required property var modelData
+            base: modelData.base
+            directory: modelData.name
         }
     }
 
