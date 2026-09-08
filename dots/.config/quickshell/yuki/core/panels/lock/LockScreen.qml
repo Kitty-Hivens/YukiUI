@@ -151,7 +151,7 @@ Scope {
         if (Config.options.lock.launchOnStartup && Persistent.isNewHyprlandInstance) {
             root.lock();
         } else {
-            KeyringStorage.fetchKeyringData();
+            KeyringStorage.fetchKeyringDataIfUnlocked();
         }
     }
     // Both singletons may already be ready here, so onReadyChanged may never fire.

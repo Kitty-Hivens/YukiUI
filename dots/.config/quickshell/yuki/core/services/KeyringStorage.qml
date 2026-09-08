@@ -104,6 +104,33 @@ Singleton {
         getData.running = true;
     }
 
+    /**
+     * Reads the stored data, but only when the keyring is already open.
+     *
+     * A lookup against a locked keyring is what summons the unlock dialog, and
+     * the shell asks at startup, when nothing has reached for a key yet. On a
+     * machine where nothing unlocked the keyring at login, an autologin being
+     * the usual reason, that dialog is the first thing the desktop puts on
+     * screen, for keys nobody wanted. Whoever actually needs a key still calls
+     * fetchKeyringData and brings the dialog with it, where it is answerable.
+     */
+    function fetchKeyringDataIfUnlocked() {
+        if (root.unreadable || root.loaded)
+            return;
+        unlockedCheck.running = true;
+    }
+
+    Process {
+        id: unlockedCheck
+        command: [
+            "bash", "-c", `${Directories.scriptPath}/keyring/is_unlocked.sh 2> /dev/null`,
+        ]
+        onExited: exitCode => {
+            if (exitCode === 0)
+                root.fetchKeyringData();
+        }
+    }
+
     function saveKeyringData() {
         saveData.stdinEnabled = true;
         saveData.running = true;
