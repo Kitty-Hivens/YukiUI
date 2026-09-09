@@ -68,12 +68,21 @@ hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, floa
 hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, pin = true})
 hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, move = {"(monitor_w*.5-window_w*.5)", "(monitor_h-window_h-12)"} })
 
--- Games
+-- Windows apps
+-- Wine reports the executable basename as the class, so both rules below cover every
+-- Windows app.
+--
 -- A vsynced client only draws on frame callbacks, and the compositor stops sending those
 -- once the workspace is hidden. osu! reads the resulting gap as a freeze and blocks score
 -- submission, so keep drawing it at misc:render_unfocused_fps while it sits in the background.
--- Wine reports the executable basename as the class, so this covers every Windows app.
 hl.window_rule({match = {class = "(?i).*\\.exe" },                           render_unfocused = true})
+
+-- Windows has no tiling, so these apps place and size their own windows and a good number
+-- of them work at no other size: installers and launchers ship fixed-size dialogs, games
+-- pick a resolution and letterbox or clip anything else. A tiled slot imposes a size on
+-- them, which is where it goes wrong, so let them open at the geometry they ask for.
+-- Super+Alt+Space still puts any of them into the layout.
+hl.window_rule({match = {class = "(?i).*\\.exe" },                           float = true})
 
 -- No shadow for tiled windows
 hl.window_rule({match = {float = 0 }, no_shadow = true})
