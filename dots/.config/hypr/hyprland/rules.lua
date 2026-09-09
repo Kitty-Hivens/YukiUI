@@ -84,6 +84,13 @@ hl.window_rule({match = {class = "(?i).*\\.exe" },                           ren
 -- Super+Alt+Space still puts any of them into the layout.
 hl.window_rule({match = {class = "(?i).*\\.exe" },                           float = true})
 
+-- Leaving fullscreen, Wine hands back the maximized state Hyprland sent it as a request of its
+-- own, and osu! never stops: the window flips between maximized and not about thirty times a
+-- second, which fills the work area and reads as a tile. Hyprland swallows one such echo, which
+-- is one short of enough for a client that keeps asking. Drop the request instead. Super+D still
+-- maximizes, because there the compositor acts rather than the client asks.
+hl.window_rule({match = {class = "(?i).*\\.exe" },                           suppress_event = "maximize"})
+
 -- No shadow for tiled windows
 hl.window_rule({match = {float = 0 }, no_shadow = true})
 
