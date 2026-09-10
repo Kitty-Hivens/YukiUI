@@ -1,0 +1,28 @@
+[Unit]
+Description=YukiUI game mode resource guard
+Documentation=file://@EXEC@
+# Tied to the graphical session rather than to the shell: it is told what to do
+# through a state file, so it neither starts the shell nor needs it running, and
+# a shell that has crashed is exactly when a stopped process must still be
+# started again.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=@EXEC@
+# Runs however the guard went, a crash and a kill included. A SIGSTOP outlives
+# the process that sent it, so without this a browser paused for a game would
+# stay paused with nothing left that knows why.
+ExecStopPost=@EXEC@ --thaw
+Restart=on-failure
+RestartSec=5
+# The one process on the machine that has to keep answering while everything
+# else is fighting over the processor.
+Nice=-5
+MemoryMin=32M
+MemoryMax=192M
+TasksMax=16
+
+[Install]
+WantedBy=graphical-session.target

@@ -225,6 +225,36 @@ function install_wallpaper_portal_service(){
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
   realpath -se "$target" >> "${INSTALLED_LISTFILE}"
 }
+function install_game_guard_service(){
+  # The watchdog that keeps a game the only thing on the machine while game mode
+  # is on. A unit of its own rather than a process the shell starts, because the
+  # moment it earns its keep is the moment the shell is deepest in swap, and
+  # because whatever it stopped has to be started again even if the shell died.
+  # Written rather than copied for the same reason as the portal above: ExecStart
+  # takes an absolute path and expands nothing.
+  local target="${XDG_CONFIG_HOME}/systemd/user/yuki-game-guard.service"
+  local exec_path="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/system/game-guard.py"
+  local template
+  template="$(cat sdata/files/yuki-game-guard.service.in)"
+  x mkdir -p "$(dirname "$target")"
+  printf '%s\n' "${template//@EXEC@/${exec_path}}" > "$target"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  realpath -se "$target" >> "${INSTALLED_LISTFILE}"
+}
+function enable_game_guard_service(){
+  # Enabled here rather than in the setup step because the unit file is written
+  # a few lines above this one, and the setup step runs before any of that.
+  if ! command -v systemctl > /dev/null 2>&1; then
+    printf "${STY_YELLOW}[$0]: no systemctl, skipping the game guard service...${STY_RST}\n"
+    return
+  fi
+  if [ -z "${DBUS_SESSION_BUS_ADDRESS}" ]; then
+    printf "${STY_YELLOW}[$0]: no session bus, enable yuki-game-guard by hand from inside a session...${STY_RST}\n"
+    return
+  fi
+  x systemctl --user daemon-reload
+  v systemctl --user enable yuki-game-guard.service --now
+}
 function install_session_entry(){
   # The Wayland session YukiUI is entered through. Written rather than copied for
   # the same reason as the service above: Exec takes an absolute path and expands
@@ -355,6 +385,12 @@ esac
 
 showfun install_wallpaper_portal_service
 v install_wallpaper_portal_service
+
+showfun install_game_guard_service
+v install_game_guard_service
+
+showfun enable_game_guard_service
+v enable_game_guard_service
 
 showfun install_session_entry
 v install_session_entry

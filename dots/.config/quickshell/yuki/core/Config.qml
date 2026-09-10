@@ -474,6 +474,67 @@ Singleton {
                 /// go, which is the part that costs a rebuild to undo and which measured
                 /// out as buying nothing. See GameMode.standDownOn.
                 property int standDownDelay: 0
+
+                /**
+                 * The watchdog that keeps a game the only thing on the machine.
+                 *
+                 * Read by scripts/system/game-guard.py, which runs as a unit of
+                 * its own and is handed these through a state file, so nothing
+                 * here takes effect in this process. It steps in twice: memory
+                 * that has run out closes the fattest thing that is not the
+                 * game, and a game being kept off the processor freezes the
+                 * greediest thing that is not the game until the game is over.
+                 */
+                property JsonObject guard: JsonObject {
+                    /// Off until somebody asks for it. It closes programs.
+                    property bool enable: false
+                    property bool killOnMemory: true
+                    property bool freezeOnCpu: true
+                    /// Whether to tell the kernel's own killer the same order of
+                    /// preference. Everything under the user manager starts on
+                    /// one adjustment, which leaves the choice to resident size
+                    /// alone and puts a game with a gigabyte of textures near the
+                    /// front of the queue.
+                    property bool raiseOomScores: true
+                    /// How little of memory may be left available, as a share of
+                    /// all of it, before something is closed for it.
+                    property real memoryFloor: 0.08
+                    /// The other way in: memory pressure over ten seconds, which
+                    /// is what a machine reads while it swaps rather than while
+                    /// it fills up.
+                    property real memoryPressure: 20
+                    /// How many ticks in a row a reading has to hold. One tick is
+                    /// a second.
+                    property int memoryTicks: 2
+                    /// How long a program is given to close itself before it is
+                    /// killed, in seconds.
+                    property int killGrace: 3
+                    /// How much closing something has to give back to be worth
+                    /// doing, in megabytes, counted proportionally so a browser's
+                    /// shared pages are not counted once per process.
+                    property int minReclaimMb: 200
+                    /// How many of the game's threads may sit waiting for a core,
+                    /// on average, before something is frozen for it.
+                    property real cpuStarvation: 0.5
+                    /// Processor pressure over ten seconds, read only when there
+                    /// is no game window to measure directly.
+                    property real cpuPressure: 25
+                    property int cpuTicks: 5
+                    /// How many cores something has to be taking to be frozen.
+                    property real minCpuShare: 0.3
+                    /// Seconds of quiet after each intervention.
+                    property int cooldown: 10
+                    /// What the rest of the session's oom_score_adj is raised to
+                    /// while the mode is on. Only raising is possible without
+                    /// privileges, and relative order is all the kernel reads.
+                    property int oomScoreAdj: 700
+                    /// Names never touched, on top of the session's own, matched
+                    /// against both the short name the kernel keeps and the
+                    /// executable's.
+                    property list<string> keep: []
+                    /// Log what would happen without doing any of it.
+                    property bool dryRun: false
+                }
             }
 
             property JsonObject lock: JsonObject {

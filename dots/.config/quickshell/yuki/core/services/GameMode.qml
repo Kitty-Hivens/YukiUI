@@ -531,6 +531,103 @@ Singleton {
         }
     }
 
+    /**
+     * The processes a game is being played in.
+     *
+     * A window holding a screen is the game. That is the same reading the mode
+     * engages on, and the pid the compositor lists beside it is the one thing
+     * the guard cannot work out from /proc on its own: nothing about a process
+     * says which of them is being looked at.
+     *
+     * With the mode switched on by hand and nothing fullscreen there is no such
+     * window, and the one being worked in stands in. Anything else would leave
+     * the guard with no game to protect and every window a candidate, which is
+     * the one shape this must never take.
+     */
+    readonly property var gamePids: {
+        const held = HyprlandData.windowList
+            .filter(win => (win.fullscreen ?? 0) >= 2 && (win.pid ?? 0) > 1)
+            .map(win => win.pid);
+        if (held.length > 0)
+            return held;
+        return root.focusPid > 1 ? [root.focusPid] : [];
+    }
+
+    /**
+     * The window being worked in, by pid.
+     *
+     * The guard leaves whatever holds it alone and starts it again if it had
+     * been stopped. A browser frozen for taking the processor looks exactly like
+     * a browser that has crashed, and the moment somebody switches to it is the
+     * moment they would find that out.
+     */
+    readonly property int focusPid: {
+        const focused = HyprlandData.windowList.find(win => win.focusHistoryID === 0);
+        return focused?.pid ?? 0;
+    }
+
+    readonly property string guardStatePath: `${Directories.temp}/game-guard.json`
+
+    /**
+     * Everything the guard is told, as one string.
+     *
+     * Written out field by field rather than handed the config object: these are
+     * QML objects, and what comes out of stringifying one is not the json anyone
+     * would expect. Naming them also means the binding is re-evaluated when any
+     * one of them changes, which is what keeps the file current.
+     */
+    readonly property var guardOptions: ({
+        "enable": Config.options.gameMode.guard.enable,
+        "killOnMemory": Config.options.gameMode.guard.killOnMemory,
+        "freezeOnCpu": Config.options.gameMode.guard.freezeOnCpu,
+        "raiseOomScores": Config.options.gameMode.guard.raiseOomScores,
+        "memoryFloor": Config.options.gameMode.guard.memoryFloor,
+        "memoryPressure": Config.options.gameMode.guard.memoryPressure,
+        "memoryTicks": Config.options.gameMode.guard.memoryTicks,
+        "killGrace": Config.options.gameMode.guard.killGrace,
+        "minReclaimMb": Config.options.gameMode.guard.minReclaimMb,
+        "cpuStarvation": Config.options.gameMode.guard.cpuStarvation,
+        "cpuPressure": Config.options.gameMode.guard.cpuPressure,
+        "cpuTicks": Config.options.gameMode.guard.cpuTicks,
+        "minCpuShare": Config.options.gameMode.guard.minCpuShare,
+        "cooldown": Config.options.gameMode.guard.cooldown,
+        "oomScoreAdj": Config.options.gameMode.guard.oomScoreAdj,
+        "keep": [...Config.options.gameMode.guard.keep],
+        "dryRun": Config.options.gameMode.guard.dryRun
+    })
+
+    /**
+     * The shell's own pid goes in the file too.
+     *
+     * A shell that dies mid-game leaves this file behind saying a game is on,
+     * and the runtime directory outlives it. Without something to check the
+     * guard would go on closing programs for a game nobody is playing, which is
+     * the worst failure this thing has available to it.
+     */
+    readonly property string guardState: JSON.stringify({
+        "engaged": root.engaged,
+        "shellPid": Quickshell.processId,
+        "gamePids": root.gamePids,
+        "focusPid": root.focusPid,
+        "guard": root.guardOptions
+    })
+
+    onGuardStateChanged: guardStateTimer.restart()
+
+    Timer {
+        // Switching windows rewrites this, and switching windows is something a
+        // person does several times a second. The guard reads the file by its
+        // modification time, so a burst of writes is a burst of readings.
+        id: guardStateTimer
+        interval: 200
+        onTriggered: guardStateFileView.setText(root.guardState)
+    }
+
+    FileView {
+        id: guardStateFileView
+        path: Qt.resolvedUrl(root.guardStatePath)
+    }
+
     readonly property bool wallpaperPaused: root.engaged && Config.options.gameMode.wallpaper
     onWallpaperPausedChanged: root.setWallpaperPaused(wallpaperPaused)
     function setWallpaperPaused(paused) {
@@ -542,6 +639,16 @@ Singleton {
     Component.onDestruction: {
         if (root.wallpaperPaused)
             root.setWallpaperPaused(false);
+        // Said plainly on the way out, so the guard stands down on this rather
+        // than on noticing the shell's pid is gone. That check is the backstop
+        // for the times there is no way out to take.
+        guardStateFileView.setText(JSON.stringify({
+            "engaged": false,
+            "shellPid": Quickshell.processId,
+            "gamePids": [],
+            "focusPid": 0,
+            "guard": root.guardOptions
+        }));
     }
 
     /**
@@ -571,6 +678,7 @@ Singleton {
     }
 
     Component.onCompleted: {
+        guardStateFileView.setText(root.guardState);
         root.engaged = root.requested;
         root.reviewStandDown();
         root.restoreVisualState();

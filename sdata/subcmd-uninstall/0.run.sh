@@ -16,6 +16,13 @@ pause
 # Undo Step 3
 printf "${STY_CYAN}Undo install step 3...\n${STY_RST}"
 
+# Before the files go, not after: disabling reads the unit to find out what it
+# was linked into, and a unit whose file is already gone leaves the link behind
+# pointing at nothing.
+if command -v systemctl > /dev/null 2>&1 && [[ -n "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+  v systemctl --user disable yuki-game-guard.service --now
+fi
+
 function view_listfile(){
   local listfile="$1"
   if command -v less >/dev/null; then

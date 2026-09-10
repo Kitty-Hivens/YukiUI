@@ -7,7 +7,7 @@ import QtQuick.Layouts
 
 WindowDialog {
     id: root
-    backgroundHeight: 380
+    backgroundHeight: 500
 
     WindowDialogTitle {
         text: Translation.tr("Game mode")
@@ -86,6 +86,47 @@ WindowDialog {
             checked: Config.options.gameMode.autoOnFullscreen
             onCheckedChanged: Config.options.gameMode.autoOnFullscreen = checked
             StyledToolTip { text: Translation.tr("Engage automatically while a window is fullscreen") }
+        }
+
+        ConfigSwitch {
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+            iconSize: Appearance.font.pixelSize.larger
+            buttonIcon: "shield"
+            text: Translation.tr("Resource guard")
+            checked: Config.options.gameMode.guard.enable
+            onCheckedChanged: Config.options.gameMode.guard.enable = checked
+            StyledToolTip { text: Translation.tr("Close or pause whatever takes memory and cores away from the game") }
+        }
+
+        ConfigSwitch {
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+            enabled: Config.options.gameMode.guard.enable
+            iconSize: Appearance.font.pixelSize.larger
+            buttonIcon: "memory"
+            text: Translation.tr("Close on low memory")
+            checked: Config.options.gameMode.guard.killOnMemory
+            onCheckedChanged: Config.options.gameMode.guard.killOnMemory = checked
+            StyledToolTip { text: Translation.tr("Ask the largest program that is not the game to close, then kill it") }
+        }
+
+        ConfigSwitch {
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+            enabled: Config.options.gameMode.guard.enable
+            iconSize: Appearance.font.pixelSize.larger
+            buttonIcon: "pause_circle"
+            text: Translation.tr("Pause on CPU contention")
+            checked: Config.options.gameMode.guard.freezeOnCpu
+            onCheckedChanged: Config.options.gameMode.guard.freezeOnCpu = checked
+            StyledToolTip { text: Translation.tr("Stop the greediest program while the game waits for a core, and start it again afterwards") }
         }
     }
 
