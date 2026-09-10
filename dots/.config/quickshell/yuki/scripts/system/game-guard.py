@@ -90,12 +90,14 @@ DEFAULTS = {
     "memoryTicks": 2,
     "killGrace": 3,
     "minReclaimMb": 200,
-    "cpuStarvation": 0.5,
+    "cpuStarvation": 0.25,
     "cpuPressure": 25.0,
     "cpuTicks": 5,
-    "minCpuShare": 0.3,
+    "minCpuShare": 2.0,
     "cooldown": 10,
     "oomScoreAdj": 700,
+    "youngGrace": 60,
+    "gpuFloor": 0.05,
     "keep": [],
     "dryRun": False,
 }
@@ -165,7 +167,8 @@ class Group:
     is right, and the whole group is refused.
     """
 
-    __slots__ = ("root", "pids", "cpu", "rss_kb", "eligible", "holds_game", "holds_focus")
+    __slots__ = ("root", "pids", "cpu", "rss_kb", "eligible", "holds_game", "holds_focus",
+                 "on_screen", "has_window", "age")
 
     def __init__(self, root):
         self.root = root
@@ -175,6 +178,12 @@ class Group:
         self.eligible = True
         self.holds_game = False
         self.holds_focus = False
+        # Whether any of its windows is on a workspace a monitor is showing.
+        self.on_screen = False
+        # Whether it has a window at all, anywhere.
+        self.has_window = False
+        # How long the program at the root of it has been running, in seconds.
+        self.age = 1e9
 
     @property
     def label(self):
@@ -188,13 +197,15 @@ class Guard:
         self.shell_pid = 0
         self.game_pids = []
         self.focus_pid = 0
+        self.visible_pids = set()
+        self.window_pids = set()
         self.state_mtime = None
 
         self.names_cache = {}
         self.prefix_cache = {}
         self.prev_cpu = {}
         self.prev_sample = None
-        self.prev_game_delay = None
+        self.prev_game_work = {}
 
         self.mem_streak = 0
         self.cpu_streak = 0
@@ -239,6 +250,8 @@ class Guard:
         self.game_pids = [int(pid) for pid in (state.get("gamePids") or []) if int(pid) > 1]
         self.focus_pid = int(state.get("focusPid") or 0)
         self.shell_pid = int(state.get("shellPid") or 0)
+        self.visible_pids = {int(pid) for pid in (state.get("visiblePids") or []) if int(pid) > 1}
+        self.window_pids = {int(pid) for pid in (state.get("windowPids") or []) if int(pid) > 1}
 
         engaged = bool(state.get("engaged")) and bool(config["enable"])
         if engaged != self.engaged:
@@ -473,6 +486,7 @@ class Guard:
             stack.extend(children.get(current, ()))
 
     def build_groups(self, procs, game_tree):
+        uptime = self.uptime()
         children = self.children_map(procs)
         protected = {pid for pid, proc in procs.items() if self.is_protected(proc)}
 
@@ -487,6 +501,11 @@ class Guard:
         groups = []
         for root in roots:
             group = Group(procs[root])
+            # The root's own age, not the age of the youngest process under it.
+            # A browser opens a process per tab, so the newest thing inside one
+            # is always seconds old and the whole group would sit behind this
+            # for ever.
+            group.age = self.age_of(procs[root], uptime)
             members = set()
             self.collect(root, children, members)
             for pid in members:
@@ -502,12 +521,43 @@ class Guard:
                     group.holds_game = True
                 if pid and pid == self.focus_pid:
                     group.holds_focus = True
+                if pid in self.visible_pids:
+                    group.on_screen = True
+                if pid in self.window_pids:
+                    group.has_window = True
             if group.holds_game:
                 group.eligible = False
             groups.append(group)
         return groups
 
     # ------------------------------------------------------------ measures
+
+    @staticmethod
+    def uptime():
+        raw = read_text("/proc/uptime")
+        if not raw:
+            return 0.0
+        try:
+            return float(raw.split()[0])
+        except (ValueError, IndexError):
+            return 0.0
+
+    @staticmethod
+    def age_of(proc, uptime):
+        """
+        How long a process has been running, in seconds.
+
+        A program that started moments ago is a program that has not finished
+        starting, and a game spends its first minute loading a world with every
+        core it can reach and no window to show for it. That is the exact shape
+        of the thing this is meant to protect, and the first live run froze one:
+        eight processes and seven point eight cores, stopped five seconds after
+        the mode came on, before it had drawn anything the shell could recognise
+        as a game.
+        """
+        if uptime <= 0:
+            return 1e9
+        return max(0.0, uptime - proc.starttime / CLOCK_TICK)
 
     @staticmethod
     def meminfo():
@@ -539,34 +589,93 @@ class Guard:
         return 0.0
 
     @staticmethod
-    def run_delay(pids):
+    def thread_delay(pid):
         """
-        How long the game's threads spent sitting in the run queue, in
+        How long a process's threads spent sitting in the run queue, in
         nanoseconds, added up over all of them.
-
-        This is the question asked plainly. Processor pressure across the
-        machine says something is waiting somewhere, and a core at a hundred per
-        cent says nothing at all about whether the game minds. A thread that was
-        ready to run and was not given a core is the whole complaint, and the
-        scheduler counts exactly that per thread.
         """
         total = 0
+        try:
+            tasks = os.listdir("/proc/%d/task" % pid)
+        except OSError:
+            return 0
+        for task in tasks:
+            raw = read_text("/proc/%d/task/%s/schedstat" % (pid, task))
+            if not raw:
+                continue
+            parts = raw.split()
+            if len(parts) >= 2:
+                try:
+                    total += int(parts[1])
+                except ValueError:
+                    pass
+        return total
+
+    def drm_cycles(self, pids):
+        """
+        How much of the card a set of processes has used, as the card counts it.
+
+        Every open drm file reports the cycles its client has been given and the
+        cycles the engine ran in total, so the ratio of the two differences is
+        that client's share of the card. Clients hold several file descriptors
+        onto the same context, hence the deduplication by client id: counting
+        each of them would multiply a browser's share by however many it opened.
+        """
+        used = 0
+        total = 0
+        seen = set()
         for pid in pids:
             try:
-                tasks = os.listdir("/proc/%d/task" % pid)
+                entries = os.listdir("/proc/%d/fdinfo" % pid)
             except OSError:
                 continue
-            for task in tasks:
-                raw = read_text("/proc/%d/task/%s/schedstat" % (pid, task))
-                if not raw:
+            for entry in entries:
+                raw = read_text("/proc/%d/fdinfo/%s" % (pid, entry))
+                if not raw or b"drm-driver" not in raw:
                     continue
-                parts = raw.split()
-                if len(parts) >= 2:
-                    try:
-                        total += int(parts[1])
-                    except ValueError:
-                        pass
-        return total
+                client = None
+                mine = 0
+                engine = 0
+                for line in raw.decode("ascii", "replace").splitlines():
+                    if line.startswith("drm-client-id:"):
+                        client = line.split(":", 1)[1].strip()
+                    elif line.startswith("drm-total-cycles-"):
+                        try:
+                            engine += int(line.split(":", 1)[1].strip().split()[0])
+                        except (ValueError, IndexError):
+                            pass
+                    elif line.startswith("drm-cycles-"):
+                        try:
+                            mine += int(line.split(":", 1)[1].strip().split()[0])
+                        except (ValueError, IndexError):
+                            pass
+                if client is None or client in seen:
+                    continue
+                seen.add(client)
+                used += mine
+                total += engine
+        return used, total
+
+    def gpu_share(self, pids, window=0.3):
+        """
+        What fraction of the card a group is using right now.
+
+        Read only for the one group about to be frozen, and only then, because
+        it costs a pause and a walk of every open file. What it buys is the
+        difference between a background process gone wild and something drawing
+        on the screen: a game that has not opened its window yet is already
+        rendering, and so is the browser playing a video on top of the game.
+        Neither is a thing to stop.
+        """
+        first_used, first_total = self.drm_cycles(pids)
+        if first_total <= 0:
+            return 0.0
+        time.sleep(window)
+        used, total = self.drm_cycles(pids)
+        engine = total - first_total
+        if engine <= 0:
+            return 0.0
+        return max(0.0, (used - first_used) / engine)
 
     def proportional_kb(self, group):
         """
@@ -835,7 +944,7 @@ class Guard:
             group = next((g for g in groups if g.root.pid == root_pid), None)
             if group is None:
                 self.thaw(root_pid, announce=False)
-            elif group.holds_focus:
+            elif group.holds_focus or group.on_screen:
                 self.thaw(root_pid)
 
         if self.config["raiseOomScores"]:
@@ -854,7 +963,7 @@ class Guard:
                     shares[group.root.pid] = (group.cpu - previous) / CLOCK_TICK / elapsed
         self.prev_cpu = {group.root.pid: group.cpu for group in groups}
 
-        starving = self.starving(game_tree, elapsed)
+        starving = self.starving(game_tree, elapsed, procs)
 
         if now < self.cooldown_until:
             return
@@ -865,35 +974,80 @@ class Guard:
             if self.check_cpu(groups, procs, shares):
                 self.cooldown_until = now + max(1, int(self.config["cooldown"]))
 
-    def starving(self, game_tree, elapsed):
+    def starving(self, game_tree, elapsed, procs):
         """
-        Whether the game is being kept from the processor, counted over a tick.
+        Whether the game is being kept from the processor.
 
-        With no game to read, the machine's own processor pressure stands in. It
-        is the weaker signal of the two, which is why it is the fallback and not
-        the measure.
+        Counted per process and against that process's own work, which is the
+        correction that matters. The first version added the queueing time of
+        every thread in the game's tree and compared the sum against a flat
+        figure. A launcher sitting idle with sixty seven threads reads half a
+        second of queueing per second that way while using seven hundredths of a
+        core, because a thread that wakes, is scheduled and sleeps again is
+        charged the scheduler's own latency every time round. Measured here: the
+        launcher scored 0.51 against a threshold of 0.5 while doing nothing at
+        all, and the game beside it scored 0.019.
+
+        So only processes actually running are looked at, and the reading is the
+        share of their time lost to waiting rather than the wait alone. With no
+        game to read, the machine's own pressure stands in.
         """
         if not game_tree or not elapsed or elapsed <= 0:
-            self.prev_game_delay = None
+            self.prev_game_work = {}
             if self.pressure("cpu") >= float(self.config["cpuPressure"]):
                 self.cpu_streak += 1
             else:
                 self.cpu_streak = 0
             return self.cpu_streak >= int(self.config["cpuTicks"])
 
-        delay = self.run_delay(game_tree)
-        previous = self.prev_game_delay
-        self.prev_game_delay = delay
-        if previous is None or delay < previous:
-            return False
-        # Nanoseconds of queueing per nanosecond of wall clock, which is how many
-        # of the game's threads were waiting on average.
-        waiting = (delay - previous) / (elapsed * 1e9)
-        if waiting >= float(self.config["cpuStarvation"]):
+        previous = self.prev_game_work
+        work = {}
+        worst = 0.0
+        for pid in game_tree:
+            proc = procs.get(pid)
+            if proc is None:
+                continue
+            was = previous.get(pid)
+            if was is None:
+                # Nothing to compare against yet, so the queueing time is not
+                # read at all: it is the expensive half, one file per thread.
+                work[pid] = (None, proc.cpu)
+                continue
+            worked = (proc.cpu - was[1]) / CLOCK_TICK
+            if worked < 0 or worked / elapsed < 0.2:
+                work[pid] = (None, proc.cpu)
+                continue
+            delay = self.thread_delay(pid)
+            work[pid] = (delay, proc.cpu)
+            if was[0] is None or delay < was[0]:
+                continue
+            waited = (delay - was[0]) / 1e9
+            if waited + worked > 0:
+                worst = max(worst, waited / (waited + worked))
+        self.prev_game_work = work
+
+        if worst >= float(self.config["cpuStarvation"]):
             self.cpu_streak += 1
         else:
             self.cpu_streak = 0
         return self.cpu_streak >= int(self.config["cpuTicks"])
+
+    def freezable(self, group):
+        """
+        Whether a group may be stopped at all.
+
+        On screen is the one that had to be added. Somebody watching a video in
+        a picture in picture window over the game is watching it, and a stopped
+        browser is a video that dies mid frame with nothing on screen to say
+        why. That happened on the first live run, twice.
+        """
+        if not group.eligible or not group.pids:
+            return False
+        if group.holds_focus or group.on_screen:
+            return False
+        if group.age < float(self.config["youngGrace"]):
+            return False
+        return group.root.pid not in self.frozen
 
     def check_memory(self, groups, procs):
         total, available = self.meminfo()
@@ -909,40 +1063,54 @@ class Guard:
             return False
         self.mem_streak = 0
 
-        candidates = sorted(
-            (group for group in groups if group.eligible and group.pids),
-            key=lambda group: group.rss_kb,
-            reverse=True,
-        )[:5]
+        grace = float(self.config["youngGrace"])
+        pool = [group for group in groups
+                if group.eligible and group.pids and group.age >= grace]
+        # Something nobody can see goes first. A window on screen is a window
+        # somebody is using, and closing it is the more expensive mistake, so it
+        # is only reached when nothing off screen is worth closing.
+        queues = (
+            sorted((g for g in pool if not g.on_screen), key=lambda g: g.rss_kb, reverse=True)[:5],
+            sorted((g for g in pool if g.on_screen), key=lambda g: g.rss_kb, reverse=True)[:3],
+        )
         floor_kb = max(0, int(self.config["minReclaimMb"])) * 1024
-        best = None
-        best_kb = 0
-        for group in candidates:
-            actual = self.proportional_kb(group)
-            if actual > best_kb:
-                best, best_kb = group, actual
-        if best is None or best_kb < floor_kb:
-            log("[guard] memory is short and nothing is worth closing for it")
-            return False
-        self.kill_group(best, procs, best_kb)
-        return True
+        for queue in queues:
+            best = None
+            best_kb = 0
+            for group in queue:
+                actual = self.proportional_kb(group)
+                if actual > best_kb:
+                    best, best_kb = group, actual
+            if best is not None and best_kb >= floor_kb:
+                self.kill_group(best, procs, best_kb)
+                return True
+        log("[guard] memory is short and nothing is worth closing for it")
+        return False
 
     def check_cpu(self, groups, procs, shares):
         floor = float(self.config["minCpuShare"])
-        best = None
-        best_share = 0.0
-        for group in groups:
-            if not group.eligible or group.holds_focus or group.root.pid in self.frozen:
-                continue
+        ranked = sorted(
+            (group for group in groups if self.freezable(group)),
+            key=lambda group: shares.get(group.root.pid, 0.0),
+            reverse=True,
+        )
+        for group in ranked:
             share = shares.get(group.root.pid, 0.0)
-            if share > best_share:
-                best, best_share = group, share
-        if best is None or best_share < floor:
+            if share < floor:
+                break
+            # Last question before stopping anything, and the only one that
+            # costs a pause: whatever is drawing on the card is either the game
+            # itself before it has a window, or something being watched.
+            gpu = self.gpu_share(group.pids)
+            if gpu >= float(self.config["gpuFloor"]):
+                log("[guard] leaving %s alone, it is using %.0f%% of the card"
+                    % (group.label, gpu * 100))
+                continue
             self.cpu_streak = 0
-            return False
+            self.freeze_group(group, procs, share)
+            return True
         self.cpu_streak = 0
-        self.freeze_group(best, procs, best_share)
-        return True
+        return False
 
     def run(self):
         os.makedirs(RUNTIME_DIR, mode=0o700, exist_ok=True)
@@ -999,8 +1167,12 @@ def report():
             verdict = "the game"
         elif not group.eligible:
             verdict = "holds part of the session"
+        elif group.age < float(guard.config["youngGrace"]):
+            verdict = "too young to touch (%.0fs)" % group.age
         elif group.holds_focus:
-            verdict = "candidate, never frozen while focused"
+            verdict = "candidate, focused, never frozen"
+        elif group.on_screen:
+            verdict = "candidate, on screen, never frozen"
         else:
             verdict = "candidate"
         print("%-24s %6d %6d %7d M  %s" % (

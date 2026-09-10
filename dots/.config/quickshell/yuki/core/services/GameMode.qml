@@ -566,6 +566,42 @@ Singleton {
         return focused?.pid ?? 0;
     }
 
+    /**
+     * The windows on screen right now, by pid.
+     *
+     * A window whose workspace is the one its monitor is showing is a window
+     * somebody is looking at, whatever the focus happens to be on. Freezing what
+     * is on screen is never right: the first time this ran for real it stopped a
+     * browser whose picture in picture window was sitting on top of the game,
+     * and the video simply died there with no way to tell why.
+     *
+     * The focused window alone was not enough to know that, which is what the
+     * first version had.
+     */
+    readonly property var visiblePids: {
+        // Which workspace each monitor is showing is asked of the compositor
+        // objects rather than of the cached client list, because that cache is
+        // only refreshed on monitors being added, removed or focused. Switching
+        // workspaces is none of those, so it went on naming the workspace left
+        // behind: measured with the monitor on 4 and this still answering 10.
+        const shown = Hyprland.workspaces.values.filter(ws => ws.active).map(ws => ws.id);
+        return HyprlandData.windowList
+            .filter(win => win.mapped && !win.hidden && shown.includes(win.workspace?.id) && (win.pid ?? 0) > 1)
+            .map(win => win.pid);
+    }
+
+    /**
+     * Every window there is, by pid, wherever it sits.
+     *
+     * The guard reads this to tell a program that has no window at all from one
+     * whose window is merely elsewhere. A game still loading has no window yet
+     * and is drawing on the card already, and that combination is worth
+     * recognising before it is mistaken for a background process gone wild.
+     */
+    readonly property var windowPids: HyprlandData.windowList
+        .filter(win => (win.pid ?? 0) > 1)
+        .map(win => win.pid)
+
     readonly property string guardStatePath: `${Directories.temp}/game-guard.json`
 
     /**
@@ -591,6 +627,8 @@ Singleton {
         "cpuTicks": Config.options.gameMode.guard.cpuTicks,
         "minCpuShare": Config.options.gameMode.guard.minCpuShare,
         "cooldown": Config.options.gameMode.guard.cooldown,
+        "youngGrace": Config.options.gameMode.guard.youngGrace,
+        "gpuFloor": Config.options.gameMode.guard.gpuFloor,
         "oomScoreAdj": Config.options.gameMode.guard.oomScoreAdj,
         "keep": [...Config.options.gameMode.guard.keep],
         "dryRun": Config.options.gameMode.guard.dryRun
@@ -609,6 +647,8 @@ Singleton {
         "shellPid": Quickshell.processId,
         "gamePids": root.gamePids,
         "focusPid": root.focusPid,
+        "visiblePids": root.visiblePids,
+        "windowPids": root.windowPids,
         "guard": root.guardOptions
     })
 
@@ -647,6 +687,8 @@ Singleton {
             "shellPid": Quickshell.processId,
             "gamePids": [],
             "focusPid": 0,
+            "visiblePids": [],
+            "windowPids": [],
             "guard": root.guardOptions
         }));
     }

@@ -513,17 +513,30 @@ Singleton {
                     /// doing, in megabytes, counted proportionally so a browser's
                     /// shared pages are not counted once per process.
                     property int minReclaimMb: 200
-                    /// How many of the game's threads may sit waiting for a core,
-                    /// on average, before something is frozen for it.
-                    property real cpuStarvation: 0.5
+                    /// How much of a running game process's time may be lost
+                    /// waiting for a core, as a share of the time it got, before
+                    /// something is frozen for it. Counted per process and only
+                    /// for ones actually running: a launcher idling on sixty
+                    /// threads reads as starving otherwise, since every wakeup is
+                    /// charged the scheduler's own latency.
+                    property real cpuStarvation: 0.25
                     /// Processor pressure over ten seconds, read only when there
                     /// is no game window to measure directly.
                     property real cpuPressure: 25
                     property int cpuTicks: 5
                     /// How many cores something has to be taking to be frozen.
-                    property real minCpuShare: 0.3
+                    property real minCpuShare: 2.0
                     /// Seconds of quiet after each intervention.
                     property int cooldown: 10
+                    /// How long a process is left alone after it starts, in
+                    /// seconds. A game spends its first minute loading with every
+                    /// core it can reach and no window to show for it, which is
+                    /// exactly what this would otherwise pick as a victim.
+                    property int youngGrace: 60
+                    /// How much of the graphics card something has to be using to
+                    /// be left alone, as a share. Whatever is drawing is either
+                    /// the game before it has a window or something being watched.
+                    property real gpuFloor: 0.05
                     /// What the rest of the session's oom_score_adj is raised to
                     /// while the mode is on. Only raising is possible without
                     /// privileges, and relative order is all the kernel reads.
