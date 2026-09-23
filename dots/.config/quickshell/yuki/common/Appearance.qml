@@ -492,6 +492,8 @@ Singleton {
         property real wallpaperSelectorItemPadding: 6
         property real screenSharePickerWidth: 920
         property real screenSharePickerHeight: 620
+        property real filePickerWidth: 1150
+        property real filePickerHeight: 740
     }
 
     syntaxHighlightingTheme: root.m3colors.darkmode ? "Monokai" : "ayu Light"

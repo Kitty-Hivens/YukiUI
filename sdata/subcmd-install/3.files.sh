@@ -215,11 +215,12 @@ function move_user_extensions(){
     done
   done
 }
-function install_wallpaper_portal_service(){
-  # D-Bus activation of the wallpaper portal backend. Written rather than copied
-  # because Exec takes an absolute path and expands nothing.
+function install_yuki_portal_service(){
+  # D-Bus activation of the yuki portal backend, the one process behind both the
+  # wallpaper interface and the file chooser. Written rather than copied because
+  # Exec takes an absolute path and expands nothing.
   local target="${XDG_DATA_HOME}/dbus-1/services/org.freedesktop.impl.portal.desktop.yuki.service"
-  local exec_path="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/portal/wallpaper-portal.py"
+  local exec_path="${XDG_CONFIG_HOME}/quickshell/yuki/scripts/portal/yuki-portal.py"
   x mkdir -p "$(dirname "$target")"
   sed "s|@EXEC@|${exec_path}|" sdata/files/org.freedesktop.impl.portal.desktop.yuki.service.in > "$target"
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
@@ -383,8 +384,8 @@ case "${EXPERIMENTAL_FILES_SCRIPT}" in
   *)source sdata/subcmd-install/3.files-legacy.sh;;
 esac
 
-showfun install_wallpaper_portal_service
-v install_wallpaper_portal_service
+showfun install_yuki_portal_service
+v install_yuki_portal_service
 
 showfun install_game_guard_service
 v install_game_guard_service

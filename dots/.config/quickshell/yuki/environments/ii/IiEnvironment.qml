@@ -8,6 +8,7 @@ import qs.ii.bluetoothPairing
 import qs.ii.bar
 import qs.ii.cheatsheet
 import qs.ii.dock
+import qs.ii.filePicker
 import qs.ii.lock
 import qs.ii.mediaControls
 import qs.ii.notificationPopup
@@ -36,6 +37,7 @@ Scope {
     PanelLoader { component: BluetoothPairing {} }
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
+    PanelLoader { component: FilePickerPanel {} }
     PanelLoader { component: Lock {} }
     PanelLoader { component: MediaControls {} }
     PanelLoader { component: NotificationPopup {} }

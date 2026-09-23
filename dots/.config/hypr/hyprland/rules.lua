@@ -31,6 +31,9 @@ hl.window_rule({match = {title = "^(.*)(wants to open)$" },                  flo
 hl.window_rule({match = {class = "^(xdg-desktop-portal-gtk)$" },             float = true})
 hl.window_rule({match = {class = "^(xdg-desktop-portal-gtk)$" },             center = true})
 hl.window_rule({match = {class = "^(xdg-desktop-portal-gtk)$" },             size = {"(monitor_w*0.60)", "(monitor_h*0.65)"} })
+-- Yuki file chooser: a real toplevel FloatingWindow, matched by its stable title.
+hl.window_rule({match = {title = "^(File picker)$" },                        float = true})
+hl.window_rule({match = {title = "^(File picker)$" },                        center = true})
 hl.window_rule({match = {class = "^(blueberry\\.py)$" },                     float = true})
 hl.window_rule({match = {class = "^(guifetch)$" },                           float = true}) -- FlafyDev/guifetch
 hl.window_rule({match = {class = "^(pavucontrol)$" },                        float = true})

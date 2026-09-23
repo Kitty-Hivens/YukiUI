@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Backend for org.freedesktop.impl.portal.Wallpaper.
 
 Nothing in a wlroots session implements this interface, so "Set as Background" in
@@ -10,7 +9,6 @@ wallpaper the way it does everywhere else.
 
 import os
 import subprocess
-import sys
 
 import gi
 
@@ -18,16 +16,12 @@ gi.require_version("Gio", "2.0")
 
 from gi.repository import Gio, GLib  # noqa: E402  (must follow require_version)
 
-BUS_NAME = "org.freedesktop.impl.portal.desktop.yuki"
-OBJECT_PATH = "/org/freedesktop/portal/desktop"
+from common import OBJECT_PATH, RESPONSE_FAILED, RESPONSE_SUCCESS, make_log
+
+log = make_log("wallpaper")
 
 DOCUMENTS_NAME = "org.freedesktop.portal.Documents"
 DOCUMENTS_PATH = "/org/freedesktop/portal/documents"
-
-# Response codes of org.freedesktop.impl.portal.Request. 1, "cancelled", never comes
-# up here: there is no dialog to cancel.
-RESPONSE_SUCCESS = 0
-RESPONSE_FAILED = 2
 
 SWITCHWALL = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "colors", "switchwall.sh")
@@ -50,8 +44,14 @@ INTROSPECTION_XML = """
 """
 
 
-def log(message):
-    print(f"[wallpaper-portal] {message}", file=sys.stderr, flush=True)
+def preflight():
+    """Whether the wallpaper switch is reachable. A warning, not a gate: the yuki
+    backend also carries the file chooser now, so a missing switchwall.sh must not
+    take the whole process down with it -- the interface just fails per call."""
+    if not os.access(SWITCHWALL, os.X_OK):
+        log(f"{SWITCHWALL} is missing or not executable, wallpaper setting will fail")
+        return False
+    return True
 
 
 def undo_document_store(connection, path):
@@ -139,34 +139,8 @@ def on_get_property(connection, sender, object_path, interface_name, property_na
     return None
 
 
-def main():
-    if not os.access(SWITCHWALL, os.X_OK):
-        log(f"{SWITCHWALL} is missing or not executable")
-        return 1
-
-    loop = GLib.MainLoop()
+def register(connection):
     interface = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION_XML).interfaces[0]
-
-    def on_bus_acquired(connection, name):
-        try:
-            connection.register_object_with_closures2(
-                OBJECT_PATH, interface, on_method_call, on_get_property, None
-            )
-        except GLib.Error as error:
-            log(f"cannot export {OBJECT_PATH}: {error.message}")
-            loop.quit()
-
-    def on_name_lost(connection, name):
-        log(f"cannot own {name}, is another backend running?")
-        loop.quit()
-
-    Gio.bus_own_name(
-        Gio.BusType.SESSION, BUS_NAME, Gio.BusNameOwnerFlags.NONE,
-        on_bus_acquired, None, on_name_lost,
+    connection.register_object_with_closures2(
+        OBJECT_PATH, interface, on_method_call, on_get_property, None
     )
-    loop.run()
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

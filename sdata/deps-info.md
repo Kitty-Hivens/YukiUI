@@ -151,8 +151,9 @@ Tips:
 - `gobject-introspection`
   - Not explicitly used.
 - `python-gobject`
-  - The `gi` bindings. Used by `quickshell/yuki/scripts/portal/wallpaper-portal.py`
-    and `quickshell/yuki/scripts/bluetooth/pairing-agent.py`.
+  - The `gi` bindings. Used by `quickshell/yuki/scripts/portal/yuki-portal.py`
+    (and its `wallpaper.py`/`filechooser.py` modules) and
+    `quickshell/yuki/scripts/bluetooth/pairing-agent.py`.
 
 ## illogical-impulse-screencapture
 - `hyprshot`

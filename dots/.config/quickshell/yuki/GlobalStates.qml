@@ -14,6 +14,7 @@ Singleton {
     property bool screenUnlockFailed: false
     property bool screenSharePickerOpen: false
     property bool screenShareRegionOpen: false
+    property bool filePickerOpen: false
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool oskOpen: false
