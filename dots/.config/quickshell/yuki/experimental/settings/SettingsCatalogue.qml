@@ -28,7 +28,8 @@ QtObject {
                 { key: "display", name: Translation.tr("Display"), glyph: "desktop_windows", description: Translation.tr("Screens, resolution, scale"), keywords: "monitor screen resolution scale refresh brightness night light hdr vrr rotation", component: "DisplayPage.qml" },
                 { key: "sound", name: Translation.tr("Sound"), glyph: "volume_up", description: Translation.tr("Output, input, volume"), keywords: "audio volume speaker microphone mixer", component: "SoundPage.qml" },
                 { key: "notifications", name: Translation.tr("Notifications"), glyph: "notifications", description: Translation.tr("Do not disturb, what is kept"), keywords: "alerts do not disturb", component: "NotificationsPage.qml" },
-                { key: "power", name: Translation.tr("Power"), glyph: "bolt", description: Translation.tr("Power mode, battery, keeping awake"), keywords: "battery sleep power profile idle lock suspend", component: "PowerPage.qml" }
+                { key: "power", name: Translation.tr("Power"), glyph: "bolt", description: Translation.tr("Power mode, battery, keeping awake"), keywords: "battery sleep power profile idle lock suspend", component: "PowerPage.qml" },
+                { key: "multitasking", name: Translation.tr("Multitasking"), glyph: "select_window", description: Translation.tr("Switching between windows"), keywords: "alt tab switch windows snap", component: "MultitaskingPage.qml" }
             ]
         },
         {

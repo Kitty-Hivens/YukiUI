@@ -1359,5 +1359,10 @@
   "When full": "При заполнении",
   "Never": "Никогда",
   "Automatically hide the dock": "Автоматически скрывать док",
-  "It comes out when the pointer reaches the edge, and windows get its room": "Он выезжает, когда указатель касается края, а его место достаётся окнам"
+  "It comes out when the pointer reaches the edge, and windows get its room": "Он выезжает, когда указатель касается края, а его место достаётся окнам",
+  "Multitasking": "Многозадачность",
+  "Switching between windows": "Переключение между окнами",
+  "Alt+Tab shows": "Alt+Tab показывает",
+  "The windows of the workspace on screen, or every open window": "Окна рабочего стола на экране или все открытые окна",
+  "All workspaces": "Все рабочие столы"
 }

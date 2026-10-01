@@ -10,6 +10,16 @@ hl.window_rule({ match = { class = ".*" }, float = true })
 hl.unbind("SUPER + ALT + Space")
 hl.bind("SUPER + ALT + Space", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }), { description = "Window: Maximize/Restore" })
 
+-- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
+-- a key pressed before the switcher took the keyboard is not released to it,
+-- so Alt itself is bound, pressed and let go, and passed on to the window.
+hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"), { description = "Shell: Switch windows" })
+hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
+for _, key in ipairs({ "ALT_L", "ALT_R" }) do
+    hl.bind(key, hl.dsp.global("quickshell:altHeld"), { ignore_mods = true, transparent = true })
+    hl.bind(key, hl.dsp.global("quickshell:altHeld"), { ignore_mods = true, transparent = true, release = true })
+end
+
 -- Windows come back where they were left.
 --
 -- On Wayland an application cannot place its own window, so remembering where

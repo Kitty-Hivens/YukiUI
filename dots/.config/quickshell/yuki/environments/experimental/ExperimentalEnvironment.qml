@@ -18,6 +18,7 @@ import qs.experimental.polkit
 import qs.experimental.regionSelect
 import qs.experimental.screenShare
 import qs.experimental.surfaces
+import qs.experimental.switcher
 
 // Being built, surface by surface. Nothing is borrowed from the other
 // environments, so whatever is not listed below does not exist here yet.
@@ -55,6 +56,7 @@ Scope {
     PanelLoader { component: ExBackground {} }
     PanelLoader { component: ExDock {} }
     PanelLoader { component: ExLauncher {} }
+    PanelLoader { component: ExSwitcher {} }
     PanelLoader { component: ExNotificationPopups {} }
     PanelLoader { component: ExLock {} }
     PanelLoader { component: ExPolkit {} }

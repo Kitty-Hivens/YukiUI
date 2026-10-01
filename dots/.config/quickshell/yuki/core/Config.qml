@@ -839,6 +839,11 @@ Singleton {
                     // application, "own" each shows the windows on its screen.
                     property string appsOn: "all"
                 }
+                property JsonObject switcher: JsonObject {
+                    // Alt+Tab: "workspace" the windows of the workspace on
+                    // screen, "all" every one.
+                    property string windowsFrom: "workspace"
+                }
                 property JsonObject desktop: JsonObject {
                     property bool showIcons: true
                     property string iconSize: "medium" // "small", "medium" or "large"
