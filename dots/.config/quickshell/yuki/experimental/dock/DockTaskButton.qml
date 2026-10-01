@@ -21,8 +21,16 @@ Item {
 
     /** Which of the application's windows this dock shows, or null for those on the workspace. */
     property var showsWindow: null
+    /**
+     * The one window this button stands for, its title beside the icon, when
+     * the dock gives each window a button of its own. Null for a button that
+     * stands for the application.
+     */
+    property var soleWindow: null
+    readonly property bool labelled: root.soleWindow !== null && !root.vertical
     // The entry is gone for a moment before the button is, while the dock lets go of it.
     readonly property var windows: !root.entry ? []
+        : root.soleWindow ? [root.soleWindow]
         : root.showsWindow ? root.entry.toplevels.filter(toplevel => root.showsWindow(toplevel))
         : TaskbarApps.windowsOn(root.entry, root.workspaceId)
     readonly property bool running: windows.length > 0
@@ -39,7 +47,9 @@ Item {
 
     /** What a left click does, also reached by number through the dock's IPC. */
     function activate() {
-        if (!root.running)
+        if (root.soleWindow)
+            TaskbarApps.toggleWindow(root.soleWindow);
+        else if (!root.running)
             TaskbarApps.launch(root.entry.appId);
         else if (root.windows.length === 1)
             TaskbarApps.toggleWindow(root.windows[0]);
@@ -47,7 +57,10 @@ Item {
             root.groupRequested();
     }
 
-    implicitWidth: ExLooks.dock.cell
+    /** Where the icon is, for what flies to the button or is drawn in its place. */
+    readonly property Item iconItem: icon
+
+    implicitWidth: root.labelled ? ExLooks.dock.labelledWidth : ExLooks.dock.cell
     implicitHeight: ExLooks.dock.cell
 
     MouseArea {
@@ -75,6 +88,8 @@ Item {
     readonly property bool group: windows.length > 1
     readonly property real stackStep: group ? 4 : 0
     readonly property bool raised: root.focused || mouse.containsMouse
+    // Where the marks under the button stand: under the icon of a labelled one.
+    readonly property real markCenter: root.labelled ? icon.x + icon.width / 2 : (root.width - root.stackStep) / 2
 
     Rectangle {
         visible: root.group && root.raised
@@ -107,10 +122,12 @@ Item {
     IconImage {
         id: icon
 
-        anchors.centerIn: parent
-        // On the front plate of a stack, not on the whole cell.
-        anchors.horizontalCenterOffset: root.vertical ? 0 : -root.stackStep / 2
-        anchors.verticalCenterOffset: root.vertical ? -root.stackStep / 2 : 0
+        // On the front plate of a stack, not on the whole cell, and at the
+        // start of a labelled button.
+        x: root.vertical ? (root.width - width) / 2
+            : root.labelled ? (ExLooks.dock.cell - width) / 2
+            : (root.width - root.stackStep - width) / 2
+        y: root.vertical ? (root.height - root.stackStep - height) / 2 : (root.height - height) / 2
         implicitSize: ExLooks.dock.icon
         source: AppSearch.iconFor(root.entry?.appId ?? "")
         // A pressed icon sinks a little, the way a key does.
@@ -123,6 +140,18 @@ Item {
         Behavior on opacity {
             NumberAnimation { duration: ExLooks.motion.fast }
         }
+    }
+
+    ExText {
+        visible: root.labelled
+        x: ExLooks.dock.cell - 2
+        width: root.width - x - ExLooks.spacing.s
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.soleWindow?.title || root.entry?.appId || ""
+        textFormat: Text.PlainText
+        role: "label"
+        font.weight: ExLooks.font.weightBody
+        opacity: root.minimized ? 0.6 : 1
     }
 
     // A count in the icon's corner, or a dot when the application asks to be
@@ -158,7 +187,7 @@ Item {
         width: root.vertical ? 3 : length
         height: root.vertical ? length : 3
         radius: 1.5
-        x: root.vertical ? (root.edge === "left" ? 1 : root.width - width - 1) : (root.width - root.stackStep - width) / 2
+        x: root.vertical ? (root.edge === "left" ? 1 : root.width - width - 1) : root.markCenter - width / 2
         y: root.vertical ? (root.height - root.stackStep - height) / 2 : (root.edge === "top" ? 1 : root.height - height - 1)
         color: ExLooks.colors.sliderTrack
 
@@ -186,7 +215,7 @@ Item {
         width: root.vertical ? 3 : length
         height: root.vertical ? length : 3
         radius: 1.5
-        x: root.vertical ? (root.edge === "left" ? 1 : root.width - width - 1) : (root.width - root.stackStep - width) / 2
+        x: root.vertical ? (root.edge === "left" ? 1 : root.width - width - 1) : root.markCenter - width / 2
         y: root.vertical ? (root.height - root.stackStep - height) / 2 : (root.edge === "top" ? 1 : root.height - height - 1)
         color: root.focused ? ExLooks.colors.accent : ExLooks.colors.textDim
         opacity: root.minimized ? 0.5 : 1

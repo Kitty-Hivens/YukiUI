@@ -51,9 +51,9 @@ Scope {
         return { screen: monitor.name, x: at[0] - monitor.x, y: at[1] - monitor.y, w: win.size[0], h: win.size[1] };
     }
 
-    function buttonOf(screen: string, appId: string): var {
+    function buttonOf(screen: string, appId: string, address: string): var {
         const dock = ExStates.dockWindows.find(candidate => candidate.screen?.name === screen);
-        return dock ? dock.buttonRect(appId) : null;
+        return dock ? dock.buttonRect(appId, address) : null;
     }
 
     /** What the dock knows the window's application by. */
@@ -76,7 +76,7 @@ Scope {
             const toplevel = root.toplevelOf(win.address);
             const place = root.placeOf(win, kind);
             const appId = root.appIdOf(win, toplevel);
-            const button = place ? root.buttonOf(place.screen, appId) : null;
+            const button = place ? root.buttonOf(place.screen, appId, win.address) : null;
             // Only a window on the workspace its screen shows is seen going or
             // coming. One asking to be minimised from a workspace out of sight,
             // or put back onto one, just goes.

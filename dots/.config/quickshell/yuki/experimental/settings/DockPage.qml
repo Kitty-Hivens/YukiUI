@@ -128,6 +128,22 @@ ColumnLayout {
 
         SettingsCard {
             Layout.fillWidth: true
+            glyph: "label"
+            text: Translation.tr("Combine buttons and hide labels")
+            description: Translation.tr("Otherwise each window has a button with its title. Not on a dock at the side, which has no room for them")
+
+            SettingsChoice {
+                value: root.dock.combine
+                options: [
+                    { value: "always", text: Translation.tr("Always") },
+                    { value: "whenFull", text: Translation.tr("When full") },
+                    { value: "never", text: Translation.tr("Never") }
+                ]
+                onPicked: value => Config.options.experimental.dock.combine = value
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
             glyph: "select_window"
             text: Translation.tr("Windows shown")
             description: Translation.tr("Those on the workspace on screen, or every open window")

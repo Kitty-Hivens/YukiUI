@@ -229,6 +229,41 @@ Scope {
              * on screen, or any at all, or with a dock on each screen any on
              * this screen, as the settings say.
              */
+            readonly property var appList: TaskbarApps.appsMatching(toplevel => window.showsWindow(toplevel))
+
+            // Windows' "combine buttons and hide labels". Combined, one icon per
+            // application. Otherwise a labelled button per window, an
+            // application with none keeping its icon, and "when full" goes
+            // back to icons once the labelled buttons no longer fit. Down a
+            // side there is no room for a label at all.
+            readonly property string combine: Config.options.experimental.dock.combine
+            readonly property real labelledLength: {
+                let length = Config.options.experimental.dock.launcherButton ? ExLooks.dock.cell : 0;
+                let count = Config.options.experimental.dock.launcherButton ? 1 : 0;
+                for (const app of window.appList) {
+                    const windows = Math.max(1, app.windows.length);
+                    length += app.windows.length > 0 ? windows * ExLooks.dock.labelledWidth : ExLooks.dock.cell;
+                    count += windows;
+                }
+                return length + Math.max(0, count - 1) * ExLooks.dock.spacing;
+            }
+            readonly property bool labelled: !window.vertical && window.combine !== "always"
+                && (window.combine === "never" || window.labelledLength <= dock.screenLength - dock.endLength - 2 * dock.padding)
+
+            /** One per button, keyed so a button keeps its place as the list changes. */
+            readonly property var buttons: {
+                const list = [];
+                for (const app of window.appList) {
+                    if (!window.labelled || app.windows.length === 0) {
+                        list.push(Object.assign({ key: app.appId }, app));
+                        continue;
+                    }
+                    for (const toplevel of app.windows)
+                        list.push(Object.assign({}, app, { key: `${app.appId}|${TaskbarApps.addressOf(toplevel)}`, window: toplevel, windows: [toplevel] }));
+                }
+                return list;
+            }
+
             function showsWindow(toplevel): bool {
                 const options = Config.options.experimental.dock;
                 if (options.windowsFrom !== "all")
@@ -389,13 +424,19 @@ Scope {
              * this dock's screen, or null when it has none here. What a
              * window flies into when it is minimised.
              */
-            function buttonRect(appId: string): var {
+            function buttonRect(appId: string, address: string): var {
+                // The button of that very window when windows have their own,
+                // else the application's.
+                let found = null;
                 for (let i = 0; i < tasks.count; i++) {
                     const button = tasks.itemAt(i);
-                    if (button && button.entry?.appId === appId)
-                        return window.place(button);
+                    if (!button || button.entry?.appId !== appId)
+                        continue;
+                    if (button.soleWindow && TaskbarApps.addressOf(button.soleWindow) === address)
+                        return window.place(button.iconItem);
+                    found = found ?? button;
                 }
-                return null;
+                return found ? window.place(found.labelled ? found.iconItem : found) : null;
             }
 
             /** The dock's plate, its icons, and pictures of its tray and status block, where they stand. */
@@ -404,7 +445,8 @@ Scope {
                 for (let i = 0; i < tasks.count; i++) {
                     const button = tasks.itemAt(i);
                     if (button)
-                        items.push(Object.assign({ key: button.entry.appId, kind: "app", icon: AppSearch.iconFor(button.entry.appId) }, window.place(button)));
+                        // A labelled button is drawn as its icon on the way.
+                        items.push(Object.assign({ key: button.key, kind: "app", icon: AppSearch.iconFor(button.entry.appId) }, window.place(button.labelled ? button.iconItem : button)));
                 }
                 const pictures = [];
                 for (const [key, item] of [["tray", tray], ["status", status]]) {
@@ -612,13 +654,15 @@ Scope {
                         id: tasks
 
                         model: ScriptModel {
-                            objectProp: "appId"
-                            values: TaskbarApps.appsMatching(toplevel => window.showsWindow(toplevel))
+                            objectProp: "key"
+                            values: window.buttons
                         }
 
                         DockTaskButton {
                             required property var modelData
+                            readonly property string key: modelData.key
                             entry: modelData.entry
+                            soleWindow: modelData.window ?? null
                             status: launcherEntries.stateFor(modelData.appId)
                             workspaceId: window.workspaceId
                             showsWindow: toplevel => window.showsWindow(toplevel)

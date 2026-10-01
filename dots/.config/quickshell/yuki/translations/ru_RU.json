@@ -1353,5 +1353,9 @@
   "The main screen": "На главном экране",
   "Applications on each dock": "Приложения на каждом доке",
   "Every open window on every dock, or each window on the dock of its own screen": "Все окна на каждом доке или каждое окно на доке своего экрана",
-  "Its own screen": "Своего экрана"
+  "Its own screen": "Своего экрана",
+  "Combine buttons and hide labels": "Группировать кнопки и скрывать подписи",
+  "Otherwise each window has a button with its title. Not on a dock at the side, which has no room for them": "Иначе у каждого окна своя кнопка с заголовком. Не на боковом доке: там для них нет места",
+  "When full": "При заполнении",
+  "Never": "Никогда"
 }

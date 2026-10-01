@@ -97,6 +97,8 @@ Singleton {
         readonly property real icon: 32
         readonly property real spacing: 2
         readonly property real launcherGlyph: 26
+        /** A button standing for one window, its title beside the icon. */
+        readonly property real labelledWidth: 176
         /** How far a floating dock stands off the screen edge. */
         readonly property real floatingGap: 8
         readonly property real floatingRadius: 18
