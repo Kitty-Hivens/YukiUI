@@ -9,6 +9,20 @@ import Quickshell.Io
 
 Singleton {
     id: root
+
+    /**
+     * Whether this process acts on the battery: warns, plays the sounds and
+     * suspends. Only the shell does, which turns it on at start. A settings
+     * window is a process of its own and reads the battery to show it; acting
+     * there too played the plug sound as the readings came in, and sent every
+     * warning and suspend a second time.
+     */
+    property bool acting: false
+
+    function load() {
+        root.acting = true;
+    }
+
     property bool available: UPower.displayDevice.isLaptopBattery
     property var chargeState: UPower.displayDevice.state
     property bool isCharging: chargeState == UPowerDeviceState.Charging
@@ -51,7 +65,7 @@ Singleton {
 
 
     onIsLowAndNotChargingChanged: {
-        if (!root.available || !isLowAndNotCharging) return;
+        if (!root.acting || !root.available || !isLowAndNotCharging) return;
         Quickshell.execDetached([
             "notify-send", 
             Translation.tr("Low battery"), 
@@ -65,7 +79,7 @@ Singleton {
     }
 
     onIsCriticalAndNotChargingChanged: {
-        if (!root.available || !isCriticalAndNotCharging) return;
+        if (!root.acting || !root.available || !isCriticalAndNotCharging) return;
         Quickshell.execDetached([
             "notify-send", 
             Translation.tr("Critically low battery"), 
@@ -81,13 +95,13 @@ Singleton {
     }
 
     onIsSuspendingAndNotChargingChanged: {
-        if (root.available && isSuspendingAndNotCharging) {
+        if (root.acting && root.available && isSuspendingAndNotCharging) {
             Quickshell.execDetached(["bash", "-c", `systemctl suspend || loginctl suspend`]);
         }
     }
 
     onIsFullAndChargingChanged: {
-        if (!root.available || !isFullAndCharging) return;
+        if (!root.acting || !root.available || !isFullAndCharging) return;
         Quickshell.execDetached([
             "notify-send",
             Translation.tr("Battery full"),
@@ -100,7 +114,7 @@ Singleton {
     }
 
     onIsPluggedInChanged: {
-        if (!root.available || !root.soundEnabled) return;
+        if (!root.acting || !root.available || !root.soundEnabled) return;
         if (isPluggedIn) {
             Audio.playSystemSound("power-plug")
         } else {

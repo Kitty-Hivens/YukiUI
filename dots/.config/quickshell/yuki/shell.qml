@@ -52,6 +52,7 @@ ShellRoot {
         Idle.load()
         HyprlandConfig.load()
         Minimize.load()
+        Battery.load()
     }
 
 
