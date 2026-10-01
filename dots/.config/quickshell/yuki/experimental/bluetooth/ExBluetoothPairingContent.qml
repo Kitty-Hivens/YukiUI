@@ -39,13 +39,30 @@ Item {
         BluetoothAgent.accept(root.typing ? field.text : "");
     }
 
-    focus: true
-    Component.onCompleted: {
+    /**
+     * Gets the card ready for the question now on screen.
+     *
+     * The card stays up while BlueZ has more to ask, so it is not built again
+     * for the next question: the field kept the previous PIN, and focus stayed
+     * where the previous kind wanted it, on a field now hidden or on the card
+     * while a field was now waiting to be typed into.
+     */
+    function prepare() {
+        field.text = "";
         if (root.typing)
             field.input.forceActiveFocus();
         else
             root.forceActiveFocus();
     }
+
+    readonly property var requestId: BluetoothAgent.request?.id ?? null
+    onRequestIdChanged: {
+        if (root.requestId !== null)
+            root.prepare();
+    }
+
+    focus: true
+    Component.onCompleted: root.prepare()
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
             BluetoothAgent.reject();
@@ -154,10 +171,7 @@ Item {
                 visible: root.typing
                 glyph: "pin"
                 placeholder: BluetoothAgent.kind === "pin" ? Translation.tr("PIN") : Translation.tr("Code")
-                Component.onCompleted: {
-                    if (BluetoothAgent.kind === "passkey")
-                        field.input.inputMethodHints = Qt.ImhDigitsOnly;
-                }
+                input.inputMethodHints: BluetoothAgent.kind === "passkey" ? Qt.ImhDigitsOnly : Qt.ImhNone
                 input.Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
                         BluetoothAgent.reject();

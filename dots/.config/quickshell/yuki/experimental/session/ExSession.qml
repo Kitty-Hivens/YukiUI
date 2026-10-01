@@ -51,6 +51,11 @@ Scope {
                 right: true
             }
 
+            // Closed over a fullscreen game, nothing takes the keyboard back
+            // by itself and the game reads its dead input as a freeze.
+            Component.onCompleted: FocusReturn.remember("exSession")
+            Component.onDestruction: FocusReturn.restore("exSession")
+
             Rectangle {
                 anchors.fill: parent
                 color: ExLooks.colors.scrimStrong

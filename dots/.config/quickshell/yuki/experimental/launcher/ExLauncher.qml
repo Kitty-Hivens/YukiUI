@@ -106,9 +106,13 @@ Scope {
                 onPressed: ExStates.launcherOpen = false
             }
 
+            // Taken once the panel holds the keyboard, not before. A layer
+            // turning exclusive again ends whatever grab is up, its own
+            // included, so reopened on its way out the launcher had its new
+            // grab cleared at once and closed itself.
             HyprlandFocusGrab {
                 windows: [panel]
-                active: ExStates.launcherOpen
+                active: ExStates.launcherOpen && beside.Window.active
                 onCleared: ExStates.launcherOpen = false
             }
 
@@ -135,6 +139,16 @@ Scope {
                     id: content
                     anchors.fill: parent
                     Component.onCompleted: content.reset()
+
+                    // Opened again while still on its way out, it is the same
+                    // panel and still holds the last search.
+                    Connections {
+                        target: ExStates
+                        function onLauncherOpenChanged() {
+                            if (ExStates.launcherOpen)
+                                content.reset();
+                        }
+                    }
                 }
             }
         }

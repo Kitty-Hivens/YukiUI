@@ -34,13 +34,20 @@ ExPopup {
 
     /** What a switch shows, read live from the system. */
     function tileInfo(key: string): var {
-        if (key === "wifi")
+        if (key === "wifi") {
+            // Wi-Fi's own network, not whatever carries the connection: on a
+            // cable or a Bluetooth tether the shared name and glyph describe
+            // those.
+            const network = Network.active?.ssid || (Network.activeConnectionNames["wifi"] ?? "");
             return {
-                glyph: Network.materialSymbol,
+                glyph: !Network.wifiEnabled ? "signal_wifi_off"
+                    : Network.connectionType === "wifi" ? Network.materialSymbol
+                    : network.length > 0 ? "wifi" : "wifi_find",
                 text: Translation.tr("Wi-Fi"),
-                subtitle: Network.wifiEnabled ? (Network.networkName || Translation.tr("Not connected")) : Translation.tr("Off"),
+                subtitle: Network.wifiEnabled ? (network || Translation.tr("Not connected")) : Translation.tr("Off"),
                 checked: Network.wifiEnabled
             };
+        }
         if (key === "bluetooth")
             return {
                 glyph: BluetoothStatus.connected ? "bluetooth_connected" : "bluetooth",
