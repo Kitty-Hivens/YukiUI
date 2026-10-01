@@ -1,12 +1,22 @@
-// What minimising needs from inside the compositor. The shell does the
-// minimising itself, by parking windows on special workspaces, and this plugin
-// only supplies the two things it cannot reach from outside.
+// What minimising and maximising need from inside the compositor. The shell
+// does both itself, minimising by parking windows on special workspaces and
+// maximising by giving a floating window the work area, and this plugin only
+// supplies what it cannot reach from outside.
 //
 // An application's own request to be minimised. A client asking through
 // xdg_toplevel.set_minimized, or through WM_CHANGE_STATE under XWayland, has
 // the request stored on its surface and then dropped: no socket event, no lua
 // event. Only a request made through foreign-toplevel reaches the socket, as
 // `minimized>>ADDRESS,1`, and this posts that same event for the other two.
+//
+// An application's own request to be maximised or put back, as
+// `maximizerequest>>ADDRESS,1` or `,0`: a double click on its title bar, its
+// maximise button. Hyprland would answer it with a maximise of its own, a
+// kind of fullscreen that only one window per workspace can have and that is
+// not raised over floating windows, so a family that maximises by itself
+// suppresses that with a window rule and takes the request from here. A
+// window rule leaves the request on the surface for every listener, this one
+// included. A window asking to be maximised as it opens is announced then.
 //
 // Letting go of focus. A window moved to a special workspace that is not shown
 // keeps keyboard focus, so typing goes on reaching a window nobody can see, and
@@ -21,6 +31,7 @@
 #include <hyprland/src/managers/EventManager.hpp>
 
 #include <format>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -36,6 +47,13 @@ namespace {
         g_pEventManager->postEvent({.event = "minimized", .data = std::format("{:x},1", reinterpret_cast<uintptr_t>(window.get()))});
     }
 
+    void announceMaximize(const PHLWINDOWREF& ref, bool maximize) {
+        const auto window = ref.lock();
+        if (!window || !g_pEventManager)
+            return;
+        g_pEventManager->postEvent({.event = "maximizerequest", .data = std::format("{:x},{}", reinterpret_cast<uintptr_t>(window.get()), maximize ? 1 : 0)});
+    }
+
     CHyprSignalListener listenTo(const PHLWINDOW& window) {
         const PHLWINDOWREF ref = window;
 
@@ -44,16 +62,26 @@ namespace {
         if (const auto xdg = window->m_xdgSurface.lock(); xdg && xdg->m_toplevel) {
             const WP<CXDGToplevelResource> toplevel = xdg->m_toplevel;
             return toplevel->m_events.stateChanged.listen([ref, toplevel] {
-                if (const auto current = toplevel.lock(); current && current->m_state.requestsMinimize.value_or(false))
+                const auto current = toplevel.lock();
+                if (!current)
+                    return;
+                if (current->m_state.requestsMinimize.value_or(false))
                     announce(ref);
+                if (current->m_state.requestsMaximize.has_value())
+                    announceMaximize(ref, *current->m_state.requestsMaximize);
             });
         }
 
         if (const auto x11 = window->m_xwaylandSurface.lock()) {
             const WP<CXWaylandSurface> surface = x11;
             return x11->m_events.stateChanged.listen([ref, surface] {
-                if (const auto current = surface.lock(); current && current->m_state.requestsMinimize.value_or(false))
+                const auto current = surface.lock();
+                if (!current)
+                    return;
+                if (current->m_state.requestsMinimize.value_or(false))
                     announce(ref);
+                if (current->m_state.requestsMaximize.has_value())
+                    announceMaximize(ref, *current->m_state.requestsMaximize);
             });
         }
 
@@ -79,6 +107,18 @@ namespace {
         if (auto listener = listenTo(window))
             watched.emplace_back(window, std::move(listener));
     }
+
+    // Asked for before the window was mapped, a maximise is still on the
+    // surface when it opens, and nothing else will announce it.
+    void announceInitial(const PHLWINDOW& window) {
+        std::optional<bool> wanted;
+        if (const auto xdg = window->m_xdgSurface.lock(); xdg && xdg->m_toplevel)
+            wanted = xdg->m_toplevel->m_state.requestsMaximize;
+        else if (const auto x11 = window->m_xwaylandSurface.lock())
+            wanted = x11->m_state.requestsMaximize;
+        if (wanted.value_or(false))
+            announceMaximize(window, true);
+    }
 }
 
 APICALL EXPORT std::string PLUGIN_API_VERSION() {
@@ -95,7 +135,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         throw std::runtime_error("[minimize] version mismatch");
     }
 
-    openListener = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) { watch(window); });
+    openListener = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) {
+        watch(window);
+        announceInitial(window);
+    });
 
     HyprlandAPI::addLuaFunction(handle, "minimize", "reset_focus", resetFocus);
 
@@ -104,7 +147,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         if (window && window->m_isMapped)
             watch(window);
 
-    return {"minimize", "Passes on requests to be minimised and lets go of focus for the shell's minimising", "yuki", "1.1"};
+    return {"minimize", "Passes on requests to be minimised or maximised, and lets go of focus for the shell's minimising", "yuki", "1.2"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

@@ -6,7 +6,8 @@
 
 local dir = "/usr/lib/yuki-hyprland-plugins/"
 
--- minimize: what the shell's minimising needs from inside the compositor.
+-- minimize: what the shell's minimising and maximising need from inside the
+-- compositor.
 -- layer-refocus: a panel that appears under a still pointer gets the pointer.
 -- press-report: tells the shell where each press lands, so a panel closes on a
 -- click outside it and the click still reaches what it landed on.
