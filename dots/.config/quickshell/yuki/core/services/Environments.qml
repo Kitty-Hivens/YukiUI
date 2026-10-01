@@ -45,7 +45,7 @@ Singleton {
     readonly property string systemRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("environments"))
     readonly property string homeRoot: Directories.userEnvironments
 
-    /** id -> { id, name, url, home }. Replaced rather than mutated, so bindings hear it. */
+    /** id -> { id, name, url, compositor, home }. Replaced rather than mutated, so bindings hear it. */
     property var manifests: Object.create(null)
 
     readonly property list<string> ids: Object.keys(root.manifests).sort()
@@ -186,6 +186,29 @@ Singleton {
         }
         root.active = object;
         console.log(`[Environments] ${id} mounted`);
+        root.writeCompositorRules(id, manifest.compositor);
+    }
+
+    /**
+     * Where the compositor rules of the environment that is up are written.
+     *
+     * A sourced file, not runtime keywords: game mode undoes itself with a
+     * config reload, which discards everything set at runtime, and rules kept
+     * in a file the config reads come back with every reload instead.
+     */
+    readonly property string compositorRulesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/environment.lua`)
+
+    /**
+     * Replaces the rule file with the one this environment carries, or with a
+     * header alone when it carries none, so that nothing the previous
+     * environment asked for outlives it. Written aside and renamed into place,
+     * because the compositor reloads on the change and must never read half.
+     */
+    function writeCompositorRules(id: string, source: string) {
+        const header = `-- Written by the shell for the environment that is up (${id}). Replaced on every switch, do not edit.`;
+        Quickshell.execDetached(["bash", "-c",
+            'mkdir -p "$(dirname "$3")" && { printf "%s\\n\\n" "$1"; if [ -n "$2" ]; then cat "$2"; fi; } > "$3.tmp" && mv -f "$3.tmp" "$3"',
+            "_", header, source ?? "", root.compositorRulesPath]);
     }
 
     /**
@@ -327,6 +350,10 @@ Singleton {
                 root.reject(slot.place, "the manifest names no id or no entry");
                 return;
             }
+            if (manifest.compositor !== undefined && !Plugins.usableEntry(manifest.compositor)) {
+                root.reject(slot.place, `"${manifest.compositor}" cannot be a compositor rule file: it has to be a path inside this directory, with no ".." in it`);
+                return;
+            }
             if (manifest.apiVersion !== root.apiVersion) {
                 root.reject(slot.place, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
                 return;
@@ -337,6 +364,7 @@ Singleton {
                 id: manifest.id,
                 name: manifest.name ?? manifest.id,
                 url: slot.entryUrl,
+                compositor: manifest.compositor !== undefined ? `${slot.place}/${manifest.compositor}` : "",
                 home: slot.fromHome
             });
             if (!taken) {

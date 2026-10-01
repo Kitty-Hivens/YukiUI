@@ -57,7 +57,8 @@ patterns:
   - from: "dots/.config/hypr"
     to: "$XDG_CONFIG_HOME/hypr"
     mode: "sync"
-    excludes: ["custom", "hyprlock.conf", "hypridle.conf"]
+    # environment.lua is written by the shell for the environment that is up.
+    excludes: ["custom", "hyprlock.conf", "hypridle.conf", "hyprland/shellOverrides/environment.lua"]
   # Hyprland special files
   - from: "dots/.config/hypr/hypridle.conf"
     to: "$XDG_CONFIG_HOME/hypr/hypridle.conf"

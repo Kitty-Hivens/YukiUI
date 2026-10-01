@@ -146,7 +146,7 @@ Singleton {
              * choice outranks a default, and a desktop should not vanish on an
              * update. It only stops being offered.
              */
-            property list<string> disabledEnvironments: ["waffle"]
+            property list<string> disabledEnvironments: ["waffle", "experimental"]
 
             /**
              * Plugins that are installed but not built.
@@ -805,6 +805,25 @@ Singleton {
                     property list<string> networkNameKeywords: ["airport", "cafe", "college", "company", "eduroam", "free", "guest", "public", "school", "university"]
                     property list<string> fileKeywords: ["anime", "booru", "ecchi", "hentai", "yande.re", "konachan", "breast", "nipples", "pussy", "nsfw", "spoiler", "girl"]
                     property list<string> linkKeywords: ["hentai", "porn", "sukebei", "hitomi.la", "rule34", "gelbooru", "fanbox", "dlsite"]
+                }
+            }
+
+            property JsonObject experimental: JsonObject {
+                property JsonObject dock: JsonObject {
+                    property string edge: "bottom" // "bottom", "top", "left" or "right"
+                    // "attached" runs the whole edge and touches it, "floating" runs the
+                    // whole edge but stands off it, "island" stands off it and is only
+                    // as long as what it holds.
+                    property string style: "attached"
+                    property string alignment: "center" // Where the apps gather: "center" or "start"
+                    // A sliver at the dock's far end that minimises everything on
+                    // the workspace and brings it back, as on Windows.
+                    property bool showDesktop: false
+                }
+                property JsonObject desktop: JsonObject {
+                    property bool showIcons: true
+                    property string iconSize: "medium" // "small", "medium" or "large"
+                    property string sortBy: "name" // "name", "size", "type" or "date"
                 }
             }
 
