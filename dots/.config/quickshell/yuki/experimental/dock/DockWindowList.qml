@@ -33,8 +33,16 @@ ExPopup {
             root.open = false;
     }
 
+    // As many cards in a row as the screen has room for, then another row: a
+    // single row of nine ran off the screen. Down a side dock, as many in a
+    // column as fit, then another column.
+    readonly property real cardWidth: root.thumbWidth + 2 * ExLooks.spacing.s
+    readonly property real cardHeight: 24 + root.thumbHeight + 3 * ExLooks.spacing.s
+    readonly property real room: (root.vertical ? root.dockWindow.height : root.dockWindow.width) - 2 * (root.padding + root.gap + ExLooks.spacing.l)
+    readonly property int perLine: Math.max(1, Math.floor((root.room + ExLooks.spacing.xs) / ((root.vertical ? root.cardHeight : root.cardWidth) + ExLooks.spacing.xs)))
+
     Grid {
-        columns: root.vertical ? 1 : Math.max(1, root.windows.length)
+        columns: root.vertical ? Math.max(1, Math.ceil(root.windows.length / root.perLine)) : Math.max(1, Math.min(root.windows.length, root.perLine))
         spacing: ExLooks.spacing.xs
 
         Repeater {

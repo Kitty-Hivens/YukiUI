@@ -13,6 +13,17 @@ Singleton {
     id: root
     // You can read these
     property list<string> layoutCodes: []
+    /** The variant of each layout, "" where there is none. */
+    property list<string> layoutVariants: []
+    /**
+     * Which of the layouts is active, as the keyboard reports it, or -1 until
+     * it has.
+     *
+     * Matching the active layout's name back to a code is not enough to find
+     * it in the list: a variant comes back as "ru:phonetic" while the list
+     * holds "ru", and two variants of one layout share a code.
+     */
+    property int currentLayoutIndex: -1
     property var cachedLayoutCodes: ({})
     property string currentLayoutName: ""
     property string currentLayoutCode: ""
@@ -78,12 +89,25 @@ Singleton {
         running: true
         command: ["hyprctl", "-j", "devices"]
 
+        // A switch reported while a read is under way is read again after it,
+        // so a quick second switch is not lost.
+        property bool again: false
+        onRunningChanged: {
+            if (!fetchLayoutsProc.running && fetchLayoutsProc.again) {
+                fetchLayoutsProc.again = false;
+                fetchLayoutsProc.running = true;
+            }
+        }
+
         stdout: StdioCollector {
             id: devicesCollector
             onStreamFinished: {
                 const parsedOutput = JSON.parse(devicesCollector.text);
                 const hyprlandKeyboard = parsedOutput["keyboards"].find(kb => kb.main === true);
                 root.layoutCodes = hyprlandKeyboard["layout"].split(",");
+                const variants = (hyprlandKeyboard["variant"] ?? "").split(",");
+                root.layoutVariants = root.layoutCodes.map((code, index) => variants[index] ?? "");
+                root.currentLayoutIndex = hyprlandKeyboard["active_layout_index"] ?? -1;
                 root.currentLayoutName = hyprlandKeyboard["active_keymap"];
                 // console.log("[HyprlandXkb] Fetched | Layouts (multiple: " + (root.layoutCodes.length > 1) + "): "
                 //     + root.layoutCodes.join(", ") + " | Active: " + root.currentLayoutName);
@@ -105,6 +129,12 @@ Singleton {
 
                 // If there's only one layout, the updated layout is always the same
                 if (root.layoutCodes.length <= 1) return;
+
+                // The event names the layout but not its place in the list.
+                if (fetchLayoutsProc.running)
+                    fetchLayoutsProc.again = true;
+                else
+                    fetchLayoutsProc.running = true;
 
                 // Update when layout might have changed
                 const dataString = event.data;

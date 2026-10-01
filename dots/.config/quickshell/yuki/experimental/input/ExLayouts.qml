@@ -34,7 +34,14 @@ QtObject {
     })
 
     readonly property var codes: HyprlandXkb.layoutCodes
-    readonly property int current: Math.max(0, root.codes.indexOf(HyprlandXkb.currentLayoutCode))
+    readonly property int current: HyprlandXkb.currentLayoutIndex >= 0 ? HyprlandXkb.currentLayoutIndex
+        : Math.max(0, root.codes.indexOf(HyprlandXkb.currentLayoutCode))
+
+    /** The code with its variant, as xkb writes the pair. */
+    function fullCode(index: int): string {
+        const variant = HyprlandXkb.layoutVariants[index] ?? "";
+        return variant.length > 0 ? `${root.codes[index]}:${variant}` : (root.codes[index] ?? "");
+    }
 
     function language(code: string): string {
         const base = (code || "").split(/[(:-]/)[0];

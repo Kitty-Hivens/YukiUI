@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Hyprland
 
 import qs.core.services
+import qs.experimental
 
 /**
  * A flyout that comes out of the dock, as a window of its own.
@@ -80,8 +81,15 @@ PopupWindow {
             const margin = root.dockWindow.detached ? 0 : root.gap;
             const vertical = root.edge === "left" || root.edge === "right";
             const half = (vertical ? surface.height : surface.width) / 2;
-            const start = (vertical ? dock.y : dock.x) + margin + half;
-            const end = (vertical ? dock.y + root.dockSurface.height : dock.x + root.dockSurface.width) - margin - half;
+            let start = (vertical ? dock.y : dock.x) + margin + half;
+            let end = (vertical ? dock.y + root.dockSurface.height : dock.x + root.dockSurface.width) - margin - half;
+            // Longer than the dock, an island's say, it is kept on the screen
+            // instead, which the dock's window spans.
+            if (end < start) {
+                const total = vertical ? root.dockWindow.height : root.dockWindow.width;
+                start = root.gap + half;
+                end = Math.max(start, total - root.gap - half);
+            }
             const along = Math.max(start, Math.min(end, vertical ? button.y : button.x));
             let x = vertical ? button.x : along;
             let y = vertical ? along : button.y;
@@ -114,6 +122,9 @@ PopupWindow {
 
     onVisibleChanged: {
         if (root.visible) {
+            // Whether presses are reported is asked again each time: the
+            // plugin can be unloaded by hand, which nothing announces.
+            PointerPress.check();
             grabDelay.restart();
             if (!root.warmed)
                 warmUp.restart();
@@ -147,9 +158,35 @@ PopupWindow {
         enabled: root.open && root.grabbing && PointerPress.available
 
         function onPressed(kind, name) {
-            if (kind !== "layer" || name !== root.ownNamespace)
+            // Every screen's dock has the same namespace, and a press on
+            // another screen's dock is a press outside this one.
+            const elsewhere = Hyprland.focusedMonitor?.name !== root.dockWindow.screen?.name;
+            if (kind !== "layer" || name !== root.ownNamespace || elsewhere)
                 root.dismissRequested();
         }
+    }
+
+    // One flyout at a time across every dock. A dock shuts its own others
+    // when one opens, and this does it for the docks of the other screens.
+    onOpenChanged: {
+        if (root.open)
+            ExStates.openPopup = root;
+        else if (ExStates.openPopup === root)
+            ExStates.openPopup = null;
+    }
+    Connections {
+        target: ExStates
+        function onOpenPopupChanged() {
+            if (root.open && ExStates.openPopup !== root)
+                root.dismissRequested();
+        }
+    }
+
+    // The button it came out of gone, an application's last window closed
+    // or a tray icon whose program quit, there is nothing left to belong to.
+    onOpenerChanged: {
+        if (root.open && !root.opener)
+            root.dismissRequested();
     }
 
     HyprlandFocusGrab {

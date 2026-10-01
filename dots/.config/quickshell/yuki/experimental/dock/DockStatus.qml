@@ -150,7 +150,7 @@ Item {
                 id: layoutLabel
                 width: widest.implicitWidth
                 horizontalAlignment: Text.AlignHCenter
-                text: root.layouts.short(HyprlandXkb.currentLayoutCode)
+                text: root.layouts.short(root.layouts.codes[root.layouts.current] ?? HyprlandXkb.currentLayoutCode)
                 // Quieter than the clock, to sit with the thin icons beside it.
                 role: "caption"
                 font.letterSpacing: 0.4

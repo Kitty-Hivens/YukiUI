@@ -286,10 +286,13 @@ Scope {
 
             /** Where an item of the dock sits, in the coordinates of this dock's screen. */
             function place(item: Item): var {
+                // Both corners, since the applications can be drawn smaller
+                // than they are laid out.
                 const inWindow = item.mapToItem(null, 0, 0);
+                const farCorner = item.mapToItem(null, item.width, item.height);
                 const originX = window.edge === "right" ? window.screen.width - window.width : 0;
                 const originY = window.edge === "bottom" ? window.screen.height - window.height : 0;
-                return { x: originX + inWindow.x, y: originY + inWindow.y, w: item.width, h: item.height };
+                return { x: originX + inWindow.x, y: originY + inWindow.y, w: farCorner.x - inWindow.x, h: farCorner.y - inWindow.y };
             }
 
             /**
@@ -384,7 +387,19 @@ Scope {
                         ? apps.implicitHeight + tray.implicitHeight + status.implicitHeight
                         : apps.implicitWidth + tray.implicitWidth + status.implicitWidth) + 4 * padding
                     + (showDesktop.visible ? showDesktop.breadth : 0)
-                readonly property real length: window.island ? contentLength : (window.vertical ? window.height : window.width) - 2 * window.gap
+                // An island grows with what it holds, up to the screen's length.
+                readonly property real screenLength: (window.vertical ? window.height : window.width) - 2 * window.gap
+                readonly property real length: window.island ? Math.min(contentLength, screenLength) : screenLength
+                // What the far end takes, the tray, the status block and the
+                // corner button, measured from the dock's end to the tray's start.
+                readonly property real endLength: padding + (showDesktop.visible ? showDesktop.breadth : 0)
+                    + (window.vertical ? status.implicitHeight + tray.implicitHeight : status.implicitWidth + tray.implicitWidth) + padding / 2
+                // The stretch the applications may take, a padding clear of the
+                // tray. With more of them than fit they are drawn smaller
+                // rather than running under the tray, or off an island's end.
+                readonly property real appsRoom: length - endLength - 2 * padding
+                readonly property real appsLength: window.vertical ? apps.implicitHeight : apps.implicitWidth
+                readonly property real appsScale: appsLength > appsRoom && appsRoom > 0 ? appsRoom / appsLength : 1
                 readonly property real along: window.island && !window.centered ? window.gap
                     : ((window.vertical ? window.height : window.width) - length) / 2
 
@@ -460,13 +475,19 @@ Scope {
                     columns: window.vertical ? 1 : 256
                     rowSpacing: ExLooks.dock.spacing
                     columnSpacing: ExLooks.dock.spacing
+                    scale: dock.appsScale
+                    transformOrigin: Item.TopLeft
 
                     // Gathered in the middle of the dock or from its start. An island
                     // is only as long as what it holds, so it has no middle to speak of.
+                    // From the middle they move towards the start once the middle
+                    // would put them under the tray, as Windows does.
+                    readonly property real drawnLength: dock.appsLength * dock.appsScale
+                    readonly property real drawnBreadth: (window.vertical ? width : height) * dock.appsScale
                     readonly property real startOffset: (window.island || !window.centered) ? dock.padding
-                        : ((window.vertical ? dock.height : dock.width) - (window.vertical ? implicitHeight : implicitWidth)) / 2
-                    x: window.vertical ? (parent.width - width) / 2 : startOffset
-                    y: window.vertical ? startOffset : (parent.height - height) / 2
+                        : Math.max(dock.padding, Math.min((dock.length - drawnLength) / 2, dock.length - dock.endLength - dock.padding - drawnLength))
+                    x: window.vertical ? (parent.width - drawnBreadth) / 2 : startOffset
+                    y: window.vertical ? startOffset : (parent.height - drawnBreadth) / 2
 
                     ExButton {
                         id: launcherButton

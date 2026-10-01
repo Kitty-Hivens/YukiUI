@@ -18,6 +18,13 @@ ExPopup {
         if (root.open && TrayService.unpinnedItems.length === 0)
             root.open = false;
     }
+    Connections {
+        target: TrayService
+        function onUnpinnedItemsChanged() {
+            if (root.open && TrayService.unpinnedItems.length === 0)
+                root.open = false;
+        }
+    }
 
     Grid {
         columns: Math.min(4, Math.max(1, TrayService.unpinnedItems.length))

@@ -27,7 +27,7 @@ ExPopup {
 
                 text: root.layouts.name(modelData)
                 glyph: index === root.layouts.current ? "check" : ""
-                shortcut: modelData
+                shortcut: root.layouts.fullCode(index)
                 onClicked: {
                     root.open = false;
                     root.layouts.select(index);
