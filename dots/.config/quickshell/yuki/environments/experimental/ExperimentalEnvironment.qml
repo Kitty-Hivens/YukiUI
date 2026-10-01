@@ -19,6 +19,7 @@ import qs.experimental.regionSelect
 import qs.experimental.screenShare
 import qs.experimental.surfaces
 import qs.experimental.switcher
+import qs.experimental.windows
 
 // Being built, surface by surface. Nothing is borrowed from the other
 // environments, so whatever is not listed below does not exist here yet.
@@ -52,6 +53,8 @@ Scope {
     }
 
     ExSurfaces {}
+
+    ExMaximizedFront {}
 
     PanelLoader { component: ExBackground {} }
     PanelLoader { component: ExDock {} }
