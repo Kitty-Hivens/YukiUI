@@ -43,6 +43,13 @@ Singleton {
         function onAuthenticationFailed() {
             root.interactionAvailable = true;
         }
+        // PAM can ask more than once in one go: a fingerprint and then the
+        // password, or the password and then a one-time code. Each question
+        // has to be answerable, not only the first.
+        function onIsResponseRequiredChanged() {
+            if (root.flow.isResponseRequired)
+                root.interactionAvailable = true;
+        }
     }
 
     PolkitAgent {

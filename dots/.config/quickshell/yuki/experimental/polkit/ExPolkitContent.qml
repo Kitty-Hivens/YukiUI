@@ -24,6 +24,20 @@ Item {
             shake.restart();
             field.input.forceActiveFocus();
         }
+        // A further question in the same request starts from an empty field,
+        // not from the answer to the one before.
+        function onIsResponseRequiredChanged() {
+            if (!PolkitService.flow.isResponseRequired)
+                return;
+            field.text = "";
+            field.input.forceActiveFocus();
+        }
+    }
+
+    Binding {
+        target: field.input
+        property: "echoMode"
+        value: root.usePasswordChars ? TextInput.Password : TextInput.Normal
     }
 
     ExPresence {
@@ -91,7 +105,6 @@ Item {
                 placeholder: PolkitService.cleanPrompt
                 enabled: PolkitService.interactionAvailable
                 opacity: enabled ? 1 : 0.6
-                Component.onCompleted: field.input.echoMode = root.usePasswordChars ? TextInput.Password : TextInput.Normal
                 onTextChanged: {
                     if (field.text.length > 0)
                         root.failed = false;
@@ -114,6 +127,17 @@ Item {
                 text: Translation.tr("Incorrect password")
                 role: "caption"
                 color: ExLooks.colors.destructive
+            }
+            // What PAM says besides the question: to touch the reader, that the
+            // account is locked, how many tries are left.
+            ExText {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                visible: text.length > 0
+                text: PolkitService.flow?.supplementaryMessage ?? ""
+                role: "caption"
+                color: PolkitService.flow?.supplementaryIsError ? ExLooks.colors.destructive : ExLooks.colors.textDim
             }
 
             RowLayout {
