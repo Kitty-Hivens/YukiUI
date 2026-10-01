@@ -265,6 +265,22 @@ Singleton {
         function decrement() {
             onPressed: root.decreaseBrightness()
         }
+
+        /** The level of one output in percent, or "none" when it has no control. */
+        function level(output: string): string {
+            const monitor = root.monitors.find(m => m.screen.name === output);
+            return monitor?.ready ? String(Math.round(monitor.brightness * 100)) : "none";
+        }
+
+        // Set through here rather than by the settings window driving the panel
+        // itself, so the shell's own sliders and OSD keep showing the truth.
+        function setLevel(output: string, percent: int): string {
+            const monitor = root.monitors.find(m => m.screen.name === output);
+            if (!monitor?.ready)
+                return "none";
+            monitor.setBrightness(percent / 100);
+            return String(Math.round(monitor.brightness * 100));
+        }
     }
 
     GlobalShortcut {

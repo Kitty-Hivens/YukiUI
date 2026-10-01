@@ -178,6 +178,22 @@ Singleton {
         }
     }
 
+    // The manual override lives in this process, so a settings window switches
+    // it through here instead of running a schedule of its own.
+    IpcHandler {
+        target: "nightLight"
+
+        function status(): string {
+            return root.temperatureActive ? "on" : "off";
+        }
+        function enable(): void {
+            root.toggleTemperature(true);
+        }
+        function disable(): void {
+            root.toggleTemperature(false);
+        }
+    }
+
     // Change temp
     Connections {
         target: Config.options.light.night

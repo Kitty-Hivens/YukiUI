@@ -96,7 +96,9 @@ Singleton {
         target: Hyprland
         function onRawEvent(event) {
             if (event.name === "activelayout") {
-                if (root.needsLayoutRefresh) {
+                // With one layout known, an event means the list itself may
+                // have changed, as it does when a second layout is set live.
+                if (root.needsLayoutRefresh || root.layoutCodes.length <= 1) {
                     root.needsLayoutRefresh = false;
                     fetchLayoutsProc.running = true;
                 }
@@ -111,8 +113,10 @@ Singleton {
                 // Update layout for on-screen keyboard (osk)
                 Config.options.osk.layout = root.currentLayoutName.split(" (")[0];
             } else if (event.name == "configreloaded") {
-                // Mark layout code list to be updated when config is reloaded
-                root.needsLayoutRefresh = true;
+                // Read now: a reload that changes the layouts need not be
+                // followed by a layout switch to report it.
+                root.needsLayoutRefresh = false;
+                fetchLayoutsProc.running = true;
             }
         }
     }

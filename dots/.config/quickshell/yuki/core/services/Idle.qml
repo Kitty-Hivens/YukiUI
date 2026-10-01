@@ -82,6 +82,17 @@ Singleton {
         }
     }
 
+    // Hyprland 0.56 does not count an inhibitor on a layer surface, and the one
+    // below is on a layer, so on its own it held nothing off. The same request
+    // also goes to logind, which hypridle honours. Only idling is blocked, so a
+    // suspend asked for by hand still happens. The inhibitor lives as long as
+    // cat reads from the shell, so it cannot outlive the shell.
+    Process {
+        running: root.inhibit
+        stdinEnabled: true
+        command: ["systemd-inhibit", "--what=idle", "--who=Yuki", "--why=Keep awake is on", "--mode=block", "cat"]
+    }
+
     LazyLoader {
         active: root.inhibit && !root.respawning
         component: IdleInhibitor {
@@ -89,6 +100,9 @@ Singleton {
             window: PanelWindow {
                 // Inhibitor only counts while its surface is mapped and visible.
                 WlrLayershell.namespace: "quickshell:idleInhibitor"
+                // Under the windows. A layer above a fullscreen game, even one
+                // pixel of it, keeps the game from being shown on its own.
+                WlrLayershell.layer: WlrLayer.Background
                 implicitWidth: 0
                 implicitHeight: 0
                 color: "transparent"

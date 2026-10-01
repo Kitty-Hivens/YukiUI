@@ -90,20 +90,99 @@ def read_entries() -> dict[str, dict]:
     return found
 
 
-def default_for(mime: str) -> str:
-    try:
-        out = subprocess.run(["xdg-mime", "query", "default", mime],
-                             capture_output=True, text=True, timeout=5)
-        return out.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
+class Defaults:
+    """What `xdg-mime query default` answers, worked out in one go.
+
+    Asking xdg-mime once per type ran its shell script thirty-one times, most
+    of a second and a half before the page could show anything. This follows
+    the same search, in the same order, over files read once:
+
+    1. mimeapps.list, the desktop-specific ones first, in the config dirs and
+       then the applications dirs: the first application listed for the type
+       under [Default Applications] that is installed.
+    2. defaults.list and mimeinfo.cache in the applications dirs: the first
+       application listed, installed or not, as xdg-mime takes it.
+    3. Any installed application declaring the type.
+    """
+
+    def __init__(self, entries: dict[str, dict]):
+        self.entries = entries
+        self.lists = [self.read_section(path, "Default Applications") for path in self.mimeapps_lists()]
+        self.caches = [self.read_lines(path) for path in self.cache_files()]
+
+    @staticmethod
+    def env_dirs(name: str, fallback: str) -> list[Path]:
+        return [Path(part) for part in (os.environ.get(name) or fallback).split(":") if part]
+
+    def mimeapps_lists(self) -> list[Path]:
+        config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+        data_home = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
+        prefixes = [f"{desktop.lower()}-" for desktop in os.environ.get("XDG_CURRENT_DESKTOP", "").split(":") if desktop] + [""]
+        dirs = [config_home] + self.env_dirs("XDG_CONFIG_DIRS", "/etc/xdg")
+        dirs += [d / "applications" for d in [data_home] + self.env_dirs("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/")]
+        return [d / f"{prefix}mimeapps.list" for d in dirs for prefix in prefixes]
+
+    def cache_files(self) -> list[Path]:
+        data_home = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
+        menu = os.environ.get("XDG_MENU_PREFIX", "")
+        out = []
+        for d in [data_home] + self.env_dirs("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/"):
+            for prefix in dict.fromkeys([menu, ""]):
+                out.append([d / "applications" / f"{prefix}defaults.list", d / "applications" / f"{prefix}mimeinfo.cache"])
+        return out
+
+    @staticmethod
+    def read_section(path: Path, section: str) -> dict[str, str]:
+        """The first value of each key in one section, as xdg-mime's awk takes it."""
+        values: dict[str, str] = {}
+        inside = False
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            return values
+        for line in lines:
+            if line.startswith(f"[{section}]"):
+                inside = True
+            elif line.startswith("["):
+                inside = False
+            elif inside and "=" in line:
+                key, value = line.split("=", 1)
+                values.setdefault(key, value)
+        return values
+
+    @staticmethod
+    def read_lines(paths: list[Path]) -> list[str]:
+        lines: list[str] = []
+        for path in paths:
+            try:
+                lines += path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                pass
+        return lines
+
+    def get(self, mime: str) -> str:
+        for values in self.lists:
+            for app in values.get(mime, "").split(";"):
+                if app and app in self.entries:
+                    return app
+        for lines in self.caches:
+            for line in lines:
+                if f"{mime}=" in line:
+                    first = line.split("=", 1)[1].split(";")[0]
+                    if first:
+                        return first
+        for eid, entry in self.entries.items():
+            if mime in entry["types"]:
+                return eid
         return ""
 
 
 def report() -> dict:
     entries = read_entries()
+    defaults = Defaults(entries)
     groups = []
     for group in GROUPS:
-        per_type = {mime: default_for(mime) for mime in group["types"]}
+        per_type = {mime: defaults.get(mime) for mime in group["types"]}
         # Every application declaring at least one type of the group, carrying how
         # much of the group it actually covers.
         #

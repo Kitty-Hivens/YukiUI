@@ -322,6 +322,28 @@ Singleton {
         notifFileView.reload()
     }
 
+    /**
+     * The way in from another process, a settings window say, which must not
+     * hold a notification server of its own: it would take the bus over from
+     * the shell the moment the shell restarted.
+     */
+    IpcHandler {
+        target: "notifications"
+
+        function silent(): string {
+            return root.silent ? "on" : "off";
+        }
+        function setSilent(on: bool): void {
+            root.silent = on;
+        }
+        function count(): int {
+            return root.list.length;
+        }
+        function clear(): void {
+            root.discardAllNotifications();
+        }
+    }
+
     Component.onCompleted: {
         refresh()
     }

@@ -44,6 +44,13 @@ Singleton {
     property bool touchpadClickfinger: false
     property real touchpadScrollFactor: 1.0
 
+    /** The pointer's speed, from -1 to 1, and whether it speeds up with the hand. */
+    property real mouseSensitivity: 0
+    property string mouseAccelProfile: ""
+    property bool mouseNaturalScroll: false
+    property bool leftHanded: false
+    property real mouseScrollFactor: 1.0
+
     /** The keyboard the compositor treats as the one being typed on. */
     property string mainKeyboard: ""
     /** Named rather than counted: a machine reports every device that can send a key as a keyboard. */
@@ -90,7 +97,8 @@ Singleton {
         "input:kb_layout", "input:kb_variant", "input:kb_options",
         "input:repeat_rate", "input:repeat_delay", "input:numlock_by_default",
         "input:touchpad:natural_scroll", "input:touchpad:disable_while_typing",
-        "input:touchpad:clickfinger_behavior", "input:touchpad:scroll_factor"
+        "input:touchpad:clickfinger_behavior", "input:touchpad:scroll_factor",
+        "input:sensitivity", "input:accel_profile", "input:natural_scroll", "input:left_handed", "input:scroll_factor"
     ]
 
     function refresh() {
@@ -129,6 +137,11 @@ Singleton {
         root.touchpadDisableWhileTyping = (seen["input:touchpad:disable_while_typing"]?.int ?? 1) === 1;
         root.touchpadClickfinger = (seen["input:touchpad:clickfinger_behavior"]?.int ?? 0) === 1;
         root.touchpadScrollFactor = seen["input:touchpad:scroll_factor"]?.float ?? root.touchpadScrollFactor;
+        root.mouseSensitivity = seen["input:sensitivity"]?.float ?? root.mouseSensitivity;
+        root.mouseAccelProfile = root.optionString(seen["input:accel_profile"] ?? ({}));
+        root.mouseNaturalScroll = (seen["input:natural_scroll"]?.int ?? 0) === 1;
+        root.leftHanded = (seen["input:left_handed"]?.int ?? 0) === 1;
+        root.mouseScrollFactor = seen["input:scroll_factor"]?.float ?? root.mouseScrollFactor;
         root.ready = true;
     }
 
