@@ -83,8 +83,12 @@ Singleton {
     function beforeLettingGo(): bool {
         const last = HyprlandData.windowList.find(win => win.focusHistoryID === 0);
         // A special workspace is left alone: whether it is showing is not
-        // something the monitors report as it changes.
-        if (!last || last.workspace.id < 0)
+        // something the monitors report as it changes. One holding minimised
+        // windows is never meant to show, and its window keeps the head of the
+        // focus history after focus was let go of, so Hyprland would focus it
+        // and bring the hidden workspace up over the screen.
+        const parked = Minimize.originOf(last) > 0;
+        if (!last || (last.workspace.id < 0 && !parked))
             return false;
         if (Hyprland.monitors.values.some(monitor => monitor.activeWorkspace?.id === last.workspace.id))
             return false;

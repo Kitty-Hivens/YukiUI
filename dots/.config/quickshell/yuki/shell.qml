@@ -51,6 +51,7 @@ ShellRoot {
         GameMode.load()
         Idle.load()
         HyprlandConfig.load()
+        Minimize.load()
     }
 
 

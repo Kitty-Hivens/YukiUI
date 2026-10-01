@@ -93,6 +93,13 @@ Singleton {
     Process {
         id: geometry
         command: ["hyprctl", "clients", "-j"]
+        // The queue is emptied when the output ends, and the process only
+        // counts as stopped a moment later. A request in between found it
+        // running and waited for a next one that might never come.
+        onRunningChanged: {
+            if (!geometry.running && root.minimizeQueue.length > 0)
+                geometry.running = true;
+        }
         stdout: StdioCollector {
             onStreamFinished: {
                 let fresh = {};
@@ -285,6 +292,40 @@ Singleton {
         next[workspaceId] = inSight;
         root.desktopShown = next;
         root.minimizeMany(inSight);
+    }
+
+    /**
+     * Puts every minimised window back on its workspace, with no animation
+     * and no change of focus.
+     *
+     * For when no environment that minimises is up: switched to one without a
+     * dock, or started after a session that ended with windows minimised, they
+     * would sit on their special workspaces with nothing to bring them back.
+     */
+    function releaseAll() {
+        const lua = root.minimizedWindows.filter(win => root.usable(win.address))
+            .map(win => `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `)
+            .join("");
+        if (lua.length > 0)
+            root.run(lua);
+        root.places = ({});
+        root.desktopShown = ({});
+    }
+
+    /** Built with the shell, so that the timer below runs whichever environment is up. */
+    function load() {
+    }
+
+    // Given a few seconds after an environment has settled: the one that
+    // minimises turns this on as it comes up, and a reload passes through
+    // a moment with it off.
+    Timer {
+        interval: 4000
+        running: !root.enabled && Environments.activeId.length > 0 && root.minimizedWindows.length > 0
+        onTriggered: {
+            if (!root.enabled && Environments.activeId.length > 0)
+                root.releaseAll();
+        }
     }
 
     function toggle(address: string) {
