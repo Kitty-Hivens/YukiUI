@@ -4,6 +4,7 @@ import qs
 import qs.core
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 /**
  * Bridge between the yuki xdg-desktop-portal FileChooser backend and the shell.
@@ -40,8 +41,24 @@ Singleton {
         }
         root.request = parsed;
         root.active = true;
-        sessionTimeout.restart();
         GlobalStates.filePickerOpen = true;
+    }
+
+    /**
+     * Whether the request answered through this fifo is still open. The
+     * backend asks every few seconds and gives up on a request the shell no
+     * longer holds, a shell that died or restarted included, which is what a
+     * flat time limit used to stand in for: it cancelled a dialog still in use
+     * after four minutes.
+     */
+    function pending(fifo: string): bool {
+        return root.active && root.fifoPath === fifo;
+    }
+
+    /** The application gave up on the request, or went away. */
+    function closeRequest(fifo: string) {
+        if (root.pending(fifo))
+            root.cancel();
     }
 
     // uris: array of file:// strings. The backend reads this JSON off the fifo.
@@ -62,23 +79,39 @@ Singleton {
     }
 
     function finish() {
-        sessionTimeout.stop();
         root.active = false;
         root.suppressCancel = false;
         root.request = ({});
         GlobalStates.filePickerOpen = false;
     }
 
+    /**
+     * Writes the answer into the fifo. Handed over on standard input, not as an
+     * argument: one argument is capped at 128 KiB, which a large selection of
+     * long names passes, and the write then failed while the dialog closed as if
+     * it had gone through. A fresh process per answer, so two cannot interleave,
+     * and a time limit in case the reader is gone.
+     */
     function writeFifo(payload) {
-        // A fresh process per call so back-to-back writes can't clobber one another;
-        // timeout guards against the fifo reader having already vanished.
-        Quickshell.execDetached(["timeout", "5", "sh", "-c", "printf '%s' \"$1\" > \"$2\"", "filePicker", payload, root.fifoPath]);
+        writer.createObject(root, { payload: payload, command: ["timeout", "5", "sh", "-c", "cat > \"$1\"", "filePicker", root.fifoPath] });
     }
 
-    Timer {
-        id: sessionTimeout
-        interval: 240000 // give up well before the backend's 300s cat timeout
-        onTriggered: root.cancel()
+    Component {
+        id: writer
+
+        Process {
+            id: process
+
+            property string payload: ""
+
+            running: true
+            stdinEnabled: true
+            onStarted: {
+                process.write(process.payload);
+                process.stdinEnabled = false;
+            }
+            onExited: process.destroy()
+        }
     }
 
     // Focus-grab dismissal or any external close without a pick counts as a cancel.

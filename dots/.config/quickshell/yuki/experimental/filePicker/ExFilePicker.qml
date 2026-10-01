@@ -46,5 +46,11 @@ Scope {
         function close(): void {
             FilePicker.cancel();
         }
+        function pending(fifo: string): bool {
+            return FilePicker.pending(fifo);
+        }
+        function closeRequest(fifo: string): void {
+            FilePicker.closeRequest(fifo);
+        }
     }
 }

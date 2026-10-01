@@ -39,6 +39,12 @@ IPC_TARGET = "filePicker"
 
 MODE_BY_METHOD = {"OpenFile": "open", "SaveFile": "save", "SaveFiles": "savefiles"}
 
+# How often the shell is asked whether it still holds a request, and how many
+# answers in a row of "no" end it. Two, because the answer turns to "no" the
+# moment the shell writes the choice, a little before the reader has it.
+LIVENESS_SECONDS = 5
+LIVENESS_MISSES = 2
+
 # glob patterns carry a filter type of 0, mime types 1, in the a(sa(us)) each
 # filter is built from.
 FILTER_GLOB = 0
@@ -75,6 +81,14 @@ INTROSPECTION_XML = """
       <arg type='a{sv}' name='results' direction='out'/>
     </method>
     <property name='version' type='u' access='read'/>
+  </interface>
+</node>
+"""
+
+REQUEST_XML = """
+<node>
+  <interface name='org.freedesktop.impl.portal.Request'>
+    <method name='Close'/>
   </interface>
 </node>
 """
@@ -127,6 +141,12 @@ def _build_request(method_name, title, options):
         "currentFolder": _decode_path(options.get("current_folder")),
         "filters": _parse_filters(options.get("filters")),
     }
+    if mode == "savefiles":
+        # The names the files will be written under, so the dialog can ask
+        # about the ones already in the folder picked.
+        request["files"] = [
+            name for name in (os.path.basename(_decode_path(raw)) for raw in options.get("files") or []) if name
+        ]
     if mode == "save":
         request["saveName"] = options.get("current_name", "")
         current_file = _decode_path(options.get("current_file"))
@@ -149,13 +169,42 @@ def _cleanup_fifo(tmpdir, fifo):
         pass
 
 
-def _spawn_picker(request, on_done):
+def _ask_shell(args, on_reply):
+    """Calls the dialog's ipc target without blocking and hands on its stdout, or
+    None when the shell could not be reached."""
+    argv = ["qs", "-c", CONFIG_NAME, "ipc", "call", IPC_TARGET, *args]
+    try:
+        process = Gio.SubprocessLauncher.new(
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE
+        ).spawnv(argv)
+    except GLib.Error:
+        on_reply(None)
+        return
+
+    def done(process, result):
+        try:
+            ok, stdout, _stderr = process.communicate_utf8_finish(result)
+        except GLib.Error:
+            on_reply(None)
+            return
+        on_reply(stdout.strip() if ok and process.get_exit_status() == 0 else None)
+
+    process.communicate_utf8_async(None, None, done)
+
+
+def _spawn_picker(request, on_done, connection=None, handle=None):
     """Open the dialog in the running shell and read the choice from a fifo.
 
     Mirrors scripts/screenShare/picker.sh: the ipc call opens the panel and returns
-    at once, then `cat` blocks on the fifo until the shell writes the answer, with a
-    timeout so a dead or wedged shell cannot hang the caller for ever. Waiting on that
-    helper (rather than reading the fifo here) keeps the D-Bus main loop turning."""
+    at once, then `cat` blocks on the fifo until the shell writes the answer. Waiting
+    on that helper (rather than reading the fifo here) keeps the D-Bus main loop
+    turning.
+
+    There is no time limit on the dialog. A flat one cancelled a dialog still being
+    used. Instead the shell is asked every few seconds whether it still holds this
+    request, and the reader is stopped once it does not, which covers a shell that
+    died or restarted. The application can end the request itself through the
+    Request object exported at `handle`."""
     tmpdir = None
     try:
         tmpdir = tempfile.mkdtemp(prefix="yuki-picker-")
@@ -173,7 +222,7 @@ def _spawn_picker(request, on_done):
 
     script = (
         'qs -c "$1" ipc call "$2" open "$3" "$4" >/dev/null 2>&1 || exit 0\n'
-        'timeout 300 cat "$4"\n'
+        'exec cat "$4"\n'
     )
     argv = ["sh", "-c", script, "yuki-picker", CONFIG_NAME, IPC_TARGET, json.dumps(request), fifo]
     launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.STDOUT_PIPE)
@@ -185,7 +234,51 @@ def _spawn_picker(request, on_done):
         on_done(RESPONSE_FAILED, None)
         return
 
-    process.communicate_utf8_async(None, None, functools.partial(_on_picker_done, on_done, tmpdir, fifo))
+    state = {"done": False, "misses": 0, "watch": 0, "request_id": 0}
+
+    def stop_reader():
+        if not state["done"]:
+            process.force_exit()
+
+    def check():
+        if state["done"]:
+            return GLib.SOURCE_REMOVE
+
+        def on_reply(reply):
+            if state["done"]:
+                return
+            state["misses"] = 0 if reply == "true" else state["misses"] + 1
+            if state["misses"] >= LIVENESS_MISSES:
+                log("the shell no longer holds the request, cancelling it")
+                stop_reader()
+
+        _ask_shell(["pending", fifo], on_reply)
+        return GLib.SOURCE_CONTINUE
+
+    state["watch"] = GLib.timeout_add_seconds(LIVENESS_SECONDS, check)
+
+    if connection is not None and handle:
+        def on_request_call(_conn, _sender, _path, _iface, method, _params, invocation):
+            if method == "Close":
+                _ask_shell(["closeRequest", fifo], lambda _reply: None)
+                stop_reader()
+            invocation.return_value(None)
+
+        try:
+            node = Gio.DBusNodeInfo.new_for_xml(REQUEST_XML).interfaces[0]
+            state["request_id"] = connection.register_object_with_closures2(handle, node, on_request_call, None, None)
+        except GLib.Error as error:
+            log(f"cannot export the request object: {error.message}")
+
+    def finished(process, result):
+        state["done"] = True
+        if state["watch"]:
+            GLib.source_remove(state["watch"])
+        if state["request_id"]:
+            connection.unregister_object(state["request_id"])
+        _on_picker_done(on_done, tmpdir, fifo, process, result)
+
+    process.communicate_utf8_async(None, None, finished)
 
 
 def _on_picker_done(on_done, tmpdir, fifo, process, result):
@@ -261,14 +354,12 @@ def on_method_call(connection, sender, object_path, interface_name, method_name,
             "org.freedesktop.DBus.Error.UnknownMethod", f"No such method: {method_name}"
         )
         return
-    # The request `handle` (o) is where a fuller impl would export an
-    # org.freedesktop.impl.portal.Request with Close(), so xdg-desktop-portal could
-    # dismiss the dialog if the app exits. Not implemented; the shell-side session
-    # timeout bounds an orphaned dialog instead.
-    _handle, app_id, _parent_window, title, options = parameters.unpack()
+    # The request `handle` is where the Request object goes, whose Close() lets
+    # xdg-desktop-portal take the dialog away when the application quits.
+    handle, app_id, _parent_window, title, options = parameters.unpack()
     log(f"{method_name} from {app_id or 'an unsandboxed app'}: {title!r}")
     request = _build_request(method_name, title, options)
-    _spawn_picker(request, functools.partial(_finish, invocation, method_name, options))
+    _spawn_picker(request, functools.partial(_finish, invocation, method_name, options), connection, handle)
 
 
 def on_get_property(connection, sender, object_path, interface_name, property_name):

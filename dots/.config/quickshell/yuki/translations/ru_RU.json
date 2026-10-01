@@ -1291,5 +1291,11 @@
   "%1 K, lower is warmer": "%1 K, чем ниже, тем теплее",
   "Arrange icons": "Упорядочить значки",
   "Show the desktop from the far corner": "Показывать рабочий стол из дальнего угла",
-  "A sliver at the end of the dock that minimises every window, and brings them back": "Узкая полоска в конце дока: сворачивает все окна и возвращает их обратно"
+  "A sliver at the end of the dock that minimises every window, and brings them back": "Узкая полоска в конце дока: сворачивает все окна и возвращает их обратно",
+  "Could not move": "Не удалось переместить",
+  "Could not allow launching": "Не удалось разрешить запуск",
+  "Could not move to the trash": "Не удалось переместить в корзину",
+  "Allow launching": "Разрешить запуск",
+  "Replace %1 files?": "Заменить файлы (%1)?",
+  "Files with these names already exist: %1. Replacing them will overwrite their contents.": "Файлы с такими именами уже есть: %1. Если их заменить, их содержимое будет перезаписано."
 }

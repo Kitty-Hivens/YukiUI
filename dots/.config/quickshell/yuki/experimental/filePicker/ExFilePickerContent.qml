@@ -328,9 +328,16 @@ FocusScope {
         root.cursorIndex = index;
         fileList.positionViewAtIndex(index, ListView.Contain);
         // Picking a file while saving borrows its name, the usual way to
-        // overwrite one on purpose.
+        // overwrite one on purpose. A search hit lives in a folder of its own.
         if (root.saving && !entry.isDir)
-            root.setSaveName(entry.name);
+            root.borrowName(entry);
+    }
+
+    function borrowName(entry) {
+        const slash = entry.path.lastIndexOf("/");
+        const folder = entry.path.slice(0, slash) || "/";
+        root.saveDir = folder === root.currentPath ? "" : folder;
+        root.setSaveName(entry.path.slice(slash + 1));
     }
 
     function moveCursor(step: int, modifiers: int) {
@@ -348,7 +355,7 @@ FocusScope {
         if (entry.isDir) {
             root.enterFolder(entry.path);
         } else if (root.saving) {
-            root.setSaveName(entry.name);
+            root.borrowName(entry);
             root.accept();
         } else if (!root.directory) {
             root.setSelection([entry]);
@@ -357,6 +364,7 @@ FocusScope {
     }
 
     function leaveFolder() {
+        root.saveDir = "";
         if (!root.searching)
             root.scrollMemory[String(folderModel.folder)] = fileList.contentY;
         root.clearSelection();
@@ -449,6 +457,13 @@ FocusScope {
         });
     }
 
+    /**
+     * The folder a save goes to when a search hit below the one on screen was
+     * picked, empty otherwise. The hit's name alone is the file name; its
+     * folder is kept here rather than in the name, which may not hold a "/".
+     */
+    property string saveDir: ""
+
     function setSaveName(name: string) {
         nameField.text = name;
         // The name without its extension, ready to be typed over.
@@ -467,7 +482,7 @@ FocusScope {
         if (!root.canAccept)
             return;
         if (root.saving) {
-            const path = root.childPath(root.saveName);
+            const path = root.saveDir.length > 0 ? `${root.saveDir === "/" ? "" : root.saveDir}/${root.saveName}` : root.childPath(root.saveName);
             // A folder by that name is gone into, as the file manager does. A
             // file by that name is asked about before it is written over.
             probe.check(path, kind => {
@@ -475,8 +490,7 @@ FocusScope {
                     nameField.text = "";
                     root.enterFolder(path);
                 } else if (kind === "f") {
-                    replaceDialog.name = root.saveName;
-                    replaceDialog.visible = true;
+                    replaceDialog.ask([root.saveName], [root.urlOf(path)]);
                 } else {
                     root.answer([root.urlOf(path)]);
                 }
@@ -485,7 +499,19 @@ FocusScope {
         }
         if (root.directory) {
             const folder = root.selectedUrls.length === 1 && root.selectedDirs[root.selectedUrls[0]] ? root.selectedUrls[0] : root.urlOf(root.currentPath);
-            root.answer([folder]);
+            // Saving several files into a folder asks first about the ones
+            // already there, as saving one does.
+            const names = root.mode === "savefiles" ? (root.request.files ?? []) : [];
+            if (names.length === 0) {
+                root.answer([folder]);
+                return;
+            }
+            existing.check(root.pathOf(folder), names, taken => {
+                if (taken.length > 0)
+                    replaceDialog.ask(taken, [folder]);
+                else
+                    root.answer([folder]);
+            });
             return;
         }
         const files = root.selectedUrls.filter(url => !root.selectedDirs[url]);
@@ -618,9 +644,13 @@ FocusScope {
 
         property string folder: ""
         property string pattern: ""
+        // Each run is numbered and says its number first, so the output of
+        // one stopped for a newer search is told apart and dropped.
+        property int serial: 0
 
         function start() {
             search.running = false;
+            search.serial++;
             // Wildcards typed in are looked for as they are.
             search.pattern = `*${searchField.text.replace(/[*?[\]\\]/g, "\\$&")}*`;
             search.folder = root.currentPath;
@@ -631,20 +661,23 @@ FocusScope {
         // cannot keep going. Hidden folders are not gone into unless hidden
         // files are shown. The arguments are handed over as arguments, not
         // spliced into the script, so nothing typed is run.
-        command: ["sh", "-c", "if [ \"$3\" = 1 ]; then timeout 6 find \"$1\" -mindepth 1 -iname \"$2\" -printf '%Y\\t%s\\t%T@\\t%p\\n'; "
+        command: ["sh", "-c", "echo \"$4\"; if [ \"$3\" = 1 ]; then timeout 6 find \"$1\" -mindepth 1 -iname \"$2\" -printf '%Y\\t%s\\t%T@\\t%p\\n'; "
             + "else timeout 6 find \"$1\" -mindepth 1 -name '.*' -prune -o -iname \"$2\" -printf '%Y\\t%s\\t%T@\\t%p\\n'; fi 2>/dev/null | head -n 1000",
-            "yuki-file-search", search.folder, search.pattern, root.showHidden ? "1" : "0"]
+            "yuki-file-search", search.folder, search.pattern, root.showHidden ? "1" : "0", String(search.serial)]
 
         stdout: StdioCollector {
             id: searchOutput
 
             onStreamFinished: {
+                const lines = searchOutput.text.split("\n");
+                if (lines[0] !== String(search.serial))
+                    return;
                 searchResults.clear();
                 if (!root.searching)
                     return;
                 const base = search.folder === "/" ? "" : search.folder;
                 const found = [];
-                for (const line of searchOutput.text.split("\n")) {
+                for (const line of lines.slice(1)) {
                     const parts = line.split("\t");
                     if (parts.length < 4)
                         continue;
@@ -678,30 +711,61 @@ FocusScope {
     }
 
     // Asks whether a path is a folder, a file, or nothing, then answers the
-    // callback. One question at a time: a newer one replaces the one before.
+    // callback. One question at a time: a newer one replaces the one before,
+    // and the answer of one replaced is dropped by its number.
     Process {
         id: probe
 
         property string path: ""
         property var callback: null
+        property int serial: 0
 
         function check(path: string, callback) {
             probe.running = false;
+            probe.serial++;
             probe.path = path;
             probe.callback = callback;
             probe.running = true;
         }
 
-        command: ["sh", "-c", "if [ -d \"$1\" ]; then echo d; elif [ -e \"$1\" ]; then echo f; else echo n; fi", "yuki-file-probe", probe.path]
+        command: ["sh", "-c", "echo \"$2\"; if [ -d \"$1\" ]; then echo d; elif [ -e \"$1\" ]; then echo f; else echo n; fi", "yuki-file-probe", probe.path, String(probe.serial)]
 
         stdout: StdioCollector {
             id: probeOutput
 
             onStreamFinished: {
+                const [serial, kind] = probeOutput.text.trim().split("\n");
+                if (serial !== String(probe.serial))
+                    return;
                 const callback = probe.callback;
                 probe.callback = null;
                 if (callback)
-                    callback(probeOutput.text.trim());
+                    callback((kind ?? "").trim());
+            }
+        }
+    }
+
+    // Which of the names asked about are already in a folder.
+    Process {
+        id: existing
+
+        property var callback: null
+
+        function check(folder: string, names, callback) {
+            existing.running = false;
+            existing.callback = callback;
+            existing.command = ["sh", "-c", "d=\"$1\"; shift; for f; do [ -e \"$d/$f\" ] && printf '%s\\n' \"$f\"; done; true", "yuki-file-existing", folder, ...names];
+            existing.running = true;
+        }
+
+        stdout: StdioCollector {
+            id: existingOutput
+
+            onStreamFinished: {
+                const callback = existing.callback;
+                existing.callback = null;
+                if (callback)
+                    callback(existingOutput.text.split("\n").filter(line => line.length > 0));
             }
         }
     }
@@ -1495,6 +1559,10 @@ FocusScope {
                     function onAccepted() {
                         root.accept();
                     }
+                    // A name typed in goes to the folder on screen.
+                    function onTextEdited() {
+                        root.saveDir = "";
+                    }
                 }
             }
 
@@ -1599,7 +1667,15 @@ FocusScope {
     Item {
         id: replaceDialog
 
-        property string name: ""
+        property var names: []
+        property var answerUrls: []
+        readonly property string name: replaceDialog.names[0] ?? ""
+
+        function ask(names, answerUrls) {
+            replaceDialog.names = names;
+            replaceDialog.answerUrls = answerUrls;
+            replaceDialog.visible = true;
+        }
 
         anchors.fill: parent
         visible: false
@@ -1634,12 +1710,15 @@ FocusScope {
 
                 ExText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Replace “%1”?").arg(replaceDialog.name)
+                    text: replaceDialog.names.length > 1 ? Translation.tr("Replace %1 files?").arg(replaceDialog.names.length)
+                        : Translation.tr("Replace “%1”?").arg(replaceDialog.name)
                     role: "title"
                 }
                 ExText {
                     Layout.fillWidth: true
-                    text: Translation.tr("A file with this name already exists in “%1”. Replacing it will overwrite its contents.").arg(root.currentPath.split("/").pop() || "/")
+                    text: replaceDialog.names.length > 1
+                        ? Translation.tr("Files with these names already exist: %1. Replacing them will overwrite their contents.").arg(replaceDialog.names.join(", "))
+                        : Translation.tr("A file with this name already exists in “%1”. Replacing it will overwrite its contents.").arg(root.currentPath.split("/").pop() || "/")
                     wrapMode: Text.Wrap
                     dim: true
                 }
@@ -1662,7 +1741,7 @@ FocusScope {
                         kind: "accent"
                         text: Translation.tr("Replace")
                         Keys.onReturnPressed: replaceButton.clicked()
-                        onClicked: root.answer([root.urlOf(root.childPath(replaceDialog.name))])
+                        onClicked: root.answer(replaceDialog.answerUrls)
                     }
                 }
             }
