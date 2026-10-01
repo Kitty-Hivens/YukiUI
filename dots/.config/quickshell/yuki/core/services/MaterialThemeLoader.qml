@@ -35,7 +35,22 @@ Singleton {
     }
 
     function applyColors(fileContent) {
-        const json = JSON.parse(fileContent)
+        let json
+        try {
+            json = JSON.parse(fileContent)
+        } catch (error) {
+            // Read while matugen was still writing it, or before the reload had
+            // landed. Read again shortly rather than staying on the old palette
+            // until the next change, which a mode switch never brings.
+            if (retryRead.attempts < 5) {
+                retryRead.attempts++
+                retryRead.restart()
+            } else {
+                console.warn("[MaterialThemeLoader] the palette could not be read:", error)
+            }
+            return
+        }
+        retryRead.attempts = 0
         for (const key in json) {
             if (json.hasOwnProperty(key)) {
                 // Convert snake_case to CamelCase
@@ -85,6 +100,13 @@ Singleton {
     }
 
     Timer {
+        id: retryRead
+        property int attempts: 0
+        interval: 150
+        onTriggered: themeFileView.reload()
+    }
+
+    Timer {
         id: delayedFileRead
         interval: Config.options?.hacks?.arbitraryRaceConditionDelay ?? 100
         repeat: false
@@ -105,6 +127,11 @@ Singleton {
         onLoadedChanged: {
             const fileContent = themeFileView.text()
             root.applyColors(fileContent)
+        }
+        // A reload asked for by a retry is applied when it lands.
+        onLoaded: {
+            if (retryRead.attempts > 0)
+                root.applyColors(themeFileView.text())
         }
         onLoadFailed: root.resetFilePathNextTime();
     }

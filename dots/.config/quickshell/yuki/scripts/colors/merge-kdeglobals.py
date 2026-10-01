@@ -11,7 +11,9 @@ were; keys it does mention win.
 """
 
 import configparser
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -20,7 +22,10 @@ def reader() -> configparser.RawConfigParser:
     # group name can hold a second bracketed part ("[Colors:Header][Inactive]").
     # RawConfigParser with optionxform off leaves all three alone; interpolation
     # would otherwise choke on a stray "%" in a value.
-    parser = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#", ";"))
+    # Not strict: a kdeglobals some application wrote a key or a group into
+    # twice is still read, the later value winning as KConfig itself takes it.
+    # Strict, the merge threw on it and the colours were never folded in.
+    parser = configparser.RawConfigParser(delimiters=("=",), comment_prefixes=("#", ";"), strict=False)
     parser.optionxform = str
     return parser
 
@@ -49,12 +54,17 @@ def main() -> int:
             target.set(group, key, value)
 
     # Written beside the original and moved over it, so an interrupted run cannot
-    # leave a half-written kdeglobals behind -- every KDE application reads it.
-    temporary = target_path.with_suffix(target_path.suffix + ".tmp")
+    # leave a half-written kdeglobals behind -- every KDE application reads it. A
+    # name of its own per run, so two runs cannot write into the same one.
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    with temporary.open("w", encoding="utf-8") as handle:
-        target.write(handle, space_around_delimiters=False)
-    temporary.replace(target_path)
+    descriptor, temporary = tempfile.mkstemp(prefix=".kdeglobals.", dir=target_path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            target.write(handle, space_around_delimiters=False)
+        os.replace(temporary, target_path)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
     return 0
 
 

@@ -586,4 +586,15 @@ main() {
     switch "$imgpath" "$mode_flag" "$type_flag" "$color_flag" "$color"
 }
 
+# One run at a time. Two at once, a double click or the mode switch pressed
+# twice, interleave matugen and the environment's apply hook and leave the
+# palette in one mode and the toolkits in the other. A run started meanwhile
+# waits its turn and goes after, so the last request is the one that stands.
+# Held by flock itself (-o) rather than by this script, so what the run leaves
+# going in the background, mpvpaper or an upscale prompt, does not keep it.
+if [[ -z "${SWITCHWALL_LOCKED:-}" ]] && command -v flock &>/dev/null; then
+    export SWITCHWALL_LOCKED=1
+    exec flock -o -w 60 "${XDG_RUNTIME_DIR:-/tmp}/quickshell-switchwall.lock" "${BASH_SOURCE[0]}" "$@"
+fi
+
 main "$@"

@@ -73,12 +73,18 @@ with open(source, encoding="utf-8") as scheme:
 with open(target, "w", encoding="utf-8") as out:
     out.write(text.replace("61,174,233", accent))
 PY
-    python3 "$SHELL_ROOT/scripts/colors/merge-kdeglobals.py" "$fragment" "$XDG_CONFIG_HOME/kdeglobals"
+    # The scheme is named only once its colours are in: named over colours that
+    # failed to go in, applications would draw the other mode's palette under
+    # this mode's name. --notify tells the ones running to read it again.
+    if python3 "$SHELL_ROOT/scripts/colors/merge-kdeglobals.py" "$fragment" "$XDG_CONFIG_HOME/kdeglobals"; then
+        kwriteconfig6 --notify --file kdeglobals --group General --key ColorScheme "$breeze_scheme"
+        kwriteconfig6 --notify --file kdeglobals --group General --key AccentColor "$accent_rgb"
+        kwriteconfig6 --notify --file kdeglobals --group Icons --key Theme "$qt_icons"
+        kwriteconfig6 --notify --file kdeglobals --group KDE --key widgetStyle Darkly
+    else
+        echo "[experimental/theming] could not merge the colours into kdeglobals, leaving it alone" >&2
+    fi
     rm -f "$fragment"
-    kwriteconfig6 --file kdeglobals --group General --key ColorScheme "$breeze_scheme"
-    kwriteconfig6 --file kdeglobals --group General --key AccentColor "$accent_rgb"
-    kwriteconfig6 --file kdeglobals --group Icons --key Theme "$qt_icons"
-    kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle Darkly
 else
     echo "[experimental/theming] no $source_scheme, leaving kdeglobals alone" >&2
 fi

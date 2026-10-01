@@ -39,11 +39,15 @@ gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
 # theme to keep in agreement.
 fragment="$STATE_DIR/user/generated/kdeglobals.colors"
 if [[ -f "$fragment" ]]; then
-    python3 "$SHELL_ROOT/scripts/colors/merge-kdeglobals.py" \
-        "$fragment" "$XDG_CONFIG_HOME/kdeglobals"
-    kwriteconfig6 --file kdeglobals --group General --key ColorScheme "$scheme_name"
-    kwriteconfig6 --file kdeglobals --group Icons --key Theme "$qt_icons"
-    kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle Darkly
+    # Named only once the colours are in, and announced to running applications.
+    if python3 "$SHELL_ROOT/scripts/colors/merge-kdeglobals.py" \
+        "$fragment" "$XDG_CONFIG_HOME/kdeglobals"; then
+        kwriteconfig6 --notify --file kdeglobals --group General --key ColorScheme "$scheme_name"
+        kwriteconfig6 --notify --file kdeglobals --group Icons --key Theme "$qt_icons"
+        kwriteconfig6 --notify --file kdeglobals --group KDE --key widgetStyle Darkly
+    else
+        echo "[ii/theming] could not merge the colours into kdeglobals, leaving it alone" >&2
+    fi
 else
     echo "[ii/theming] no colour fragment at $fragment, leaving kdeglobals alone" >&2
 fi
