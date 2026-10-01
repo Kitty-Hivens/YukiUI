@@ -16,18 +16,52 @@ ExSurface {
     required property var notif
     /** Shown in the notification center rather than as it arrives. */
     property bool inCenter: false
+    /** The time "ago" counts from. The center moves it on while it is open. */
+    property real now: Date.now()
 
-    readonly property var defaultAction: root.notif.actions.find(action => action.identifier === "default") ?? null
-    readonly property var buttons: root.notif.actions.filter(action => action.identifier !== "default")
+    // What the notification says, kept from the last moment it existed. A
+    // dismissed one is destroyed at once, while its toast is still sliding
+    // out, and every line reading it directly threw for the rest of the slide.
+    property var shown: ({
+            notificationId: -1,
+            actions: [],
+            appIcon: "",
+            appName: "",
+            body: "",
+            image: "",
+            summary: "",
+            time: 0,
+            fromServer: false
+        })
+    Binding {
+        target: root
+        property: "shown"
+        when: !!root.notif
+        restoreMode: Binding.RestoreNone
+        value: ({
+                notificationId: root.notif?.notificationId ?? -1,
+                actions: root.notif?.actions ?? [],
+                appIcon: root.notif?.appIcon ?? "",
+                appName: root.notif?.appName ?? "",
+                body: root.notif?.body ?? "",
+                image: root.notif?.image ?? "",
+                summary: root.notif?.summary ?? "",
+                time: root.notif?.time ?? 0,
+                fromServer: !!root.notif?.notification
+            })
+    }
+
+    readonly property var defaultAction: root.shown.actions.find(action => action.identifier === "default") ?? null
+    readonly property var buttons: root.shown.actions.filter(action => action.identifier !== "default")
     // A picture the sender handed over lives in the shell process that took
     // the notification, so one kept from before a restart points at nothing.
-    readonly property string picture: root.notif.image.startsWith("image://qsimage/") && !root.notif.notification ? "" : root.notif.image
-    readonly property string iconSource: root.notif.appIcon.length === 0 ? ""
-        : (root.notif.appIcon.startsWith("/") || root.notif.appIcon.includes("://") ? root.notif.appIcon : Quickshell.iconPath(root.notif.appIcon, true))
+    readonly property string picture: root.shown.image.startsWith("image://qsimage/") && !root.shown.fromServer ? "" : root.shown.image
+    readonly property string iconSource: root.shown.appIcon.length === 0 ? ""
+        : (root.shown.appIcon.startsWith("/") || root.shown.appIcon.includes("://") ? root.shown.appIcon : Quickshell.iconPath(root.shown.appIcon, true))
 
     /** How long ago, in words, for the notification center. */
     function ago(time: real): string {
-        const minutes = Math.floor((Date.now() - time) / 60000);
+        const minutes = Math.floor((root.now - time) / 60000);
         if (minutes < 1)
             return Translation.tr("Now");
         if (minutes < 60)
@@ -52,15 +86,15 @@ ExSurface {
             if (root.inCenter)
                 return;
             if (mouse.containsMouse)
-                Notifications.cancelTimeout(root.notif.notificationId);
+                Notifications.cancelTimeout(root.shown.notificationId);
             else
-                root.notif.timer?.restart();
+                root.notif?.timer?.restart();
         }
         onClicked: {
             if (root.defaultAction)
-                Notifications.attemptInvokeAction(root.notif.notificationId, "default");
+                Notifications.attemptInvokeAction(root.shown.notificationId, "default");
             else if (!root.inCenter)
-                Notifications.timeoutNotification(root.notif.notificationId);
+                Notifications.timeoutNotification(root.shown.notificationId);
         }
     }
 
@@ -83,7 +117,7 @@ ExSurface {
             }
             ExText {
                 Layout.fillWidth: true
-                text: root.inCenter ? `${root.notif.appName}  ·  ${root.ago(root.notif.time)}` : root.notif.appName
+                text: root.inCenter ? `${root.shown.appName}  ·  ${root.ago(root.shown.time)}` : root.shown.appName
                 role: "caption"
                 dim: true
             }
@@ -91,7 +125,7 @@ ExSurface {
                 kind: "flat"
                 implicitWidth: 24
                 implicitHeight: 24
-                onClicked: Notifications.discardNotification(root.notif.notificationId)
+                onClicked: Notifications.discardNotification(root.shown.notificationId)
 
                 ExGlyph {
                     anchors.centerIn: parent
@@ -122,14 +156,14 @@ ExSurface {
 
                 ExText {
                     Layout.fillWidth: true
-                    text: root.notif.summary
+                    text: root.shown.summary
                     font.weight: 600
                 }
                 ExText {
                     Layout.fillWidth: true
                     visible: text.length > 0
                     font.pixelSize: ExLooks.font.label
-                    text: root.notif.body
+                    text: root.shown.body
                     textFormat: Text.StyledText
                     wrapMode: Text.Wrap
                     maximumLineCount: 3
@@ -152,7 +186,7 @@ ExSurface {
                     Layout.fillWidth: true
                     kind: "control"
                     text: modelData.text
-                    onClicked: Notifications.attemptInvokeAction(root.notif.notificationId, modelData.identifier)
+                    onClicked: Notifications.attemptInvokeAction(root.shown.notificationId, modelData.identifier)
                 }
             }
         }

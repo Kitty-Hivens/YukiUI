@@ -207,17 +207,25 @@ Singleton {
 			root.list = [...root.list, newNotifObject];
             root.trimToKeepLimit();
 
-            // Popup
-            if (!root.popupInhibited) {
+            // A critical one gets through do not disturb, as it does in GNOME,
+            // and is not timed out unless the sender asked for a timeout: the
+            // specification wants it to stay until someone has seen it. A low
+            // battery is the case that matters.
+            const critical = notification.urgency === NotificationUrgency.Critical;
+            if (!root.viewerOpen && (!root.silent || critical)) {
                 newNotifObject.popup = true;
-                if (notification.expireTimeout != 0) {
+                const expires = notification.expireTimeout > 0 || (notification.expireTimeout < 0 && !critical);
+                if (expires) {
                     newNotifObject.timer = notifTimerComponent.createObject(root, {
                         "notificationId": newNotifObject.notificationId,
                         "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
                     });
                 }
-                root.unread++;
             }
+            // Arriving in silence is still arriving. Only a list someone is
+            // looking at has nothing unread in it.
+            if (!root.viewerOpen)
+                root.unread++;
             root.notify(newNotifObject);
             // console.log(notifToString(newNotifObject));
             notifFileView.setText(stringifyList(root.list));

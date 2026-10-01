@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 
 import qs.core.services
+import qs.experimental
 import qs.experimental.looks
 import qs.experimental.notifications
 
@@ -14,19 +15,31 @@ ExPopup {
     id: root
 
     readonly property var notifications: [...Notifications.list].reverse()
+    // What the cards count "ago" from, moved on while anyone can read it.
+    property real now: Date.now()
+
+    Timer {
+        running: root.open
+        interval: 30000
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.now = Date.now()
+    }
 
     motion: "panel"
     onDismissRequested: root.open = false
     onOpenChanged: {
-        if (root.open)
+        ExStates.notificationViewers += root.open ? 1 : -1;
+        if (root.open) {
+            // What is popping up is already in the list, and the toasts sit in
+            // the same corner, over it.
+            Notifications.timeoutAll();
             Notifications.markAllRead();
+        }
     }
-
-    Binding {
-        target: Notifications
-        property: "viewerOpen"
-        value: true
-        when: root.open
+    Component.onDestruction: {
+        if (root.open)
+            ExStates.notificationViewers -= 1;
     }
 
     ColumnLayout {
@@ -83,6 +96,7 @@ ExPopup {
                         required property var modelData
                         notif: modelData
                         inCenter: true
+                        now: root.now
                         width: cards.width
                     }
                 }

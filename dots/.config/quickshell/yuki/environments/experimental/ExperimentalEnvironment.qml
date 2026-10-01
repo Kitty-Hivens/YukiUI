@@ -3,6 +3,7 @@ import Quickshell
 
 import qs.core
 import qs.core.services
+import qs.experimental
 import qs.experimental.background
 import qs.experimental.bluetooth
 import qs.experimental.dock
@@ -37,6 +38,16 @@ Scope {
         target: Minimize
         property: "animator"
         value: minimizeAnimator
+    }
+
+    // One binding for all the centers. Each of them holding its own put back,
+    // on closing, whatever it found when it opened, which with two screens is
+    // the other center's true: the flag then stayed up after both had closed
+    // and every later notification was held back from popping up.
+    Binding {
+        target: Notifications
+        property: "viewerOpen"
+        value: ExStates.notificationViewers > 0
     }
 
     ExSurfaces {}
