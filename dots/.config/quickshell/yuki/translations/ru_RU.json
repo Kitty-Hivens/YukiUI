@@ -1314,5 +1314,17 @@
   "Could not connect: %1": "Не удалось подключиться: %1",
   "no reason given": "причина не указана",
   "Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.": "Удалите этот компьютер из списка Bluetooth на устройстве, если он там ещё есть, затем забудьте устройство здесь и выполните сопряжение заново.",
-  "The device no longer knows this computer. Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.": "Устройство больше не знает этот компьютер. Удалите этот компьютер из списка Bluetooth на устройстве, если он там ещё есть, затем забудьте устройство здесь и выполните сопряжение заново."
+  "The device no longer knows this computer. Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.": "Устройство больше не знает этот компьютер. Удалите этот компьютер из списка Bluetooth на устройстве, если он там ещё есть, затем забудьте устройство здесь и выполните сопряжение заново.",
+  "Pair again": "Сопрячь заново",
+  "The pairing has to be made anew. Open Bluetooth on the device so it can be found, and compare the code on both screens.": "Сопряжение нужно создать заново. Откройте Bluetooth на устройстве, чтобы его было видно, и сверьте код на обоих экранах.",
+  "Looking for %1. Open Bluetooth on it so it can be found.": "Ищу %1. Откройте на нём Bluetooth, чтобы его было видно.",
+  "Pairing with %1. Compare the code on both screens.": "Сопряжение с %1. Сверьте код на обоих экранах.",
+  "%1 was not found. Open Bluetooth on it and try again.": "%1 не найден. Откройте на нём Bluetooth и попробуйте снова.",
+  "Pairing with %1 did not go through.": "Сопряжение с %1 не удалось.",
+  "Try again": "Попробовать снова",
+  "The device no longer knows this computer. The pairing has to be made anew.": "Устройство больше не знает этот компьютер. Сопряжение нужно создать заново.",
+  "Looking for it. Open Bluetooth on it so it can be found.": "Ищу. Откройте на нём Bluetooth, чтобы его было видно.",
+  "Pairing. Compare the code on both screens.": "Сопряжение. Сверьте код на обоих экранах.",
+  "Not found. Open Bluetooth on it and try again.": "Не найдено. Откройте на нём Bluetooth и попробуйте снова.",
+  "Pairing did not go through.": "Сопряжение не удалось."
 }

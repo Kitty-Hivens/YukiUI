@@ -137,6 +137,128 @@ Singleton {
         }
     }
 
+    /**
+     * Pairs a device anew whose pairing went stale on its side.
+     *
+     * A pairing is a key both ends keep, and once one end has lost it the
+     * only way back is a new one, confirmed on both screens. Nothing does
+     * that by itself, since a known address that no longer has the key is
+     * also what a device pretending to be it looks like. What can be spared
+     * is the walk through it by hand: the old pairing is dropped, the device
+     * looked for, and the pairing started, so what is left is comparing the
+     * code. Connected afterwards, which is what was asked for in the first
+     * place.
+     *
+     * `repairState` is "searching", "pairing", "notFound" or "failed", or
+     * empty when nothing is going on.
+     */
+    property string repairAddress: ""
+    property string repairName: ""
+    property string repairState: ""
+    property BluetoothDevice repairDevice: null
+
+    function repair(device) {
+        const address = device?.address ?? "";
+        if (address.length === 0 || root.repairState === "searching" || root.repairState === "pairing")
+            return;
+        root.repairAddress = address;
+        root.repairName = device.name || address;
+        root.repairDevice = null;
+        root.setFailure(address, "", "");
+        root.repairState = "searching";
+        device.forget();
+        root.stopWhenSettled = false;
+        if (Bluetooth.defaultAdapter)
+            Bluetooth.defaultAdapter.discovering = true;
+        repairTimeout.restart();
+        repairLook.restart();
+    }
+
+    /** Looks again for the device a re-pairing lost sight of. */
+    function retryRepair() {
+        if (root.repairAddress.length === 0 || root.repairState === "searching" || root.repairState === "pairing")
+            return;
+        root.repairDevice = null;
+        root.repairState = "searching";
+        if (Bluetooth.defaultAdapter)
+            Bluetooth.defaultAdapter.discovering = true;
+        repairTimeout.restart();
+        repairLook.restart();
+    }
+
+    function cancelRepair() {
+        repairTimeout.stop();
+        repairLook.stop();
+        root.repairState = "";
+        root.repairDevice = null;
+        root.releaseDiscovery();
+    }
+
+    // A stop asked for while the search was on goes through once it is over.
+    function releaseDiscovery() {
+        if (!root.stopWhenSettled || root.pairing || root.repairState === "searching")
+            return;
+        root.stopWhenSettled = false;
+        if (Bluetooth.defaultAdapter)
+            Bluetooth.defaultAdapter.discovering = false;
+    }
+
+    // Looked for until it shows up again, unpaired, from the scan.
+    Timer {
+        id: repairLook
+        interval: 500
+        repeat: true
+        onTriggered: {
+            if (root.repairState !== "searching") {
+                repairLook.stop();
+                return;
+            }
+            const found = Bluetooth.devices.values.find(device => device.address === root.repairAddress && !device.paired);
+            if (!found)
+                return;
+            repairLook.stop();
+            repairTimeout.stop();
+            root.repairDevice = found;
+            root.repairState = "pairing";
+            root.pair(found);
+        }
+    }
+
+    // Android shows itself only while its Bluetooth screen is open.
+    Timer {
+        id: repairTimeout
+        interval: 30000
+        onTriggered: {
+            if (root.repairState !== "searching")
+                return;
+            repairLook.stop();
+            root.repairState = "notFound";
+            root.releaseDiscovery();
+        }
+    }
+
+    Connections {
+        target: root.repairDevice
+
+        function onPairedChanged() {
+            if (!root.repairDevice?.paired || root.repairState !== "pairing")
+                return;
+            const device = root.repairDevice;
+            device.trusted = true;
+            root.repairState = "";
+            root.repairDevice = null;
+            root.connectDevice(device);
+        }
+        function onPairingChanged() {
+            if (root.repairDevice?.pairing || root.repairState !== "pairing")
+                return;
+            // Ended without the key: refused on one of the screens, or the
+            // code did not match.
+            if (!root.repairDevice?.paired)
+                root.repairState = "failed";
+        }
+    }
+
     function startDiscovery() {
         root.stopWhenSettled = false;
         if (Bluetooth.defaultAdapter)
@@ -144,7 +266,7 @@ Singleton {
     }
 
     function stopDiscovery() {
-        if (root.pairing) {
+        if (root.pairing || root.repairState === "searching") {
             root.stopWhenSettled = true;
             return;
         }

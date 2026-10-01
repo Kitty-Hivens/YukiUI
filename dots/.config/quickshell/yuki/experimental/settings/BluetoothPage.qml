@@ -55,7 +55,7 @@ ColumnLayout {
                 return device.connected ? Translation.tr("Disconnecting...") : Translation.tr("Connecting...");
             switch (device.failure) {
             case "keyMissing":
-                return Translation.tr("The device no longer knows this computer. Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.");
+                return Translation.tr("The device no longer knows this computer. The pairing has to be made anew.");
             case "unreachable":
                 return Translation.tr("Out of range or switched off");
             case "refused":
@@ -76,6 +76,14 @@ ColumnLayout {
             onClicked: device.modelData?.forget()
         }
         ExButton {
+            visible: device.failure === "keyMissing"
+            kind: "accent"
+            enabled: !device.busy && BluetoothStatus.repairState !== "searching" && BluetoothStatus.repairState !== "pairing"
+            text: Translation.tr("Pair again")
+            onClicked: BluetoothStatus.repair(device.modelData)
+        }
+        ExButton {
+            visible: device.failure !== "keyMissing"
             kind: device.connected ? "control" : "tonal"
             enabled: !device.busy
             text: device.connected ? Translation.tr("Disconnect") : device.paired ? Translation.tr("Connect") : Translation.tr("Pair")
@@ -114,6 +122,41 @@ ColumnLayout {
                 if (root.adapter)
                     root.adapter.enabled = checked;
             }
+        }
+    }
+
+    // A pairing being made anew. The device leaves the lists with its old
+    // pairing, so how it is going is said here.
+    SettingsCard {
+        Layout.fillWidth: true
+        visible: BluetoothStatus.repairState.length > 0
+        glyph: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound" ? "error" : "bluetooth_searching"
+        text: BluetoothStatus.repairName
+        description: {
+            switch (BluetoothStatus.repairState) {
+            case "searching":
+                return Translation.tr("Looking for it. Open Bluetooth on it so it can be found.");
+            case "pairing":
+                return Translation.tr("Pairing. Compare the code on both screens.");
+            case "notFound":
+                return Translation.tr("Not found. Open Bluetooth on it and try again.");
+            case "failed":
+                return Translation.tr("Pairing did not go through.");
+            }
+            return "";
+        }
+
+        ExButton {
+            visible: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound"
+            kind: "tonal"
+            text: Translation.tr("Try again")
+            onClicked: BluetoothStatus.retryRepair()
+        }
+        ExButton {
+            visible: BluetoothStatus.repairState !== "pairing"
+            kind: "control"
+            text: Translation.tr("Cancel")
+            onClicked: BluetoothStatus.cancelRepair()
         }
     }
 

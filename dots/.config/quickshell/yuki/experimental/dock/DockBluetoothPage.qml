@@ -136,7 +136,7 @@ ColumnLayout {
             ExText {
                 Layout.fillWidth: true
                 visible: row.expanded && row.failure === "keyMissing" && !row.busy
-                text: Translation.tr("Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.")
+                text: Translation.tr("The pairing has to be made anew. Open Bluetooth on the device so it can be found, and compare the code on both screens.")
                 wrapMode: Text.Wrap
                 role: "caption"
                 dim: true
@@ -161,6 +161,17 @@ ColumnLayout {
                     }
                 }
                 ExButton {
+                    visible: row.failure === "keyMissing"
+                    kind: "accent"
+                    enabled: !row.busy && BluetoothStatus.repairState !== "searching" && BluetoothStatus.repairState !== "pairing"
+                    text: Translation.tr("Pair again")
+                    onClicked: {
+                        root.expandedAddress = "";
+                        BluetoothStatus.repair(row.modelData);
+                    }
+                }
+                ExButton {
+                    visible: row.failure !== "keyMissing"
                     kind: row.connected ? "control" : "accent"
                     enabled: !row.busy && !row.pairing
                     text: row.connected ? Translation.tr("Disconnect") : row.paired ? Translation.tr("Connect") : Translation.tr("Pair")
@@ -229,6 +240,64 @@ ColumnLayout {
     ExProgressLine {
         Layout.fillWidth: true
         running: root.shown && root.discovering
+    }
+
+    // A pairing being made anew. The device's row goes the moment the old
+    // pairing does, so how it is going is said here.
+    Rectangle {
+        Layout.fillWidth: true
+        visible: BluetoothStatus.repairState.length > 0
+        implicitHeight: repairRow.implicitHeight + 2 * ExLooks.spacing.s
+        radius: ExLooks.radius.control
+        color: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound" ? ExLooks.colors.surfaceSunken : ExLooks.colors.tonal
+
+        readonly property color ink: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound" ? ExLooks.colors.text : ExLooks.colors.tonalInk
+
+        RowLayout {
+            id: repairRow
+
+            x: ExLooks.spacing.m
+            y: ExLooks.spacing.s
+            width: parent.width - 2 * ExLooks.spacing.m
+            spacing: ExLooks.spacing.m
+
+            ExGlyph {
+                text: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound" ? "error" : "bluetooth_searching"
+                color: parent.parent.ink
+            }
+            ExText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                role: "caption"
+                color: parent.parent.ink
+                text: {
+                    const name = BluetoothStatus.repairName;
+                    switch (BluetoothStatus.repairState) {
+                    case "searching":
+                        return Translation.tr("Looking for %1. Open Bluetooth on it so it can be found.").arg(name);
+                    case "pairing":
+                        return Translation.tr("Pairing with %1. Compare the code on both screens.").arg(name);
+                    case "notFound":
+                        return Translation.tr("%1 was not found. Open Bluetooth on it and try again.").arg(name);
+                    case "failed":
+                        return Translation.tr("Pairing with %1 did not go through.").arg(name);
+                    }
+                    return "";
+                }
+            }
+            ExButton {
+                visible: BluetoothStatus.repairState === "failed" || BluetoothStatus.repairState === "notFound"
+                kind: "tonal"
+                text: Translation.tr("Try again")
+                onClicked: BluetoothStatus.retryRepair()
+            }
+            ExButton {
+                visible: BluetoothStatus.repairState !== "pairing"
+                kind: "flat"
+                glyph: "close"
+                onClicked: BluetoothStatus.cancelRepair()
+            }
+        }
     }
 
     Flickable {
