@@ -10,12 +10,19 @@ hl.window_rule({ match = { class = ".*" }, float = true })
 -- window's button brought it up again instead of minimising it.
 hl.config({ input = { follow_mouse = 2 } })
 
+-- Maximising is the shell's, as on Windows: a floating window given the work
+-- area and put back where it was. Hyprland's own maximise is a kind of
+-- fullscreen that only one window per workspace can have and that is not
+-- raised over floating windows, so it is suppressed, and a window's request to
+-- maximise reaches the shell through the minimize plugin instead.
+hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
+
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
 -- click on a title bar does on Windows. Read after the shared keys, so this
 -- one replaces theirs while the environment is up.
 hl.unbind("SUPER + ALT + Space")
-hl.bind("SUPER + ALT + Space", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }), { description = "Window: Maximize/Restore" })
+hl.bind("SUPER + ALT + Space", hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,

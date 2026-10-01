@@ -55,6 +55,7 @@ Scope {
     ExSurfaces {}
 
     ExMaximizedFront {}
+    ExMaximize {}
 
     PanelLoader { component: ExBackground {} }
     PanelLoader { component: ExDock {} }
