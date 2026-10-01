@@ -13,7 +13,7 @@ codeEditor = "~/.config/hypr/hyprland/scripts/launch_first_available.sh 'windsur
 officeSoftware = "~/.config/hypr/hyprland/scripts/launch_first_available.sh 'wps' 'onlyoffice-desktopeditors' 'libreoffice'"
 textEditor = "~/.config/hypr/hyprland/scripts/launch_first_available.sh --mime text/plain 'kate' 'gnome-text-editor' 'emacs'"
 volumeMixer = "~/.config/hypr/hyprland/scripts/launch_settings.sh sound"
-settingsApp = "~/.config/hypr/hyprland/scripts/launch_first_available.sh 'qs -p ~/.config/quickshell/$qsConfig/appearanceSettings.qml'"
+settingsApp = "~/.config/hypr/hyprland/scripts/launch_settings.sh '' appearance"
 taskManager = "~/.config/hypr/hyprland/scripts/launch_first_available.sh 'gnome-system-monitor' 'plasma-systemmonitor --page-name Processes' 'command -v btop && kitty fish -c btop'"
 
 workspaceGroupSize = 10

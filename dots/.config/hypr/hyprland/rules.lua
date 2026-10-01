@@ -189,6 +189,12 @@ hl.layer_rule({ match = { namespace = "quickshell:overlay" }, ignore_alpha = 1})
 hl.layer_rule({ match = { namespace = "quickshell:overview" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:polkit" }, no_anim = true})
+-- Stand-ins the shell animates itself: a window flying into the dock and out of
+-- it, and the dock carried to another edge. Hyprland's own layer animation on
+-- top of them played a second movement as they came and went, the picture of a
+-- restored window shrinking and fading over the window already back in place.
+hl.layer_rule({ match = { namespace = "quickshell:minimize" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:dockMove" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:popup" }, xray = false}) -- No weird color for bar tooltips (this in theory should suffice)
 hl.layer_rule({ match = { namespace = "quickshell:popup" }, ignore_alpha = 1}) -- No weird color for bar tooltips (but somehow this is necessary)
 hl.layer_rule({ match = { namespace = "quickshell:mediaControls" }, ignore_alpha = 1}) -- Same as above
