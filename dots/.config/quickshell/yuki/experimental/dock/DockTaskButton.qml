@@ -57,6 +57,9 @@ Item {
             root.groupRequested();
     }
 
+    /** How far past its cell the button takes clicks, out to the dock's edges. */
+    property real reach: 0
+
     /** Where the icon is, for what flies to the button or is drawn in its place. */
     readonly property Item iconItem: icon
 
@@ -67,6 +70,10 @@ Item {
         id: mouse
 
         anchors.fill: parent
+        anchors.topMargin: root.vertical ? 0 : -root.reach
+        anchors.bottomMargin: root.vertical ? 0 : -root.reach
+        anchors.leftMargin: root.vertical ? -root.reach : 0
+        anchors.rightMargin: root.vertical ? -root.reach : 0
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
 

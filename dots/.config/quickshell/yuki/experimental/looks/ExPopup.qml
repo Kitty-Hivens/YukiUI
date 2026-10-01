@@ -54,6 +54,13 @@ PopupWindow {
     visible: root.open || surface.progress > 0
     implicitWidth: holder.width + 2 * root.padding + 2 * root.shadowRoom
     implicitHeight: holder.height + 2 * root.padding + 2 * root.shadowRoom
+    // Only the plate takes the pointer. The room around it for its shadow
+    // reaches over the dock, and taking clicks there left the top of the
+    // button the popup came from dead: a second click on it landed on the
+    // popup instead.
+    mask: Region {
+        item: surface
+    }
 
     anchor {
         window: root.dockWindow

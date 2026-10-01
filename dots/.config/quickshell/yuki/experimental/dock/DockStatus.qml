@@ -15,6 +15,13 @@ Item {
     id: root
 
     property bool vertical: false
+    /**
+     * How thick the dock is across. The zones are drawn their own size but
+     * take clicks across all of it, as the buttons of a Windows taskbar do:
+     * a click near the dock's edge, above the icons, used to land on nothing.
+     */
+    property real crossSize: 0
+    readonly property real reach: Math.max(0, (root.crossSize - (root.vertical ? zones.implicitWidth : zones.implicitHeight)) / 2)
 
     /** The icons were clicked. */
     signal clicked
@@ -108,6 +115,10 @@ Item {
         MouseArea {
             id: mouse
             anchors.fill: parent
+            anchors.topMargin: root.vertical ? 0 : -root.reach
+            anchors.bottomMargin: root.vertical ? 0 : -root.reach
+            anchors.leftMargin: root.vertical ? -root.reach : 0
+            anchors.rightMargin: root.vertical ? -root.reach : 0
             hoverEnabled: true
             onClicked: zone.activated()
             onWheel: event => zone.wheeled(event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x)

@@ -581,8 +581,12 @@ Scope {
                     // A right click opens the dock's own menu where it landed.
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: event => {
-                        if (event.button !== Qt.RightButton)
+                        // A click on the dock's empty stretch closes what is open, as
+                        // one on an empty stretch of the Windows taskbar does.
+                        if (event.button !== Qt.RightButton) {
+                            window.closePopups(null);
                             return;
+                        }
                         menuPoint.x = event.x;
                         menuPoint.y = event.y;
                         window.closePopups(dockMenu);
@@ -663,6 +667,7 @@ Scope {
                             readonly property string key: modelData.key
                             entry: modelData.entry
                             soleWindow: modelData.window ?? null
+                            reach: Math.max(0, (ExLooks.dock.thickness - ExLooks.dock.cell) / 2)
                             status: launcherEntries.stateFor(modelData.appId)
                             workspaceId: window.workspaceId
                             showsWindow: toplevel => window.showsWindow(toplevel)
@@ -699,6 +704,7 @@ Scope {
                     id: status
 
                     vertical: window.vertical
+                    crossSize: window.vertical ? dock.width : dock.height
                     onClicked: window.toggleQuickSettings()
                     onClockClicked: window.toggleNotificationCenter()
                     onLayoutClicked: window.toggleLayoutMenu()
