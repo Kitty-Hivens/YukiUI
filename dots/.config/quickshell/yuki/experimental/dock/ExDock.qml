@@ -221,6 +221,62 @@ Scope {
                     window.closePopups(null);
             }
             exclusiveZone: ExLooks.dock.thickness + gap
+
+            // The keyboard, while quick settings has a password field up.
+            //
+            // A popup that takes no grab gets no keys of its own, and taking a
+            // grab would let the compositor shut it on the first click outside.
+            // So the dock's layer asks for them: outright for a moment, which
+            // hands them over at once, then on demand, which keeps them and
+            // still lets a click elsewhere take them away and count as a click
+            // outside. Held exclusively for longer, a click outside was
+            // reported as one on the dock and the flyout never closed. What
+            // arrives at the dock is handed to the field; a click into the
+            // field gives the flyout's own window the keys directly.
+            readonly property Item keyTarget: quickSettings.keyTarget
+            property bool holdingKeys: false
+            property bool seizingKeys: false
+            WlrLayershell.keyboardFocus: !window.holdingKeys ? WlrKeyboardFocus.None
+                : window.seizingKeys ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+            onKeyTargetChanged: {
+                if (window.keyTarget) {
+                    keysLetGo.stop();
+                    keysHandOver.stop();
+                    window.holdingKeys = true;
+                    window.seizingKeys = true;
+                    keysSeize.restart();
+                } else if (window.holdingKeys) {
+                    // The same care as the launcher's: letting go with the
+                    // pointer over the dock can bring back a window on a
+                    // workspace out of sight.
+                    if (FocusReturn.beforeLettingGo())
+                        keysLetGo.restart();
+                    else
+                        window.holdingKeys = false;
+                }
+            }
+            Timer {
+                id: keysSeize
+                interval: 60
+                onTriggered: window.seizingKeys = false
+            }
+            Timer {
+                id: keysLetGo
+                interval: 80
+                onTriggered: {
+                    window.holdingKeys = false;
+                    keysHandOver.restart();
+                }
+            }
+            Timer {
+                id: keysHandOver
+                interval: 60
+                onTriggered: FocusReturn.handOver()
+            }
+            Item {
+                focus: true
+                Keys.forwardTo: window.keyTarget ? [window.keyTarget] : []
+            }
             anchors {
                 top: window.edge !== "bottom"
                 bottom: window.edge !== "top"

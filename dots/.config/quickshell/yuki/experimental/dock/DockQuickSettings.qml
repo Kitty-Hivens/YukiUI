@@ -99,214 +99,290 @@ ExPopup {
             Idle.toggleInhibit();
     }
 
+    /**
+     * The page behind a tile's arrow, "wifi" or "bluetooth", or empty for the
+     * switches. It slides in over the switches and keeps their size, so the
+     * window does not change shape under the pointer.
+     */
+    property string page: ""
+    /** The page still drawn while it slides away. */
+    property string drawnPage: ""
+    /** From the switches (0) to a page (1). */
+    property real shift: root.page.length > 0 ? 1 : 0
+    Behavior on shift {
+        enabled: root.visible
+        NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+    }
+    onShiftChanged: {
+        if (root.shift === 0)
+            root.drawnPage = "";
+    }
+
+    function openPage(key: string) {
+        root.drawnPage = key;
+        root.page = key;
+    }
+
+    function openSettings(key: string) {
+        root.open = false;
+        Surfaces.open("settings", key);
+    }
+
+    // Opened again, it opens on the switches.
+    onVisibleChanged: {
+        if (!root.visible) {
+            root.page = "";
+            root.drawnPage = "";
+        }
+    }
+
+    /**
+     * A password field being typed into, which the dock takes the keyboard for
+     * and hands the keys to. Null when there is none.
+     */
+    readonly property Item keyTarget: root.open && root.page === "wifi" ? wifiPage.keyTarget : null
+
     padding: ExLooks.spacing.l
 
     motion: "panel"
     onDismissRequested: root.open = false
 
-    ColumnLayout {
-        id: column
-
+    Item {
         width: 400
-        spacing: ExLooks.spacing.s
+        height: column.implicitHeight
+        clip: root.shift > 0 && root.shift < 1
 
-        // Three rows of switches at most, and pages beyond that, turned by
-        // dragging, by scrolling or with the dots under them.
-        ListView {
-            id: pager
+        DockWifiPage {
+            id: wifiPage
+            width: parent.width
+            height: parent.height
+            x: (1 - root.shift) * 48
+            opacity: root.shift
+            visible: root.drawnPage === "wifi"
+            shown: root.page === "wifi" && root.open
+            onBack: root.page = ""
+            onSettingsRequested: root.openSettings("wifi")
+        }
+        DockBluetoothPage {
+            width: parent.width
+            height: parent.height
+            x: (1 - root.shift) * 48
+            opacity: root.shift
+            visible: root.drawnPage === "bluetooth"
+            shown: root.page === "bluetooth" && root.open
+            onBack: root.page = ""
+            onSettingsRequested: root.openSettings("bluetooth")
+        }
 
-            readonly property int perPage: 6
-            readonly property real tileRows: 3
+        ColumnLayout {
+            id: column
 
-            Layout.fillWidth: true
-            Layout.preferredHeight: pager.tileRows * ExLooks.sizes.tileHeight + (pager.tileRows - 1) * ExLooks.spacing.s
-            orientation: ListView.Horizontal
-            snapMode: ListView.SnapOneItem
-            highlightRangeMode: ListView.StrictlyEnforceRange
-            highlightMoveDuration: ExLooks.motion.normal
-            boundsBehavior: Flickable.StopAtBounds
-            clip: true
-            model: Math.ceil(root.tileKeys.length / pager.perPage)
+            width: 400
+            x: -root.shift * 48
+            opacity: 1 - root.shift
+            visible: root.shift < 1
+            spacing: ExLooks.spacing.s
 
-            // Scrolling up or down turns the page too, since a mouse has no
-            // sideways wheel. Taken above the pages, since the list takes a
-            // wheel for its own sideways scrolling and snaps straight back.
-            // What a touchpad sends in small steps is added up to one notch,
-            // and a page turns at most every quarter second, so one stroke
-            // turns one page. Clicks and drags pass through.
-            MouseArea {
-                property real scrolled: 0
+            // Three rows of switches at most, and pages beyond that, turned by
+            // dragging, by scrolling or with the dots under them.
+            ListView {
+                id: pager
 
-                anchors.fill: parent
-                z: 1
-                acceptedButtons: Qt.NoButton
-                onWheel: event => {
-                    event.accepted = true;
-                    if (turnPause.running)
-                        return;
-                    scrolled += event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x;
-                    if (Math.abs(scrolled) < 120)
-                        return;
-                    if (scrolled < 0)
-                        pager.incrementCurrentIndex();
-                    else
-                        pager.decrementCurrentIndex();
-                    scrolled = 0;
-                    turnPause.restart();
+                readonly property int perPage: 6
+                readonly property real tileRows: 3
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: pager.tileRows * ExLooks.sizes.tileHeight + (pager.tileRows - 1) * ExLooks.spacing.s
+                orientation: ListView.Horizontal
+                snapMode: ListView.SnapOneItem
+                highlightRangeMode: ListView.StrictlyEnforceRange
+                highlightMoveDuration: ExLooks.motion.normal
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+                model: Math.ceil(root.tileKeys.length / pager.perPage)
+
+                // Scrolling up or down turns the page too, since a mouse has no
+                // sideways wheel. Taken above the pages, since the list takes a
+                // wheel for its own sideways scrolling and snaps straight back.
+                // What a touchpad sends in small steps is added up to one notch,
+                // and a page turns at most every quarter second, so one stroke
+                // turns one page. Clicks and drags pass through.
+                MouseArea {
+                    property real scrolled: 0
+
+                    anchors.fill: parent
+                    z: 1
+                    acceptedButtons: Qt.NoButton
+                    onWheel: event => {
+                        event.accepted = true;
+                        if (turnPause.running)
+                            return;
+                        scrolled += event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x;
+                        if (Math.abs(scrolled) < 120)
+                            return;
+                        if (scrolled < 0)
+                            pager.incrementCurrentIndex();
+                        else
+                            pager.decrementCurrentIndex();
+                        scrolled = 0;
+                        turnPause.restart();
+                    }
+
+                    Timer {
+                        id: turnPause
+                        interval: 250
+                    }
                 }
 
-                Timer {
-                    id: turnPause
-                    interval: 250
-                }
-            }
+                delegate: GridLayout {
+                    id: page
 
-            delegate: GridLayout {
-                id: page
+                    required property int index
 
-                required property int index
+                    width: pager.width
+                    height: pager.height
+                    columns: 2
+                    columnSpacing: ExLooks.spacing.s
+                    rowSpacing: ExLooks.spacing.s
 
-                width: pager.width
-                height: pager.height
-                columns: 2
-                columnSpacing: ExLooks.spacing.s
-                rowSpacing: ExLooks.spacing.s
+                    Repeater {
+                        model: root.tileKeys.slice(page.index * pager.perPage, (page.index + 1) * pager.perPage)
 
-                Repeater {
-                    model: root.tileKeys.slice(page.index * pager.perPage, (page.index + 1) * pager.perPage)
+                        // State comes from the system, so a click asks for the
+                        // change and the tile follows what actually happened.
+                        ExToggleTile {
+                            required property string modelData
+                            readonly property var info: root.tileInfo(modelData)
 
-                    // State comes from the system, so a click asks for the
-                    // change and the tile follows what actually happened.
-                    ExToggleTile {
-                        required property string modelData
-                        readonly property var info: root.tileInfo(modelData)
-
-                        // Half the page each, even alone in its row.
-                        Layout.preferredWidth: (page.width - page.columnSpacing) / 2
-                        Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                        checkable: false
-                        glyph: info.glyph
-                        text: info.text
-                        subtitle: info.subtitle
-                        checked: info.checked
-                        onClicked: root.runTile(modelData)
+                            // Half the page each, even alone in its row.
+                            Layout.preferredWidth: (page.width - page.columnSpacing) / 2
+                            Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+                            checkable: false
+                            glyph: info.glyph
+                            text: info.text
+                            subtitle: info.subtitle
+                            checked: info.checked
+                            hasMenu: modelData === "wifi" || modelData === "bluetooth"
+                            onClicked: root.runTile(modelData)
+                            onMenuRequested: root.openPage(modelData)
+                        }
                     }
                 }
             }
-        }
 
-        Row {
-            Layout.alignment: Qt.AlignHCenter
-            visible: pager.count > 1
-            spacing: ExLooks.spacing.xs
+            Row {
+                Layout.alignment: Qt.AlignHCenter
+                visible: pager.count > 1
+                spacing: ExLooks.spacing.xs
 
-            Repeater {
-                model: pager.count
+                Repeater {
+                    model: pager.count
 
-                AbstractButton {
-                    id: dot
+                    AbstractButton {
+                        id: dot
 
-                    required property int index
-                    readonly property bool current: dot.index === pager.currentIndex
+                        required property int index
+                        readonly property bool current: dot.index === pager.currentIndex
 
-                    implicitWidth: 18
-                    implicitHeight: 18
-                    hoverEnabled: true
-                    onClicked: pager.currentIndex = dot.index
+                        implicitWidth: 18
+                        implicitHeight: 18
+                        hoverEnabled: true
+                        onClicked: pager.currentIndex = dot.index
 
-                    contentItem: Item {
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: dot.current ? 16 : 6
-                            height: 6
-                            radius: 3
-                            color: dot.current ? ExLooks.colors.accent : ExLooks.colors.textDim
-                            opacity: dot.current || dot.hovered ? 1 : 0.5
+                        contentItem: Item {
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: dot.current ? 16 : 6
+                                height: 6
+                                radius: 3
+                                color: dot.current ? ExLooks.colors.accent : ExLooks.colors.textDim
+                                opacity: dot.current || dot.hovered ? 1 : 0.5
 
-                            Behavior on width {
-                                NumberAnimation { duration: ExLooks.motion.fast }
+                                Behavior on width {
+                                    NumberAnimation { duration: ExLooks.motion.fast }
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: ExLooks.spacing.s
-            spacing: ExLooks.spacing.s
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: ExLooks.spacing.s
+                spacing: ExLooks.spacing.s
 
-            ExButton {
-                kind: "flat"
-                glyph: (Audio.sink?.audio?.muted ?? false) ? "volume_off" : "volume_up"
-                onClicked: {
-                    if (Audio.sink?.audio)
-                        Audio.sink.audio.muted = !Audio.sink.audio.muted;
+                ExButton {
+                    kind: "flat"
+                    glyph: (Audio.sink?.audio?.muted ?? false) ? "volume_off" : "volume_up"
+                    onClicked: {
+                        if (Audio.sink?.audio)
+                            Audio.sink.audio.muted = !Audio.sink.audio.muted;
+                    }
+                }
+                ExSlider {
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 1
+                    value: Audio.sink?.audio?.volume ?? 0
+                    onMoved: Audio.setDeviceVolume(Audio.sink, value)
                 }
             }
-            ExSlider {
+
+            RowLayout {
                 Layout.fillWidth: true
-                from: 0
-                to: 1
-                value: Audio.sink?.audio?.volume ?? 0
-                onMoved: Audio.setDeviceVolume(Audio.sink, value)
+                visible: root.brightness !== null && root.brightness !== undefined
+                spacing: ExLooks.spacing.s
+
+                Item {
+                    implicitWidth: ExLooks.sizes.control
+                    implicitHeight: ExLooks.sizes.control
+
+                    ExGlyph {
+                        anchors.centerIn: parent
+                        text: "brightness_6"
+                        size: 18
+                    }
+                }
+                ExSlider {
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 1
+                    value: root.brightness?.brightness ?? 0
+                    onMoved: root.brightness?.setBrightness(value)
+                }
             }
-        }
 
-        RowLayout {
-            Layout.fillWidth: true
-            visible: root.brightness !== null && root.brightness !== undefined
-            spacing: ExLooks.spacing.s
-
-            Item {
-                implicitWidth: ExLooks.sizes.control
-                implicitHeight: ExLooks.sizes.control
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: ExLooks.spacing.s
+                spacing: ExLooks.spacing.s
 
                 ExGlyph {
-                    anchors.centerIn: parent
-                    text: "brightness_6"
+                    visible: Battery.available
+                    text: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
                     size: 18
                 }
-            }
-            ExSlider {
-                Layout.fillWidth: true
-                from: 0
-                to: 1
-                value: root.brightness?.brightness ?? 0
-                onMoved: root.brightness?.setBrightness(value)
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: ExLooks.spacing.s
-            spacing: ExLooks.spacing.s
-
-            ExGlyph {
-                visible: Battery.available
-                text: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
-                size: 18
-            }
-            ExText {
-                Layout.fillWidth: true
-                text: Battery.available ? `${Math.round(Battery.percentage * 100)}%` : ""
-                role: "label"
-            }
-            ExButton {
-                kind: "control"
-                glyph: "settings"
-                onClicked: {
-                    root.open = false;
-                    Surfaces.open("settings", "");
+                ExText {
+                    Layout.fillWidth: true
+                    text: Battery.available ? `${Math.round(Battery.percentage * 100)}%` : ""
+                    role: "label"
                 }
-            }
-            ExButton {
-                kind: "control"
-                glyph: "power_settings_new"
-                onClicked: {
-                    root.open = false;
-                    ExStates.sessionOpen = true;
+                ExButton {
+                    kind: "control"
+                    glyph: "settings"
+                    onClicked: {
+                        root.open = false;
+                        Surfaces.open("settings", "");
+                    }
+                }
+                ExButton {
+                    kind: "control"
+                    glyph: "power_settings_new"
+                    onClicked: {
+                        root.open = false;
+                        ExStates.sessionOpen = true;
+                    }
                 }
             }
         }

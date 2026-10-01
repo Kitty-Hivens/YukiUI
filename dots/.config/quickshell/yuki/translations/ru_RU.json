@@ -1300,5 +1300,12 @@
   "Files with these names already exist: %1. Replacing them will overwrite their contents.": "Файлы с такими именами уже есть: %1. Если их заменить, их содержимое будет перезаписано.",
   "The shell is not answering, so this cannot be changed now": "Оболочка не отвечает, поэтому сейчас это не изменить",
   "The choice did not take: %1": "Выбор не применился: %1",
-  "the helper failed": "помощник завершился с ошибкой"
+  "the helper failed": "помощник завершился с ошибкой",
+  "Bluetooth is off": "Bluetooth выключен",
+  "More Wi-Fi settings": "Доп. настройки Wi-Fi",
+  "Network password": "Пароль сети",
+  "No Bluetooth adapter": "Нет адаптера Bluetooth",
+  "Pairing...": "Сопряжение...",
+  "Sign in": "Войти в сеть",
+  "Wi-Fi networks": "Сети Wi-Fi"
 }
