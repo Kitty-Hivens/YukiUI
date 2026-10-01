@@ -96,6 +96,7 @@ metapkgs+=(./sdata/dist-arch/illogical-impulse-microtex-git)
 metapkgs+=(./sdata/dist-arch/illogical-impulse-quickshell)
 metapkgs+=(./sdata/dist-arch/illogical-impulse-bibata-modern-classic-bin)
 metapkgs+=(./sdata/dist-arch/illogical-impulse-material-originals-icons)
+metapkgs+=(./sdata/dist-arch/yuki-hyprland-plugins)
 
 for i in "${metapkgs[@]}"; do
   metainstallflags="--needed"

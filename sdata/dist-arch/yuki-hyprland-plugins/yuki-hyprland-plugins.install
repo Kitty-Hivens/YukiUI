@@ -1,0 +1,14 @@
+post_install() {
+    /usr/lib/yuki-hyprland-plugins/build
+}
+
+post_upgrade() {
+    post_install
+}
+
+# The built files belong to no package, since they are made on this machine.
+post_remove() {
+    rm -f /usr/lib/yuki-hyprland-plugins/*.so /usr/lib/yuki-hyprland-plugins/.*.so.new
+    rmdir --ignore-fail-on-non-empty /usr/lib/yuki-hyprland-plugins 2>/dev/null
+    true
+}

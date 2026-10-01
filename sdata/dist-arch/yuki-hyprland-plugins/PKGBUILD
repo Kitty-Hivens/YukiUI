@@ -1,0 +1,36 @@
+# Hyprland plugins YukiUI needs, shipped as source and built on the machine.
+#
+# A plugin is compiled against one exact Hyprland and breaks on the next. So
+# this package carries the sources, and a pacman hook rebuilds them every time
+# hyprland is installed or upgraded, the way DKMS does for kernel modules. The
+# built files live beside the build script in /usr/lib/yuki-hyprland-plugins and
+# belong to no package.
+#
+# The sources are read from hypr-plugins/ at the root of this repository.
+
+pkgname=yuki-hyprland-plugins
+pkgver=1.3
+pkgrel=1
+pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
+arch=(any)
+license=(GPL-3.0-or-later)
+depends=(
+  hyprland
+  gcc
+  make
+  pkgconf
+)
+install=yuki-hyprland-plugins.install
+source=(build yuki-hyprland-plugins.hook)
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  install -Dm755 build -t "$pkgdir/usr/lib/yuki-hyprland-plugins"
+  install -Dm644 yuki-hyprland-plugins.hook -t "$pkgdir/usr/share/libalpm/hooks"
+
+  local plugins="$startdir/../../../hypr-plugins"
+  for dir in "$plugins"/*/; do
+    local name=$(basename "$dir")
+    install -Dm644 "$dir/main.cpp" "$dir/Makefile" -t "$pkgdir/usr/src/yuki-hyprland-plugins/$name"
+  done
+}

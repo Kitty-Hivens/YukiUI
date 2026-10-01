@@ -1,0 +1,47 @@
+#!/bin/bash
+# Rebuilds every YukiUI Hyprland plugin against the Hyprland now installed.
+#
+# Run by pacman after hyprland is installed or upgraded, and after this package
+# is. The plugin API passes C++ objects between the compositor and the plugin,
+# so a plugin built for one Hyprland must never be loaded by another. Each
+# plugin also checks this itself when it loads and refuses a mismatch, which is
+# what makes a failed rebuild here harmless: the old file stays, and is turned
+# away with a notification instead of being loaded.
+
+set -u
+shopt -s nullglob
+
+src=/usr/src/yuki-hyprland-plugins
+out=/usr/lib/yuki-hyprland-plugins
+status=0
+
+mkdir -p "$out"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+for dir in "$src"/*/; do
+    name=$(basename "$dir")
+    if make -s -C "$dir" OUT="$work/$name.so" >"$work/$name.log" 2>&1; then
+        # Renamed into place, so a compositor holding the old file keeps its
+        # copy and the next one to start reads a whole new one.
+        install -m755 "$work/$name.so" "$out/.$name.so.new"
+        mv -f "$out/.$name.so.new" "$out/$name.so"
+        echo "yuki-hyprland-plugins: rebuilt $name"
+    else
+        echo "yuki-hyprland-plugins: $name did not build, the previous one is left in place:" >&2
+        cat "$work/$name.log" >&2
+        status=1
+    fi
+done
+
+# A plugin that is no longer shipped would otherwise leave its build behind for
+# good. A compositor that has it loaded keeps its copy.
+for built in "$out"/*.so; do
+    name=$(basename "$built" .so)
+    if [ ! -d "$src/$name" ]; then
+        rm -f "$built"
+        echo "yuki-hyprland-plugins: removed $name, it is no longer shipped"
+    fi
+done
+
+exit $status

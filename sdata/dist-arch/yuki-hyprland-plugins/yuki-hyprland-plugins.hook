@@ -1,0 +1,13 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = hyprland
+
+[Action]
+Description = Rebuilding YukiUI Hyprland plugins for the new Hyprland...
+When = PostTransaction
+Depends = gcc
+Depends = make
+Depends = pkgconf
+Exec = /usr/lib/yuki-hyprland-plugins/build

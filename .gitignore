@@ -20,3 +20,6 @@ __pycache__/
 
 # Emacs auto backup file
 *~
+
+# Built plugins: tied to the Hyprland they were compiled against
+/hypr-plugins/*/*.so
