@@ -3,6 +3,13 @@
 -- A desktop of overlapping windows, not a tiling one: everything opens floating.
 hl.window_rule({ match = { class = ".*" }, float = true })
 
+-- Focus by click, as on Windows. The pointer still reaches what it is over,
+-- scrolling included, but only a click moves the keyboard. With focus
+-- following the pointer, the window a person meant was lost on the way to the
+-- dock: crossing another window took focus to it, so a click on the first
+-- window's button brought it up again instead of minimising it.
+hl.config({ input = { follow_mouse = 2 } })
+
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
 -- click on a title bar does on Windows. Read after the shared keys, so this
