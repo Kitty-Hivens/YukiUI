@@ -44,6 +44,8 @@ ColumnLayout {
         readonly property bool connected: device.modelData?.connected ?? false
         readonly property bool paired: device.modelData?.paired ?? false
         readonly property bool busy: device.modelData?.state === BluetoothDeviceState.Connecting || device.modelData?.state === BluetoothDeviceState.Disconnecting
+            || (BluetoothStatus.connectingAddresses[device.modelData?.address ?? ""] ?? false)
+        readonly property string failure: device.connected ? "" : (BluetoothStatus.connectFailures[device.modelData?.address ?? ""] ?? "")
 
         Layout.fillWidth: true
         glyph: Icons.getBluetoothDeviceMaterialSymbol(device.modelData?.icon || "")
@@ -51,6 +53,16 @@ ColumnLayout {
         description: {
             if (device.busy)
                 return device.connected ? Translation.tr("Disconnecting...") : Translation.tr("Connecting...");
+            switch (device.failure) {
+            case "keyMissing":
+                return Translation.tr("The device no longer knows this computer. Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.");
+            case "unreachable":
+                return Translation.tr("Out of range or switched off");
+            case "refused":
+                return Translation.tr("The device refused the connection");
+            case "failed":
+                return Translation.tr("Could not connect: %1").arg(BluetoothStatus.connectFailureDetails[device.modelData?.address ?? ""] || Translation.tr("no reason given"));
+            }
             if (!device.paired)
                 return device.modelData?.address ?? "";
             const base = device.connected ? Translation.tr("Connected") : Translation.tr("Paired");
@@ -71,7 +83,7 @@ ColumnLayout {
                 if (device.connected)
                     device.modelData?.disconnect();
                 else if (device.paired)
-                    device.modelData?.connect();
+                    BluetoothStatus.connectDevice(device.modelData);
                 else
                     BluetoothStatus.pair(device.modelData);
             }

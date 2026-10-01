@@ -1307,5 +1307,12 @@
   "No Bluetooth adapter": "Нет адаптера Bluetooth",
   "Pairing...": "Сопряжение...",
   "Sign in": "Войти в сеть",
-  "Wi-Fi networks": "Сети Wi-Fi"
+  "Wi-Fi networks": "Сети Wi-Fi",
+  "The device no longer knows this computer": "Устройство больше не знает этот компьютер",
+  "Out of range or switched off": "Вне зоны действия или выключено",
+  "The device refused the connection": "Устройство отклонило подключение",
+  "Could not connect: %1": "Не удалось подключиться: %1",
+  "no reason given": "причина не указана",
+  "Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.": "Удалите этот компьютер из списка Bluetooth на устройстве, если он там ещё есть, затем забудьте устройство здесь и выполните сопряжение заново.",
+  "The device no longer knows this computer. Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.": "Устройство больше не знает этот компьютер. Удалите этот компьютер из списка Bluetooth на устройстве, если он там ещё есть, затем забудьте устройство здесь и выполните сопряжение заново."
 }

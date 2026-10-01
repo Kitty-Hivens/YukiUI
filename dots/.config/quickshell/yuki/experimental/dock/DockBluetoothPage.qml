@@ -54,12 +54,24 @@ ColumnLayout {
         readonly property bool paired: row.modelData?.paired ?? false
         readonly property bool pairing: (row.modelData?.pairing ?? false) || BluetoothStatus.pairingDevice === row.modelData
         readonly property bool busy: row.modelData?.state === BluetoothDeviceState.Connecting || row.modelData?.state === BluetoothDeviceState.Disconnecting
+            || (BluetoothStatus.connectingAddresses[row.address] ?? false)
         readonly property bool expanded: root.expandedAddress === row.address && row.address.length > 0
+        readonly property string failure: row.connected ? "" : (BluetoothStatus.connectFailures[row.address] ?? "")
         readonly property string status: {
             if (row.pairing)
                 return Translation.tr("Pairing...");
             if (row.busy)
                 return row.connected ? Translation.tr("Disconnecting...") : Translation.tr("Connecting...");
+            switch (row.failure) {
+            case "keyMissing":
+                return Translation.tr("The device no longer knows this computer");
+            case "unreachable":
+                return Translation.tr("Out of range or switched off");
+            case "refused":
+                return Translation.tr("The device refused the connection");
+            case "failed":
+                return Translation.tr("Could not connect: %1").arg(BluetoothStatus.connectFailureDetails[row.address] || Translation.tr("no reason given"));
+            }
             if (row.connected)
                 return row.modelData?.batteryAvailable ? `${Translation.tr("Connected")}  ·  ${Math.round(row.modelData.battery * 100)}%` : Translation.tr("Connected");
             if (row.paired)
@@ -114,9 +126,20 @@ ColumnLayout {
                         Layout.fillWidth: true
                         text: row.status
                         role: "caption"
-                        dim: true
+                        color: row.failure.length > 0 && !row.busy ? ExLooks.colors.destructive : ExLooks.colors.textDim
                     }
                 }
+            }
+
+            // A pairing the device has dropped on its side cannot be connected
+            // again, only made anew.
+            ExText {
+                Layout.fillWidth: true
+                visible: row.expanded && row.failure === "keyMissing" && !row.busy
+                text: Translation.tr("Remove this computer from the device's Bluetooth list if it is still there, then forget the device here and pair it again.")
+                wrapMode: Text.Wrap
+                role: "caption"
+                dim: true
             }
 
             RowLayout {
@@ -145,7 +168,7 @@ ColumnLayout {
                         if (row.connected)
                             row.modelData?.disconnect();
                         else if (row.paired)
-                            row.modelData?.connect();
+                            BluetoothStatus.connectDevice(row.modelData);
                         else
                             BluetoothStatus.pair(row.modelData);
                     }
