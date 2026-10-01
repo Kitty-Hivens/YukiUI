@@ -11,6 +11,9 @@ AppButton {
     id: root
 
     required property var appEntry
+    required property int workspaceId
+    /** The windows it has on the workspace in use, minimised ones included. */
+    readonly property var windows: TaskbarApps.windowsOn(appEntry, workspaceId)
     readonly property bool isSeparator: appEntry.appId === "SEPARATOR"
     property var desktopEntry: AppSearch.entryFor(appEntry.appId)
 
@@ -26,15 +29,17 @@ AppButton {
         }
     }
 
-    property bool active: root.appEntry.toplevels.some(t => t.activated)
-    property bool hasWindows: appEntry.toplevels.length > 0
+    // A minimised window keeps its activated flag when focus is let go of, since
+    // nothing takes it over, so being out of sight has to rule it out.
+    property bool active: root.windows.some(t => t.activated && !TaskbarApps.isMinimized(t))
+    property bool hasWindows: root.windows.length > 0
 
     hoverTimeout: 200
 
     signal hoverPreviewRequested()
     signal hoverPreviewDismissed()
 
-    multiple: appEntry.toplevels.length > 1
+    multiple: root.windows.length > 1
     checked: active
     iconName: AppSearch.guessIcon(appEntry.appId)
     tryCustomIcon: false
@@ -51,8 +56,9 @@ AppButton {
         root.hoverTimer.stop() // Prevents preview showing up when clicking to focus
         if (root.multiple) {
             root.hoverPreviewRequested()
-        } else if (root.appEntry.toplevels.length === 1) {
-            root.appEntry.toplevels[0].activate()
+        } else if (root.windows.length === 1) {
+            // Brings it up, restores it, or minimises it when it is already in front.
+            TaskbarApps.toggleWindow(root.windows[0])
         } else if (root.desktopEntry) {
             root.desktopEntry.execute()
         }
@@ -131,11 +137,11 @@ AppButton {
                     TaskbarApps.togglePin(root.appEntry.appId);
                 }
             },
-            ...(root.appEntry.toplevels.length > 0 ? [{
+            ...(root.windows.length > 0 ? [{
                 iconName: "dismiss",
                 text: root.multiple ? Translation.tr("Close all windows") : Translation.tr("Close window"),
                 action: () => {
-                    for (let toplevel of root.appEntry.toplevels) {
+                    for (let toplevel of root.windows) {
                         toplevel.close();
                     }
                 }

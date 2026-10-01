@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.core
+import qs.core.services
 import qs.waffle
 import qs.waffle.actionCenter
 import qs.waffle.background
@@ -32,6 +33,14 @@ Scope {
     // mapped over a fullscreen game, and a singleton nobody has asked for yet is a
     // singleton that is not watching.
     Component.onCompleted: WPanels.enforce()
+
+    // Windows minimises, so this does too. A Binding, so the service goes back
+    // to off when this environment is torn down.
+    Binding {
+        target: Minimize
+        property: "enabled"
+        value: true
+    }
 
     PanelLoader { component: WaffleActionCenter {} }
     PanelLoader { component: WaffleBar {} }

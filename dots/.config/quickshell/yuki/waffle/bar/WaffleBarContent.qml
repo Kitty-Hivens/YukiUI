@@ -9,6 +9,8 @@ import qs.waffle.bar.tray
 Rectangle {
     id: root
 
+    required property var barScreen
+
     color: Looks.colors.bg0
     implicitHeight: Looks.sizes.barHeight
     
@@ -58,7 +60,9 @@ Rectangle {
         StartButton {}
         SearchButton {}
         TaskViewButton {}
-        Tasks {}
+        Tasks {
+            barScreen: root.barScreen
+        }
     }
 
     BarGroupRow {

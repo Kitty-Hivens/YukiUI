@@ -66,6 +66,10 @@ Scope {
                 WaffleBarContent {
                     id: content
                     anchors.fill: parent
+                    // The screen and not the window: the window is torn down under
+                    // a fullscreen game, and a binding that reads it back from inside
+                    // that teardown is what used to segfault the shell.
+                    barScreen: barRoot.modelData
                 }
             }
         }

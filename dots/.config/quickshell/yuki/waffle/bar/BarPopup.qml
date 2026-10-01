@@ -44,14 +44,29 @@ Loader {
         id: popupWindow
         visible: true
         Component.onCompleted: {
+            // Taken once, never bound: see the anchor below.
+            popupWindow.anchor.window = root.anchorItem?.QsWindow.window ?? null;
             openAnim.start();
         }
 
+        // Anchored to the bar's window, with the button's box worked out each time
+        // it is placed, and never to the button itself: a null anchor item makes
+        // Quickshell 0.3.0 ask the null for its window and segfault, and a button
+        // reads as null once it is destroyed.
         anchor {
             adjustment: PopupAdjustment.ResizeY | PopupAdjustment.SlideX
-            item: root.anchorItem
             gravity: root.barAtBottom ? Edges.Top : Edges.Bottom
             edges: root.barAtBottom ? Edges.Top : Edges.Bottom
+            onAnchoring: {
+                const target = root.anchorItem;
+                if (!target)
+                    return;
+                const corner = target.mapToItem(null, 0, 0);
+                popupWindow.anchor.rect.x = Math.round(corner.x);
+                popupWindow.anchor.rect.y = Math.round(corner.y);
+                popupWindow.anchor.rect.width = Math.max(1, Math.round(target.width));
+                popupWindow.anchor.rect.height = Math.max(1, Math.round(target.height));
+            }
         }
 
         HyprlandFocusGrab {

@@ -1,12 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Hyprland
 import qs.core.services
 import qs.core
 import qs.waffle.looks
 
 MouseArea {
     id: root
+
+    required property var barScreen
+    // Windows shows the windows of the desktop in use, and so does this.
+    readonly property int workspaceId: Hyprland.monitorFor(root.barScreen)?.activeWorkspace?.id ?? -1
 
     Layout.fillHeight: true
     implicitHeight: appRow.implicitHeight
@@ -32,14 +37,14 @@ MouseArea {
         implicitWidth: contentWidth
         clip: true
         interactive: false
-        // TODO: Include only apps (and windows) in current workspace only | wait, does that even make sense in a Hyprland workflow?
         model: ScriptModel {
             objectProp: "appId"
-            values: TaskbarApps.apps.filter(app => app.appId !== "SEPARATOR")
+            values: TaskbarApps.appsOn(root.workspaceId)
         }
         delegate: TaskAppButton {
             required property var modelData
-            appEntry: modelData
+            appEntry: modelData.entry
+            workspaceId: root.workspaceId
 
             onHoverPreviewRequested: {
                 root.showPreviewPopup(appEntry, this);
@@ -54,14 +59,5 @@ MouseArea {
     TaskPreview {
         id: previewPopup
         tasksHovered: root.containsMouse
-
-        /// Asked once and held, rather than left as a binding on the attached object.
-        /// Unmapping the bar tears its item tree down, and the cascade of derefWindow
-        /// calls reaches this MouseArea; anything still bound underneath is evaluated
-        /// again from inside that teardown, and this one would ask an item whose
-        /// window is already gone, which segfaults the shell.
-        property var barWindow: null
-        anchor.window: previewPopup.barWindow
-        Component.onCompleted: previewPopup.barWindow = root.QsWindow.window
     }
 }

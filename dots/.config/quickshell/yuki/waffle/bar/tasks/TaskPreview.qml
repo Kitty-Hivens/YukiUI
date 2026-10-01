@@ -34,6 +34,10 @@ PopupWindow {
     function show(appEntry: var, button: Item) {
         root.appEntry = appEntry;
         root.anchorItem = button;
+        // Read once, as it opens, and never bound: the bar window is torn down
+        // under a fullscreen game, and a binding that reads it back from inside
+        // that teardown is what used to segfault the shell.
+        root.anchor.window = button.QsWindow.window;
         root.anchor.updateAnchor();
         root.open();
     }
@@ -47,11 +51,24 @@ PopupWindow {
     color: "transparent"
     implicitWidth: contentItem.implicitWidth + ambientShadowWidth + (visualMargin * 2)
     implicitHeight: contentItem.implicitHeight + ambientShadowWidth + (visualMargin * 2)
+    // Anchored to the bar's window, which Tasks hands over, with the button's
+    // box worked out as the popup is shown. Never to the button as an item: the
+    // buttons are rebuilt whenever the workspace changes, the reference to a
+    // destroyed one reads as null, and a null anchor item makes Quickshell
+    // 0.3.0 ask that null item for its window, which segfaults the shell.
     anchor {
         adjustment: PopupAdjustment.Slide
-        item: root.anchorItem
         gravity: bottom ? Edges.Top : Edges.Bottom
         edges: bottom ? Edges.Top : Edges.Bottom
+        onAnchoring: {
+            if (!root.anchorItem)
+                return;
+            const corner = root.anchorItem.mapToItem(null, 0, 0);
+            root.anchor.rect.x = Math.round(corner.x);
+            root.anchor.rect.y = Math.round(corner.y);
+            root.anchor.rect.width = Math.max(1, Math.round(root.anchorItem.width));
+            root.anchor.rect.height = Math.max(1, Math.round(root.anchorItem.height));
+        }
     }
 
     NumberAnimation {
@@ -123,7 +140,12 @@ PopupWindow {
 
                 Repeater {
                     model: ScriptModel {
-                        values: root.appEntry?.toplevels ?? []
+                        // The windows the button has on the workspace in use, read
+                        // from the button so the row follows them while it is open.
+                        //
+                        // Emptied while hidden, so a hidden popup keeps no capture of
+                        // those windows.
+                        values: root.visible ? (root.anchorItem?.windows ?? []) : []
                     }
                     delegate: WindowPreview {
                         required property var modelData

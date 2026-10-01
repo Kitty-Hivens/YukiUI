@@ -22,7 +22,9 @@ Button {
     signal picked
 
     onClicked: {
-        root.toplevel?.activate(); // TODO: make this work with those who disable focus on activate because telegram is abusive
+        // The window already in front is minimised, as a Windows thumbnail does.
+        if (root.toplevel)
+            TaskbarApps.toggleWindow(root.toplevel);
         root.picked();
     }
 
