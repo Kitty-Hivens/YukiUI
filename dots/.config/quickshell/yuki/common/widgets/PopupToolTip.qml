@@ -39,12 +39,28 @@ Item {
         anchors.fill: parent
         active: root.internalVisibleCondition
         sourceComponent: PopupWindow {
+            id: tooltipWindow
             visible: true
+            // Anchored to the window, with the box of the item it explains worked
+            // out each time it is placed, and never to that item: a null anchor
+            // item makes Quickshell 0.3.0 ask the null for its window and
+            // segfault, and the parent reads as null while it is being torn down.
+            // The window is taken once, since a binding on it is what used to
+            // crash the shell when a bar was unmapped under a fullscreen game.
+            Component.onCompleted: tooltipWindow.anchor.window = root.QsWindow.window
             anchor {
-                window: root.QsWindow.window
-                item: root.parent
                 edges: root.anchorEdges
                 gravity: root.anchorGravity
+                onAnchoring: {
+                    const target = root.parent;
+                    if (!target)
+                        return;
+                    const corner = target.mapToItem(null, 0, 0);
+                    tooltipWindow.anchor.rect.x = Math.round(corner.x);
+                    tooltipWindow.anchor.rect.y = Math.round(corner.y);
+                    tooltipWindow.anchor.rect.width = Math.max(1, Math.round(target.width));
+                    tooltipWindow.anchor.rect.height = Math.max(1, Math.round(target.height));
+                }
             }
             mask: Region {
                 item: null
