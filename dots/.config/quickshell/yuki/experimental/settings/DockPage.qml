@@ -1,6 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 
 import qs.core
 import qs.core.services
@@ -16,6 +19,55 @@ ColumnLayout {
     property var shell
 
     readonly property var dock: Config.options.experimental.dock
+    readonly property string shellPath: Quickshell.shellPath("shell.qml")
+
+    /**
+     * The tray's icons, asked of the running shell. This window must not watch
+     * the tray itself: a second watcher could take the role over from the
+     * shell, and the icons would go with it.
+     */
+    property var trayItems: []
+    property bool trayAnswered: false
+
+    function readTray() {
+        trayReader.running = true;
+    }
+
+    function setTrayShown(id: string, shown: bool) {
+        // Moved at once, read back to follow what the shell did.
+        root.trayItems = root.trayItems.map(item => item.id === id ? Object.assign({}, item, { shown: shown }) : item);
+        Quickshell.execDetached(["qs", "-p", root.shellPath, "ipc", "call", "dock", "setTrayShown", id, String(shown)]);
+        trayReadSoon.restart();
+    }
+
+    Component.onCompleted: root.readTray()
+
+    Process {
+        id: trayReader
+        command: ["qs", "-p", root.shellPath, "ipc", "call", "dock", "trayItems"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.trayItems = JSON.parse(text);
+                    root.trayAnswered = true;
+                } catch (error) {
+                    root.trayAnswered = false;
+                }
+            }
+        }
+    }
+    Timer {
+        id: trayReadSoon
+        interval: 400
+        onTriggered: root.readTray()
+    }
+    // Icons come and go with their programs.
+    Timer {
+        running: root.Window.window?.active ?? false
+        repeat: true
+        interval: 5000
+        onTriggered: root.readTray()
+    }
 
     spacing: 4
 
@@ -132,6 +184,42 @@ ColumnLayout {
             ExSwitch {
                 checked: root.dock.clockDate
                 onToggled: Config.options.experimental.dock.clockDate = checked
+            }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
+        title: Translation.tr("System tray")
+
+        ExText {
+            Layout.fillWidth: true
+            Layout.bottomMargin: ExLooks.spacing.xs
+            text: !root.trayAnswered ? Translation.tr("The shell is not answering, so the tray cannot be listed now")
+                : root.trayItems.length === 0 ? Translation.tr("No program has an icon in the tray now")
+                : Translation.tr("Shown in the dock, or kept under the arrow beside it")
+            wrapMode: Text.Wrap
+            dim: true
+        }
+
+        Repeater {
+            model: root.trayItems
+
+            SettingsCard {
+                id: trayCard
+
+                required property var modelData
+
+                Layout.fillWidth: true
+                glyph: "widgets"
+                iconSource: trayCard.modelData.icon.length > 0 ? Quickshell.iconPath(trayCard.modelData.icon, true) : ""
+                text: trayCard.modelData.title
+                description: trayCard.modelData.title !== trayCard.modelData.id ? trayCard.modelData.id : ""
+
+                ExSwitch {
+                    checked: trayCard.modelData.shown
+                    onToggled: root.setTrayShown(trayCard.modelData.id, checked)
+                }
             }
         }
     }

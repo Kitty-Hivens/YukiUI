@@ -1338,5 +1338,9 @@
   "Unread counts and calls for attention on their buttons": "Счётчики непрочитанного и просьбы обратить внимание на их кнопках",
   "Show seconds": "Показывать секунды",
   "Show the date": "Показывать дату",
-  "Under the time, on a dock along the top or the bottom": "Под временем, когда док сверху или снизу"
+  "Under the time, on a dock along the top or the bottom": "Под временем, когда док сверху или снизу",
+  "System tray": "Системный трей",
+  "The shell is not answering, so the tray cannot be listed now": "Оболочка не отвечает, поэтому трей сейчас не показать",
+  "No program has an icon in the tray now": "Сейчас ни у одной программы нет значка в трее",
+  "Shown in the dock, or kept under the arrow beside it": "Показан в доке или убран под стрелку рядом с ним"
 }

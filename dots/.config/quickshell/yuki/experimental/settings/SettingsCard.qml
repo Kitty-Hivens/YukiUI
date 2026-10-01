@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell.Widgets
 
 import qs.experimental.looks
 
@@ -11,6 +12,8 @@ AbstractButton {
     id: root
 
     property string glyph: ""
+    /** A picture in place of the glyph, an application's icon say. */
+    property string iconSource: ""
     property string description: ""
     /** Leads to another page rather than holding a control. */
     property bool leads: false
@@ -55,9 +58,14 @@ AbstractButton {
             spacing: ExLooks.spacing.l
 
             ExGlyph {
-                visible: root.glyph.length > 0
+                visible: root.glyph.length > 0 && root.iconSource.length === 0
                 text: root.glyph
                 size: 20
+            }
+            IconImage {
+                visible: root.iconSource.length > 0
+                implicitSize: 20
+                source: root.iconSource
             }
             ColumnLayout {
                 Layout.fillWidth: true

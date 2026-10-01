@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 
 import qs.core
@@ -22,6 +23,16 @@ Scope {
     id: root
 
     property list<var> docks: []
+
+    /**
+     * Whether a tray icon is in view rather than under the arrow, read off the
+     * list itself. The tray service answers only for icons it is showing, and
+     * a passive icon it filters out would read as hidden either way.
+     */
+    function trayShown(id: string): bool {
+        const listed = Config.options.tray.pinnedItems.includes(id);
+        return Config.options.tray.invertPinnedItems ? !listed : listed;
+    }
 
     LauncherEntryWatcher {
         id: launcherEntries
@@ -784,6 +795,30 @@ Scope {
             if (!dock)
                 return "no dock on the focused screen";
             dock.toggleNotificationCenter();
+            return "ok";
+        }
+
+        /**
+         * The tray's icons for the settings window, which must not watch the
+         * tray itself: a second watcher could take the role over from the
+         * shell. JSON, one object per icon: id, title, the icon theme name
+         * when the icon is one, and whether it is shown in the dock rather
+         * than under the arrow.
+         */
+        function trayItems(): string {
+            return JSON.stringify(SystemTray.items.values.map(item => ({
+                id: item.id,
+                // The program's name, not its tooltip, which can be the song playing.
+                title: item.title || item.tooltipTitle || item.id,
+                icon: (/^image:\/\/icon\/([^?]+)/.exec(item.icon ?? "") ?? [])[1] ?? "",
+                shown: root.trayShown(item.id)
+            })));
+        }
+
+        /** Shows a tray icon in the dock, or puts it under the arrow. */
+        function setTrayShown(id: string, shown: bool): string {
+            if (root.trayShown(id) !== shown)
+                TrayService.togglePin(id);
             return "ok";
         }
 
