@@ -38,8 +38,10 @@ ApplicationWindow {
     onClosing: {
         // The countdown dies with this process, so a layout nobody kept is
         // taken back by a command that outlives it.
-        if (content.displaysTouched)
+        if (content.displaysTouched) {
             Displays.revertDetached();
+            Displays.discardSdrPreview();
+        }
         Qt.quit();
     }
 
@@ -71,6 +73,18 @@ ApplicationWindow {
             const g = parseInt(hex.substr(2, 2), 16) / 255;
             const b = parseInt(hex.substr(4, 2), 16) / 255;
             Appearance.m3colors.darkmode = (Math.max(r, g, b) + Math.min(r, g, b)) / 2 < 0.5;
+        }
+    }
+
+    // Asked to open again while open: the page wanted, and the window brought
+    // up, which on Hyprland only the compositor can do.
+    IpcHandler {
+        target: "settingsWindow"
+
+        function present(page: string): void {
+            if (page.length > 0)
+                content.open(page);
+            Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.focus({ window = "title:^(Experimental Settings)$" })']);
         }
     }
 

@@ -140,12 +140,15 @@ Singleton {
         showOnlyReadable: true
         sortField: FolderListModel.Time
         sortReversed: false
+        // Built aside and handed over once. Pushed one by one, every push was
+        // a change of its own, and a view of the list was rebuilt per file.
         onCountChanged: {
-            root.wallpapers = []
+            const found = []
             for (let i = 0; i < folderModel.count; i++) {
                 const path = folderModel.get(i, "filePath") || FileUtils.trimFileProtocol(folderModel.get(i, "fileURL"))
-                if (path && path.length) root.wallpapers.push(path)
+                if (path && path.length) found.push(path)
             }
+            root.wallpapers = found
         }
     }
 

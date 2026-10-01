@@ -91,6 +91,9 @@ ColumnLayout {
                     const chosen = root.addable[addPicker.currentIndex];
                     if (chosen)
                         HyprInput.addLayout(chosen.code);
+                    // The one added leaves the list, and the place it held
+                    // would name another layout, or none past the end.
+                    addPicker.currentIndex = 0;
                 }
             }
         }

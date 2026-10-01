@@ -1297,5 +1297,8 @@
   "Could not move to the trash": "Не удалось переместить в корзину",
   "Allow launching": "Разрешить запуск",
   "Replace %1 files?": "Заменить файлы (%1)?",
-  "Files with these names already exist: %1. Replacing them will overwrite their contents.": "Файлы с такими именами уже есть: %1. Если их заменить, их содержимое будет перезаписано."
+  "Files with these names already exist: %1. Replacing them will overwrite their contents.": "Файлы с такими именами уже есть: %1. Если их заменить, их содержимое будет перезаписано.",
+  "The shell is not answering, so this cannot be changed now": "Оболочка не отвечает, поэтому сейчас это не изменить",
+  "The choice did not take: %1": "Выбор не применился: %1",
+  "the helper failed": "помощник завершился с ошибкой"
 }

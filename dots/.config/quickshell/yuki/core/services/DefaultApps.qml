@@ -28,6 +28,8 @@ Singleton {
     property bool ready: false
     property bool busy: readProcess.running || writeProcess.running
     property string error: ""
+    /** Why the last choice did not take, kept past the reading that follows it. */
+    property string assignError: ""
 
     /** Asked for by a page that is about to show this. Reads once. */
     function load() {
@@ -49,6 +51,7 @@ Singleton {
      * cannot write an association that fails the moment it is used.
      */
     function assign(groupKey, applicationId) {
+        root.assignError = "";
         writeProcess.running = false;
         writeProcess.command = ["python3", root.helper, "set", groupKey, applicationId];
         writeProcess.running = true;
@@ -75,6 +78,18 @@ Singleton {
 
     Process {
         id: writeProcess
-        onExited: root.refresh()
+        stdout: StdioCollector {
+            id: writeOutput
+        }
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                let reason = "";
+                try {
+                    reason = JSON.parse(writeOutput.text).error ?? "";
+                } catch (parseError) {}
+                root.assignError = Translation.tr("The choice did not take: %1").arg(reason || Translation.tr("the helper failed"));
+            }
+            root.refresh();
+        }
     }
 }

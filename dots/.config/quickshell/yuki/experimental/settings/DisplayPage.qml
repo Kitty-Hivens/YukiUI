@@ -179,11 +179,22 @@ ColumnLayout {
     }
     onSelectedNameChanged: root.readShell()
 
-    // Only while someone is looking: the service polls the compositor.
+    // Leaving the page takes back how HDR content was being previewed: kept,
+    // the screen went on showing values the config did not have, and the page
+    // came back with no way to see or discard the difference.
+    Component.onDestruction: {
+        Displays.discardSdrPreview();
+        Displays.polling = false;
+    }
+
+    // Only while someone is looking: the service polls the compositor. Not
+    // put back when the page goes, which would leave it polling for as long as
+    // the window stays open.
     Binding {
         target: Displays
         property: "polling"
         value: root.Window.window?.active ?? true
+        restoreMode: Binding.RestoreNone
     }
 
     Connections {
@@ -362,8 +373,9 @@ ColumnLayout {
                         function onEditingFinished() {
                             if (/^\d{1,2}:\d{2}$/.test(fromField.text))
                                 Config.options.light.night.from = fromField.text;
-                            else
-                                fromField.text = Config.options.light.night.from;
+                            // Bound again either way: written over, the field
+                            // stopped following the config.
+                            fromField.text = Qt.binding(() => Config.options.light.night.from);
                         }
                     }
                 }
@@ -378,8 +390,7 @@ ColumnLayout {
                         function onEditingFinished() {
                             if (/^\d{1,2}:\d{2}$/.test(toField.text))
                                 Config.options.light.night.to = toField.text;
-                            else
-                                toField.text = Config.options.light.night.to;
+                            toField.text = Qt.binding(() => Config.options.light.night.to);
                         }
                     }
                 }
@@ -616,10 +627,15 @@ ColumnLayout {
             elevation: 2
         }
 
+        // Taken before the window's own Escape, which would close it.
+        Shortcut {
+            sequence: "Escape"
+            enabled: keep.visible
+            onActivated: Displays.revert()
+        }
+
         contentItem: ColumnLayout {
             spacing: ExLooks.spacing.m
-
-            Keys.onEscapePressed: Displays.revert()
 
             ExText {
                 Layout.fillWidth: true

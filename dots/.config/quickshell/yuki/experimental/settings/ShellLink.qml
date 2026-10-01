@@ -21,14 +21,42 @@ QtObject {
     property int notificationCount: 0
     /** Whether the shell answered the last time it was asked. */
     property bool reachable: true
+    /**
+     * Whether anyone is looking: the window holds focus. Read only then, and
+     * at once when it comes back, rather than three processes every second and
+     * a half for as long as the window is open, in front or not.
+     */
+    property bool watching: true
+    onWatchingChanged: {
+        if (root.watching)
+            root.reader.running = true;
+    }
 
     readonly property string shell: Quickshell.shellPath("shell.qml")
 
+    /**
+     * Asks the shell for a change. The switch has moved already, so it answers
+     * under the finger; a shell that does not answer puts it back by the
+     * reading that follows, which also says the shell is out of reach.
+     */
     function call(target: string, fn: string, args) {
-        Quickshell.execDetached(["qs", "-p", root.shell, "ipc", "call", target, fn, ...(args ?? []).map(arg => String(arg))]);
-        poll.restart();
-        // Read back a moment later, so the switch follows what happened.
-        settle.restart();
+        const caller = callComponent.createObject(root, {
+            command: ["qs", "-p", root.shell, "ipc", "call", target, fn, ...(args ?? []).map(arg => String(arg))]
+        });
+        caller.running = true;
+    }
+
+    readonly property Component callComponent: Component {
+        Process {
+            id: caller
+            onExited: exitCode => {
+                if (exitCode !== 0)
+                    root.reachable = false;
+                // Read back, so the switch follows what happened.
+                root.reader.running = true;
+                caller.destroy();
+            }
+        }
     }
 
     function setKeepAwake(on: bool) {
@@ -53,8 +81,13 @@ QtObject {
             onStreamFinished: {
                 const lines = answers.text.trim().split("\n");
                 root.reachable = lines.length >= 3;
-                if (!root.reachable)
+                if (!root.reachable) {
+                    // Nothing to follow: what was flipped in advance goes back
+                    // to off, which is what an unreachable shell is doing.
+                    root.keepAwake = false;
+                    root.doNotDisturb = false;
                     return;
+                }
                 root.keepAwake = lines[0].trim() === "inhibiting";
                 root.doNotDisturb = lines[1].trim() === "on";
                 root.notificationCount = parseInt(lines[2].trim()) || 0;
@@ -63,15 +96,10 @@ QtObject {
     }
 
     readonly property Timer poll: Timer {
-        running: true
+        running: root.watching
         repeat: true
         triggeredOnStart: true
-        interval: 1500
-        onTriggered: root.reader.running = true
-    }
-
-    readonly property Timer settle: Timer {
-        interval: 300
+        interval: 4000
         onTriggered: root.reader.running = true
     }
 }

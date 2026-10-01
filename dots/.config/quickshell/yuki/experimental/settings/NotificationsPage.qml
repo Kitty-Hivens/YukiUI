@@ -19,7 +19,8 @@ ColumnLayout {
         Layout.fillWidth: true
         glyph: root.shell?.doNotDisturb ? "notifications_off" : "notifications"
         text: Translation.tr("Do not disturb")
-        description: Translation.tr("Notifications are kept without popping up")
+        description: root.shell?.reachable ?? true ? Translation.tr("Notifications are kept without popping up")
+            : Translation.tr("The shell is not answering, so this cannot be changed now")
 
         // The shell's notification server, asked across: a window with one of
         // its own would take the bus over when the shell restarts.

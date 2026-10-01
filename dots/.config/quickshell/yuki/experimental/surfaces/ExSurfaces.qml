@@ -24,11 +24,13 @@ QtObject {
             return;
         const start = page.length > 0 ? page : (surface === "appearance" ? "personalization" : "");
         const path = Quickshell.shellPath(root.entry);
-        // The page travels in the environment, which is where the window reads it.
-        if (start.length > 0)
-            Quickshell.execDetached(["env", `YUKIUI_SETTINGS_PAGE=${start}`, "qs", "-p", path]);
-        else
-            Quickshell.execDetached(["qs", "-p", path]);
+        // A window already open is brought up on the page asked for. Another
+        // process would hold a second copy of the display state and write the
+        // config alongside the first. Otherwise one is started, the page
+        // travelling in the environment, which is where the window reads it.
+        Quickshell.execDetached(["sh", "-c",
+            "qs -p \"$1\" ipc call settingsWindow present \"$2\" >/dev/null 2>&1 || YUKIUI_SETTINGS_PAGE=\"$2\" exec qs -n -p \"$1\"",
+            "yuki-settings", path, start]);
     }
 
     readonly property Connections requests: Connections {

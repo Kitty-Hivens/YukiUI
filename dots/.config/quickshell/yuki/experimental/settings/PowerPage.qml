@@ -91,7 +91,8 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "coffee"
             text: Translation.tr("Keep awake")
-            description: Translation.tr("Nothing below happens while this is on")
+            description: root.shell?.reachable ?? true ? Translation.tr("Nothing below happens while this is on")
+                : Translation.tr("The shell is not answering, so this cannot be changed now")
 
             // Held by the shell, not by this window.
             ExSwitch {

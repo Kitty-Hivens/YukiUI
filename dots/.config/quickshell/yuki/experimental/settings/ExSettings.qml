@@ -50,6 +50,7 @@ Item {
 
     ShellLink {
         id: shellLink
+        watching: root.Window.active
     }
 
     RowLayout {

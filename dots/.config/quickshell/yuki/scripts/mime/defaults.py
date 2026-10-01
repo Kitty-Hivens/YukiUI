@@ -238,7 +238,12 @@ def set_group(key: str, entry_id: str) -> dict:
     wanted = [t for t in group["types"] if t in entries[entry_id]["types"]]
     if not wanted:
         return {"error": f"{entry_id} declares none of the types in {key}"}
-    subprocess.run(["xdg-mime", "default", entry_id] + wanted, check=False, timeout=15)
+    try:
+        done = subprocess.run(["xdg-mime", "default", entry_id] + wanted, capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return {"error": f"xdg-mime did not run: {error}"}
+    if done.returncode != 0:
+        return {"error": (done.stderr or done.stdout).strip() or f"xdg-mime exited with {done.returncode}"}
     return {"group": key, "application": entry_id, "types": wanted}
 
 
@@ -253,7 +258,9 @@ def main() -> int:
     payload = report() if args.command == "report" else set_group(args.group, args.application)
     json.dump(payload, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
-    return 0
+    # A refusal is still reported as JSON, and also by the exit status, so a
+    # caller that only looks at that does not take it for success.
+    return 1 if "error" in payload else 0
 
 
 if __name__ == "__main__":

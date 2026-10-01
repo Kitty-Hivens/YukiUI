@@ -210,6 +210,18 @@ ColumnLayout {
         glyph: "error"
         text: DefaultApps.error
     }
+    SettingsCard {
+        Layout.fillWidth: true
+        visible: DefaultApps.assignError.length > 0
+        glyph: "error"
+        text: DefaultApps.assignError
+
+        ExButton {
+            kind: "control"
+            text: Translation.tr("Got it")
+            onClicked: DefaultApps.assignError = ""
+        }
+    }
     ExText {
         visible: !DefaultApps.ready && DefaultApps.error.length === 0
         Layout.leftMargin: ExLooks.spacing.l
