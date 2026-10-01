@@ -223,6 +223,35 @@ function isContiguous(entries) {
     return seen.length === active.length;
 }
 
+/**
+ * Keep the others against an output whose size just changed.
+ *
+ * A new scale, mode or rotation grows or shrinks an output about its top left
+ * corner, which opens a gap to whatever sat past its right or bottom edge, or
+ * pushes into it. Everything that started at or past that edge moves by the
+ * change, the way Windows keeps a row of displays together.
+ */
+function keepTogether(entries, name, before) {
+    var changed = entries.find(function (entry) { return entry.name === name; });
+    if (!changed || !changed.enabled || !before)
+        return entries.slice();
+    var old = rectOf(before);
+    var now = rectOf(changed);
+    var dx = now.width - old.width;
+    var dy = now.height - old.height;
+    if (dx === 0 && dy === 0)
+        return entries.slice();
+    return entries.map(function (entry) {
+        if (entry.name === name || !entry.enabled)
+            return entry;
+        var shiftX = entry.x >= old.x + old.width ? dx : 0;
+        var shiftY = entry.y >= old.y + old.height ? dy : 0;
+        if (shiftX === 0 && shiftY === 0)
+            return entry;
+        return Object.assign({}, entry, { x: entry.x + shiftX, y: entry.y + shiftY });
+    });
+}
+
 function modeSupported(entry, availableModes) {
     if (!availableModes)
         return false;
@@ -246,5 +275,6 @@ if (typeof module !== "undefined")
         resolveOverlap: resolveOverlap,
         findOverlap: findOverlap,
         isContiguous: isContiguous,
+        keepTogether: keepTogether,
         modeSupported: modeSupported
     };

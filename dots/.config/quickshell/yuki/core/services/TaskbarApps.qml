@@ -121,6 +121,118 @@ Singleton {
         return entry;
     }
 
+    // What a taskbar does, as opposed to how it looks. Every environment that has
+    // one draws it its own way and asks here what to show and what a click means,
+    // so the same application behaves the same under any of them.
+
+    function addressOf(toplevel): string {
+        return HyprlandData.clientForToplevel(toplevel)?.address ?? "";
+    }
+
+    /** Where a window belongs: its workspace, or the one it goes back to while minimised. */
+    function workspaceOf(toplevel): int {
+        const client = HyprlandData.clientForToplevel(toplevel);
+        if (!client)
+            return -1;
+        const origin = Minimize.originOf(client);
+        return origin > 0 ? origin : client.workspace.id;
+    }
+
+    function isMinimized(toplevel): bool {
+        return Minimize.isMinimized(root.addressOf(toplevel));
+    }
+
+    function windowsOn(entry, workspaceId: int): var {
+        return entry.toplevels.filter(toplevel => root.workspaceOf(toplevel) === workspaceId);
+    }
+
+    /**
+     * What to show for one workspace: every pinned application, and the others
+     * that have a window there, minimised ones included. Each comes with the
+     * windows it has on that workspace, in the order of `apps`, pinned first.
+     */
+    function appsOn(workspaceId: int): var {
+        const shown = [];
+        for (const entry of root.apps) {
+            if (entry.appId === "SEPARATOR")
+                continue;
+            const windows = root.windowsOn(entry, workspaceId);
+            if (!entry.pinned && windows.length === 0)
+                continue;
+            shown.push({
+                appId: entry.appId,
+                entry: entry,
+                pinned: entry.pinned,
+                windows: windows
+            });
+        }
+        return shown;
+    }
+
+    function launch(appId: string) {
+        AppSearch.entryFor(appId)?.execute();
+    }
+
+    /**
+     * Gives a window focus and raises it.
+     *
+     * Not through the toplevel's own activate(): Hyprland 0.56 ignores that
+     * request whatever focus_on_activate says, so a click on a window that was
+     * not in front did nothing at all, and cycling a group never left the
+     * window it started on. The compositor's own dispatchers do it, the same
+     * way a minimised window is put back. A window on another workspace brings
+     * that workspace with it.
+     */
+    function focusWindow(toplevel) {
+        const address = root.addressOf(toplevel);
+        if (!/^0x[0-9a-f]+$/.test(address))
+            return;
+        const target = `window = "address:${address}"`;
+        Quickshell.execDetached(["hyprctl", "eval",
+            `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.bring_to_top({ ${target} }))`]);
+    }
+
+    /** Asks a window to close, through the compositor like focusing it. */
+    function closeWindow(toplevel) {
+        const address = root.addressOf(toplevel);
+        if (!/^0x[0-9a-f]+$/.test(address))
+            return;
+        Quickshell.execDetached(["hyprctl", "eval", `hl.dispatch(hl.dsp.window.close({ window = "address:${address}" }))`]);
+    }
+
+    /**
+     * A click on an application with one window: bring it up, or put it away
+     * when it is already the one in front. Putting away needs minimising, and
+     * an environment without it only ever brings windows up.
+     */
+    function toggleWindow(toplevel) {
+        const address = root.addressOf(toplevel);
+        if (root.isMinimized(toplevel))
+            Minimize.restore(address);
+        else if (toplevel.activated && Minimize.enabled)
+            Minimize.minimize(address);
+        else
+            root.focusWindow(toplevel);
+    }
+
+    /** Brings a window to the front, putting it back first if it was minimised. */
+    function bringUp(toplevel) {
+        if (root.isMinimized(toplevel))
+            Minimize.restore(root.addressOf(toplevel));
+        else
+            root.focusWindow(toplevel);
+    }
+
+    /** Brings up the window after the one in front. */
+    function cycle(windows) {
+        if (windows.length === 0)
+            return;
+        // A minimised window can keep its activated flag once focus is let go
+        // of, and counting it as the one in front would skip the real one.
+        const current = windows.findIndex(toplevel => toplevel.activated && !root.isMinimized(toplevel));
+        root.bringUp(windows[(current + 1) % windows.length]);
+    }
+
     component TaskbarAppEntry: QtObject {
         id: wrapper
         required property string appId

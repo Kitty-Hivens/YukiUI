@@ -61,6 +61,48 @@ Singleton {
         restoreTimer.restart();
     }
 
+    /**
+     * Makes a panel that holds the keyboard safe to let go of it.
+     *
+     * When a panel stops taking keys, Hyprland hands focus back to the window
+     * that had it last. With the pointer over a surface that takes no keys, the
+     * dock or the panel still on its way out, it does so without asking whether
+     * that window is on a workspace anyone can see, and focusing a window brings
+     * its workspace back: switch workspace while the launcher is open, close it,
+     * and the screen jumps back to where the launcher was opened. With the
+     * pointer anywhere else the keyboard is left with a window nobody can see.
+     *
+     * So when that window is out of sight, focus is let go of before the panel
+     * lets go (this needs the minimize plugin), and handed afterwards to the
+     * window last used on the workspace on screen. Returns whether it acted, so
+     * the panel knows to give the compositor a moment before it lets go, and to
+     * call handOver once it has.
+     */
+    property string handOverTo: ""
+
+    function beforeLettingGo(): bool {
+        const last = HyprlandData.windowList.find(win => win.focusHistoryID === 0);
+        // A special workspace is left alone: whether it is showing is not
+        // something the monitors report as it changes.
+        if (!last || last.workspace.id < 0)
+            return false;
+        if (Hyprland.monitors.values.some(monitor => monitor.activeWorkspace?.id === last.workspace.id))
+            return false;
+        const onScreen = Hyprland.focusedMonitor?.activeWorkspace?.id ?? -1;
+        const next = HyprlandData.windowList
+            .filter(win => win.workspace.id === onScreen && win.focusHistoryID >= 0)
+            .sort((a, b) => a.focusHistoryID - b.focusHistoryID)[0] ?? null;
+        root.handOverTo = next?.address ?? "";
+        Quickshell.execDetached(["hyprctl", "eval", "if hl.plugin.minimize and hl.plugin.minimize.reset_focus then hl.plugin.minimize.reset_focus() end"]);
+        return true;
+    }
+
+    function handOver() {
+        if (root.handOverTo.length > 0)
+            Hyprland.dispatch(`hl.dsp.focus({ window = "address:${root.handOverTo}" })`);
+        root.handOverTo = "";
+    }
+
     // Waited out rather than done at once: the panel is still on its way off
     // screen, and asking for focus while it is up hands it straight back.
     Timer {
