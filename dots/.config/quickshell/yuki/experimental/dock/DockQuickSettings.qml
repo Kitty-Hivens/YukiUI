@@ -30,7 +30,7 @@ ExPopup {
     }
 
     /** Which switches there are, in their order. Changes only when one comes or goes. */
-    readonly property var tileKeys: ["wifi", BluetoothStatus.available ? "bluetooth" : "", "nightLight", "doNotDisturb", "powerMode", "darkTheme", "keepAwake"].filter(key => key.length > 0)
+    readonly property var tileKeys: ["wifi", BluetoothStatus.available ? "bluetooth" : "", "nightLight", "doNotDisturb", "powerMode", "keepAwake"].filter(key => key.length > 0)
 
     /** What a switch shows, read live from the system. */
     function tileInfo(key: string): var {
@@ -69,14 +69,6 @@ ExPopup {
                 subtitle: root.powerProfileName,
                 checked: PowerProfiles.profile !== PowerProfile.Balanced
             };
-        // The system's mode, which the shell and the applications both follow.
-        if (key === "darkTheme")
-            return {
-                glyph: "dark_mode",
-                text: Translation.tr("Dark theme"),
-                subtitle: ExLooks.dark ? Translation.tr("On") : Translation.tr("Off"),
-                checked: ExLooks.dark
-            };
         return {
             glyph: "coffee",
             text: Translation.tr("Keep awake"),
@@ -96,8 +88,6 @@ ExPopup {
             Notifications.silent = !Notifications.silent;
         else if (key === "powerMode")
             root.nextPowerProfile();
-        else if (key === "darkTheme")
-            Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", ExLooks.dark ? "light" : "dark", "--noswitch"]);
         else if (key === "keepAwake")
             Idle.toggleInhibit();
     }
