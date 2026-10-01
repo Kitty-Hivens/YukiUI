@@ -3,6 +3,13 @@
 -- A desktop of overlapping windows, not a tiling one: everything opens floating.
 hl.window_rule({ match = { class = ".*" }, float = true })
 
+-- With nothing tiled, the key that switches a window between floating and
+-- tiled maximises it instead and puts it back where it was, the way a double
+-- click on a title bar does on Windows. Read after the shared keys, so this
+-- one replaces theirs while the environment is up.
+hl.unbind("SUPER + ALT + Space")
+hl.bind("SUPER + ALT + Space", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }), { description = "Window: Maximize/Restore" })
+
 -- Windows come back where they were left.
 --
 -- On Wayland an application cannot place its own window, so remembering where
