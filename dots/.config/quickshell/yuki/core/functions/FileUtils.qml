@@ -56,6 +56,22 @@ Singleton {
     }
 
     /**
+     * A local path as a URL an Image or a FileView can be given.
+     *
+     * Written as "file://" + path, a "#" or "?" in a name started a fragment or
+     * a query, and "%" an escape, so the file was not found. Each segment is
+     * percent-encoded instead. Something that is a URL already is left alone.
+     * @param {string} path
+     * @returns {string}
+     */
+    function fileUrl(path) {
+        const s = typeof path === "string" ? path : String(path ?? "");
+        if (s.length === 0 || s.includes("://"))
+            return s;
+        return "file://" + s.split("/").map(encodeURIComponent).join("/");
+    }
+
+    /**
      * Returns the parent directory of a given file path
      * @param {string} str
      * @returns {string}

@@ -92,7 +92,13 @@ Item {
     Timer {
         id: seize
         interval: 60
-        onTriggered: root.seizing = false
+        onTriggered: {
+            root.seizing = false;
+            // Focus lost while the keys were being seized was not acted on
+            // then, so it is now.
+            if (!root.windowActive)
+                root.clickedLast = false;
+        }
     }
 
     /** Paths picked, as keys of an object for a quick look-up. */
@@ -102,6 +108,8 @@ Item {
     property point bandStart: Qt.point(0, 0)
     property point bandEnd: Qt.point(0, 0)
     property bool banding: false
+    /** What was picked before a band drawn with Ctrl, which the band adds to. */
+    property var bandBase: []
     readonly property rect band: Qt.rect(Math.min(root.bandStart.x, root.bandEnd.x), Math.min(root.bandStart.y, root.bandEnd.y),
         Math.abs(root.bandEnd.x - root.bandStart.x), Math.abs(root.bandEnd.y - root.bandStart.y))
 
@@ -152,13 +160,23 @@ Item {
     onLayoutChanged: Qt.callLater(root.keepNewPlaces)
 
     function keepNewPlaces() {
-        if (!root.placesRead)
+        // Not before the window has its size: on a grid of one cell every
+        // name was given that cell, and kept it.
+        if (!root.placesRead || root.awaitingSort || root.width <= 0 || root.height <= 0)
             return;
         let changed = false;
         const next = Object.assign({}, root.places);
         for (const name of root.names) {
-            if (next[name] === undefined && root.layout[name]) {
-                next[name] = root.layout[name];
+            const cell = root.layout[name];
+            if (!cell)
+                continue;
+            const kept = next[name];
+            // A cell on the grid that another name holds was lost to it, and
+            // the one this name was given instead is the one to keep. A cell
+            // off the grid is kept for when the grid is large enough again.
+            const lost = kept && kept[0] < root.columns && kept[1] < root.rows && (kept[0] !== cell[0] || kept[1] !== cell[1]);
+            if (kept === undefined || lost) {
+                next[name] = cell;
                 changed = true;
             }
         }
@@ -174,18 +192,72 @@ Item {
         Qt.callLater(root.keepNewPlaces);
     }
 
+    /**
+     * A new sorting asked for and not delivered yet.
+     *
+     * The folder is sorted again on a thread of its own and the new order
+     * arrives later. Laid out at once, the icons took their cells in the old
+     * order and kept them, so the new one never showed until "Arrange icons".
+     */
+    property bool awaitingSort: false
+
     Connections {
         target: root.options
         function onSortByChanged() {
+            root.awaitingSort = true;
+            root.places = {};
+            sortTimeout.restart();
+        }
+    }
+
+    // In case the new order never announces itself.
+    Timer {
+        id: sortTimeout
+        interval: 2000
+        onTriggered: {
+            if (!root.awaitingSort)
+                return;
+            root.awaitingSort = false;
+            root.refreshNames(false);
             root.arrange();
         }
     }
 
-    function refreshNames() {
+    function refreshNames(sorted: bool) {
         const out = [];
         for (let i = 0; i < files.count; i++)
             out.push(files.get(i, "fileName"));
+        // One name gone and one come in the same change is a rename. The new
+        // name keeps the old one's cell, and its pick, rather than moving to
+        // the first free cell.
+        const gone = root.names.filter(name => !out.includes(name));
+        const added = out.filter(name => !root.names.includes(name));
+        if (gone.length === 1 && added.length === 1 && !root.awaitingSort) {
+            const [from, to] = [gone[0], added[0]];
+            if (root.places[from] && !root.places[to]) {
+                const next = Object.assign({}, root.places);
+                next[to] = next[from];
+                delete next[from];
+                root.places = next;
+                saveLater.restart();
+            }
+            if (root.picked[root.pathOf(from)]) {
+                const picked = Object.assign({}, root.picked);
+                delete picked[root.pathOf(from)];
+                picked[root.pathOf(to)] = true;
+                root.picked = picked;
+            }
+            if (root.cursorName === from)
+                root.cursorName = to;
+        }
+        if (sorted && root.awaitingSort) {
+            root.awaitingSort = false;
+            sortTimeout.stop();
+            root.places = {};
+        }
         root.names = out;
+        if (!root.awaitingSort)
+            Qt.callLater(root.keepNewPlaces);
     }
 
     function cellRectOf(cell): rect {
@@ -243,13 +315,22 @@ Item {
     Timer {
         id: saveLater
         interval: 400
-        onTriggered: {
-            const kept = {};
-            for (const name of root.names)
-                if (root.places[name])
-                    kept[name] = root.places[name];
-            placesView.setText(JSON.stringify({ places: kept }, null, 2));
-        }
+        onTriggered: root.savePlaces()
+    }
+
+    function savePlaces() {
+        const kept = {};
+        for (const name of root.names)
+            if (root.places[name])
+                kept[name] = root.places[name];
+        placesView.setText(JSON.stringify({ places: kept }, null, 2));
+    }
+
+    // Moved to another screen, this one is torn down, and a move made just
+    // before would otherwise be lost with it.
+    Component.onDestruction: {
+        if (saveLater.running)
+            root.savePlaces();
     }
 
     // --- Picking ------------------------------------------------------------
@@ -310,7 +391,7 @@ Item {
     function drop() {
         const paths = root.pickedPaths();
         if (root.dropFolder.length > 0) {
-            Quickshell.execDetached(["gio", "move", ...paths, root.dropFolder]);
+            root.runFileJob(["gio", "move", ...paths, root.dropFolder], Translation.tr("Could not move"));
             root.pick([]);
             root.endDrag();
             return;
@@ -345,25 +426,105 @@ Item {
 
     // --- Doing things -------------------------------------------------------
 
-    function open(path: string, isDesktopFile: bool) {
-        // A launcher on the desktop is run, anything else goes to what opens it.
-        if (isDesktopFile)
+    /**
+     * Launchers allowed to run: those with the executable bit, as GNOME and KDE
+     * ask of one outside the system's own folders. Anything else on the desktop
+     * can carry a Name and an Icon of its choosing, so a downloaded
+     * "invoice.pdf.desktop" drew itself as a PDF and ran its command on a
+     * double click. One not allowed shows as the file it is and opens as text.
+     */
+    property var trusted: ({})
+
+    function setTrusted(path: string, yes: bool) {
+        if ((root.trusted[path] === true) === yes)
+            return;
+        const next = Object.assign({}, root.trusted);
+        next[path] = yes;
+        root.trusted = next;
+    }
+
+    function isRunnable(path: string): bool {
+        return path.endsWith(".desktop") && root.trusted[path] === true;
+    }
+
+    function allowLaunching(paths) {
+        root.runFileJob(["chmod", "u+x", ...paths], Translation.tr("Could not allow launching"), () => {
+            for (const path of paths)
+                root.setTrusted(path, true);
+        });
+    }
+
+    function open(path: string) {
+        // A launcher allowed to run is run, anything else goes to what opens it.
+        if (root.isRunnable(path))
             Quickshell.execDetached(["gio", "launch", path]);
         else
             Quickshell.execDetached(["xdg-open", path]);
     }
 
+    function openAll(paths) {
+        for (const path of paths)
+            root.open(path);
+    }
+
     function openPicked() {
-        for (const path of root.pickedPaths())
-            root.open(path, path.endsWith(".desktop"));
+        root.openAll(root.pickedPaths());
+    }
+
+    function trash(paths) {
+        if (paths.length === 0)
+            return;
+        root.runFileJob(["gio", "trash", ...paths], Translation.tr("Could not move to the trash"));
+        root.pick([]);
     }
 
     function trashPicked() {
-        const paths = root.pickedPaths();
-        if (paths.length === 0)
-            return;
-        Quickshell.execDetached(["gio", "trash", ...paths]);
-        root.pick([]);
+        root.trash(root.pickedPaths());
+    }
+
+    /**
+     * Runs a command on files and says so when it fails: a name already taken
+     * in the folder dropped on, or a filesystem with no trash, used to leave the
+     * icon where it was with no word why.
+     */
+    function runFileJob(command, failure: string, done) {
+        const job = fileJob.createObject(root, { command: command, failure: failure, done: done ?? null });
+        job.running = true;
+    }
+
+    Component {
+        id: fileJob
+
+        Process {
+            id: job
+
+            property string failure: ""
+            property var done: null
+            property int code: -1
+            property bool streamDone: false
+
+            function finish() {
+                if (job.code < 0 || !job.streamDone)
+                    return;
+                if (job.code === 0)
+                    job.done?.();
+                else
+                    Quickshell.execDetached(["notify-send", "-a", Translation.tr("Desktop"), job.failure, jobErrors.text.trim()]);
+                job.destroy();
+            }
+
+            stderr: StdioCollector {
+                id: jobErrors
+                onStreamFinished: {
+                    job.streamDone = true;
+                    job.finish();
+                }
+            }
+            onExited: exitCode => {
+                job.code = exitCode;
+                job.finish();
+            }
+        }
     }
 
     /** Moves the pick to the icon nearest the next cell that way. */
@@ -479,10 +640,10 @@ Item {
         }
         caseSensitive: false
 
-        onCountChanged: root.refreshNames()
+        onCountChanged: root.refreshNames(false)
         onStatusChanged: {
             if (files.status === FolderListModel.Ready)
-                root.refreshNames();
+                root.refreshNames(true);
         }
     }
 
@@ -502,6 +663,7 @@ Item {
             menu.close();
             if (!(event.modifiers & Qt.ControlModifier))
                 root.pick([]);
+            root.bandBase = root.pickedPaths();
             root.bandStart = Qt.point(event.x, event.y);
             root.bandEnd = root.bandStart;
             root.banding = true;
@@ -510,14 +672,14 @@ Item {
             if (!root.banding)
                 return;
             root.bandEnd = Qt.point(event.x, event.y);
-            const crossed = [];
+            const crossed = root.bandBase.slice();
             const band = root.band;
             for (let i = 0; i < icons.count; i++) {
                 const icon = icons.itemAt(i);
                 if (!icon)
                     continue;
                 const cell = root.cellRectOf(icon.cell);
-                if (cell.x < band.x + band.width && cell.x + cell.width > band.x && cell.y < band.y + band.height && cell.y + cell.height > band.y)
+                if (cell.x < band.x + band.width && cell.x + cell.width > band.x && cell.y < band.y + band.height && cell.y + cell.height > band.y && !crossed.includes(icon.filePath))
                     crossed.push(icon.filePath);
             }
             root.pick(crossed);
@@ -543,6 +705,7 @@ Item {
             required property bool fileIsDir
 
             readonly property bool isDesktopFile: !icon.fileIsDir && icon.fileName.endsWith(".desktop")
+            readonly property bool runnable: icon.isDesktopFile && root.trusted[icon.filePath] === true
             readonly property bool picked: root.picked[icon.filePath] === true
             readonly property bool moving: root.dragging && icon.picked
             readonly property bool dropTarget: root.dragging && root.dropFolder === icon.filePath
@@ -550,8 +713,8 @@ Item {
             // the file, since it is not an installed application.
             property string launcherName: ""
             property string launcherIcon: ""
-            readonly property string label: icon.isDesktopFile && icon.launcherName.length > 0 ? icon.launcherName
-                : icon.isDesktopFile ? icon.fileName.slice(0, -".desktop".length)
+            readonly property string label: icon.runnable && icon.launcherName.length > 0 ? icon.launcherName
+                : icon.runnable ? icon.fileName.slice(0, -".desktop".length)
                 : icon.fileName
 
             readonly property var cell: root.layout[icon.fileName] ?? [0, 0]
@@ -563,11 +726,28 @@ Item {
             width: icon.cellRect.width
             height: icon.cellRect.height
 
+            // Asked when the icon appears and whenever the launcher is read
+            // again. "Allow launching" marks it allowed itself.
+            Process {
+                id: trustCheck
+                command: ["test", "-x", icon.filePath]
+                onExited: exitCode => root.setTrusted(icon.filePath, exitCode === 0)
+            }
+            Component.onCompleted: {
+                if (icon.isDesktopFile)
+                    trustCheck.running = true;
+            }
+
             FileView {
                 id: launcherFile
 
                 path: icon.isDesktopFile ? icon.filePath : ""
+                // The roles of a delegate change one at a time when the rows
+                // shift, so the path can name a file for a moment that is not
+                // a launcher, or no longer there.
+                printErrors: false
                 onLoaded: {
+                    icon.launcherIcon = "";
                     let inEntry = false;
                     const language = (Translation.languageCode || "").split("_")[0];
                     let name = "";
@@ -588,6 +768,8 @@ Item {
                             icon.launcherIcon = trimmed.slice(5);
                     }
                     icon.launcherName = localName || name;
+                    if (!trustCheck.running)
+                        trustCheck.running = true;
                 }
             }
 
@@ -616,7 +798,7 @@ Item {
                     if (event.button === Qt.RightButton) {
                         if (!icon.picked)
                             root.pick([icon.filePath]);
-                        menu.showAt(mouse.pressAt.x, mouse.pressAt.y, { path: icon.filePath, isDir: icon.fileIsDir, isDesktopFile: icon.isDesktopFile });
+                        menu.showAt(mouse.pressAt.x, mouse.pressAt.y, { path: icon.filePath, isDir: icon.fileIsDir });
                     } else if (event.modifiers & Qt.ControlModifier) {
                         root.togglePick(icon.filePath);
                     } else if (!icon.picked) {
@@ -649,7 +831,7 @@ Item {
                 onCanceled: root.endDrag()
                 onDoubleClicked: event => {
                     if (event.button === Qt.LeftButton)
-                        root.open(icon.filePath, icon.isDesktopFile);
+                        root.open(icon.filePath);
                 }
             }
 
@@ -679,26 +861,26 @@ Item {
                 Image {
                     anchors.fill: parent
                     visible: root.isPicture(icon.fileName)
-                    source: visible ? `file://${icon.filePath}` : ""
+                    source: visible ? FileUtils.fileUrl(icon.filePath) : ""
                     sourceSize: Qt.size(root.iconSize * 2, root.iconSize * 2)
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                 }
-                // A launcher its own icon.
+                // A launcher allowed to run its own icon.
                 IconImage {
                     anchors.fill: parent
-                    visible: icon.isDesktopFile
-                    source: !icon.isDesktopFile ? ""
-                        : icon.launcherIcon.startsWith("/") ? `file://${icon.launcherIcon}`
+                    visible: icon.runnable
+                    source: !icon.runnable ? ""
+                        : icon.launcherIcon.startsWith("/") ? FileUtils.fileUrl(icon.launcherIcon)
                         : Quickshell.iconPath(icon.launcherIcon.length > 0 ? icon.launcherIcon : "application-x-executable", "application-x-executable")
                 }
                 // Anything else the picture the file manager draws for it.
                 Image {
                     id: themeIcon
                     anchors.fill: parent
-                    visible: !icon.isDesktopFile && !root.isPicture(icon.fileName) && status === Image.Ready
-                    source: picture.attempt < root.iconThemeRoots.length && !icon.isDesktopFile && !root.isPicture(icon.fileName)
-                        ? `file://${root.iconThemeRoots[picture.attempt]}/${picture.themed}` : ""
+                    visible: !icon.runnable && !root.isPicture(icon.fileName) && status === Image.Ready
+                    source: picture.attempt < root.iconThemeRoots.length && !icon.runnable && !root.isPicture(icon.fileName)
+                        ? FileUtils.fileUrl(`${root.iconThemeRoots[picture.attempt]}/${picture.themed}`) : ""
                     sourceSize: Qt.size(root.iconSize * 2, root.iconSize * 2)
                     asynchronous: true
                     onStatusChanged: {
@@ -708,7 +890,7 @@ Item {
                 }
                 ExGlyph {
                     anchors.centerIn: parent
-                    visible: !icon.isDesktopFile && !root.isPicture(icon.fileName) && themeIcon.status !== Image.Ready
+                    visible: !icon.runnable && !root.isPicture(icon.fileName) && themeIcon.status !== Image.Ready
                     text: icon.fileIsDir ? "folder" : "draft"
                     size: 44
                     fill: 1
@@ -784,14 +966,21 @@ Item {
                     { text: Translation.tr("Arrange icons"), glyph: "grid_view", run: () => root.arrange() },
                     { text: Translation.tr("Open desktop folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) }
                 ];
+            // The same files the keys would act on: everything picked.
             const paths = root.pickedPaths().length > 0 ? root.pickedPaths() : [target.path];
-            return [
-                { text: Translation.tr("Open"), glyph: "open_in_new", shortcut: "Enter", run: () => root.open(target.path, target.isDesktopFile) },
+            const untrusted = paths.filter(path => path.endsWith(".desktop") && !root.isRunnable(path));
+            const list = [
+                { text: Translation.tr("Open"), glyph: "open_in_new", shortcut: "Enter", run: () => root.openAll(paths) }
+            ];
+            if (untrusted.length > 0)
+                list.push({ text: Translation.tr("Allow launching"), glyph: "verified_user", run: () => root.allowLaunching(untrusted) });
+            list.push(
                 { text: Translation.tr("Show in folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
                 { text: Translation.tr("Copy location"), glyph: "content_copy", run: () => Quickshell.clipboardText = paths.join("\n") },
                 { separator: true },
-                { text: Translation.tr("Move to trash"), glyph: "delete", shortcut: "Delete", destructive: true, run: () => Quickshell.execDetached(["gio", "trash", ...paths]) }
-            ];
+                { text: Translation.tr("Move to trash"), glyph: "delete", shortcut: "Delete", destructive: true, run: () => root.trash(paths) }
+            );
+            return list;
         }
 
         Loader {

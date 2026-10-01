@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 
 import qs.core
+import qs.core.functions
 import qs.experimental.desktop
 
 Variants {
@@ -66,7 +67,7 @@ Variants {
             property string path: ""
 
             anchors.fill: parent
-            source: path
+            source: FileUtils.fileUrl(path)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             cache: false
