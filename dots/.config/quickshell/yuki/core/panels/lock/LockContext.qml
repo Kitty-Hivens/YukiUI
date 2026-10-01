@@ -77,7 +77,14 @@ Scope {
     function tryUnlock(alsoInhibitIdle = false) {
         root.alsoInhibitIdle = alsoInhibitIdle;
         root.unlockInProgress = true;
-        pam.start();
+        // A conversation that fails once running reports it as a completion,
+        // one that cannot start says nothing at all and would leave the field
+        // disabled for good.
+        if (!pam.start()) {
+            root.unlockInProgress = false;
+            GlobalStates.screenUnlockFailed = true;
+            root.showFailure = true;
+        }
     }
 
     /**
