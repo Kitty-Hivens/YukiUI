@@ -23,9 +23,28 @@ Scope {
      * Rules elsewhere match on the first, so it is identity rather than writing.
      */
     required property string name
+    /**
+     * How long the windows stay once there is nothing left to answer, for a
+     * screen that animates its way out. None by default: they go at once.
+     */
+    property int lingerMs: 0
+    property bool lingering: false
+
+    onActiveChanged: {
+        if (!root.active && root.lingerMs > 0) {
+            root.lingering = true;
+            lingerTimer.restart();
+        }
+    }
+
+    Timer {
+        id: lingerTimer
+        interval: root.lingerMs
+        onTriggered: root.lingering = false
+    }
 
     Loader {
-        active: root.active
+        active: root.active || root.lingering
         sourceComponent: Variants {
             model: Quickshell.screens
             delegate: PanelWindow {

@@ -15,6 +15,9 @@ Scope {
 
     required property Component lockSurface
     property alias context: lockContext
+    // How long the surfaces get to animate away between the right password and
+    // the lock letting go. None by default: the lock goes at once.
+    property int releaseDelay: 0
     property Component sessionLockSurface: WlSessionLockSurface {
         id: sessionLockSurface
         color: "transparent"
@@ -72,18 +75,33 @@ Scope {
             // Unlock the keyring if configured to do so
             if (Config.options.lock.security.unlockKeyring) root.unlockKeyring(); // Async
 
-            // Unlock the screen before exiting, or the compositor will display a
-            // fallback lock you can't interact with.
-            GlobalStates.screenLocked = false;
-
-            // Reset
-            lockContext.reset();
-
-            // Post-unlock actions
-            if (lockContext.alsoInhibitIdle) {
-                lockContext.alsoInhibitIdle = false;
-                Idle.toggleInhibit(true);
+            if (root.releaseDelay > 0) {
+                lockContext.releasing = true;
+                releaseTimer.restart();
+            } else {
+                root.release();
             }
+        }
+    }
+
+    Timer {
+        id: releaseTimer
+        interval: root.releaseDelay
+        onTriggered: root.release()
+    }
+
+    function release() {
+        // Unlock the screen before exiting, or the compositor will display a
+        // fallback lock you can't interact with.
+        GlobalStates.screenLocked = false;
+
+        // Reset
+        lockContext.reset();
+
+        // Post-unlock actions
+        if (lockContext.alsoInhibitIdle) {
+            lockContext.alsoInhibitIdle = false;
+            Idle.toggleInhibit(true);
         }
     }
 

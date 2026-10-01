@@ -22,6 +22,9 @@ Scope {
     property bool fingerprintsConfigured: false
     property var targetAction: LockContext.ActionEnum.Unlock
     property bool alsoInhibitIdle: false
+    // The password was right and the lock is about to go, once the surfaces
+    // have played their way out. Only set when the lock asks for that time.
+    property bool releasing: false
 
     function resetTargetAction() {
         root.targetAction = LockContext.ActionEnum.Unlock;
@@ -39,6 +42,7 @@ Scope {
         root.resetTargetAction();
         root.clearText();
         root.unlockInProgress = false;
+        root.releasing = false;
         root.fingerAttempts = 0;
         fingerRetryTimer.stop();
         stopFingerPam();
