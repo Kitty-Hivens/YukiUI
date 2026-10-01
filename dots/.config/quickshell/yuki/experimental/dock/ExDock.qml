@@ -335,7 +335,7 @@ Scope {
 
             /** One flyout at a time: everything but the one about to open is shut. */
             function closePopups(except) {
-                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu])
+                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu])
                     if (popup !== except)
                         popup.open = false;
             }
@@ -503,6 +503,16 @@ Scope {
                     anchors.fill: parent
                     z: -1
                     pressAndHoldInterval: 450
+                    // A right click opens the dock's own menu where it landed.
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: event => {
+                        if (event.button !== Qt.RightButton)
+                            return;
+                        menuPoint.x = event.x;
+                        menuPoint.y = event.y;
+                        window.closePopups(dockMenu);
+                        dockMenu.toggle(menuPoint);
+                    }
 
                     Drag.dragType: Drag.Automatic
                     Drag.supportedActions: Qt.MoveAction
@@ -516,7 +526,7 @@ Scope {
                     }
 
                     onPressAndHold: {
-                        if (root.phase !== "")
+                        if (root.phase !== "" || !(dragArea.pressedButtons & Qt.LeftButton))
                             return;
                         window.closePopups(null);
                         // Begun while the press is still the dock's; the
@@ -548,6 +558,7 @@ Scope {
                     ExButton {
                         id: launcherButton
 
+                        visible: Config.options.experimental.dock.launcherButton
                         kind: "flat"
                         implicitWidth: ExLooks.dock.cell
                         implicitHeight: ExLooks.dock.cell
@@ -658,6 +669,22 @@ Scope {
                         }
                     }
                 }
+            }
+
+            // Where a right click on the dock landed, for its menu to come out of.
+            Item {
+                id: menuPoint
+                parent: dock
+                width: 1
+                height: 1
+            }
+
+            DockMenu {
+                id: dockMenu
+                dockWindow: window
+                dockSurface: dock
+                edge: window.edge
+                workspaceId: window.workspaceId
             }
 
             DockWindowList {

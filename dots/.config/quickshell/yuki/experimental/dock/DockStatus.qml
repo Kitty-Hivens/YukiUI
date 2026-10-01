@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
+import qs.core
 import qs.core.services
 import qs.experimental.input
 import qs.experimental.looks
@@ -62,10 +64,25 @@ Item {
         }
     }
 
+    readonly property bool showSeconds: Config.options.experimental.dock.clockSeconds
+    // Ticking every second only while seconds are asked for.
+    SystemClock {
+        id: secondsClock
+        enabled: root.showSeconds
+        precision: SystemClock.Seconds
+    }
+    /** The time as the dock shows it: the shell's format, with seconds after the minutes when asked. */
+    readonly property string time: {
+        if (!root.showSeconds)
+            return DateTime.time;
+        const format = Config.options?.time.format ?? "hh:mm";
+        return Qt.locale().toString(secondsClock.date, format.includes("ss") ? format : format.replace("mm", "mm:ss"));
+    }
+
     /** The time and what follows it, "pm" say, apart. */
     readonly property var clockParts: {
-        const at = DateTime.time.indexOf(" ");
-        return at < 0 ? [DateTime.time, ""] : [DateTime.time.slice(0, at), DateTime.time.slice(at + 1)];
+        const at = root.time.indexOf(" ");
+        return at < 0 ? [root.time, ""] : [root.time.slice(0, at), root.time.slice(at + 1)];
     }
 
     implicitWidth: zones.implicitWidth
@@ -220,14 +237,14 @@ Item {
 
                 ExText {
                     Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignRight
-                    text: root.vertical ? root.clockParts[0] : DateTime.time
+                    text: root.vertical ? root.clockParts[0] : root.time
                     role: "label"
                     elide: Text.ElideNone
                 }
                 ExText {
                     Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignRight
                     visible: text.length > 0
-                    text: root.vertical ? root.clockParts[1] : DateTime.shortDate
+                    text: root.vertical ? root.clockParts[1] : (Config.options.experimental.dock.clockDate ? DateTime.shortDate : "")
                     role: "caption"
                     dim: true
                     elide: Text.ElideNone

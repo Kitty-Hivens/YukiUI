@@ -1326,5 +1326,17 @@
   "Looking for it. Open Bluetooth on it so it can be found.": "Ищу. Откройте на нём Bluetooth, чтобы его было видно.",
   "Pairing. Compare the code on both screens.": "Сопряжение. Сверьте код на обоих экранах.",
   "Not found. Open Bluetooth on it and try again.": "Не найдено. Откройте на нём Bluetooth и попробуйте снова.",
-  "Pairing did not go through.": "Сопряжение не удалось."
+  "Pairing did not go through.": "Сопряжение не удалось.",
+  "Hide devices without a name": "Скрыть устройства без имени",
+  "Show devices without a name (%1)": "Показать устройства без имени (%1)",
+  "Show the desktop": "Показать рабочий стол",
+  "Dock settings": "Параметры дока",
+  "Dock items": "Элементы дока",
+  "Launcher button": "Кнопка лаунчера",
+  "Super opens the launcher either way": "Super открывает лаунчер в любом случае",
+  "Badges on applications": "Значки на приложениях",
+  "Unread counts and calls for attention on their buttons": "Счётчики непрочитанного и просьбы обратить внимание на их кнопках",
+  "Show seconds": "Показывать секунды",
+  "Show the date": "Показывать дату",
+  "Under the time, on a dock along the top or the bottom": "Под временем, когда док сверху или снизу"
 }

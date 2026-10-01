@@ -26,6 +26,18 @@ ColumnLayout {
     signal back
     signal settingsRequested
 
+    // What answers with nothing but its address: watches, tags, a
+    // neighbour's television, advertising beacons. Most of what a scan finds
+    // on Linux looks like that, and it buried the devices worth pairing, so
+    // it is left out unless asked for, as Windows does.
+    property bool showUnnamed: false
+    function named(device): bool {
+        const name = device?.name ?? "";
+        return name.length > 0 && !/^([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}$/.test(name);
+    }
+    readonly property var nearby: root.showUnnamed ? BluetoothStatus.unpairedDevices : BluetoothStatus.unpairedDevices.filter(device => root.named(device))
+    readonly property int unnamedCount: BluetoothStatus.unpairedDevices.length - BluetoothStatus.unpairedDevices.filter(device => root.named(device)).length
+
     // Left running, discovery keeps the radio busy with nobody looking. The
     // service holds the stop back while a pairing started here still rides on
     // the scan.
@@ -344,11 +356,18 @@ ColumnLayout {
                 text: Translation.tr("Nearby")
             }
             Repeater {
-                model: BluetoothStatus.unpairedDevices
+                model: root.nearby
                 DeviceRow {}
             }
+            ExButton {
+                visible: root.unnamedCount > 0
+                x: ExLooks.spacing.xs
+                kind: "flat"
+                text: root.showUnnamed ? Translation.tr("Hide devices without a name") : Translation.tr("Show devices without a name (%1)").arg(root.unnamedCount)
+                onClicked: root.showUnnamed = !root.showUnnamed
+            }
             ExText {
-                visible: BluetoothStatus.unpairedDevices.length === 0 && root.discovering
+                visible: root.nearby.length === 0 && root.discovering
                 leftPadding: ExLooks.spacing.m
                 rightPadding: ExLooks.spacing.m
                 width: lists.width

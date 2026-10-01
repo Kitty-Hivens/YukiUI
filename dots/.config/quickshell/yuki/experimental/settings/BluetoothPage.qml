@@ -18,6 +18,18 @@ ColumnLayout {
     property var catalogue
     property var shell
 
+    // What answers with nothing but its address: watches, tags, a
+    // neighbour's television, advertising beacons. Most of what a scan finds
+    // on Linux looks like that, and it buried the devices worth pairing, so
+    // it is left out unless asked for, as Windows does.
+    property bool showUnnamed: false
+    function named(device): bool {
+        const name = device?.name ?? "";
+        return name.length > 0 && !/^([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}$/.test(name);
+    }
+    readonly property var nearby: root.showUnnamed ? BluetoothStatus.unpairedDevices : BluetoothStatus.unpairedDevices.filter(device => root.named(device))
+    readonly property int unnamedCount: BluetoothStatus.unpairedDevices.length - BluetoothStatus.unpairedDevices.filter(device => root.named(device)).length
+
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property bool discovering: root.adapter?.discovering ?? false
 
@@ -188,11 +200,17 @@ ColumnLayout {
         visible: BluetoothStatus.enabled && (root.discovering || BluetoothStatus.unpairedDevices.length > 0)
 
         Repeater {
-            model: BluetoothStatus.unpairedDevices
+            model: root.nearby
             DeviceCard {}
         }
+        ExButton {
+            visible: root.unnamedCount > 0
+            kind: "flat"
+            text: root.showUnnamed ? Translation.tr("Hide devices without a name") : Translation.tr("Show devices without a name (%1)").arg(root.unnamedCount)
+            onClicked: root.showUnnamed = !root.showUnnamed
+        }
         ExText {
-            visible: BluetoothStatus.unpairedDevices.length === 0
+            visible: root.nearby.length === 0
             Layout.leftMargin: ExLooks.spacing.l
             text: Translation.tr("Turn the device on and put it into pairing mode")
             dim: true

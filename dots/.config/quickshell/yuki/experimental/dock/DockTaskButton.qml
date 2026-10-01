@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Widgets
 
+import qs.core
 import qs.core.services
 import qs.experimental.looks
 
@@ -123,7 +124,7 @@ Item {
     // A count in the icon's corner, or a dot when the application asks to be
     // looked at without one, the way the tray marks it.
     Rectangle {
-        visible: root.showsCount || (root.status?.urgent ?? false)
+        visible: Config.options.experimental.dock.badges && (root.showsCount || (root.status?.urgent ?? false))
         x: icon.x + icon.width - width / 2 - 2
         y: icon.y - height / 2 + 2
         width: root.showsCount ? Math.max(height, countText.implicitWidth + 8) : 10

@@ -819,6 +819,25 @@ Singleton {
                     // A sliver at the dock's far end that minimises everything on
                     // the workspace and brings it back, as on Windows.
                     property bool showDesktop: false
+                    property bool launcherButton: true
+                    // Counts and the call for attention applications put on their buttons.
+                    property bool badges: true
+                    property bool clockSeconds: false
+                    property bool clockDate: true
+                    // Out of the way until the pointer reaches its edge.
+                    property bool autoHide: false
+                    // Windows' "combine buttons and hide labels": "always" one icon per
+                    // application, "whenFull" a labelled button per window until they
+                    // no longer fit, "never" a labelled button per window.
+                    property string combine: "always"
+                    // Which windows the dock shows: "workspace" those on the
+                    // workspace on screen, "all" every one.
+                    property string windowsFrom: "workspace"
+                    // "all" a dock on every screen, "main" on the main one only.
+                    property string screens: "all"
+                    // With a dock on every screen: "all" each shows every
+                    // application, "own" each shows the windows on its screen.
+                    property string appsOn: "all"
                 }
                 property JsonObject desktop: JsonObject {
                     property bool showIcons: true

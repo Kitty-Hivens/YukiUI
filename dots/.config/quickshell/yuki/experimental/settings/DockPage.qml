@@ -6,7 +6,8 @@ import qs.core
 import qs.core.services
 import qs.experimental.looks
 
-// Where the dock stands and how.
+// Where the dock stands and how, what it holds, and how it behaves, in the
+// order Windows lays out its taskbar settings.
 ColumnLayout {
     id: root
 
@@ -68,15 +69,70 @@ ColumnLayout {
             onPicked: alignment => Config.options.experimental.dock.alignment = alignment
         }
     }
-    SettingsCard {
-        Layout.fillWidth: true
-        glyph: "desktop_windows"
-        text: Translation.tr("Show the desktop from the far corner")
-        description: Translation.tr("A sliver at the end of the dock that minimises every window, and brings them back")
 
-        ExSwitch {
-            checked: root.dock.showDesktop
-            onToggled: Config.options.experimental.dock.showDesktop = checked
+    SettingsSection {
+        Layout.fillWidth: true
+        title: Translation.tr("Dock items")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "apps"
+            text: Translation.tr("Launcher button")
+            description: Translation.tr("Super opens the launcher either way")
+
+            ExSwitch {
+                checked: root.dock.launcherButton
+                onToggled: Config.options.experimental.dock.launcherButton = checked
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "desktop_windows"
+            text: Translation.tr("Show the desktop from the far corner")
+            description: Translation.tr("A sliver at the end of the dock that minimises every window, and brings them back")
+
+            ExSwitch {
+                checked: root.dock.showDesktop
+                onToggled: Config.options.experimental.dock.showDesktop = checked
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "counter_1"
+            text: Translation.tr("Badges on applications")
+            description: Translation.tr("Unread counts and calls for attention on their buttons")
+
+            ExSwitch {
+                checked: root.dock.badges
+                onToggled: Config.options.experimental.dock.badges = checked
+            }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
+        title: Translation.tr("Clock")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "schedule"
+            text: Translation.tr("Show seconds")
+
+            ExSwitch {
+                checked: root.dock.clockSeconds
+                onToggled: Config.options.experimental.dock.clockSeconds = checked
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "calendar_today"
+            text: Translation.tr("Show the date")
+            description: Translation.tr("Under the time, on a dock along the top or the bottom")
+
+            ExSwitch {
+                checked: root.dock.clockDate
+                onToggled: Config.options.experimental.dock.clockDate = checked
+            }
         }
     }
 }
