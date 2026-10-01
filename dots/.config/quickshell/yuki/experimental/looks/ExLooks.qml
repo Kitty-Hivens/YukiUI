@@ -1,0 +1,135 @@
+pragma Singleton
+
+import QtQuick
+import Quickshell
+
+import qs.common
+
+/**
+ * Every measure and colour the experimental kit draws with.
+ *
+ * Grown out of the components rather than written ahead of them: a value
+ * appears here once a component needs it, and not before.
+ */
+Singleton {
+    id: root
+
+    /**
+     * Dark or light, as the rest of the system is: the one mode the toolkit
+     * themes follow too, so the shell and the applications never disagree, and
+     * icons an application draws for a dark panel are not lost on a light one.
+     */
+    readonly property bool dark: Appearance.m3colors.darkmode
+
+    readonly property QtObject colors: QtObject {
+        readonly property color background: root.dark ? "#1b1c21" : "#eef0f4"
+        readonly property color surface: root.dark ? "#26272d" : "#ffffff"
+        readonly property color surfaceSunken: root.dark ? "#1f2025" : "#f3f4f7"
+        readonly property color text: root.dark ? "#e9eaf0" : "#15161a"
+        readonly property color textDim: root.dark ? "#9a9daa" : "#686b76"
+        readonly property color border: root.dark ? "#363840" : "#e4e6ec"
+        readonly property color hairline: root.dark ? "#1fffffff" : "#0f000000"
+
+        readonly property color accent: root.dark ? "#6179f2" : "#4f6bed"
+        readonly property color accentInk: "#ffffff"
+        readonly property color tonal: root.dark ? "#2d3456" : "#e7ebfd"
+        readonly property color tonalInk: root.dark ? "#c6cffd" : "#2c45b8"
+        /** A step darker than tonal, for what sits behind a tonal plate. */
+        readonly property color tonalDeep: root.dark ? "#39416b" : "#d2d9fa"
+        readonly property color control: root.dark ? "#34363e" : "#e2e5ec"
+        readonly property color controlInk: root.dark ? "#e9eaf0" : "#15161a"
+        readonly property color destructive: root.dark ? "#ff7b72" : "#c01c28"
+
+        /** Laid over a fill in the fill's own foreground colour. */
+        readonly property real hoverOpacity: 0.06
+        readonly property real pressOpacity: 0.12
+        readonly property real disabledOpacity: 0.4
+
+        readonly property color switchTrackOff: root.dark ? "#3c3e47" : "#dcdfe7"
+        readonly property color knob: "#ffffff"
+        /** A white knob on a light track needs an edge to exist at all. */
+        readonly property color knobEdge: root.dark ? "#33000000" : "#1f000000"
+        readonly property color sliderTrack: root.dark ? "#3c3e47" : "#dde1ea"
+
+        readonly property color shadow: root.dark ? "#73000000" : "#2a1a2140"
+
+        /** The dock's plate, a touch see-through. */
+        readonly property color dockPlate: root.dark ? "#f224252b" : "#f2ffffff"
+        /** Laid over the screen behind a dialog. */
+        readonly property color scrim: root.dark ? "#80000000" : "#4d15161a"
+        /** Heavier, for a screen that asks for a decision, like the session menu. */
+        readonly property color scrimStrong: root.dark ? "#99000000" : "#5915161a"
+        /** What is drawn on a scrim. */
+        readonly property color scrimInk: "#ffffff"
+        /** Over the blurred wallpaper of the lock screen. */
+        readonly property color lockVeil: root.dark ? "#66101216" : "#66eef0f4"
+    }
+
+    readonly property QtObject radius: QtObject {
+        readonly property real control: 11
+        readonly property real tile: 16
+        readonly property real menu: 14
+        readonly property real menuItem: 8
+        /** A settings card: rounder than a menu row, squarer than a tile. */
+        readonly property real card: 10
+        readonly property real panel: 22
+    }
+
+    readonly property QtObject sizes: QtObject {
+        readonly property real control: 36
+        readonly property real buttonPadding: 16
+        readonly property real icon: 20
+        readonly property real switchWidth: 44
+        readonly property real switchHeight: 24
+        readonly property real knob: 18
+        readonly property real knobPressedStretch: 6
+        readonly property real sliderTrack: 6
+        readonly property real sliderKnob: 18
+        readonly property real tileHeight: 56
+        readonly property real menuItem: 34
+        readonly property real menuWidth: 240
+        readonly property real menuPadding: 6
+    }
+
+    readonly property QtObject dock: QtObject {
+        readonly property real thickness: 52
+        readonly property real cell: 42
+        readonly property real icon: 32
+        readonly property real spacing: 2
+        readonly property real launcherGlyph: 26
+        /** How far a floating dock stands off the screen edge. */
+        readonly property real floatingGap: 8
+        readonly property real floatingRadius: 18
+    }
+
+    readonly property QtObject spacing: QtObject {
+        readonly property real xs: 4
+        readonly property real s: 8
+        readonly property real m: 12
+        readonly property real l: 16
+        readonly property real xl: 24
+    }
+
+    readonly property QtObject font: QtObject {
+        readonly property string family: "Adwaita Sans"
+        readonly property string glyphs: "Material Symbols Rounded"
+        readonly property real body: 14
+        readonly property real label: 13
+        readonly property real caption: 12
+        readonly property real title: 17
+        readonly property int weightBody: 400
+        readonly property int weightLabel: 500
+        readonly property int weightTitle: 600
+    }
+
+    readonly property QtObject motion: QtObject {
+        readonly property int fast: 120
+        readonly property int normal: 220
+        readonly property int slow: 380
+        readonly property var standard: [0.2, 0, 0, 1, 1, 1]
+        readonly property var enter: [0.05, 0.7, 0.1, 1, 1, 1]
+        readonly property var exit: [0.3, 0, 0.8, 0.15, 1, 1]
+        /** Long and gentle at the end, for a panel arriving from the dock. */
+        readonly property var decelerate: [0.33, 1, 0.68, 1, 1, 1]
+    }
+}
