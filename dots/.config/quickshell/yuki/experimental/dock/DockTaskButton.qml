@@ -19,8 +19,12 @@ Item {
     readonly property bool showsProgress: root.status?.progressVisible ?? false
     readonly property bool showsCount: (root.status?.countVisible ?? false) && (root.status?.count ?? 0) > 0
 
+    /** Which of the application's windows this dock shows, or null for those on the workspace. */
+    property var showsWindow: null
     // The entry is gone for a moment before the button is, while the dock lets go of it.
-    readonly property var windows: root.entry ? TaskbarApps.windowsOn(root.entry, root.workspaceId) : []
+    readonly property var windows: !root.entry ? []
+        : root.showsWindow ? root.entry.toplevels.filter(toplevel => root.showsWindow(toplevel))
+        : TaskbarApps.windowsOn(root.entry, root.workspaceId)
     readonly property bool running: windows.length > 0
     // A window minimised last keeps its activated flag once focus is let go of,
     // since nothing takes it over, so being out of sight has to rule it out.

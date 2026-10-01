@@ -195,8 +195,15 @@ Scope {
         }
     }
 
+    // On every screen, or only on the main one. Hyprland names no main
+    // screen, so the one furthest left, and of those the highest, stands in
+    // for it, as for the desktop icons.
+    readonly property var dockScreens: Config.options.experimental.dock.screens === "main"
+        ? [...Quickshell.screens].sort((a, b) => a.x - b.x || a.y - b.y).slice(0, 1)
+        : Quickshell.screens
+
     Variants {
-        model: Quickshell.screens
+        model: root.dockScreens
 
         PanelWindow {
             id: window
@@ -215,6 +222,21 @@ Scope {
             readonly property real shadowRoom: detached ? 16 : 0
             readonly property real thickness: ExLooks.dock.thickness + gap + shadowRoom
             readonly property int workspaceId: Hyprland.monitorFor(window.screen)?.activeWorkspace?.id ?? -1
+            readonly property int monitorId: Hyprland.monitorFor(window.screen)?.id ?? -1
+
+            /**
+             * Whether a window has a button on this dock: one on the workspace
+             * on screen, or any at all, or with a dock on each screen any on
+             * this screen, as the settings say.
+             */
+            function showsWindow(toplevel): bool {
+                const options = Config.options.experimental.dock;
+                if (options.windowsFrom !== "all")
+                    return TaskbarApps.workspaceOf(toplevel) === window.workspaceId;
+                if (options.screens !== "main" && options.appsOn === "own" && Quickshell.screens.length > 1)
+                    return TaskbarApps.monitorOf(toplevel) === window.monitorId;
+                return true;
+            }
             // A window in real fullscreen, not merely maximised, on the
             // workspace this dock shows.
             readonly property bool underFullscreen: HyprlandData.windowList.some(win => win.workspace.id === window.workspaceId && (win.fullscreen & 2) !== 0)
@@ -591,7 +613,7 @@ Scope {
 
                         model: ScriptModel {
                             objectProp: "appId"
-                            values: TaskbarApps.appsOn(window.workspaceId)
+                            values: TaskbarApps.appsMatching(toplevel => window.showsWindow(toplevel))
                         }
 
                         DockTaskButton {
@@ -599,6 +621,7 @@ Scope {
                             entry: modelData.entry
                             status: launcherEntries.stateFor(modelData.appId)
                             workspaceId: window.workspaceId
+                            showsWindow: toplevel => window.showsWindow(toplevel)
                             edge: window.edge
                             onGroupRequested: {
                                 window.closePopups(windowList);

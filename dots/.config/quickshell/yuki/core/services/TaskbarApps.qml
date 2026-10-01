@@ -3,6 +3,7 @@ pragma Singleton
 import qs.core
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Wayland
 
 Singleton {
@@ -142,6 +143,15 @@ Singleton {
         return Minimize.isMinimized(root.addressOf(toplevel));
     }
 
+    /** The monitor a window belongs on: that of its workspace, or of the one it goes back to while minimised. */
+    function monitorOf(toplevel): int {
+        const client = HyprlandData.clientForToplevel(toplevel);
+        if (!client)
+            return -1;
+        const workspace = root.workspaceOf(toplevel);
+        return Hyprland.workspaces.values.find(candidate => candidate.id === workspace)?.monitor?.id ?? client.monitor;
+    }
+
     function windowsOn(entry, workspaceId: int): var {
         return entry.toplevels.filter(toplevel => root.workspaceOf(toplevel) === workspaceId);
     }
@@ -152,11 +162,19 @@ Singleton {
      * windows it has on that workspace, in the order of `apps`, pinned first.
      */
     function appsOn(workspaceId: int): var {
+        return root.appsMatching(toplevel => root.workspaceOf(toplevel) === workspaceId);
+    }
+
+    /**
+     * The same for any choice of windows: every pinned application, and the
+     * others with a window the test lets through, each with those windows.
+     */
+    function appsMatching(test): var {
         const shown = [];
         for (const entry of root.apps) {
             if (entry.appId === "SEPARATOR")
                 continue;
-            const windows = root.windowsOn(entry, workspaceId);
+            const windows = entry.toplevels.filter(test);
             if (!entry.pinned && windows.length === 0)
                 continue;
             shown.push({

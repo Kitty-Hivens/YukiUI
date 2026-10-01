@@ -124,6 +124,59 @@ ColumnLayout {
 
     SettingsSection {
         Layout.fillWidth: true
+        title: Translation.tr("Behaviour")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "select_window"
+            text: Translation.tr("Windows shown")
+            description: Translation.tr("Those on the workspace on screen, or every open window")
+
+            SettingsChoice {
+                value: root.dock.windowsFrom
+                options: [
+                    { value: "workspace", text: Translation.tr("This workspace") },
+                    { value: "all", text: Translation.tr("All") }
+                ]
+                onPicked: value => Config.options.experimental.dock.windowsFrom = value
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: Quickshell.screens.length > 1
+            glyph: "desktop_windows"
+            text: Translation.tr("Show the dock on")
+            description: Translation.tr("The main screen is the one furthest left")
+
+            SettingsChoice {
+                value: root.dock.screens
+                options: [
+                    { value: "all", text: Translation.tr("Every screen") },
+                    { value: "main", text: Translation.tr("The main screen") }
+                ]
+                onPicked: value => Config.options.experimental.dock.screens = value
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: Quickshell.screens.length > 1 && root.dock.screens === "all" && root.dock.windowsFrom === "all"
+            glyph: "screenshot_monitor"
+            text: Translation.tr("Applications on each dock")
+            description: Translation.tr("Every open window on every dock, or each window on the dock of its own screen")
+
+            SettingsChoice {
+                value: root.dock.appsOn
+                options: [
+                    { value: "all", text: Translation.tr("All") },
+                    { value: "own", text: Translation.tr("Its own screen") }
+                ]
+                onPicked: value => Config.options.experimental.dock.appsOn = value
+            }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
         title: Translation.tr("Dock items")
 
         SettingsCard {

@@ -1342,5 +1342,16 @@
   "System tray": "Системный трей",
   "The shell is not answering, so the tray cannot be listed now": "Оболочка не отвечает, поэтому трей сейчас не показать",
   "No program has an icon in the tray now": "Сейчас ни у одной программы нет значка в трее",
-  "Shown in the dock, or kept under the arrow beside it": "Показан в доке или убран под стрелку рядом с ним"
+  "Shown in the dock, or kept under the arrow beside it": "Показан в доке или убран под стрелку рядом с ним",
+  "Behaviour": "Поведение",
+  "Windows shown": "Какие окна показывать",
+  "Those on the workspace on screen, or every open window": "С рабочего стола на экране или все открытые окна",
+  "This workspace": "Этого стола",
+  "Show the dock on": "Показывать док",
+  "The main screen is the one furthest left": "Главным считается самый левый экран",
+  "Every screen": "На всех экранах",
+  "The main screen": "На главном экране",
+  "Applications on each dock": "Приложения на каждом доке",
+  "Every open window on every dock, or each window on the dock of its own screen": "Все окна на каждом доке или каждое окно на доке своего экрана",
+  "Its own screen": "Своего экрана"
 }
