@@ -128,6 +128,18 @@ ColumnLayout {
 
         SettingsCard {
             Layout.fillWidth: true
+            glyph: "visibility_off"
+            text: Translation.tr("Automatically hide the dock")
+            description: Translation.tr("It comes out when the pointer reaches the edge, and windows get its room")
+
+            ExSwitch {
+                checked: root.dock.autoHide
+                onToggled: Config.options.experimental.dock.autoHide = checked
+            }
+        }
+
+        SettingsCard {
+            Layout.fillWidth: true
             glyph: "label"
             text: Translation.tr("Combine buttons and hide labels")
             description: Translation.tr("Otherwise each window has a button with its title. Not on a dock at the side, which has no room for them")

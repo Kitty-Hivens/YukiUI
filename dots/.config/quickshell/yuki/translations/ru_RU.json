@@ -1357,5 +1357,7 @@
   "Combine buttons and hide labels": "Группировать кнопки и скрывать подписи",
   "Otherwise each window has a button with its title. Not on a dock at the side, which has no room for them": "Иначе у каждого окна своя кнопка с заголовком. Не на боковом доке: там для них нет места",
   "When full": "При заполнении",
-  "Never": "Никогда"
+  "Never": "Никогда",
+  "Automatically hide the dock": "Автоматически скрывать док",
+  "It comes out when the pointer reaches the edge, and windows get its room": "Он выезжает, когда указатель касается края, а его место достаётся окнам"
 }

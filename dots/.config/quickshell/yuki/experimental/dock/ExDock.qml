@@ -288,7 +288,64 @@ Scope {
                 if (window.underFullscreen)
                     window.closePopups(null);
             }
-            exclusiveZone: ExLooks.dock.thickness + gap
+            // Hidden on its own, it keeps no room from the windows.
+            exclusiveZone: window.autoHide ? 0 : ExLooks.dock.thickness + gap
+
+            // Out of the way until the pointer reaches the edge, as Windows'
+            // "automatically hide the taskbar". It stays while the pointer is
+            // over it, while anything it opened is open, while the launcher is
+            // up and while it is being moved, and goes a moment after.
+            readonly property bool autoHide: Config.options.experimental.dock.autoHide
+            readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu].some(popup => popup.open)
+            readonly property bool keepShown: !window.autoHide || dockHover.hovered || window.anyPopupOpen
+                || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys
+            property bool revealed: !window.autoHide
+            /** From in place (0) to out of sight past the edge (1). */
+            property real hidden: window.revealed ? 0 : 1
+            Behavior on hidden {
+                NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+            }
+            onKeepShownChanged: {
+                if (window.keepShown) {
+                    autoHideTimer.stop();
+                    window.revealed = true;
+                } else {
+                    autoHideTimer.restart();
+                }
+            }
+            onAutoHideChanged: {
+                if (!window.autoHide)
+                    window.revealed = true;
+                else if (!window.keepShown)
+                    autoHideTimer.restart();
+            }
+            Timer {
+                id: autoHideTimer
+                interval: 700
+                onTriggered: {
+                    if (!window.keepShown)
+                        window.revealed = false;
+                }
+            }
+
+            // What the pointer touches while the dock is away: the last
+            // pixels of the screen along the edge. Shown, the same strip also
+            // covers what lies between a floating dock and the edge, so going
+            // past the dock to the edge does not count as leaving it.
+            Item {
+                id: edgeStrip
+                readonly property real depth: window.revealed ? window.gap + 2 : 2
+                x: window.edge === "right" ? window.width - width : 0
+                y: window.edge === "bottom" ? window.height - height : 0
+                width: window.vertical ? depth : window.width
+                height: window.vertical ? window.height : depth
+            }
+            Item {
+                anchors.fill: parent
+                HoverHandler {
+                    id: dockHover
+                }
+            }
 
             // The keyboard, while quick settings has a password field up.
             //
@@ -356,7 +413,11 @@ Scope {
             // Only the dock itself takes the pointer. The shadow around a floating
             // one, and the empty stretch beside an island, let clicks through.
             mask: Region {
-                item: dock
+                item: window.autoHide && !window.revealed ? edgeStrip : dock
+
+                Region {
+                    item: window.autoHide ? edgeStrip : null
+                }
             }
 
             Component.onCompleted: {
@@ -536,8 +597,10 @@ Scope {
 
                 width: window.vertical ? ExLooks.dock.thickness : length
                 height: window.vertical ? length : ExLooks.dock.thickness
-                x: window.vertical ? (window.edge === "left" ? window.gap : window.width - width - window.gap) : along
-                y: window.vertical ? along : (window.edge === "top" ? window.gap : window.height - height - window.gap)
+                // Slid past the edge when hidden, its shadow with it.
+                readonly property real away: window.hidden * window.thickness
+                x: window.vertical ? (window.edge === "left" ? window.gap - away : window.width - width - window.gap + away) : along
+                y: window.vertical ? along : (window.edge === "top" ? window.gap - away : window.height - height - window.gap + away)
                 radius: window.detached ? ExLooks.dock.floatingRadius : 0
                 elevation: window.detached ? 1 : 0
                 color: ExLooks.colors.dockPlate
