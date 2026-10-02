@@ -30,33 +30,30 @@ Item {
     // What the notification says, kept from the last moment it existed. A
     // dismissed one is destroyed at once, while its toast is still sliding
     // out, and every line reading it directly threw for the rest of the slide.
-    property var shown: ({
-            notificationId: -1,
-            actions: [],
-            appIcon: "",
-            appName: "",
-            body: "",
-            image: "",
-            summary: "",
-            time: 0,
-            fromServer: false
-        })
+    //
+    // Read from the notification as the card is made, and kept up to date by
+    // the binding after. Filled in by the binding alone, a card was made empty
+    // and grew as its text arrived, after the list had placed it.
+    function snapshot(notif): var {
+        return {
+            notificationId: notif?.notificationId ?? -1,
+            actions: notif?.actions ?? [],
+            appIcon: notif?.appIcon ?? "",
+            appName: notif?.appName ?? "",
+            body: notif?.body ?? "",
+            image: notif?.image ?? "",
+            summary: notif?.summary ?? "",
+            time: notif?.time ?? 0,
+            fromServer: !!notif?.notification
+        };
+    }
+    property var shown: root.snapshot(root.notif)
     Binding {
         target: root
         property: "shown"
         when: !!root.notif
         restoreMode: Binding.RestoreNone
-        value: ({
-                notificationId: root.notif?.notificationId ?? -1,
-                actions: root.notif?.actions ?? [],
-                appIcon: root.notif?.appIcon ?? "",
-                appName: root.notif?.appName ?? "",
-                body: root.notif?.body ?? "",
-                image: root.notif?.image ?? "",
-                summary: root.notif?.summary ?? "",
-                time: root.notif?.time ?? 0,
-                fromServer: !!root.notif?.notification
-            })
+        value: root.snapshot(root.notif)
     }
 
     readonly property var defaultAction: root.shown.actions.find(action => action.identifier === "default") ?? null
@@ -241,17 +238,26 @@ Item {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                 }
-                ColumnLayout {
+                // A plain column of a width known from the start. Laid out by a
+                // layout, the body was given its width only on the layout's next
+                // pass, so the card was made a line short and grew a moment
+                // later, which the stack of cards as they arrive, laid out from
+                // the bottom, took as growing downwards, under the dock.
+                Column {
+                    readonly property real textWidth: root.width - 2 * ExLooks.spacing.m - (root.picture.length > 0 ? 48 + ExLooks.spacing.m : 0)
+
                     Layout.fillWidth: true
+                    Layout.preferredWidth: textWidth
+                    width: textWidth
                     spacing: 2
 
                     ExText {
-                        Layout.fillWidth: true
+                        width: parent.width
                         text: root.shown.summary
                         font.weight: 600
                     }
                     ExText {
-                        Layout.fillWidth: true
+                        width: parent.width
                         visible: text.length > 0
                         font.pixelSize: ExLooks.font.label
                         text: root.shown.body
