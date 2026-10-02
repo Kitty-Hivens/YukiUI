@@ -75,13 +75,13 @@ Item {
         anchors.leftMargin: root.vertical ? -root.reach : 0
         anchors.rightMargin: root.vertical ? -root.reach : 0
         hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+        // Only the left button starts or brings up an application. Another
+        // instance is started from the menu.
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onClicked: event => {
             if (event.button === Qt.RightButton)
                 root.menuRequested();
-            else if (event.button === Qt.MiddleButton)
-                TaskbarApps.launch(root.entry.appId);
             else
                 root.activate();
         }
