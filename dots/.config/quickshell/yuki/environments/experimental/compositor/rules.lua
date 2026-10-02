@@ -17,6 +17,32 @@ hl.config({ input = { follow_mouse = 2 } })
 -- maximise reaches the shell through the minimize plugin instead.
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
+-- Window shadows after Windows 11, where a window stands at elevation 128:
+-- Fluent blurs such a shadow by 128 and drops it by 64 at about a quarter
+-- opacity, which leaves roughly half of that at the window's lower edge,
+-- fading out over a long way. Hyprland's shadow is at full colour right at the
+-- edge, so the colour is that half and the falloff slow. It draws one shadow
+-- of one size for every window, so the window in front is told apart by depth
+-- of colour alone, those behind it casting half as dark a shadow.
+hl.config({
+    decoration = {
+        shadow = {
+            enabled = true,
+            range = 96,
+            render_power = 2,
+            offset = { 0, 32 },
+            color = "rgba(00000024)",
+            color_inactive = "rgba(00000012)",
+        },
+    },
+})
+
+-- A maximised window meets the edges of the screen and a snapped one its
+-- neighbour, so, as on Windows, neither has round corners, and a maximised
+-- one has no border or shadow either. The shell tags the windows it places.
+hl.window_rule({ match = { tag = "maximized" }, rounding = 0, border_size = 0, no_shadow = true })
+hl.window_rule({ match = { tag = "snapped" }, rounding = 0 })
+
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
 -- click on a title bar does on Windows.

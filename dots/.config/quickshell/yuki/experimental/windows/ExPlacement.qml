@@ -62,8 +62,25 @@ Scope {
             ? `YUKI_PLACED = YUKI_PLACED or {} ${key} = { x = ${before.at[0]}, y = ${before.at[1]}, w = ${before.size[0]}, h = ${before.size[1]} }`
             : `if YUKI_PLACED then ${key} = nil end`]);
     }
-    // What the compositor was told by a shell before this one no longer holds.
-    Component.onCompleted: Quickshell.execDetached(["hyprctl", "eval", "YUKI_PLACED = {}"])
+    // What the compositor was told by a shell before this one no longer holds,
+    // and the windows it tagged are placed by nobody now.
+    Component.onCompleted: Quickshell.execDetached(["hyprctl", "eval",
+        "YUKI_PLACED = {} for _, w in ipairs(hl.get_windows()) do "
+        + "hl.dispatch(hl.dsp.window.tag({ tag = '-maximized', window = 'address:' .. w.address })) "
+        + "hl.dispatch(hl.dsp.window.tag({ tag = '-snapped', window = 'address:' .. w.address })) end"])
+
+    /**
+     * Lua tagging a window by its placement, which the compositor rules give
+     * square corners: "maximized", "snapped" for the halves and quarters, or
+     * neither.
+     */
+    function tagsFor(address: string, zone: string): string {
+        const target = `window = "address:${address}"`;
+        const maximized = zone === "maximized" ? "+" : "-";
+        const snapped = zone.length > 0 && zone !== "maximized" ? "+" : "-";
+        return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized}maximized", ${target} })) `
+            + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped}snapped", ${target} })) `;
+    }
 
     // Every call reads the windows and the screens fresh: the shared lists are
     // a read behind, and a floating window moving raises no event at all.
@@ -97,8 +114,8 @@ Scope {
             return;
         const wasMaximized = root.isMaximized(address);
         root.setPlaced(address, null);
-        if (wasMaximized)
-            Quickshell.execDetached(["hyprctl", "eval", `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:${address}" }))`]);
+        Quickshell.execDetached(["hyprctl", "eval", root.tagsFor(address, "")
+            + (wasMaximized ? `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:${address}" }))` : "")]);
     }
     /** Fits every placed window to its screen's work area again, after the dock moved say. */
     function refit() {
@@ -195,7 +212,8 @@ Scope {
             // placed before is given a size of its own, centred.
             const size = entry?.before?.size ?? [Math.round(area.w * 0.6), Math.round(area.h * 0.7)];
             const at = entry?.before?.at ?? [Math.round(area.x + (area.w - size[0]) / 2), Math.round(area.y + (area.h - size[1]) / 2)];
-            return `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `
+            return root.tagsFor(client.address, "")
+                + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `
                 + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${size[0]}, y = ${size[1]} })) `
                 + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${at[0]}, y = ${at[1]} })) `;
         }
@@ -209,7 +227,8 @@ Scope {
         const rect = root.zoneRect(root.workArea(monitor), zone);
         // A maximised window is told so, and draws itself that way. A snapped
         // one is not: Windows draws it as an ordinary window.
-        return `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = ${zone === "maximized" ? 1 : 0}, ${target} })) `
+        return root.tagsFor(client.address, zone)
+            + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = ${zone === "maximized" ? 1 : 0}, ${target} })) `
             + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${rect.w}, y = ${rect.h} })) `
             + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${rect.x}, y = ${rect.y} })) `;
     }
