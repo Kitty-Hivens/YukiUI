@@ -236,26 +236,53 @@ for key in pairs(YUKI_GEOMETRY) do
     end
 end
 
+-- An X11 application places and sizes its own window, Steam among them, which
+-- comes back as large as it was, so it is not remembered here, and a place
+-- remembered for one before is dropped as it opens. A window rule cannot tell
+-- the two kinds apart: its xwayland match is not acted on.
 hl.on("window.open", function(w)
     if usableWindow(w) then
-        disarm(windowKey(w))
+        local key = windowKey(w)
+        disarm(key)
+        if w.xwayland and YUKI_GEOMETRY[key] then
+            YUKI_GEOMETRY[key] = nil
+            YUKI_GEOMETRY_RULES[key] = nil
+            writeGeometry()
+        end
     end
 end)
+
+-- Whether a window covers the work area of its monitor, give or take a few
+-- pixels, as the shell judges it when it maximises a window that opens so.
+local function coversWorkArea(w)
+    local m = w.monitor
+    if not m or not w.size then
+        return false
+    end
+    local scale = m.scale or 1
+    local turned = (m.transform or 0) % 2 == 1
+    local width = (turned and m.height or m.width) / scale
+    local height = (turned and m.width or m.height) / scale
+    local r = type(m.reserved) == "table" and m.reserved or {}
+    return w.size.x >= width - (r.left or 0) - (r.right or 0) - 8
+        and w.size.y >= height - (r.top or 0) - (r.bottom or 0) - 8
+end
 
 hl.on("window.close", function(w)
     local placed = YUKI_PLACED[w.address]
     YUKI_PLACED[w.address] = nil
-    if not usableWindow(w) then
+    if not usableWindow(w) or w.xwayland then
         return
     end
     local key = windowKey(w)
     if openCount(key, w.address) > 0 then
         return
     end
-    -- One told it is maximised that the shell does not know of, since the
-    -- shell started after it was placed, is as large as the screen and not
-    -- where it stood, so what was remembered before is kept.
-    local maximized = w.fullscreen_client ~= 0 and not placed
+    -- One told it is maximised, or as large as the work area, that the shell
+    -- did not report as placed is the size of the screen and not where it
+    -- stood, so what was remembered before is kept. Remembered, it opened as
+    -- large as the screen again next time, as an ordinary window.
+    local maximized = not placed and (w.fullscreen_client ~= 0 or coversWorkArea(w))
     if w.floating and w.fullscreen == 0 and not maximized and w.monitor and w.at and w.size then
         local m = w.monitor
         local at = placed and { x = placed.x, y = placed.y } or w.at

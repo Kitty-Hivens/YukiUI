@@ -43,6 +43,7 @@ Scope {
         return /^0x[0-9a-f]+$/.test(address);
     }
 
+    /** Changes what is known of a window here. What the compositor is told of it goes in `placedLua`. */
     function setPlaced(address: string, entry) {
         const next = Object.assign({}, root.placed);
         if (entry)
@@ -50,42 +51,52 @@ Scope {
         else
             delete next[address];
         root.placed = next;
-        root.tellCompositor(address, entry);
     }
-
-    // The compositor remembers where a window stood as it closes, and a placed
-    // window is to be remembered as it stood before it was placed.
-    function tellCompositor(address: string, entry) {
-        const key = `YUKI_PLACED["${address}"]`;
-        const before = entry?.before;
-        Quickshell.execDetached(["hyprctl", "eval", before
-            ? `YUKI_PLACED = YUKI_PLACED or {} ${key} = { x = ${before.at[0]}, y = ${before.at[1]}, w = ${before.size[0]}, h = ${before.size[1]} }`
-            : `if YUKI_PLACED then ${key} = nil end`]);
-    }
-    // What the compositor was told by a shell before this one no longer holds,
-    // and the windows it tagged are placed by nobody now.
-    Component.onCompleted: Quickshell.execDetached(["hyprctl", "eval",
-        "YUKI_PLACED = {} for _, w in ipairs(hl.get_windows()) do "
-        + "hl.dispatch(hl.dsp.window.tag({ tag = '-maximized', window = 'address:' .. w.address })) "
-        + "hl.dispatch(hl.dsp.window.tag({ tag = '-snapped', window = 'address:' .. w.address })) end"])
 
     /**
-     * Lua tagging a window by its placement, which the compositor rules give
-     * square corners: "maximized", "snapped" for the halves and quarters, or
-     * neither.
+     * Lua telling the compositor where a placed window stood before it was
+     * placed, which it remembers as the window closes, or that it is placed
+     * no more. Sent in the same chunk as the placement: in a process of its
+     * own it could arrive before or after it.
      */
-    function tagsFor(address: string, zone: string): string {
-        const target = `window = "address:${address}"`;
-        const maximized = zone === "maximized" ? "+" : "-";
-        const snapped = zone.length > 0 && zone !== "maximized" ? "+" : "-";
-        return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized}maximized", ${target} })) `
-            + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped}snapped", ${target} })) `;
+    function placedLua(address: string, entry): string {
+        const key = `YUKI_PLACED["${address}"]`;
+        const before = entry?.before;
+        return before
+            ? `YUKI_PLACED = YUKI_PLACED or {} ${key} = { x = ${before.at[0]}, y = ${before.at[1]}, w = ${before.size[0]}, h = ${before.size[1]} } `
+            : `if YUKI_PLACED then ${key} = nil end `;
     }
+
+    /**
+     * Lua marking a window by its placement: the tag the compositor rules give
+     * square corners by, "maximized", "snapped" for the halves and quarters,
+     * or neither, and for an X11 window whether it is maximised. Hyprland tells
+     * a Wayland window it is maximised but never an X11 one, which then drew
+     * itself as not maximised and could only maximise with its own button. It
+     * is sent before the window is resized, which is what carries it to the
+     * window.
+     */
+    function marksFor(address: string, zone: string): string {
+        const target = `window = "address:${address}"`;
+        const maximized = zone === "maximized";
+        const snapped = zone.length > 0 && !maximized;
+        return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized ? "+" : "-"}maximized", ${target} })) `
+            + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped ? "+" : "-"}snapped", ${target} })) `
+            + `if hl.plugin.minimize and hl.plugin.minimize.set_maximized then hl.plugin.minimize.set_maximized("${address}", ${maximized}) end `;
+    }
+
+    // A shell started anew knows nothing of what the one before it placed, and
+    // learns it from what the compositor shows, as the minimised windows are:
+    // a window told it is maximised, or covering the work area, is maximised,
+    // and one standing exactly on a half or a quarter is snapped there. Only
+    // where each stood before is lost, and such a window is given a size of
+    // its own when it is put back.
+    Component.onCompleted: root.request("*", "adopt")
 
     // Every call reads the windows and the screens fresh: the shared lists are
     // a read behind, and a floating window moving raises no event at all.
     function request(address: string, wanted: string) {
-        if (!root.usable(address))
+        if (address !== "*" && !root.usable(address))
             return;
         root.queue = [...root.queue, { address: address, wanted: wanted }];
         if (!reader.running)
@@ -114,7 +125,7 @@ Scope {
             return;
         const wasMaximized = root.isMaximized(address);
         root.setPlaced(address, null);
-        Quickshell.execDetached(["hyprctl", "eval", root.tagsFor(address, "")
+        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "") + root.placedLua(address, null)
             + (wasMaximized ? `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:${address}" }))` : "")]);
     }
     /** Fits every placed window to its screen's work area again, after the dock moved say. */
@@ -146,8 +157,15 @@ Scope {
                     return;
                 }
                 let lua = "";
-                for (const job of queue)
-                    lua += root.answer(job, clients, monitors);
+                for (const job of queue) {
+                    if (job.address === "*") {
+                        lua += "YUKI_PLACED = {} ";
+                        for (const client of clients)
+                            lua += root.answer({ address: client.address, wanted: job.wanted }, clients, monitors);
+                    } else {
+                        lua += root.answer(job, clients, monitors);
+                    }
+                }
                 if (lua.length > 0)
                     Quickshell.execDetached(["hyprctl", "eval", lua]);
             }
@@ -190,44 +208,88 @@ Scope {
         return area;
     }
 
+    /**
+     * Whether a window covers the work area, give or take a few pixels for an
+     * application that leaves room for borders it does not draw.
+     */
+    function covers(client, area): bool {
+        return client.size[0] >= area.w - 8 && client.size[1] >= area.h - 8;
+    }
+
+    /** Where a window placed before anything knew where it stood goes back to: a size of its own, centred. */
+    function centred(area): var {
+        const size = [Math.round(area.w * 0.6), Math.round(area.h * 0.7)];
+        return { at: [Math.round(area.x + (area.w - size[0]) / 2), Math.round(area.y + (area.h - size[1]) / 2)], size: size };
+    }
+
+    /** The zone a window stands exactly on, or empty. */
+    function zoneUnder(client, area): string {
+        for (const zone of root.zones.filter(zone => zone !== "maximized")) {
+            const rect = root.zoneRect(area, zone);
+            if (Math.abs(client.at[0] - rect.x) <= 1 && Math.abs(client.at[1] - rect.y) <= 1
+                    && Math.abs(client.size[0] - rect.w) <= 1 && Math.abs(client.size[1] - rect.h) <= 1)
+                return zone;
+        }
+        return "";
+    }
+
     function answer(job, clients, monitors): string {
         const client = clients.find(candidate => candidate.address === job.address);
-        if (!client || !client.floating || client.workspace.id < 1)
+        if (!client || !client.floating || client.workspace.id < 1 || client.fullscreen !== 0)
             return "";
         const monitor = monitors.find(candidate => candidate.id === client.monitor);
         if (!monitor)
             return "";
+        const area = root.workArea(monitor);
         const target = `window = "address:${client.address}"`;
         const entry = root.placed[client.address];
         let wanted = job.wanted;
+        // Where it stood before the first placement, kept across later ones:
+        // snapped and then maximised, it still goes back to where it stood.
+        let before = entry?.before ?? { at: client.at, size: client.size };
+
         if (wanted === "toggle")
             wanted = entry?.zone === "maximized" ? "restore" : "maximized";
+
+        if (wanted === "adopt") {
+            wanted = client.fullscreenClient === 1 || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
+            before = root.centred(area);
+            if (!wanted)
+                return root.marksFor(client.address, "");
+        }
+
+        // An application that opens as large as the work area is taken to want
+        // to be maximised, and is, as GNOME does: Steam, say, sizes itself to
+        // the screen without saying it is maximised.
+        if (wanted === "opened") {
+            if (entry || !root.covers(client, area))
+                return "";
+            wanted = "maximized";
+            before = root.centred(area);
+        }
 
         if (wanted === "restore") {
             if (!entry && client.fullscreenClient !== 1)
                 return "";
             root.setPlaced(client.address, null);
-            const area = root.workArea(monitor);
             // Known only for a window placed here since the shell started. One
             // placed before is given a size of its own, centred.
-            const size = entry?.before?.size ?? [Math.round(area.w * 0.6), Math.round(area.h * 0.7)];
-            const at = entry?.before?.at ?? [Math.round(area.x + (area.w - size[0]) / 2), Math.round(area.y + (area.h - size[1]) / 2)];
-            return root.tagsFor(client.address, "")
+            const back = entry?.before ?? root.centred(area);
+            return root.marksFor(client.address, "") + root.placedLua(client.address, null)
                 + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `
-                + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${size[0]}, y = ${size[1]} })) `
-                + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${at[0]}, y = ${at[1]} })) `;
+                + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${back.size[0]}, y = ${back.size[1]} })) `
+                + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${back.at[0]}, y = ${back.at[1]} })) `;
         }
 
         const zone = wanted === "refit" ? entry?.zone : wanted;
-        if (!zone)
+        if (!zone || !root.zones.includes(zone))
             return "";
-        // Where it stood before the first placement, kept across later ones:
-        // snapped and then maximised, it still goes back to where it stood.
-        root.setPlaced(client.address, { zone: zone, before: entry?.before ?? { at: client.at, size: client.size } });
-        const rect = root.zoneRect(root.workArea(monitor), zone);
+        const placement = { zone: zone, before: before };
+        root.setPlaced(client.address, placement);
+        const rect = root.zoneRect(area, zone);
         // A maximised window is told so, and draws itself that way. A snapped
         // one is not: Windows draws it as an ordinary window.
-        return root.tagsFor(client.address, zone)
+        return root.marksFor(client.address, zone) + root.placedLua(client.address, placement)
             + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = ${zone === "maximized" ? 1 : 0}, ${target} })) `
             + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${rect.w}, y = ${rect.h} })) `
             + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${rect.x}, y = ${rect.y} })) `;
@@ -240,6 +302,8 @@ Scope {
             if (event.name === "maximizerequest") {
                 const [address, state] = event.data.split(",");
                 root.request(`0x${address}`, state === "1" ? "maximized" : "restore");
+            } else if (event.name === "openwindow") {
+                root.watchOpened(`0x${event.data.split(",")[0]}`);
             } else if (event.name === "closewindow") {
                 // Gone, and its address may be handed to another window. The
                 // compositor has let go of it already.
@@ -249,6 +313,33 @@ Scope {
             } else if (event.name === "monitoradded" || event.name === "monitorremoved" || event.name === "configreloaded") {
                 refitLater.restart();
             }
+        }
+    }
+
+    // A window just opened is looked at twice: an X11 application in
+    // particular often sizes itself a moment after it has appeared.
+    property var opened: []
+
+    function watchOpened(address: string) {
+        if (!root.usable(address))
+            return;
+        const now = Date.now();
+        root.opened = [...root.opened, { address: address, at: now + 400 }, { address: address, at: now + 1500 }];
+        openedTimer.start();
+    }
+
+    Timer {
+        id: openedTimer
+        interval: 100
+        repeat: true
+        onTriggered: {
+            const now = Date.now();
+            const due = root.opened.filter(check => check.at <= now);
+            root.opened = root.opened.filter(check => check.at > now);
+            for (const check of due)
+                root.request(check.address, "opened");
+            if (root.opened.length === 0)
+                openedTimer.stop();
         }
     }
 

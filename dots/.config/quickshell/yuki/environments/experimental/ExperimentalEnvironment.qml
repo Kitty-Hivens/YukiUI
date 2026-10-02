@@ -54,7 +54,6 @@ Scope {
 
     ExSurfaces {}
 
-    ExMaximizedFront {}
     ExPlacement {
         id: placement
     }
