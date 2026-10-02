@@ -72,6 +72,13 @@ namespace {
             });
         }
 
+        // Under XWayland a request is not reset: it stays on the surface until
+        // the client asks for the opposite, and every later change of state, a
+        // request for fullscreen say, would announce it again. A window that
+        // had minimised itself once was minimised again each time it went
+        // fullscreen. So a request is spent once it is announced. Hyprland's
+        // own listener was registered as the surface was created, before this
+        // one, and has read it already.
         if (const auto x11 = window->m_xwaylandSurface.lock()) {
             const WP<CXWaylandSurface> surface = x11;
             return x11->m_events.stateChanged.listen([ref, surface] {
@@ -82,6 +89,8 @@ namespace {
                     announce(ref);
                 if (current->m_state.requestsMaximize.has_value())
                     announceMaximize(ref, *current->m_state.requestsMaximize);
+                current->m_state.requestsMinimize.reset();
+                current->m_state.requestsMaximize.reset();
             });
         }
 
@@ -147,7 +156,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         if (window && window->m_isMapped)
             watch(window);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, and lets go of focus for the shell's minimising", "yuki", "1.2"};
+    return {"minimize", "Passes on requests to be minimised or maximised, and lets go of focus for the shell's minimising", "yuki", "1.3"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
