@@ -1,0 +1,59 @@
+"""The keys the experimental environment binds, and the ones it must leave alone.
+
+Alt+Tab picks the window as Alt is let go of, which the shell hears through a
+bind on Alt's release. A plain bind like that swallowed Alt's press as well,
+and Alt stopped reaching applications at all. Without being transparent it
+went unheard after Tab, and the switcher waited for good. One in a submap of
+its own never heard the release of an Alt pressed before the submap.
+"""
+
+import time
+
+from bench.bench import wait_until
+
+
+def switcher_up(desk) -> bool:
+    return any(layer["namespace"] == "quickshell:switcher"
+               for monitor in desk.bench.json("layers").values()
+               for layers in monitor["levels"].values() for layer in layers)
+
+
+def test_alt_reaches_applications(desk):
+    window = desk.wayland()
+    window.command("keys")
+    kb = desk.keyboard
+    kb.type(*kb.hold("Alt_L", "alt"), *kb.tap("f"), *kb.let_go("Alt_L", "alt"))
+    keys = wait_until(lambda: window.command("keys")["keys"] or None, what="keys to reach the window")
+    assert ["pressed", "Alt_L", []] in keys
+    assert ["pressed", "f", ["alt"]] in keys
+    assert ["released", "Alt_L", []] in keys or ["released", "Alt_L", ["alt"]] in keys
+
+
+def test_quick_alt_tab_goes_back_to_the_window_before(desk):
+    first = desk.wayland()
+    second = desk.wayland()
+    wait_until(lambda: desk.active() == second.address, what="the second window to have the keyboard")
+    kb = desk.keyboard
+    kb.type(*kb.hold("Alt_L", "alt"), *kb.tap("Tab"), *kb.let_go("Alt_L", "alt"))
+    wait_until(lambda: desk.active() == first.address, what="the window before to have the keyboard")
+    time.sleep(0.3)
+    assert not switcher_up(desk)
+
+
+def test_held_alt_tab_shows_the_switcher_and_picks_on_letting_go(desk):
+    first = desk.wayland()
+    second = desk.wayland()
+    wait_until(lambda: desk.active() == second.address, what="the second window to have the keyboard")
+    kb = desk.keyboard
+    kb.type(*kb.hold("Alt_L", "alt"), *kb.tap("Tab"), *kb.wait(400), *kb.let_go("Alt_L", "alt"))
+    wait_until(lambda: desk.active() == first.address, what="the picked window to have the keyboard")
+    wait_until(lambda: not switcher_up(desk), what="the switcher to go")
+
+
+def test_alt_tab_in_quick_succession_never_hangs(desk):
+    desk.wayland()
+    desk.wayland()
+    kb = desk.keyboard
+    for pause in (1, 30, 90, 150, 200, 400):
+        kb.type(*kb.hold("Alt_L", "alt"), *kb.tap("Tab"), *kb.wait(pause), *kb.let_go("Alt_L", "alt"))
+    wait_until(lambda: not switcher_up(desk), what="the switcher to go")

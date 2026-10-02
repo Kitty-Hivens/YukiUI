@@ -8,7 +8,7 @@ import pytest
 
 from bench.bench import Bench
 from bench.shell import Shell
-from bench.windows import Pointer, WaylandWindow, X11Window
+from bench.windows import Keyboard, Pointer, WaylandWindow, X11Window
 
 
 @pytest.fixture(scope="session")
@@ -53,6 +53,14 @@ class Desk:
         window = X11Window(self.bench, wm_class or self.name(stem), **kwargs)
         self.windows.append(window)
         return window
+
+    @property
+    def keyboard(self) -> Keyboard:
+        return Keyboard(self.bench)
+
+    def active(self) -> str:
+        """The address of the window that has the keyboard."""
+        return next((c["address"] for c in self.bench.clients() if c["focusHistoryID"] == 0), "")
 
     def pointer(self) -> Pointer:
         pointer = Pointer(self.bench)

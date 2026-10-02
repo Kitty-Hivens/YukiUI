@@ -1,7 +1,7 @@
 """The part of the shell the window tests need, run on the bench.
 
-Placement, snapping and minimising, as the experimental environment builds
-them, and nothing else: no dock, no panels. Loaded from a probe file written
+Placement, snapping, minimising and Alt+Tab, as the experimental environment
+builds them, and nothing else: no dock, no panels. Loaded from a probe file written
 into the shell's own directory for the run, since a shell file reaches the
 others by module name only from there. The probe is ignored by git and left
 out when the shell is deployed.
@@ -18,6 +18,7 @@ PROBE = SHELL / "benchProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
 import qs.core.services
+import qs.experimental.switcher
 import qs.experimental.windows
 
 // Written by tests/bench/shell.py for a test run, and removed after it.
@@ -33,6 +34,7 @@ ShellRoot {
     ExSnap {
         placement: placement
     }
+    ExSwitcher {}
 }
 """
 

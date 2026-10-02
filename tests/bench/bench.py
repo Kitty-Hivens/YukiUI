@@ -123,6 +123,10 @@ class Bench:
 hl.config({{
     animations = {{ enabled = false }},
     misc = {{ disable_hyprland_logo = true, disable_splash_rendering = true, focus_on_activate = true }},
+    -- The bench types through a virtual keyboard that brings a keymap of its
+    -- own, whose keycodes mean nothing in the default layout, so binds are
+    -- matched by the symbol typed.
+    input = {{ resolve_binds_by_sym = true }},
 }})
 hl.monitor({{ output = "{OUTPUT}", mode = "{WIDTH}x{HEIGHT}@60", position = "0x0", scale = 1, reserved = {{ bottom = {RESERVED_BOTTOM} }} }})
 -- The nested compositor's own window on the session it runs in: off, so the

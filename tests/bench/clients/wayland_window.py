@@ -11,6 +11,8 @@ line on stdin with one line of JSON:
     minimize                   ask to be minimised
     fullscreen, unfullscreen   ask for fullscreen or to leave it
     state                      what the window believes of itself
+    keys                       the keys it has been given since last asked,
+                               with the modifiers held, and forgets them
     close                      close the window and end
 
 Everything it asks for goes to the compositor as an xdg_toplevel request, the
@@ -64,9 +66,25 @@ def command(channel, condition):
         return True
 
 
+# What reached the window from the keyboard: [pressed or released, key, modifiers].
+keys = []
+
+
+def on_key(kind):
+    def record(_controller, keyval, _keycode, modifiers):
+        names = [name for name, mask in (("shift", Gdk.ModifierType.SHIFT_MASK), ("control", Gdk.ModifierType.CONTROL_MASK),
+                                         ("alt", Gdk.ModifierType.ALT_MASK), ("super", Gdk.ModifierType.SUPER_MASK)) if modifiers & mask]
+        keys.append([kind, Gdk.keyval_name(keyval), names])
+        return False
+    return record
+
+
 def run(name):
     if name == "state":
         answer(state())
+    elif name == "keys":
+        answer({"keys": keys[:]})
+        keys.clear()
     elif name in ("maximize", "unmaximize", "minimize", "fullscreen", "unfullscreen"):
         getattr(window, name)()
         answer({"ok": name})
@@ -85,6 +103,10 @@ def on_activate(application):
     window.set_default_size(width, height)
     window.set_titlebar(Gtk.HeaderBar())
     window.set_child(Gtk.Label(label=title))
+    controller = Gtk.EventControllerKey()
+    controller.connect("key-pressed", on_key("pressed"))
+    controller.connect("key-released", on_key("released"))
+    window.add_controller(controller)
     window.connect("map", lambda _window: GLib.idle_add(lambda: answer({"ready": True}) or False))
     window.present()
     GLib.io_add_watch(GLib.IOChannel.unix_new(sys.stdin.fileno()), GLib.PRIORITY_DEFAULT, GLib.IO_IN | GLib.IO_HUP, command)

@@ -164,3 +164,35 @@ class Pointer:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+
+
+class Keyboard:
+    """Typing on the bench, through wtype's virtual keyboard.
+
+    Each call is one virtual keyboard from first key to last, so a key held in
+    one call is still held through the rest of it. A modifier is held as a real
+    keyboard holds it, its key pressed and its state set:
+    `hold("Alt_L", "alt")` before and `let_go("Alt_L", "alt")` after.
+    """
+
+    def __init__(self, bench: Bench):
+        self.bench = bench
+
+    def type(self, *steps: str):
+        subprocess.run(["wtype", *steps], env=self.bench.environment(), check=True)
+
+    @staticmethod
+    def hold(key: str, modifier: str) -> list[str]:
+        return ["-P", key, "-M", modifier]
+
+    @staticmethod
+    def let_go(key: str, modifier: str) -> list[str]:
+        return ["-m", modifier, "-p", key]
+
+    @staticmethod
+    def tap(key: str) -> list[str]:
+        return ["-k", key]
+
+    @staticmethod
+    def wait(milliseconds: int) -> list[str]:
+        return ["-s", str(milliseconds)]
