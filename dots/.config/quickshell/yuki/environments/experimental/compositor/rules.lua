@@ -17,13 +17,10 @@ hl.config({ input = { follow_mouse = 2 } })
 -- maximise reaches the shell through the minimize plugin instead.
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
--- With nothing tiled, the key that switches a window between floating and
--- tiled maximises it instead and puts it back where it was, the way a double
--- click on a title bar does on Windows. The shared maximise key goes the same
--- way, or it would reach Hyprland's own. Read after the shared keys, so these
--- replace theirs while the environment is up.
+-- The maximise key, and with nothing tiled the key that switches a window
+-- between floating and tiled as well, maximise a window and put it back where
+-- it was, the way a double click on a title bar does on Windows.
 for _, keys in ipairs({ "SUPER + ALT + Space", "SUPER + D" }) do
-    hl.unbind(keys)
     hl.bind(keys, hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
 end
 

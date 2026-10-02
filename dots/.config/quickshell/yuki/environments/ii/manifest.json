@@ -3,6 +3,7 @@
     "name": "Illogical Impulse",
     "apiVersion": 1,
     "entry": "IiEnvironment.qml",
+    "compositor": "compositor/rules.lua",
     "theming": {
         "matugen": "theming/matugen.toml",
         "apply": "theming/apply.sh"
