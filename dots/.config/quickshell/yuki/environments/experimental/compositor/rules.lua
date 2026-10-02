@@ -17,12 +17,18 @@ hl.config({ input = { follow_mouse = 2 } })
 -- maximise reaches the shell through the minimize plugin instead.
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
--- The maximise key, and with nothing tiled the key that switches a window
--- between floating and tiled as well, maximise a window and put it back where
--- it was, the way a double click on a title bar does on Windows.
-for _, keys in ipairs({ "SUPER + ALT + Space", "SUPER + D" }) do
-    hl.bind(keys, hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
+-- With nothing tiled, the key that switches a window between floating and
+-- tiled maximises it instead and puts it back where it was, the way a double
+-- click on a title bar does on Windows.
+hl.bind("SUPER + ALT + Space", hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
+
+-- The keys Windows places windows with. Super and an arrow snaps the window to
+-- that side, maximises it, or steps it back down to where it stood and then
+-- to the dock. Super+D shows the desktop and brings the windows back.
+for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
+    hl.bind("SUPER + " .. arrow, hl.dsp.global("quickshell:snap" .. arrow), { description = "Window: Snap " .. arrow })
 end
+hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "Window: Show desktop" })
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,

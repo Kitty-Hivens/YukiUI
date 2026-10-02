@@ -259,6 +259,66 @@ Scope {
         onPressed: root.toggleMaximized(HyprlandData.windowList.find(client => client.focusHistoryID === 0)?.address ?? "")
     }
 
+    /**
+     * Where Super and an arrow takes a window from each placement, as Windows
+     * does: up and down climb from the dock through where it stood to
+     * maximised, a snapped half going through its quarters on the way, and
+     * the opposite side puts a snapped window back where it stood. Null where
+     * the key does nothing. Pressed towards another screen it stays put for
+     * now.
+     */
+    readonly property var steps: ({
+        "": { up: "maximized", down: "minimize", left: "left", right: "right" },
+        maximized: { up: null, down: "restore", left: "left", right: "right" },
+        left: { up: "topleft", down: "bottomleft", left: null, right: "restore" },
+        right: { up: "topright", down: "bottomright", left: "restore", right: null },
+        topleft: { up: "maximized", down: "left", left: null, right: "topright" },
+        topright: { up: "maximized", down: "right", left: "topleft", right: null },
+        bottomleft: { up: "left", down: "minimize", left: null, right: "bottomright" },
+        bottomright: { up: "right", down: "minimize", left: "bottomleft", right: null }
+    })
+
+    function step(direction: string) {
+        const client = HyprlandData.windowList.find(candidate => candidate.focusHistoryID === 0);
+        if (!client || !client.floating || client.fullscreen !== 0 || client.workspace.id < 1)
+            return;
+        // One maximised before the shell started is told so but not known here.
+        const zone = root.zoneOf(client.address) || (client.fullscreenClient === 1 ? "maximized" : "");
+        const next = root.steps[zone]?.[direction] ?? null;
+        if (next === "minimize")
+            Minimize.minimize(client.address);
+        else if (next === "restore")
+            root.restore(client.address);
+        else if (next)
+            root.place(client.address, next);
+    }
+
+    GlobalShortcut {
+        name: "snapLeft"
+        description: "Snaps the focused window to the left, or steps it back"
+        onPressed: root.step("left")
+    }
+    GlobalShortcut {
+        name: "snapRight"
+        description: "Snaps the focused window to the right, or steps it back"
+        onPressed: root.step("right")
+    }
+    GlobalShortcut {
+        name: "snapUp"
+        description: "Maximises the focused window, or takes a snapped one to its upper quarter"
+        onPressed: root.step("up")
+    }
+    GlobalShortcut {
+        name: "snapDown"
+        description: "Puts the focused window back where it stood, or minimises it"
+        onPressed: root.step("down")
+    }
+    GlobalShortcut {
+        name: "showDesktop"
+        description: "Shows the desktop of the focused screen, or brings its windows back"
+        onPressed: Minimize.toggleDesktop(Hyprland.focusedMonitor?.activeWorkspace?.id ?? -1)
+    }
+
     IpcHandler {
         target: "placement"
 
@@ -270,6 +330,10 @@ Scope {
         }
         function restore(address: string): void {
             root.restore(address);
+        }
+        /** The same as Super and an arrow: left, right, up or down. */
+        function step(direction: string): void {
+            root.step(direction);
         }
         function list(): string {
             return JSON.stringify(root.placed);
