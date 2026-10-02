@@ -296,7 +296,7 @@ Scope {
             // over it, while anything it opened is open, while the launcher is
             // up and while it is being moved, and goes a moment after.
             readonly property bool autoHide: Config.options.experimental.dock.autoHide
-            readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu].some(popup => popup.open)
+            readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks].some(popup => popup.open)
             readonly property bool keepShown: !window.autoHide || dockHover.hovered || window.anyPopupOpen
                 || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys
             property bool revealed: !window.autoHide
@@ -464,7 +464,7 @@ Scope {
 
             /** One flyout at a time: everything but the one about to open is shut. */
             function closePopups(except) {
-                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu])
+                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks])
                     if (popup !== except)
                         popup.open = false;
             }
@@ -709,6 +709,16 @@ Scope {
                             ExStates.launcherOpen = !ExStates.launcherOpen;
                         }
 
+                        // A right click opens the quick links, as one on Start does.
+                        TapHandler {
+                            acceptedButtons: Qt.RightButton
+                            onTapped: {
+                                ExStates.launcherOpen = false;
+                                window.closePopups(quickLinks);
+                                quickLinks.toggle(launcherButton);
+                            }
+                        }
+
                         ExGlyph {
                             anchors.centerIn: parent
                             text: "apps"
@@ -828,6 +838,14 @@ Scope {
 
             DockMenu {
                 id: dockMenu
+                dockWindow: window
+                dockSurface: dock
+                edge: window.edge
+                workspaceId: window.workspaceId
+            }
+
+            DockQuickLinks {
+                id: quickLinks
                 dockWindow: window
                 dockSurface: dock
                 edge: window.edge
