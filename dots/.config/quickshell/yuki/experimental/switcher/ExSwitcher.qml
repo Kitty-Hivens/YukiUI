@@ -18,10 +18,9 @@ import qs.experimental.looks
 // go of Alt bringing the pick up. Tapped quickly, it goes back to the window
 // before without anything drawn.
 //
-// Alt's release is heard through a binding of the compositor's, made only while
-// a switch is under way: the panel takes the keyboard only once Alt is already
-// down, and a key pressed before a surface had the keyboard is not released to
-// it.
+// Alt's release is heard through a binding of the compositor's: the panel
+// takes the keyboard only once Alt is already down, and a key pressed before a
+// surface had the keyboard is not released to it.
 Scope {
     id: root
 
@@ -323,20 +322,12 @@ Scope {
         description: "Switches to the previous window while Alt is held"
         onPressed: root.step(-1)
     }
-    // Letting go of Alt, and Escape with it, as the compositor hears them
-    // during a switch. Dispatched from a function, the shortcut may arrive as
-    // a press or a release, and either ends the switch once.
+    // Every release of Alt, as the compositor hears it. A global bind on a
+    // release is pressed as the key goes down and released as it comes up.
     GlobalShortcut {
         name: "altTabCommit"
         description: "Alt let go of ends a window switch on the window picked"
-        onPressed: root.commit()
         onReleased: root.commit()
-    }
-    GlobalShortcut {
-        name: "altTabCancel"
-        description: "Escape during a window switch ends it where it began"
-        onPressed: root.cancel()
-        onReleased: root.cancel()
     }
 
     IpcHandler {

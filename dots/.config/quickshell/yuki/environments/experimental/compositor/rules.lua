@@ -88,32 +88,19 @@ hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "W
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,
--- so letting go of Alt is bound. Only while a switch is under way, in a submap
--- of its own: bound for good, even passed on, Alt stopped reaching
--- applications at all. Letting go also leaves the submap, here rather than in
--- the shell, so a shell that is not there cannot leave the keyboard in it.
-local function switchWindows(direction)
-    return function()
-        hl.dispatch(hl.dsp.global("quickshell:altTab" .. direction))
-        hl.dispatch(hl.dsp.submap("altTab"))
-    end
+-- so letting go of Alt is bound. Non-consuming: a bind on the release of a key
+-- otherwise swallows the key's press as well, and Alt stopped reaching
+-- applications at all. Transparent: Hyprland lets the release of a key fire
+-- only if no other key was pressed meanwhile, Tab say, and spares transparent
+-- binds from that, and without it the switcher waited for good. Both were
+-- measured on the test bench, not taken from the source alone. Every release
+-- of Alt reaches the shell, which does nothing with it unless a switch is
+-- under way.
+hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"), { description = "Shell: Switch windows" })
+hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
+for _, key in ipairs({ "ALT_L", "ALT_R" }) do
+    hl.bind(key, hl.dsp.global("quickshell:altTabCommit"), { ignore_mods = true, release = true, non_consuming = true, transparent = true })
 end
-local function endSwitch(how)
-    return function()
-        hl.dispatch(hl.dsp.global("quickshell:altTab" .. how))
-        hl.dispatch(hl.dsp.submap("reset"))
-    end
-end
-hl.define_submap("altTab", function()
-    hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"))
-    hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
-    hl.bind("ALT + Escape", endSwitch("Cancel"))
-    for _, key in ipairs({ "ALT_L", "ALT_R" }) do
-        hl.bind(key, endSwitch("Commit"), { ignore_mods = true, release = true })
-    end
-end)
-hl.bind("ALT + Tab", switchWindows("Next"), { description = "Shell: Switch windows" })
-hl.bind("ALT + SHIFT + Tab", switchWindows("Previous"))
 
 -- Windows come back where they were left.
 --
