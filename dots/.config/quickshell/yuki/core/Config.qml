@@ -839,6 +839,10 @@ Singleton {
                     // application, "own" each shows the windows on its screen.
                     property string appsOn: "all"
                 }
+                property JsonObject snap: JsonObject {
+                    // Windows dragged to an edge or a corner take that part of the screen.
+                    property bool enabled: true
+                }
                 property JsonObject switcher: JsonObject {
                     // Alt+Tab: "workspace" the windows of the workspace on
                     // screen, "all" every one.

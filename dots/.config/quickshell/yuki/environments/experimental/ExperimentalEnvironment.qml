@@ -55,7 +55,12 @@ Scope {
     ExSurfaces {}
 
     ExMaximizedFront {}
-    ExMaximize {}
+    ExPlacement {
+        id: placement
+    }
+    ExSnap {
+        placement: placement
+    }
 
     PanelLoader { component: ExBackground {} }
     PanelLoader { component: ExDock {} }

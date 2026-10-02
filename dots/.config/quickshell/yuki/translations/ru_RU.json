@@ -1364,5 +1364,8 @@
   "Switching between windows": "Переключение между окнами",
   "Alt+Tab shows": "Alt+Tab показывает",
   "The windows of the workspace on screen, or every open window": "Окна рабочего стола на экране или все открытые окна",
-  "All workspaces": "Все рабочие столы"
+  "All workspaces": "Все рабочие столы",
+  "Snap windows": "Прикреплять окна",
+  "A window dragged to a side of the screen takes that half, to a corner that quarter, to the top the whole of it": "Окно, перетащенное к краю экрана, занимает его половину, к углу четверть, к верху весь экран",
+  "Snap, switching between windows": "Прикрепление окон, переключение между ними"
 }

@@ -29,7 +29,7 @@ QtObject {
                 { key: "sound", name: Translation.tr("Sound"), glyph: "volume_up", description: Translation.tr("Output, input, volume"), keywords: "audio volume speaker microphone mixer", component: "SoundPage.qml" },
                 { key: "notifications", name: Translation.tr("Notifications"), glyph: "notifications", description: Translation.tr("Do not disturb, what is kept"), keywords: "alerts do not disturb", component: "NotificationsPage.qml" },
                 { key: "power", name: Translation.tr("Power"), glyph: "bolt", description: Translation.tr("Power mode, battery, keeping awake"), keywords: "battery sleep power profile idle lock suspend", component: "PowerPage.qml" },
-                { key: "multitasking", name: Translation.tr("Multitasking"), glyph: "select_window", description: Translation.tr("Switching between windows"), keywords: "alt tab switch windows snap", component: "MultitaskingPage.qml" }
+                { key: "multitasking", name: Translation.tr("Multitasking"), glyph: "select_window", description: Translation.tr("Snap, switching between windows"), keywords: "alt tab switch windows snap maximize", component: "MultitaskingPage.qml" }
             ]
         },
         {

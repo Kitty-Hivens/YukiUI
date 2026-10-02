@@ -67,6 +67,12 @@ local SHARED_CLASSES = { ["org.quickshell"] = true }
 YUKI_GEOMETRY = {}
 -- key -> the armed rule for it.
 YUKI_GEOMETRY_RULES = {}
+-- address -> { x, y, w, h }, global: where a window the shell has maximised or
+-- snapped stood before it was, told by the shell as it places one. Such a
+-- window is remembered as it stood, the way Windows keeps a window's restored
+-- place, not as half the screen or all of it. Kept across a reload, as the
+-- shell's placements are.
+YUKI_PLACED = YUKI_PLACED or {}
 
 local function keyOf(class, title)
     if SHARED_CLASSES[class] then
@@ -187,6 +193,8 @@ hl.on("window.open", function(w)
 end)
 
 hl.on("window.close", function(w)
+    local placed = YUKI_PLACED[w.address]
+    YUKI_PLACED[w.address] = nil
     if not usableWindow(w) then
         return
     end
@@ -194,18 +202,24 @@ hl.on("window.close", function(w)
     if openCount(key, w.address) > 0 then
         return
     end
-    if w.floating and w.fullscreen == 0 and w.monitor and w.at and w.size then
+    -- One told it is maximised that the shell does not know of, since the
+    -- shell started after it was placed, is as large as the screen and not
+    -- where it stood, so what was remembered before is kept.
+    local maximized = w.fullscreen_client ~= 0 and not placed
+    if w.floating and w.fullscreen == 0 and not maximized and w.monitor and w.at and w.size then
         local m = w.monitor
+        local at = placed and { x = placed.x, y = placed.y } or w.at
+        local size = placed and { x = placed.w, y = placed.h } or w.size
         -- Kept on the monitor, so a window left hanging off an edge does not
         -- come back with part of it out of reach.
-        local width = math.min(w.size.x, m.width)
-        local height = math.min(w.size.y, m.height)
+        local width = math.min(size.x, m.width)
+        local height = math.min(size.y, m.height)
         YUKI_GEOMETRY[key] = {
             class = w.initial_class,
             title = SHARED_CLASSES[w.initial_class] and w.initial_title or "",
             monitor = m.name,
-            x = math.max(0, math.min(w.at.x - m.x, m.width - width)),
-            y = math.max(0, math.min(w.at.y - m.y, m.height - height)),
+            x = math.max(0, math.min(at.x - m.x, m.width - width)),
+            y = math.max(0, math.min(at.y - m.y, m.height - height)),
             w = width,
             h = height,
         }
