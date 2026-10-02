@@ -21,6 +21,13 @@
 // Letting go of focus. A window moved to a special workspace that is not shown
 // keeps keyboard focus, so typing goes on reaching a window nobody can see, and
 // no dispatcher focuses nothing. hl.plugin.minimize.reset_focus() does.
+//
+// Telling an X11 window it is maximised. Hyprland tells a Wayland window of
+// its maximised state, which the shell sets, but never sets it on an XWayland
+// surface, so an X11 application went on drawing itself as not maximised and
+// its own maximise button, worked out against that, could only ever maximise.
+// hl.plugin.minimize.set_maximized(address, maximized) sets it and sends the
+// window its state.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
@@ -29,6 +36,9 @@
 #include <hyprland/src/protocols/XDGShell.hpp>
 #include <hyprland/src/xwayland/XSurface.hpp>
 #include <hyprland/src/managers/EventManager.hpp>
+
+// The C library, under C linkage.
+#include <lua.hpp>
 
 #include <format>
 #include <optional>
@@ -102,6 +112,23 @@ namespace {
         return 0;
     }
 
+    int setMaximized(lua_State* state) {
+        const std::string address = luaL_checkstring(state, 1);
+        const bool        maximized = lua_toboolean(state, 2);
+        for (const auto& window : Desktop::windowState()->windows()) {
+            if (!window || std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) != address)
+                continue;
+            if (const auto x11 = window->m_xwaylandSurface.lock(); x11 && x11->m_maximized != maximized) {
+                x11->m_maximized = maximized;
+                // Sends the whole state, the maximised part with it, and
+                // leaves fullscreen as it was.
+                x11->setFullscreen(x11->m_fullscreen);
+            }
+            break;
+        }
+        return 0;
+    }
+
     void watch(const PHLWINDOW& window) {
         // Dropped along the way rather than on a destroy event: a window that
         // is gone leaves an expired reference behind, and a listener on a
@@ -150,13 +177,14 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     });
 
     HyprlandAPI::addLuaFunction(handle, "minimize", "reset_focus", resetFocus);
+    HyprlandAPI::addLuaFunction(handle, "minimize", "set_maximized", setMaximized);
 
     // Windows that were already open when the plugin came in.
     for (const auto& window : Desktop::windowState()->windows())
         if (window && window->m_isMapped)
             watch(window);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, and lets go of focus for the shell's minimising", "yuki", "1.3"};
+    return {"minimize", "Passes on requests to be minimised or maximised, tells X11 windows they are maximised, and lets go of focus for the shell's minimising", "yuki", "1.4"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
