@@ -1369,5 +1369,10 @@
   "A window dragged to a side of the screen takes that half, to a corner that quarter, to the top the whole of it": "Окно, перетащенное к краю экрана, занимает его половину, к углу четверть, к верху весь экран",
   "Snap, switching between windows": "Прикрепление окон, переключение между ними",
   "Files": "Файлы",
-  "Shut down or sign out": "Выключение или выход"
+  "Shut down or sign out": "Выключение или выход",
+  "Look": "Вид",
+  "Opacity": "Непрозрачность",
+  "How much of what is behind the dock it covers": "Насколько док закрывает то, что за ним",
+  "Blur behind the dock": "Размытие под доком",
+  "What shows through is blurred, windows included": "То, что просвечивает, размывается, окна тоже"
 }

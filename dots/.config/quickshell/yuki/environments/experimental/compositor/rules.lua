@@ -43,6 +43,23 @@ hl.config({
 hl.window_rule({ match = { tag = "maximized" }, rounding = 0, border_size = 0, no_shadow = true })
 hl.window_rule({ match = { tag = "snapped" }, rounding = 0 })
 
+-- Blur behind the dock, as its settings ask. The shell calls this as it
+-- starts, whenever the setting changes and after every reload, which builds
+-- the rules anew. A pixel at or below the given opacity is not blurred, which
+-- keeps the shadow round a floating dock clear of it, and what is behind the
+-- dock is blurred as it is, windows included, rather than the wallpaper alone.
+-- A reload builds every rule anew, so one kept from before it is gone.
+YUKI_DOCK_BLUR_RULE = nil
+function YUKI_SET_DOCK_BLUR(enabled, ignoreAlpha)
+    if YUKI_DOCK_BLUR_RULE then
+        YUKI_DOCK_BLUR_RULE:set_enabled(false)
+        YUKI_DOCK_BLUR_RULE = nil
+    end
+    if enabled then
+        YUKI_DOCK_BLUR_RULE = hl.layer_rule({ match = { namespace = "^(quickshell:dock)$" }, blur = true, ignore_alpha = ignoreAlpha, xray = false })
+    end
+end
+
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
 -- click on a title bar does on Windows.

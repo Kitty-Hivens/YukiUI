@@ -838,6 +838,10 @@ Singleton {
                     // With a dock on every screen: "all" each shows every
                     // application, "own" each shows the windows on its screen.
                     property string appsOn: "all"
+                    // How much of the dock's plate covers what is behind it, in
+                    // per cent, and whether what shows through is blurred.
+                    property int opacity: 95
+                    property bool blur: false
                     // Tray icons in the order they were carried into, by id.
                     // Which of them the dock shows is the tray's own list.
                     property list<string> trayOrder: []

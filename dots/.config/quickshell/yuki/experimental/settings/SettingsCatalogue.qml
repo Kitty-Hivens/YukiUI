@@ -58,7 +58,7 @@ QtObject {
             pages: [
                 { key: "background", name: Translation.tr("Background"), glyph: "wallpaper", description: Translation.tr("The picture behind the windows"), keywords: "wallpaper image picture", component: "BackgroundPage.qml" },
                 { key: "colors", name: Translation.tr("Colors"), glyph: "contrast", description: Translation.tr("Light or dark"), keywords: "dark light theme mode accent", component: "ColorsPage.qml" },
-                { key: "dock", name: Translation.tr("Dock"), glyph: "dock_to_bottom", description: Translation.tr("Edge, style, alignment"), keywords: "taskbar panel edge", component: "DockPage.qml" },
+                { key: "dock", name: Translation.tr("Dock"), glyph: "dock_to_bottom", description: Translation.tr("Edge, style, alignment"), keywords: "taskbar panel edge opacity transparency blur", component: "DockPage.qml" },
                 { key: "desktop", name: Translation.tr("Desktop"), glyph: "desktop_mac", description: Translation.tr("Icons on the desktop"), keywords: "icons sort size", component: "DesktopPage.qml" }
             ]
         },

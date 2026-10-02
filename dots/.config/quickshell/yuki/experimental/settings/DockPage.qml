@@ -124,6 +124,56 @@ ColumnLayout {
 
     SettingsSection {
         Layout.fillWidth: true
+        title: Translation.tr("Look")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "opacity"
+            text: Translation.tr("Opacity")
+            description: Translation.tr("How much of what is behind the dock it covers")
+
+            Row {
+                spacing: ExLooks.spacing.m
+
+                ExText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 40
+                    horizontalAlignment: Text.AlignRight
+                    text: `${Math.round(opacitySlider.value)}%`
+                    dim: true
+                }
+                ExSlider {
+                    id: opacitySlider
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitWidth: 200
+                    from: 30
+                    to: 100
+                    stepSize: 1
+                    value: root.dock.opacity
+                    // Written once the knob is let go, not on every step of a drag.
+                    onPressedChanged: {
+                        if (!pressed)
+                            Config.options.experimental.dock.opacity = Math.round(value);
+                    }
+                }
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "blur_on"
+            text: Translation.tr("Blur behind the dock")
+            description: Translation.tr("What shows through is blurred, windows included")
+
+            ExSwitch {
+                checked: root.dock.blur
+                onToggled: Config.options.experimental.dock.blur = checked
+            }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
         title: Translation.tr("Behaviour")
 
         SettingsCard {

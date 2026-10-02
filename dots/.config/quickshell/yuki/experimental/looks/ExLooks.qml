@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 
 import qs.common
+import qs.core
 
 /**
  * Every measure and colour the experimental kit draws with.
@@ -53,8 +54,9 @@ Singleton {
 
         readonly property color shadow: root.dark ? "#73000000" : "#2a1a2140"
 
-        /** The dock's plate, a touch see-through. */
-        readonly property color dockPlate: root.dark ? "#f224252b" : "#f2ffffff"
+        /** The dock's plate, as see-through as its settings ask. */
+        readonly property color dockPlate: Qt.rgba(root.dark ? 0x24 / 255 : 1, root.dark ? 0x25 / 255 : 1, root.dark ? 0x2b / 255 : 1,
+            Math.max(0, Math.min(100, Config.options?.experimental?.dock?.opacity ?? 95)) / 100)
         /** Laid over the screen behind a dialog. */
         readonly property color scrim: root.dark ? "#80000000" : "#4d15161a"
         /** Heavier, for a screen that asks for a decision, like the session menu. */

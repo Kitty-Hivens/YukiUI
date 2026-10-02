@@ -38,6 +38,32 @@ Scope {
         id: launcherEntries
     }
 
+    // Blur behind the dock, which the compositor draws by a rule this
+    // environment keeps. Asked for as the shell starts, when the settings
+    // change, and after every reload of the compositor, which drops it. A
+    // pixel no more opaque than the threshold is left unblurred: the shadow
+    // round a floating dock stays clear, and the plate is always above it.
+    readonly property bool blurWanted: Config.options.experimental.dock.blur
+    readonly property real plateAlpha: ExLooks.colors.dockPlate.a
+    onBlurWantedChanged: blurApply.restart()
+    onPlateAlphaChanged: blurApply.restart()
+    Component.onCompleted: blurApply.restart()
+    Timer {
+        id: blurApply
+        interval: 150
+        onTriggered: {
+            const threshold = Math.min(0.3, root.plateAlpha * 0.6).toFixed(3);
+            Quickshell.execDetached(["hyprctl", "eval", `if YUKI_SET_DOCK_BLUR then YUKI_SET_DOCK_BLUR(${root.blurWanted}, ${threshold}) end`]);
+        }
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "configreloaded")
+                blurApply.restart();
+        }
+    }
+
     // A tray icon being carried, as on Windows: along the tray to move it, onto
     // the chevron or among the icons it hides to keep it out of the way, and
     // back. Held here rather than by one dock, since the pointer can take it
