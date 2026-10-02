@@ -11,8 +11,10 @@ def area(desk):
 
 
 def is_maximized(desk, client) -> bool:
+    # Hyprland's fullscreen state stays untouched: set apart from its client
+    # half, a request for fullscreen from the window changed only that half.
     x, y, w, h = area(desk)
-    return (client["fullscreenClient"] == 1 and client["fullscreen"] == 0 and "maximized" in client["tags"]
+    return (client["fullscreenClient"] == 0 and client["fullscreen"] == 0 and "maximized" in client["tags"]
             and tuple(client["at"]) == (x, y) and tuple(client["size"]) == (w, h))
 
 

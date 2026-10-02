@@ -15,7 +15,7 @@ import qs.core.services
 // over floating windows, so this family suppresses that with a window rule, and
 // a window's own request to maximise reaches here through the minimize plugin.
 // A maximised application is still told it is maximised, so it draws itself
-// that way, while the compositor treats it as an ordinary window.
+// that way, while the compositor treats it as an ordinary window, tagged.
 Scope {
     id: root
 
@@ -41,6 +41,14 @@ Scope {
 
     function usable(address: string): bool {
         return /^0x[0-9a-f]+$/.test(address);
+    }
+
+    /**
+     * Whether the compositor shows a window as maximised here, by the tag it
+     * was given, for one this shell has not placed itself.
+     */
+    function markedMaximized(client): bool {
+        return (client.tags ?? []).includes("maximized");
     }
 
     /** Changes what is known of a window here. What the compositor is told of it goes in `placedLua`. */
@@ -128,10 +136,8 @@ Scope {
     function release(address: string) {
         if (!root.placed[address])
             return;
-        const wasMaximized = root.isMaximized(address);
         root.setPlaced(address, null);
-        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", HyprlandData.windowByAddress[address]?.xwayland ?? false) + root.placedLua(address, null)
-            + (wasMaximized ? `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:${address}" }))` : "")]);
+        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", HyprlandData.windowByAddress[address]?.xwayland ?? false) + root.placedLua(address, null)]);
     }
     /** Fits every placed window to its screen's work area again, after the dock moved say. */
     function refit() {
@@ -261,13 +267,18 @@ Scope {
             wanted = client.xwayland ? (wanted === "asked:1" ? "maximized" : "restore") : "toggle";
 
         if (wanted === "toggle")
-            wanted = entry?.zone === "maximized" || (!entry && client.fullscreenClient === 1) ? "restore" : "maximized";
+            wanted = entry?.zone === "maximized" || (!entry && root.markedMaximized(client)) ? "restore" : "maximized";
 
         if (wanted === "adopt") {
             // A Wayland window an older shell told it was not maximised is
             // told so again, as Hyprland tells every one.
-            const asHyprland = client.xwayland ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
-            wanted = client.fullscreenClient === 1 || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
+            let asHyprland = client.xwayland ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
+            // One an older shell marked as maximised with Hyprland's fullscreen
+            // state has its states in step again, or its own request for
+            // fullscreen stays with the application alone.
+            if (client.fullscreenClient !== 0)
+                asHyprland += `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `;
+            wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
             before = root.centred(area);
             if (!wanted)
                 return asHyprland + root.marksFor(client.address, "", client.xwayland);
@@ -285,14 +296,13 @@ Scope {
         }
 
         if (wanted === "restore") {
-            if (!entry && client.fullscreenClient !== 1)
+            if (!entry && !root.markedMaximized(client))
                 return "";
             root.setPlaced(client.address, null);
             // Known only for a window placed here since the shell started. One
             // placed before is given a size of its own, centred.
             const back = entry?.before ?? root.centred(area);
             return root.marksFor(client.address, "", client.xwayland) + root.placedLua(client.address, null)
-                + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `
                 + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${back.size[0]}, y = ${back.size[1]} })) `
                 + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${back.at[0]}, y = ${back.at[1]} })) `;
         }
@@ -303,10 +313,11 @@ Scope {
         const placement = { zone: zone, before: before };
         root.setPlaced(client.address, placement);
         const rect = root.zoneRect(area, zone);
-        // A maximised window is told so, and draws itself that way. A snapped
-        // one is not: Windows draws it as an ordinary window.
+        // Hyprland's own fullscreen state is left alone. Set to anything,
+        // its two halves stop following each other, and the window's own
+        // request for fullscreen, F11 in a browser, then reached only the
+        // application, which hid its tool bars inside a maximised frame.
         return root.marksFor(client.address, zone, client.xwayland) + root.placedLua(client.address, placement)
-            + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = ${zone === "maximized" ? 1 : 0}, ${target} })) `
             + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${rect.w}, y = ${rect.h} })) `
             + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${rect.x}, y = ${rect.y} })) `;
     }
@@ -409,7 +420,7 @@ Scope {
         if (!client || !client.floating || client.fullscreen !== 0 || client.workspace.id < 1)
             return;
         // One maximised before the shell started is told so but not known here.
-        const zone = root.zoneOf(client.address) || (client.fullscreenClient === 1 ? "maximized" : "");
+        const zone = root.zoneOf(client.address) || (root.markedMaximized(client) ? "maximized" : "");
         const next = root.steps[zone]?.[direction] ?? null;
         if (next === "minimize")
             Minimize.minimize(client.address);
