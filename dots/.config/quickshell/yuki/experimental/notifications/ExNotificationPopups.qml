@@ -30,7 +30,11 @@ PanelWindow {
         top: root.dockAtTop
     }
     implicitWidth: 360 + 2 * root.shadowRoom
-    implicitHeight: Math.max(1, list.contentHeight + 2 * root.shadowRoom)
+    // Sized by where the cards actually are. The list's own content height is
+    // an estimate that fell behind a card growing as its body wrapped, and the
+    // window, cut to it, clipped the card nearest the dock.
+    readonly property real stackHeight: list.contentItem.childrenRect.height
+    implicitHeight: Math.max(1, root.stackHeight + 2 * root.shadowRoom)
     mask: Region {
         item: list
     }
@@ -57,7 +61,7 @@ PanelWindow {
         x: root.shadowRoom
         y: root.shadowRoom
         width: 360
-        height: contentHeight
+        height: root.stackHeight
         spacing: ExLooks.spacing.s
         interactive: false
         // Newest nearest the dock.
