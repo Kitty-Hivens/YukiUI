@@ -838,6 +838,9 @@ Singleton {
                     // With a dock on every screen: "all" each shows every
                     // application, "own" each shows the windows on its screen.
                     property string appsOn: "all"
+                    // Tray icons in the order they were carried into, by id.
+                    // Which of them the dock shows is the tray's own list.
+                    property list<string> trayOrder: []
                 }
                 property JsonObject snap: JsonObject {
                     // Windows dragged to an edge or a corner take that part of the screen.

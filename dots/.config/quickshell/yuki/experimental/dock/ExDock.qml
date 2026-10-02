@@ -38,6 +38,138 @@ Scope {
         id: launcherEntries
     }
 
+    // A tray icon being carried, as on Windows: along the tray to move it, onto
+    // the chevron or among the icons it hides to keep it out of the way, and
+    // back. Held here rather than by one dock, since the pointer can take it
+    // from one screen's dock to another's.
+    property string carriedId: ""
+    /** Where it would land: the screen, "dock" or "overflow", and the place among what is there. */
+    property string dropScreen: ""
+    property string dropPlace: ""
+    property int dropIndex: -1
+    /** Which of the two said so, the tray or the popup, so only that one takes it back. */
+    property string dropVia: ""
+
+    /** Tray icons in the order they were put in, ones never moved after in the order they came. */
+    function trayOrdered(items): var {
+        const order = Config.options.experimental.dock.trayOrder;
+        const rank = id => {
+            const at = order.indexOf(id);
+            return at === -1 ? order.length : at;
+        };
+        return [...items].sort((a, b) => rank(a.id) - rank(b.id));
+    }
+
+    /**
+     * What a place shows: { key, item, state }, with the carried icon held open
+     * where it would land, and faded where it was taken from until it lands.
+     * Its place there is kept rather than closed: the tray stands against the
+     * status block, so closing it moved the chevron, and the popup hanging off
+     * the chevron, out from under the pointer carrying it there. Kept rather
+     * than left out as well since that icon is the source of the drag.
+     */
+    function trayEntries(items, screen: string, place: string): var {
+        const entries = root.trayOrdered(items).map(item => ({ key: item.id, item: item, state: "" }));
+        const carried = root.carriedId;
+        if (carried.length === 0)
+            return entries;
+        const own = entries.findIndex(entry => entry.key === carried);
+        if (root.dropScreen === screen && root.dropPlace === place) {
+            const item = own >= 0 ? entries[own].item : SystemTray.items.values.find(candidate => candidate.id === carried);
+            if (!item)
+                return entries;
+            const rest = entries.filter(entry => entry.key !== carried);
+            rest.splice(Math.max(0, Math.min(root.dropIndex, rest.length)), 0, { key: carried, item: item, state: "gap" });
+            return rest;
+        }
+        if (own >= 0)
+            entries[own] = Object.assign({}, entries[own], { state: "carried" });
+        return entries;
+    }
+
+    function carryOver(screen: string, place: string, index: int, via: string) {
+        root.dropScreen = screen;
+        root.dropPlace = place;
+        root.dropIndex = index;
+        root.dropVia = via;
+    }
+
+    function carryAway(screen: string, via: string) {
+        if (root.dropScreen !== screen || root.dropVia !== via)
+            return;
+        root.dropScreen = "";
+        root.dropPlace = "";
+        root.dropIndex = -1;
+        root.dropVia = "";
+    }
+
+    function carryEnded() {
+        const drop = root.pendingDrop;
+        root.pendingDrop = null;
+        dropFallback.stop();
+        if (drop)
+            root.commitDrop(drop.id, drop.place, drop.index);
+        root.carriedId = "";
+        root.dropScreen = "";
+        root.dropPlace = "";
+        root.dropIndex = -1;
+        root.dropVia = "";
+    }
+
+    /**
+     * A drop waiting for the drag to finish. Carried out at once, it took the
+     * icon out of the list it was carried from, and with it the very item the
+     * drag came from, which then never said the drag was over: the icon stayed
+     * held open in its new place, invisible.
+     */
+    property var pendingDrop: null
+
+    function trayDrop(place: string, index: int) {
+        if (root.carriedId.length === 0)
+            return;
+        root.pendingDrop = { id: root.carriedId, place: place, index: index };
+        dropFallback.restart();
+    }
+
+    // For a drag whose source went away all the same, its program quitting say.
+    Timer {
+        id: dropFallback
+        interval: 1000
+        onTriggered: root.carryEnded()
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.carriedId.length > 0
+        onTriggered: {
+            if (!SystemTray.items.values.some(item => item.id === root.carriedId))
+                root.carryEnded();
+        }
+    }
+
+    /** Puts an icon in a place, shown in the dock or kept out of the way, before what stands at that index there. */
+    function commitDrop(id: string, place: string, index: int) {
+        const shown = place === "dock";
+        const present = SystemTray.items.values.map(item => item.id);
+        const order = root.trayOrdered(SystemTray.items.values).map(item => item.id).filter(other => other !== id);
+        const there = root.trayOrdered(shown ? TrayService.pinnedItems : TrayService.unpinnedItems).map(item => item.id).filter(other => other !== id);
+        if (index < there.length)
+            order.splice(order.indexOf(there[index]), 0, id);
+        else if (there.length > 0)
+            order.splice(order.indexOf(there[there.length - 1]) + 1, 0, id);
+        else
+            order.push(id);
+        // Programs not running now keep their places for when they come back.
+        const absent = Config.options.experimental.dock.trayOrder.filter(other => other !== id && !present.includes(other));
+        Config.options.experimental.dock.trayOrder = [...order, ...absent];
+        root.setTrayShown(id, shown);
+    }
+
+    function setTrayShown(id: string, shown: bool) {
+        if (root.trayShown(id) !== shown)
+            TrayService.togglePin(id);
+    }
+
     // Moving to another edge, in steps: "capture" while the tray and status
     // block are pictured, "prepare" while the overlays come up showing the
     // dock as it stands, "switch" while the dock, hidden, takes its new place,
@@ -298,7 +430,7 @@ Scope {
             readonly property bool autoHide: Config.options.experimental.dock.autoHide
             readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks].some(popup => popup.open)
             readonly property bool keepShown: !window.autoHide || dockHover.hovered || window.anyPopupOpen
-                || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys
+                || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys || root.carriedId.length > 0
             property bool revealed: !window.autoHide
             /** From in place (0) to out of sight past the edge (1). */
             property real hidden: window.revealed ? 0 : 1
@@ -761,6 +893,8 @@ Scope {
                     id: tray
 
                     edge: window.edge
+                    entries: root.trayEntries(TrayService.pinnedItems, window.screen.name, "dock")
+                    chevronShown: TrayService.unpinnedItems.length > 0 || root.carriedId.length > 0
                     x: window.vertical ? (parent.width - width) / 2 : status.x - width - dock.padding / 2
                     y: window.vertical ? status.y - height - dock.padding / 2 : (parent.height - height) / 2
                     onMenuRequested: (item, button) => {
@@ -771,6 +905,21 @@ Scope {
                         window.closePopups(trayOverflow);
                         trayOverflow.toggle(button);
                     }
+                    onChevronHeld: button => {
+                        if (trayOverflow.open || TrayService.unpinnedItems.length === 0)
+                            return;
+                        window.closePopups(trayOverflow);
+                        trayOverflow.toggle(button);
+                    }
+                    onCarryStarted: id => {
+                        window.closePopups(trayOverflow);
+                        root.carriedId = id;
+                    }
+                    onCarryFinished: root.carryEnded()
+                    // Over the chevron it goes with the hidden ones, at their end.
+                    onCarriedOver: (place, onChevron) => root.carryOver(window.screen.name, onChevron ? "overflow" : "dock", onChevron ? 1000 : place, "tray")
+                    onCarriedAway: root.carryAway(window.screen.name, "tray")
+                    onDroppedAt: (place, onChevron) => root.trayDrop(onChevron ? "overflow" : "dock", onChevron ? 1000 : place)
                 }
 
                 DockStatus {
@@ -900,6 +1049,12 @@ Scope {
                 dockWindow: window
                 dockSurface: dock
                 edge: window.edge
+                entries: root.trayEntries(TrayService.unpinnedItems, window.screen.name, "overflow")
+                onCarryStarted: id => root.carriedId = id
+                onCarryFinished: root.carryEnded()
+                onCarriedOver: place => root.carryOver(window.screen.name, "overflow", place, "overflow")
+                onCarriedAway: root.carryAway(window.screen.name, "overflow")
+                onDroppedAt: place => root.trayDrop("overflow", place)
                 // Opened where the hidden icons came out, since the icon asked
                 // for lives in a popup that closes to make room.
                 onMenuRequested: item => {
@@ -971,8 +1126,7 @@ Scope {
 
         /** Shows a tray icon in the dock, or puts it under the arrow. */
         function setTrayShown(id: string, shown: bool): string {
-            if (root.trayShown(id) !== shown)
-                TrayService.togglePin(id);
+            root.setTrayShown(id, shown);
             return "ok";
         }
 
