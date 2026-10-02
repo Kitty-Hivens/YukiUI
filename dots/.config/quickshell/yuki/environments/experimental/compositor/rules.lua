@@ -19,10 +19,13 @@ hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
--- click on a title bar does on Windows. Read after the shared keys, so this
--- one replaces theirs while the environment is up.
-hl.unbind("SUPER + ALT + Space")
-hl.bind("SUPER + ALT + Space", hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
+-- click on a title bar does on Windows. The shared maximise key goes the same
+-- way, or it would reach Hyprland's own. Read after the shared keys, so these
+-- replace theirs while the environment is up.
+for _, keys in ipairs({ "SUPER + ALT + Space", "SUPER + D" }) do
+    hl.unbind(keys)
+    hl.bind(keys, hl.dsp.global("quickshell:maximizeToggle"), { description = "Window: Maximize/Restore" })
+end
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,
