@@ -2,7 +2,7 @@
 
 import time
 
-from experimental.test_maximize import area, is_maximized, ordinary
+from experimental.test_maximize import area, is_maximized, without_decorations
 
 
 def zone_rect(desk, zone):
@@ -16,13 +16,13 @@ def zone_rect(desk, zone):
     }[zone]
 
 
-def test_snapped_window_is_square_and_tiled(desk):
+def test_snapped_window_is_square(desk):
     window = desk.wayland()
     for zone in ("left", "right", "topleft", "bottomright"):
         desk.place(window, zone)
         rect = zone_rect(desk, zone)
         window.wait(lambda c, rect=rect: (*c["at"], *c["size"]) == rect and c["tags"] == ["snapped"], f"snapped {zone}")
-        window.wait_state(ordinary, f"it is tiled and not maximised in {zone}")
+        window.wait_state(without_decorations, f"it draws no decorations in {zone}")
 
 
 def test_restoring_a_snapped_window_puts_it_back(desk):
@@ -33,7 +33,7 @@ def test_restoring_a_snapped_window_puts_it_back(desk):
     desk.restore(window)
     client = window.wait(lambda c: not c["tags"], "put back")
     assert (*client["at"], *client["size"]) == before
-    window.wait_state(ordinary, "it is an ordinary window again")
+    window.wait_state(without_decorations, "it still draws no decorations")
 
 
 # Where the test window is taken hold of: the middle of its title bar. Higher

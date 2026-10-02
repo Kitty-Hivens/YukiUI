@@ -21,19 +21,20 @@ def believes(state) -> set:
     return {name for name in state["toplevel"] if name == "maximized" or name.endswith("tiled")}
 
 
-def ordinary(state) -> bool:
-    """Told it is tiled, so it draws no shadow of its own, and not maximised."""
-    return "tiled" in believes(state) and "maximized" not in believes(state)
+def without_decorations(state) -> bool:
+    """Told it is maximised and tiled, as Hyprland tells every Wayland window,
+    whatever its size, so it draws no margin or shadow of its own."""
+    return "maximized" in believes(state) and "tiled" in believes(state)
 
 
-def told_maximized(state) -> bool:
-    return "maximized" in believes(state)
-
-
-def test_new_window_is_not_told_it_is_maximized(desk):
-    # Hyprland tells every Wayland window it is maximised as it maps.
+def test_wayland_window_draws_no_decorations_of_its_own(desk):
+    # Told it was not maximised, a GTK window drew a margin for its own shadow
+    # that Hyprland lined up with neither its border nor its corners.
     window = desk.wayland()
-    window.wait_state(ordinary, "it is an ordinary window")
+    window.wait_state(without_decorations, "it is maximised and tiled")
+    desk.place(window, "left")
+    window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+    window.wait_state(without_decorations, "it is still maximised and tiled")
 
 
 def test_maximize_and_restore_wayland(desk):
@@ -42,23 +43,25 @@ def test_maximize_and_restore_wayland(desk):
 
     desk.toggle_maximized(window)
     window.wait(lambda c: is_maximized(desk, c), "maximised")
-    window.wait_state(told_maximized, "it is maximised")
+    window.wait_state(without_decorations, "it draws no decorations")
 
     desk.toggle_maximized(window)
     client = window.wait(lambda c: c["fullscreenClient"] == 0 and not c["tags"], "put back")
     assert (*client["at"], *client["size"]) == before
-    window.wait_state(ordinary, "it is an ordinary window again")
+    window.wait_state(without_decorations, "it still draws no decorations")
 
 
-def test_application_asks_to_be_maximized(desk):
+def test_wayland_maximize_button_toggles(desk):
+    # Believing it is maximised, a GTK window's maximise button shows "restore"
+    # and asks to be put back, every time.
     window = desk.wayland()
     before = window.rect
 
-    window.command("maximize")
-    window.wait(lambda c: is_maximized(desk, c), "maximised at its own request")
+    window.command("unmaximize")
+    window.wait(lambda c: is_maximized(desk, c), "maximised by its own button")
 
     window.command("unmaximize")
-    client = window.wait(lambda c: c["fullscreenClient"] == 0 and not c["tags"], "put back at its own request")
+    client = window.wait(lambda c: c["fullscreenClient"] == 0 and not c["tags"], "put back by its own button")
     assert (*client["at"], *client["size"]) == before
 
 

@@ -70,19 +70,24 @@ Scope {
     /**
      * Lua marking a window by its placement: the tag the compositor rules give
      * square corners by, "maximized", "snapped" for the halves and quarters,
-     * or neither, and whether the window itself is told it is maximised, so
-     * its own maximise button means what it shows. Every window is told it is
-     * tiled, as Hyprland tells it, which keeps it from drawing a shadow and a
-     * margin of its own round the one the compositor draws. It is sent before
-     * the window is resized, which is what carries it to an X11 window.
+     * or neither, and for an X11 window whether it is maximised, which
+     * Hyprland never tells one, so it draws itself to match and its own
+     * maximise button means what it shows. It is sent before the window is
+     * resized, which is what carries it to the window.
+     *
+     * A Wayland window is left as Hyprland has it, told it is maximised and
+     * tiled whatever its size: only then does a GTK window leave out the
+     * margin it draws for its own shadow, which the compositor lined up with
+     * neither its border nor its corners. Its maximise button, showing
+     * "restore", is read as a toggle instead.
      */
-    function marksFor(address: string, zone: string): string {
+    function marksFor(address: string, zone: string, x11: bool): string {
         const target = `window = "address:${address}"`;
         const maximized = zone === "maximized";
         const snapped = zone.length > 0 && !maximized;
         return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized ? "+" : "-"}maximized", ${target} })) `
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped ? "+" : "-"}snapped", ${target} })) `
-            + `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end `;
+            + (x11 ? `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end ` : "");
     }
 
     // A shell started anew knows nothing of what the one before it placed, and
@@ -125,7 +130,7 @@ Scope {
             return;
         const wasMaximized = root.isMaximized(address);
         root.setPlaced(address, null);
-        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "") + root.placedLua(address, null)
+        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", HyprlandData.windowByAddress[address]?.xwayland ?? false) + root.placedLua(address, null)
             + (wasMaximized ? `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:${address}" }))` : "")]);
     }
     /** Fits every placed window to its screen's work area again, after the dock moved say. */
@@ -246,16 +251,27 @@ Scope {
         let wanted = job.wanted;
         // Where it stood before the first placement, kept across later ones:
         // snapped and then maximised, it still goes back to where it stood.
-        let before = entry?.before ?? { at: client.at, size: client.size };
+        let before = job.before ?? entry?.before ?? { at: client.at, size: client.size };
+
+        // An application's own request to be maximised or put back. A Wayland
+        // window always believes it is maximised, so whichever it asks for
+        // is the press of its maximise button, and toggles. An X11 window is
+        // told the truth and is taken at its word.
+        if (wanted === "asked:1" || wanted === "asked:0")
+            wanted = client.xwayland ? (wanted === "asked:1" ? "maximized" : "restore") : "toggle";
 
         if (wanted === "toggle")
-            wanted = entry?.zone === "maximized" ? "restore" : "maximized";
+            wanted = entry?.zone === "maximized" || (!entry && client.fullscreenClient === 1) ? "restore" : "maximized";
 
         if (wanted === "adopt") {
+            // A Wayland window an older shell told it was not maximised is
+            // told so again, as Hyprland tells every one.
+            const asHyprland = client.xwayland ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
             wanted = client.fullscreenClient === 1 || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
             before = root.centred(area);
             if (!wanted)
-                return root.marksFor(client.address, "");
+                return asHyprland + root.marksFor(client.address, "", client.xwayland);
+            return asHyprland + root.answer({ address: client.address, wanted: wanted, before: before }, clients, monitors);
         }
 
         // An application that opens as large as the work area is taken to want
@@ -275,7 +291,7 @@ Scope {
             // Known only for a window placed here since the shell started. One
             // placed before is given a size of its own, centred.
             const back = entry?.before ?? root.centred(area);
-            return root.marksFor(client.address, "") + root.placedLua(client.address, null)
+            return root.marksFor(client.address, "", client.xwayland) + root.placedLua(client.address, null)
                 + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `
                 + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${back.size[0]}, y = ${back.size[1]} })) `
                 + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${back.at[0]}, y = ${back.at[1]} })) `;
@@ -289,7 +305,7 @@ Scope {
         const rect = root.zoneRect(area, zone);
         // A maximised window is told so, and draws itself that way. A snapped
         // one is not: Windows draws it as an ordinary window.
-        return root.marksFor(client.address, zone) + root.placedLua(client.address, placement)
+        return root.marksFor(client.address, zone, client.xwayland) + root.placedLua(client.address, placement)
             + `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = ${zone === "maximized" ? 1 : 0}, ${target} })) `
             + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${rect.w}, y = ${rect.h} })) `
             + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${rect.x}, y = ${rect.y} })) `;
@@ -301,7 +317,7 @@ Scope {
         function onRawEvent(event) {
             if (event.name === "maximizerequest") {
                 const [address, state] = event.data.split(",");
-                root.request(`0x${address}`, state === "1" ? "maximized" : "restore");
+                root.request(`0x${address}`, `asked:${state}`);
             } else if (event.name === "openwindow") {
                 root.watchOpened(`0x${event.data.split(",")[0]}`);
             } else if (event.name === "closewindow") {

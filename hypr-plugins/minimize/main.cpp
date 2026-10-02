@@ -22,16 +22,16 @@
 // keeps keyboard focus, so typing goes on reaching a window nobody can see, and
 // no dispatcher focuses nothing. hl.plugin.minimize.reset_focus() does.
 //
-// Telling a window how it stands: maximised or not, tiled or not. Hyprland,
-// made for tiling, tells every Wayland window as it maps that it is maximised
-// and tiled on every side, which keeps applications from drawing decorations
-// of their own, and never takes it back. On a floating desktop the maximised
-// part is wrong: a GTK window's own maximise button showed "restore" and asked
-// to be put back instead. An XWayland surface it never tells at all, so an X11
-// application drew itself as not maximised and its button could only ever
-// maximise.
+// Telling a window how it stands: maximised or not, tiled or not. Hyprland
+// tells every Wayland window as it maps that it is maximised and tiled on
+// every side, which keeps applications from drawing decorations of their own,
+// and an XWayland surface it never tells at all, so an X11 application drew
+// itself as not maximised and its button could only ever maximise.
 // hl.plugin.minimize.set_window_state(address, maximized, tiled) sets both
 // and sends the window its state. Tiled means nothing to X11 and is left out.
+// A GTK window told it is not maximised draws a margin for a shadow of its own,
+// which Hyprland then lines up with neither its border nor its corners, so the
+// shell leaves Wayland windows as Hyprland has them.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>

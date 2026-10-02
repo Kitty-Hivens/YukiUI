@@ -17,19 +17,6 @@ hl.config({ input = { follow_mouse = 2 } })
 -- maximise reaches the shell through the minimize plugin instead.
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
--- Hyprland tells every Wayland window as it maps that it is maximised and
--- tiled on every side. Tiled is what is wanted here too: an application then
--- leaves out the shadow and the resize margin it would draw round itself, and
--- the compositor draws the shadow and rounds the corners. Maximised is not: a
--- GTK window believed it was maximised from the start, its maximise button
--- showing "restore" and asking to be put back. So a window is told it is not
--- maximised as it opens, and the shell tells it otherwise as it places it.
-hl.on("window.open", function(w)
-    if hl.plugin.minimize and hl.plugin.minimize.set_window_state then
-        hl.plugin.minimize.set_window_state(w.address, false, true)
-    end
-end)
-
 -- Window shadows after Windows 11, where a window stands at elevation 128:
 -- Fluent blurs such a shadow by 128 and drops it by 64 at about a quarter
 -- opacity, which leaves roughly half of that at the window's lower edge,
