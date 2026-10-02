@@ -70,11 +70,11 @@ Scope {
     /**
      * Lua marking a window by its placement: the tag the compositor rules give
      * square corners by, "maximized", "snapped" for the halves and quarters,
-     * or neither, and for an X11 window whether it is maximised. Hyprland tells
-     * a Wayland window it is maximised but never an X11 one, which then drew
-     * itself as not maximised and could only maximise with its own button. It
-     * is sent before the window is resized, which is what carries it to the
-     * window.
+     * or neither, and whether the window itself is told it is maximised, so
+     * its own maximise button means what it shows. Every window is told it is
+     * tiled, as Hyprland tells it, which keeps it from drawing a shadow and a
+     * margin of its own round the one the compositor draws. It is sent before
+     * the window is resized, which is what carries it to an X11 window.
      */
     function marksFor(address: string, zone: string): string {
         const target = `window = "address:${address}"`;
@@ -82,7 +82,7 @@ Scope {
         const snapped = zone.length > 0 && !maximized;
         return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized ? "+" : "-"}maximized", ${target} })) `
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped ? "+" : "-"}snapped", ${target} })) `
-            + `if hl.plugin.minimize and hl.plugin.minimize.set_maximized then hl.plugin.minimize.set_maximized("${address}", ${maximized}) end `;
+            + `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end `;
     }
 
     // A shell started anew knows nothing of what the one before it placed, and
