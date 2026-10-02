@@ -11,6 +11,10 @@ import QtQuick.Layouts
 AbstractButton {
     id: root
 
+    ExPrimaryOnly {
+        z: 1
+    }
+
     property string glyph: ""
     property string subtitle: ""
     property bool hasMenu: false
@@ -88,6 +92,10 @@ AbstractButton {
     // The page behind it.
     AbstractButton {
         id: more
+
+        ExPrimaryOnly {
+            z: 1
+        }
 
         visible: root.hasMenu
         anchors.right: parent.right

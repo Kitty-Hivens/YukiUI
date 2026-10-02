@@ -126,6 +126,10 @@ Item {
                 delegate: AbstractButton {
                     id: navItem
 
+                    ExPrimaryOnly {
+                        z: 1
+                    }
+
                     required property var modelData
                     readonly property bool here: root.query.length === 0 && navItem.modelData.key === root.categoryKey
 
@@ -180,6 +184,10 @@ Item {
 
                 AbstractButton {
                     id: crumb
+
+                    ExPrimaryOnly {
+                        z: 1
+                    }
 
                     readonly property bool leads: root.page !== null && root.query.length === 0
 

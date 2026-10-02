@@ -281,6 +281,10 @@ ExPopup {
                     AbstractButton {
                         id: dot
 
+                        ExPrimaryOnly {
+                            z: 1
+                        }
+
                         required property int index
                         readonly property bool current: dot.index === pager.currentIndex
 

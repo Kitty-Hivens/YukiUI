@@ -840,6 +840,10 @@ FocusScope {
     component ToolButton: AbstractButton {
         id: tool
 
+        ExPrimaryOnly {
+            z: 1
+        }
+
         property string glyph
         property bool toggled: false
 
@@ -871,6 +875,10 @@ FocusScope {
 
     component HeaderCell: AbstractButton {
         id: cell
+
+        ExPrimaryOnly {
+            z: 1
+        }
 
         property int column: 0
         property bool alignRight: false
@@ -1120,6 +1128,10 @@ FocusScope {
                                         AbstractButton {
                                             id: crumbButton
 
+                                            ExPrimaryOnly {
+                                                z: 1
+                                            }
+
                                             height: parent.height
                                             implicitWidth: crumbContent.implicitWidth + 2 * ExLooks.spacing.s
                                             hoverEnabled: true
@@ -1287,6 +1299,10 @@ FocusScope {
 
                         AbstractButton {
                             id: placeButton
+
+                            ExPrimaryOnly {
+                                z: 1
+                            }
 
                             visible: !place.isHeader
                             anchors.fill: parent

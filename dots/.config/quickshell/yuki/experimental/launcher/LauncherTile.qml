@@ -10,6 +10,10 @@ import qs.experimental.looks
 AbstractButton {
     id: root
 
+    ExPrimaryOnly {
+        z: 1
+    }
+
     required property var desktopEntry
 
     implicitWidth: 96

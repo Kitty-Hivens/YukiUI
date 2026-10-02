@@ -34,6 +34,10 @@ AbstractButton {
         }
     }
 
+    ExPrimaryOnly {
+        z: 1
+    }
+
     contentItem: RowLayout {
         spacing: ExLooks.spacing.m
 

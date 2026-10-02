@@ -221,6 +221,10 @@ Scope {
                         AbstractButton {
                             id: card
 
+                            ExPrimaryOnly {
+                                z: 1
+                            }
+
                             required property var modelData
                             required property int index
                             readonly property bool picked: card.index === root.index

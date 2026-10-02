@@ -37,6 +37,10 @@ ColumnLayout {
             AbstractButton {
                 id: mode
 
+                ExPrimaryOnly {
+                    z: 1
+                }
+
                 required property var modelData
                 readonly property bool current: mode.modelData.dark === ExLooks.dark
 

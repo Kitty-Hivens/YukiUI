@@ -208,6 +208,10 @@ MouseArea {
                     trailing: AbstractButton {
                         id: eye
 
+                        ExPrimaryOnly {
+                            z: 1
+                        }
+
                         visible: field.text.length > 0
                         implicitWidth: 28
                         implicitHeight: 28

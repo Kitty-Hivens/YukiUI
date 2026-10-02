@@ -51,6 +51,10 @@ ExPopup {
             AbstractButton {
                 id: card
 
+                ExPrimaryOnly {
+                    z: 1
+                }
+
                 required property var modelData
                 readonly property bool minimized: TaskbarApps.isMinimized(card.modelData)
                 readonly property bool front: card.modelData.activated && !card.minimized

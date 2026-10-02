@@ -4,6 +4,10 @@ import QtQuick.Controls
 AbstractButton {
     id: root
 
+    ExPrimaryOnly {
+        z: 1
+    }
+
     property string previewState: ""
     readonly property bool showPress: previewState === "pressed" || (previewState === "" && down)
     readonly property real inset: (height - ExLooks.sizes.knob) / 2

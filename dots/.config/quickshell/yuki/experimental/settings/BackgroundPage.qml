@@ -152,6 +152,10 @@ ColumnLayout {
                 AbstractButton {
                     id: tile
 
+                    ExPrimaryOnly {
+                        z: 1
+                    }
+
                     required property string modelData
                     readonly property bool current: tile.modelData === root.current
                     readonly property bool video: root.videoExtensions.includes(root.extensionOf(tile.modelData))

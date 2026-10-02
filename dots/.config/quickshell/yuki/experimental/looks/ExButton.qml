@@ -9,6 +9,9 @@ AbstractButton {
     property string glyph: ""
     property string previewState: ""
 
+    /** A right click, which the button itself never takes. */
+    signal rightClicked
+
     readonly property color fill: kind === "accent" ? ExLooks.colors.accent
         : kind === "tonal" ? ExLooks.colors.tonal
         : kind === "control" ? ExLooks.colors.control
@@ -33,6 +36,11 @@ AbstractButton {
             pressed: root.down
             previewState: root.previewState
         }
+    }
+
+    ExPrimaryOnly {
+        z: 1
+        onRightClicked: root.rightClicked()
     }
 
     contentItem: Item {

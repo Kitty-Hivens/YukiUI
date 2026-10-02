@@ -24,6 +24,10 @@ ColumnLayout {
     AbstractButton {
         id: header
 
+        ExPrimaryOnly {
+            z: 1
+        }
+
         readonly property real bottomRadius: root.expanded ? 0 : ExLooks.radius.card
 
         Layout.fillWidth: true

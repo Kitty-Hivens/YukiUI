@@ -133,6 +133,10 @@ Item {
             delegate: AbstractButton {
                 id: row
 
+                ExPrimaryOnly {
+                    z: 1
+                }
+
                 required property var modelData
                 required property int index
 

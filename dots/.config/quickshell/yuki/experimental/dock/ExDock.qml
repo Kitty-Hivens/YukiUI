@@ -840,15 +840,11 @@ Scope {
                             window.closePopups(null);
                             ExStates.launcherOpen = !ExStates.launcherOpen;
                         }
-
                         // A right click opens the quick links, as one on Start does.
-                        TapHandler {
-                            acceptedButtons: Qt.RightButton
-                            onTapped: {
-                                ExStates.launcherOpen = false;
-                                window.closePopups(quickLinks);
-                                quickLinks.toggle(launcherButton);
-                            }
+                        onRightClicked: {
+                            ExStates.launcherOpen = false;
+                            window.closePopups(quickLinks);
+                            quickLinks.toggle(launcherButton);
                         }
 
                         ExGlyph {
@@ -939,6 +935,10 @@ Scope {
                 // short rule, the way Windows draws it.
                 AbstractButton {
                     id: showDesktop
+
+                    ExPrimaryOnly {
+                        z: 1
+                    }
 
                     readonly property real breadth: 12
 

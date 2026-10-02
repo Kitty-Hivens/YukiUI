@@ -130,6 +130,10 @@ Scope {
                                 AbstractButton {
                                     id: card
 
+                                    ExPrimaryOnly {
+                                        z: 1
+                                    }
+
                                     required property var modelData
                                     readonly property var source: window.showWindows ? window.toplevelFor(card.modelData.address) : card.modelData
 

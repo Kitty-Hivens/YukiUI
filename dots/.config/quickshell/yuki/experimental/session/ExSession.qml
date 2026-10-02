@@ -110,6 +110,10 @@ Scope {
                         AbstractButton {
                             id: button
 
+                            ExPrimaryOnly {
+                                z: 1
+                            }
+
                             Layout.alignment: Qt.AlignHCenter
                             implicitWidth: 88
                             implicitHeight: 88

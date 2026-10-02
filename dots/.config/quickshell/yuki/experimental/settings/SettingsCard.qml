@@ -11,6 +11,10 @@ import qs.experimental.looks
 AbstractButton {
     id: root
 
+    ExPrimaryOnly {
+        z: 1
+    }
+
     property string glyph: ""
     /** A picture in place of the glyph, an application's icon say. */
     property string iconSource: ""

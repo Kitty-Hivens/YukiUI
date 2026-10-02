@@ -130,6 +130,10 @@ ColumnLayout {
                             delegate: AbstractButton {
                                 id: choice
 
+                                ExPrimaryOnly {
+                                    z: 1
+                                }
+
                                 required property var modelData
                                 readonly property bool current: choice.modelData.id === group.modelData.current
 
