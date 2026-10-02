@@ -88,13 +88,32 @@ hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "W
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,
--- so Alt itself is bound, pressed and let go, and passed on to the window.
-hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"), { description = "Shell: Switch windows" })
-hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
-for _, key in ipairs({ "ALT_L", "ALT_R" }) do
-    hl.bind(key, hl.dsp.global("quickshell:altHeld"), { ignore_mods = true, transparent = true })
-    hl.bind(key, hl.dsp.global("quickshell:altHeld"), { ignore_mods = true, transparent = true, release = true })
+-- so letting go of Alt is bound. Only while a switch is under way, in a submap
+-- of its own: bound for good, even passed on, Alt stopped reaching
+-- applications at all. Letting go also leaves the submap, here rather than in
+-- the shell, so a shell that is not there cannot leave the keyboard in it.
+local function switchWindows(direction)
+    return function()
+        hl.dispatch(hl.dsp.global("quickshell:altTab" .. direction))
+        hl.dispatch(hl.dsp.submap("altTab"))
+    end
 end
+local function endSwitch(how)
+    return function()
+        hl.dispatch(hl.dsp.global("quickshell:altTab" .. how))
+        hl.dispatch(hl.dsp.submap("reset"))
+    end
+end
+hl.define_submap("altTab", function()
+    hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"))
+    hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
+    hl.bind("ALT + Escape", endSwitch("Cancel"))
+    for _, key in ipairs({ "ALT_L", "ALT_R" }) do
+        hl.bind(key, endSwitch("Commit"), { ignore_mods = true, release = true })
+    end
+end)
+hl.bind("ALT + Tab", switchWindows("Next"), { description = "Shell: Switch windows" })
+hl.bind("ALT + SHIFT + Tab", switchWindows("Previous"))
 
 -- Windows come back where they were left.
 --
