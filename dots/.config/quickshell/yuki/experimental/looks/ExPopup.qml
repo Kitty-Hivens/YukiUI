@@ -52,8 +52,39 @@ PopupWindow {
 
     color: "transparent"
     visible: root.open || surface.progress > 0
+
+    /** The plane's height, following its content as that animates. */
+    readonly property real planeHeight: holder.height + 2 * root.padding
+    // The window is not resized with every frame of a plane growing or
+    // shrinking: a popup window changes size only once the compositor has
+    // answered, and nothing was drawn meanwhile, so a panel animating its
+    // height covered most of the way in one jump. Growing, the window takes
+    // room to spare at once. Shrinking, it keeps its size while the plane
+    // shrinks inside it, and is cut down once the plane has been still a
+    // moment. The spare room is transparent and takes no pointer. Only a dock
+    // along the top or the bottom does this: beside a dock at the side the
+    // window is centred on its button, and room to spare would move the plane.
+    readonly property bool roomAlongHeight: root.edge === "bottom" || root.edge === "top"
+    readonly property real spareRoom: 160
+    property real heldPlaneHeight: 0
+    onPlaneHeightChanged: {
+        if (root.planeHeight > root.heldPlaneHeight) {
+            heldTrim.stop();
+            root.heldPlaneHeight = root.planeHeight + (root.visible ? root.spareRoom : 0);
+            if (root.visible)
+                heldTrim.restart();
+        } else if (root.planeHeight < root.heldPlaneHeight) {
+            heldTrim.restart();
+        }
+    }
+    Timer {
+        id: heldTrim
+        interval: 400
+        onTriggered: root.heldPlaneHeight = root.planeHeight
+    }
+
     implicitWidth: holder.width + 2 * root.padding + 2 * root.shadowRoom
-    implicitHeight: holder.height + 2 * root.padding + 2 * root.shadowRoom
+    implicitHeight: (root.roomAlongHeight ? Math.max(root.heldPlaneHeight, root.planeHeight) : root.planeHeight) + 2 * root.shadowRoom
     // Only the plate takes the pointer. The room around it for its shadow
     // reaches over the dock, and taking clicks there left the top of the
     // button the popup came from dead: a second click on it landed on the
@@ -213,6 +244,13 @@ PopupWindow {
         clip: root.motion === "panel" && surface.progress < 1
         x: root.edge === "left" ? reach : 0
         y: root.edge === "top" ? reach : 0
+        // Against a dock at the bottom the plane hangs from the window's
+        // bottom, whatever room the window keeps above it. Anchored, it moves
+        // in the very frame the window changes size. Placed from the height
+        // the window reports, it stood at the top of a window that had grown
+        // for one frame, before the height caught up.
+        anchors.bottom: root.edge === "bottom" ? parent.bottom : undefined
+        anchors.bottomMargin: root.shadowRoom - root.gap
         width: root.edge === "right" ? root.shadowRoom + planeWidth + root.gap : root.edge === "left" ? root.width - reach : root.width
         height: root.edge === "bottom" ? root.shadowRoom + planeHeight + root.gap : root.edge === "top" ? root.height - reach : root.height
 
@@ -224,7 +262,7 @@ PopupWindow {
             motion: root.motion
             radius: root.surfaceRadius
             restX: root.shadowRoom - parent.x
-            restY: root.shadowRoom - parent.y
+            restY: root.edge === "bottom" ? root.shadowRoom : root.shadowRoom - parent.y
             width: holder.width + 2 * root.padding
             height: holder.height + 2 * root.padding
 
