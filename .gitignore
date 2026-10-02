@@ -23,3 +23,6 @@ __pycache__/
 
 # Built plugins: tied to the Hyprland they were compiled against
 /hypr-plugins/*/*.so
+
+# The shell part the tests run, written for a run and removed after it
+/dots/.config/quickshell/yuki/benchProbe.qml

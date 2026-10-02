@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""A Wayland window the tests drive, through GTK 4.
+
+    wayland_window.py APP_ID TITLE WIDTH HEIGHT
+
+Prints {"ready": true} once the window is shown, then answers one command a
+line on stdin with one line of JSON:
+
+    maximize, unmaximize       ask to be maximised or put back, as a title bar
+                               button does
+    minimize                   ask to be minimised
+    fullscreen, unfullscreen   ask for fullscreen or to leave it
+    state                      what the window believes of itself
+    close                      close the window and end
+
+Everything it asks for goes to the compositor as an xdg_toplevel request, the
+way any GTK application asks.
+"""
+
+import json
+import sys
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
+
+app_id, title, width, height = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+
+# Several windows of the same id may run at once, each a process of its own.
+app = Gtk.Application(application_id=app_id, flags=Gio.ApplicationFlags.NON_UNIQUE)
+window = None
+
+
+def answer(payload):
+    sys.stdout.write(json.dumps(payload) + "\n")
+    sys.stdout.flush()
+
+
+def state():
+    # The states the compositor last sent, as GDK names them: maximized,
+    # tiled-left and so on.
+    surface = window.get_surface()
+    toplevel = list(surface.get_state().value_nicks) if surface else []
+    return {
+        "maximized": window.is_maximized(),
+        "fullscreen": window.is_fullscreen(),
+        "width": window.get_width(),
+        "height": window.get_height(),
+        "toplevel": sorted(toplevel),
+    }
+
+
+def command(channel, condition):
+    line = sys.stdin.readline()
+    if not line:
+        app.quit()
+        return False
+    try:
+        return run(line.strip())
+    except Exception as error:  # an answer either way, or the test waits for one
+        answer({"error": repr(error)})
+        return True
+
+
+def run(name):
+    if name == "state":
+        answer(state())
+    elif name in ("maximize", "unmaximize", "minimize", "fullscreen", "unfullscreen"):
+        getattr(window, name)()
+        answer({"ok": name})
+    elif name == "close":
+        answer({"ok": name})
+        app.quit()
+        return False
+    else:
+        answer({"error": f"unknown command {name}"})
+    return True
+
+
+def on_activate(application):
+    global window
+    window = Gtk.ApplicationWindow(application=application, title=title)
+    window.set_default_size(width, height)
+    window.set_titlebar(Gtk.HeaderBar())
+    window.set_child(Gtk.Label(label=title))
+    window.connect("map", lambda _window: GLib.idle_add(lambda: answer({"ready": True}) or False))
+    window.present()
+    GLib.io_add_watch(GLib.IOChannel.unix_new(sys.stdin.fileno()), GLib.PRIORITY_DEFAULT, GLib.IO_IN | GLib.IO_HUP, command)
+
+
+app.connect("activate", on_activate)
+app.run([])
