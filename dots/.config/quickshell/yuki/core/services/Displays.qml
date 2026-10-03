@@ -500,7 +500,6 @@ Singleton {
         onExited: exitCode => {
             const text = preflightOut.text.trim();
             if (exitCode !== 0 || text.indexOf("config ok") === -1) {
-                root.state = root.stateIdle;
                 root.lastError = text.length > 0
                     ? Translation.tr("Hyprland rejected the configuration: %1").arg(text)
                     : Translation.tr("Hyprland rejected the configuration");
@@ -509,6 +508,7 @@ Singleton {
                 // Left behind, it is an undo of a change that never happened,
                 // waiting for whoever next asks for one.
                 root.revertPlan = null;
+                root.state = root.stateIdle;
                 root.applyFailed(root.lastError);
                 return;
             }
@@ -551,9 +551,12 @@ Singleton {
             // rather than left looking at a layout nobody chose.
             if (exitCode !== 0 || root.evalFailed(revertOut.text))
                 root.lastError = Translation.tr("Revert failed. Run 'hyprctl reload' from a TTY if the screen is unusable.");
-            root.state = root.stateIdle;
+            // Dropped before coming to rest, not after: what watches for rest
+            // reads whether anything is pending, and a change taken back still
+            // pending then stayed on the settings page as one not yet applied.
             root.revertPlan = null;
             root.pendingPlan = null;
+            root.state = root.stateIdle;
             getMonitors.running = true;
         }
     }
