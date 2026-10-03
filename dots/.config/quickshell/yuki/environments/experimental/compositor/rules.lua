@@ -164,8 +164,14 @@ local function readGeometry()
 end
 
 local function writeGeometry()
-    os.execute("mkdir -p '" .. stateDir .. "'")
+    -- The folder is made only when the file cannot be opened without it:
+    -- os.execute forks a shell, and this runs on the compositor's own thread
+    -- as a window closes.
     local file = io.open(geometryPath .. ".tmp", "w")
+    if not file then
+        os.execute("mkdir -p '" .. stateDir .. "'")
+        file = io.open(geometryPath .. ".tmp", "w")
+    end
     if not file then
         return
     end
