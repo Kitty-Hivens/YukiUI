@@ -33,8 +33,15 @@ ColumnLayout {
     onShownChanged: {
         if (root.shown && Network.wifiEnabled)
             Network.rescanWifi();
-        if (!root.shown)
+        if (!root.shown) {
             root.expandedSsid = "";
+            // A prompt left open holds the scans off, and with them the
+            // rescans that have NetworkManager try its saved networks again,
+            // for as long as it stays open. Nobody can answer it from here.
+            for (const network of Network.wifiNetworks)
+                if (network.askingPassword)
+                    network.askingPassword = false;
+        }
     }
 
     // Nothing to list is three different situations.
@@ -121,6 +128,23 @@ ColumnLayout {
         Component.onDestruction: {
             if (root.keyTarget === password.input)
                 root.keyTarget = null;
+        }
+        // Made anew while a password was being typed, the list having moved
+        // under it, it is typing from the start and has to take the keys as
+        // it would on starting to.
+        Component.onCompleted: {
+            if (row.typing) {
+                root.keyTarget = password.input;
+                password.input.forceActiveFocus();
+            }
+        }
+        // What was typed goes with the page.
+        Connections {
+            target: root
+            function onShownChanged() {
+                if (!root.shown)
+                    password.text = "";
+            }
         }
 
         width: parent?.width ?? 0
