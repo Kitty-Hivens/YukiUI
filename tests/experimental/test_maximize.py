@@ -7,6 +7,7 @@ fullscreen, is suppressed by the environment's rules.
 
 from bench.bench import wait_until
 
+
 def area(desk):
     return desk.bench.work_area
 
