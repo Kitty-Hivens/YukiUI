@@ -107,3 +107,23 @@ def test_a_snapped_window_dragged_to_another_edge_still_goes_back_where_it_stood
     desk.restore(window)
     client = window.wait(lambda c: not c["tags"], "put back")
     assert (*client["at"], *client["size"]) == before
+
+
+def test_a_snapped_window_flicked_away_gets_its_own_size(desk):
+    # Its size comes back through the plugin while the drag is on, and a drag
+    # over at once ended before it came: the window kept the size of its half.
+    # Caught about one flick in six before, so several are made.
+    for _ in range(6):
+        window = desk.wayland()
+        _, _, width, height = window.rect
+        desk.place(window, "left")
+        window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+        x, y, w, _ = window.rect
+        pointer = desk.pointer()
+        pointer.move(x + w // 2, y + TITLE)
+        pointer.press()
+        time.sleep(0.03)
+        pointer.glide(x + w // 2 + 300, y + TITLE + 200, step=60, pause=0.002)
+        pointer.release()
+        window.wait(lambda c: tuple(c["size"]) == (width, height) and not c["tags"], "its own size, no longer snapped")
+        window.close()

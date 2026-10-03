@@ -31,6 +31,14 @@ Scope {
      * dragging went back to the edge it was dragged to, half off the screen.
      */
     property var draggedFrom: null
+    /**
+     * The size a placed window was pulled away to, or null. The pull gives it
+     * back under the pointer through the plugin, which has to arrive while
+     * the drag is still on: a window flicked away and let go of at once kept
+     * the size of its half, no longer placed. So it is given that size again
+     * as the drag ends, which changes nothing when the pull came in time.
+     */
+    property var pulledTo: null
     /** Where it would go if let go of now, one of the placement zones, or empty. */
     property string zone: ""
     /** The screen that zone is on, and the zone's rectangle on it in its own coordinates. */
@@ -127,6 +135,7 @@ Scope {
                 // Pulled away, a placed window takes back its own size under
                 // the pointer and goes on being dragged from there.
                 const size = root.placement.sizeBefore(address);
+                root.pulledTo = size;
                 if (size) {
                     Quickshell.execDetached(["hyprctl", "eval", `if hl.plugin.drag_report and hl.plugin.drag_report.regrab then hl.plugin.drag_report.regrab(${size[0]}, ${size[1]}) end`]);
                     root.placement.release(address);
@@ -139,7 +148,10 @@ Scope {
                     root.zoneAt(Number(x), Number(y));
                     if (root.zone.length > 0)
                         root.placement.place(address, root.zone, root.draggedFrom);
+                    else if (root.pulledTo && root.placement.usable(address))
+                        Quickshell.execDetached(["hyprctl", "eval", `hl.dispatch(hl.dsp.window.resize({ window = "address:${address}", x = ${root.pulledTo[0]}, y = ${root.pulledTo[1]} }))`]);
                 }
+                root.pulledTo = null;
                 root.dragged = "";
                 root.draggedFrom = null;
                 root.zone = "";
