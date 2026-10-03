@@ -49,6 +49,35 @@ ColumnLayout {
     property bool shellAnswered: false
 
     readonly property var scales: [1, 1.25, 1.5, 1.75, 2]
+
+    /**
+     * The scale Hyprland runs a mode at when asked for one: the scale itself
+     * when it leaves the screen a whole number of points across and down, and
+     * otherwise the nearest that does, looked for as Hyprland looks, in steps
+     * of 1/120, above first. Offered as asked, 175% on a 1080p screen was run
+     * at another scale without a word, and the layout worked out from the one
+     * asked for no longer met its neighbours.
+     */
+    function cleanScale(width: int, height: int, scale: real): real {
+        const fits = candidate => {
+            const across = width / candidate;
+            const down = height / candidate;
+            return across === Math.round(across) && down === Math.round(down);
+        };
+        if (width <= 0 || height <= 0 || fits(scale))
+            return scale;
+        const steps = Math.round(scale * 120);
+        if (fits(steps / 120))
+            return steps / 120;
+        for (let i = 1; i < 90; i++) {
+            if (fits((steps + i) / 120))
+                return (steps + i) / 120;
+            if (fits((steps - i) / 120))
+                return (steps - i) / 120;
+        }
+        // Hyprland gives up and uses its own default then. Nothing better to offer.
+        return scale;
+    }
     readonly property var orientations: [
         { value: 0, text: Translation.tr("Landscape") },
         { value: 1, text: Translation.tr("Portrait") },
@@ -497,7 +526,13 @@ ColumnLayout {
             description: Translation.tr("How big text, apps and everything else are")
 
             SettingsDropdown {
-                readonly property var values: root.scales.includes(root.selected?.scale ?? 1) ? root.scales : [...root.scales, root.selected.scale].sort((a, b) => a - b)
+                readonly property var values: {
+                    const width = root.selected?.width ?? 0;
+                    const height = root.selected?.height ?? 0;
+                    const offered = [...new Set(root.scales.map(scale => root.cleanScale(width, height, scale)))];
+                    const current = root.selected?.scale ?? 1;
+                    return offered.includes(current) ? offered : [...offered, current].sort((a, b) => a - b);
+                }
                 model: values.map(scale => `${Math.round(scale * 100)}%`)
                 currentIndex: values.indexOf(root.selected?.scale ?? 1)
                 onActivated: index => root.change({ scale: values[index] })
