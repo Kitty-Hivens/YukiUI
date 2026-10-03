@@ -117,6 +117,11 @@ class Bench:
     def pointer_tool(self) -> Path:
         return self.build / "pointer"
 
+    @property
+    def environment_rules(self) -> Path:
+        """Where a shell started on the bench writes the environment's compositor rules."""
+        return self.config_home / "hypr/hyprland/shellOverrides/environment.lua"
+
     def _config(self) -> Path:
         loads = "\n".join(f'hl.plugin.load("{self.build / name}.so")' for name in PLUGINS)
         text = f"""-- Written by tests/bench/bench.py for one test run.
@@ -137,6 +142,16 @@ hl.monitor({{ output = "WAYLAND-1", disabled = true }})
 -- The experimental environment's rules, with their state kept in this run.
 HOME = "{self.home}"
 dofile("{RULES}")
+
+-- Where the shell writes the rules of the environment that is up, read as the
+-- live config reads it: required, so the compositor watches it, and only when
+-- it is there.
+local environmentRules = "{self.environment_rules}"
+local present = io.open(environmentRules, "r")
+if present then
+    present:close()
+    require(environmentRules)
+end
 """
         path = self.root / "hyprland.lua"
         path.write_text(text)

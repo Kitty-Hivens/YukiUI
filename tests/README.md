@@ -47,6 +47,9 @@ shell logged a script error meanwhile.
 
 ## Tests
 
+`core/` holds what every environment shares: how the shell hands the compositor
+the rules of the environment that is up.
+
 `experimental/` holds the experimental environment's: maximising, snapping by
 the shell and with the mouse, minimising, the geometry memory, and what X11
 applications ask for.

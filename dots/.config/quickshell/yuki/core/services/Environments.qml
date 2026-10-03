@@ -192,23 +192,23 @@ Singleton {
     /**
      * Where the compositor rules of the environment that is up are written.
      *
-     * A sourced file, not runtime keywords: game mode undoes itself with a
-     * config reload, which discards everything set at runtime, and rules kept
-     * in a file the config reads come back with every reload instead.
+     * A sourced file, not runtime keywords: a config reload discards
+     * everything set at runtime, and rules kept in a file the config reads
+     * come back with every reload instead.
      */
     readonly property string compositorRulesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/environment.lua`)
 
     /**
      * Replaces the rule file with the one this environment carries, or with a
      * header alone when it carries none, so that nothing the previous
-     * environment asked for outlives it. Written aside and renamed into place,
-     * because the compositor reloads on the change and must never read half.
+     * environment asked for outlives it. The script leaves the file alone
+     * when it already holds these rules: the compositor reloads its whole
+     * config whenever the file is replaced, and this runs on every start.
      */
     function writeCompositorRules(id: string, source: string) {
         const header = `-- Written by the shell for the environment that is up (${id}). Replaced on every switch, do not edit.`;
-        Quickshell.execDetached(["bash", "-c",
-            'mkdir -p "$(dirname "$3")" && { printf "%s\\n\\n" "$1"; if [ -n "$2" ]; then cat "$2"; fi; } > "$3.tmp" && mv -f "$3.tmp" "$3"',
-            "_", header, source ?? "", root.compositorRulesPath]);
+        Quickshell.execDetached(["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hyprland/environment_rules.sh")),
+            header, source ?? "", root.compositorRulesPath]);
     }
 
     /**
