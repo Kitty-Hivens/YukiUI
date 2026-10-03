@@ -688,10 +688,10 @@ FocusScope {
         // Bounded in time and in count, so a search over a very large tree
         // cannot keep going. Hidden folders are not gone into unless hidden
         // files are shown. The arguments are handed over as arguments, not
-        // spliced into the script, so nothing typed is run.
-        command: ["sh", "-c", "echo \"$4\"; if [ \"$3\" = 1 ]; then timeout 6 find \"$1\" -mindepth 1 -iname \"$2\" -printf '%Y\\t%s\\t%T@\\t%p\\n'; "
-            + "else timeout 6 find \"$1\" -mindepth 1 -name '.*' -prune -o -iname \"$2\" -printf '%Y\\t%s\\t%T@\\t%p\\n'; fi 2>/dev/null | head -n 1000",
-            "yuki-file-search", search.folder, search.pattern, root.showHidden ? "1" : "0", String(search.serial)]
+        // spliced into the script, so nothing typed is run. The script takes
+        // the walk with it when it is stopped for a newer search.
+        command: ["sh", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/files/search.sh")),
+            search.folder, search.pattern, root.showHidden ? "1" : "0", String(search.serial)]
 
         stdout: StdioCollector {
             id: searchOutput

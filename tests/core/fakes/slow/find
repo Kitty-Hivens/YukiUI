@@ -1,0 +1,5 @@
+#!/bin/sh
+# A stand-in for find that walks for a long time: writes down its process id
+# and sleeps, so a test can tell whether stopping the search stopped it too.
+echo $$ > "$FAKE_FIND_PID"
+exec sleep 30
