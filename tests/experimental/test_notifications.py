@@ -70,6 +70,8 @@ ShellRoot {
 
 @pytest.fixture
 def notifications(bench):
+    # Kept by an earlier test's shell, they would be loaded as this one's.
+    bench.forget_notifications()
     shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("notificationProbe", "ready"), own_bus=True)
     try:
         shell.start()

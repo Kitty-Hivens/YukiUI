@@ -285,6 +285,11 @@ end
             entries[fields[0]] = fields[1:]
         return entries
 
+    def forget_notifications(self):
+        """The notifications a shell on the bench kept, which the next one would load."""
+        for kept in self.cache_home.rglob("notifications.json"):
+            kept.unlink()
+
     def forget_geometry(self):
         shutil.rmtree(self.home / ".local/state/yuki", ignore_errors=True)
 
