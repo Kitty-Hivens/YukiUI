@@ -48,12 +48,40 @@ Item {
         };
     }
     property var shown: root.snapshot(root.notif)
-    Binding {
-        target: root
-        property: "shown"
-        when: !!root.notif
-        restoreMode: Binding.RestoreNone
-        value: root.snapshot(root.notif)
+    // Held from here on rather than bound, which followed the wrapper into
+    // emptiness and the notification into null.
+    Component.onCompleted: root.shown = root.snapshot(root.notif)
+
+    // Brought up to date as the notification changes in place, a sender
+    // replacing it say, and only while what the server holds is there. The
+    // wrapper outlives that by a moment with every field emptied, and a card
+    // bound to it left blank on a click, on Clear all, and when the sender
+    // closed it. A condition on the binding did not hold it: which of the
+    // two moved first was not the binding's to choose.
+    function follow() {
+        if (root.notif && (root.notif.notification || !root.shown.fromServer))
+            root.shown = root.snapshot(root.notif);
+    }
+    Connections {
+        target: root.notif
+        function onSummaryChanged() {
+            root.follow();
+        }
+        function onBodyChanged() {
+            root.follow();
+        }
+        function onAppNameChanged() {
+            root.follow();
+        }
+        function onAppIconChanged() {
+            root.follow();
+        }
+        function onImageChanged() {
+            root.follow();
+        }
+        function onActionsChanged() {
+            root.follow();
+        }
     }
 
     readonly property var defaultAction: root.shown.actions.find(action => action.identifier === "default") ?? null

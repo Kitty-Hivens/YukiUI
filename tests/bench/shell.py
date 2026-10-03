@@ -9,6 +9,8 @@ out when the shell is deployed.
 
 from __future__ import annotations
 
+import os
+import signal
 import subprocess
 from pathlib import Path
 
@@ -42,21 +44,47 @@ ShellRoot {
 class Shell:
     """A probe of the shell on the bench. By default the window parts above;
     a test of another part brings a probe of its own, named apart, and the
-    IPC call that answers once it is up."""
+    IPC call that answers once it is up.
+
+    With a bus of its own the probe runs under a session bus started for it,
+    and `bus` is that bus's address for the test's own clients. A part that
+    takes a name on the bus, the notification server say, would otherwise
+    take it from the person's live shell."""
 
     def __init__(self, bench: Bench, probe: Path = PROBE, source: str = SOURCE,
-                 ready: tuple[str, ...] = ("placement", "list")):
+                 ready: tuple[str, ...] = ("placement", "list"), own_bus: bool = False):
         self.bench = bench
         self.probe = probe
         self.source = source
         self.ready = ready
+        self.own_bus = own_bus
+        self.bus = ""
         self.process: subprocess.Popen | None = None
         self.log: Path = bench.root / f"{probe.stem}.log"
 
+    def environment(self) -> dict[str, str]:
+        """What a client of this probe runs with: the bench's, on the probe's bus when it has one."""
+        env = self.bench.environment()
+        if self.bus:
+            env["DBUS_SESSION_BUS_ADDRESS"] = self.bus
+        return env
+
     def start(self):
         self.probe.write_text(self.source)
-        self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self.bench.environment(),
-                                        stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
+        if self.own_bus:
+            address = self.bench.root / f"{self.probe.stem}.bus"
+            address.unlink(missing_ok=True)
+            # In a process group of its own, so the bus and the shell under it
+            # go together.
+            self.process = subprocess.Popen(
+                ["dbus-run-session", "--", "sh", "-c", 'printf %s "$DBUS_SESSION_BUS_ADDRESS" > "$1"; exec qs -p "$2"',
+                 "probe", str(address), str(self.probe)],
+                env=self.bench.environment(), stdout=open(self.log, "a"), stderr=subprocess.STDOUT,
+                start_new_session=True)
+            self.bus = wait_until(lambda: address.exists() and address.read_text(), timeout=10, what="the probe's bus")
+        else:
+            self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self.bench.environment(),
+                                            stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
         # Up once it answers on its socket.
         wait_until(lambda: self._answers(), timeout=20, what="the shell probe to answer")
 
@@ -68,11 +96,19 @@ class Shell:
         return result.returncode == 0
 
     def stop(self):
-        if self.process and self.process.poll() is None:
+        if not self.process or self.process.poll() is not None:
+            return
+        if self.own_bus:
+            # The group this probe started: the bus, and the shell under it.
+            os.killpg(self.process.pid, signal.SIGTERM)
+        else:
             self.process.terminate()
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
+        try:
+            self.process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            if self.own_bus:
+                os.killpg(self.process.pid, signal.SIGKILL)
+            else:
                 self.process.kill()
 
     def restart(self):
