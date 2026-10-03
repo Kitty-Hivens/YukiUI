@@ -16,7 +16,14 @@
 // not raised over floating windows, so a family that maximises by itself
 // suppresses that with a window rule and takes the request from here. A
 // window rule leaves the request on the surface for every listener, this one
-// included. A window asking to be maximised as it opens is announced then.
+// included.
+//
+// A request made before the window is mapped, as an application that
+// remembers being maximised makes it, is held and announced as the window
+// opens: the shell has nothing to place before then. A Wayland window's
+// request is gone from its surface the moment it has been heard, so the
+// window is listened to from its creation rather than from its mapping, which
+// heard nothing of it.
 //
 // Letting go of focus. A window moved to a special workspace that is not shown
 // keeps keyboard focus, so typing goes on reaching a window nobody can see, and
@@ -51,9 +58,25 @@
 #include <vector>
 
 namespace {
-    HANDLE                                                  handle = nullptr;
-    CHyprSignalListener                                     openListener;
-    std::vector<std::pair<PHLWINDOWREF, CHyprSignalListener>> watched;
+    HANDLE              handle = nullptr;
+    CHyprSignalListener createListener;
+    CHyprSignalListener openListener;
+
+    struct SWatched {
+        PHLWINDOWREF        window;
+        CHyprSignalListener listener;
+        /** Asked for before the window was mapped, to be announced as it opens. */
+        bool                minimize = false;
+        std::optional<bool> maximize;
+    };
+    std::vector<SWatched> watched;
+
+    SWatched* entryFor(const PHLWINDOW& window) {
+        for (auto& entry : watched)
+            if (entry.window.lock() == window)
+                return &entry;
+        return nullptr;
+    }
 
     void announce(const PHLWINDOWREF& ref) {
         const auto window = ref.lock();
@@ -69,6 +92,25 @@ namespace {
         g_pEventManager->postEvent({.event = "maximizerequest", .data = std::format("{:x},{}", reinterpret_cast<uintptr_t>(window.get()), maximize ? 1 : 0)});
     }
 
+    // Passed on at once for a mapped window, held for one that is not yet.
+    void heard(const PHLWINDOWREF& ref, bool minimize, std::optional<bool> maximize) {
+        const auto window = ref.lock();
+        if (!window)
+            return;
+        if (!window->m_isMapped) {
+            if (auto* entry = entryFor(window)) {
+                entry->minimize = entry->minimize || minimize;
+                if (maximize.has_value())
+                    entry->maximize = maximize;
+            }
+            return;
+        }
+        if (minimize)
+            announce(ref);
+        if (maximize.has_value())
+            announceMaximize(ref, *maximize);
+    }
+
     CHyprSignalListener listenTo(const PHLWINDOW& window) {
         const PHLWINDOWREF ref = window;
 
@@ -80,10 +122,7 @@ namespace {
                 const auto current = toplevel.lock();
                 if (!current)
                     return;
-                if (current->m_state.requestsMinimize.value_or(false))
-                    announce(ref);
-                if (current->m_state.requestsMaximize.has_value())
-                    announceMaximize(ref, *current->m_state.requestsMaximize);
+                heard(ref, current->m_state.requestsMinimize.value_or(false), current->m_state.requestsMaximize);
             });
         }
 
@@ -100,10 +139,7 @@ namespace {
                 const auto current = surface.lock();
                 if (!current)
                     return;
-                if (current->m_state.requestsMinimize.value_or(false))
-                    announce(ref);
-                if (current->m_state.requestsMaximize.has_value())
-                    announceMaximize(ref, *current->m_state.requestsMaximize);
+                heard(ref, current->m_state.requestsMinimize.value_or(false), current->m_state.requestsMaximize);
                 current->m_state.requestsMinimize.reset();
                 current->m_state.requestsMaximize.reset();
             });
@@ -168,26 +204,43 @@ namespace {
         // Dropped along the way rather than on a destroy event: a window that
         // is gone leaves an expired reference behind, and a listener on a
         // surface that is gone never fires anyway.
-        std::erase_if(watched, [](const auto& entry) { return entry.first.expired(); });
+        std::erase_if(watched, [](const auto& entry) { return entry.window.expired(); });
 
-        for (const auto& [ref, listener] : watched) {
-            if (ref.lock() == window)
-                return;
-        }
+        if (entryFor(window))
+            return;
 
+        // Entered first and listened to after, so a request heard before the
+        // window is mapped has somewhere to be held.
+        SWatched entry;
+        entry.window = window;
+        watched.push_back(std::move(entry));
         if (auto listener = listenTo(window))
-            watched.emplace_back(window, std::move(listener));
+            entryFor(window)->listener = std::move(listener);
+        else
+            watched.pop_back();
     }
 
-    // Asked for before the window was mapped, a maximise is still on the
-    // surface when it opens, and nothing else will announce it.
+    // What was asked for before the window was mapped, now that it is. An X11
+    // request made before this plugin listened is still on the surface, and
+    // is spent here like any other.
     void announceInitial(const PHLWINDOW& window) {
-        std::optional<bool> wanted;
-        if (const auto xdg = window->m_xdgSurface.lock(); xdg && xdg->m_toplevel)
-            wanted = xdg->m_toplevel->m_state.requestsMaximize;
-        else if (const auto x11 = window->m_xwaylandSurface.lock())
-            wanted = x11->m_state.requestsMaximize;
-        if (wanted.value_or(false))
+        auto* entry = entryFor(window);
+        bool  minimize = entry && entry->minimize;
+        auto  maximize = entry ? entry->maximize : std::nullopt;
+        if (const auto x11 = window->m_xwaylandSurface.lock()) {
+            minimize = minimize || x11->m_state.requestsMinimize.value_or(false);
+            if (!maximize.has_value())
+                maximize = x11->m_state.requestsMaximize;
+            x11->m_state.requestsMinimize.reset();
+            x11->m_state.requestsMaximize.reset();
+        }
+        if (entry) {
+            entry->minimize = false;
+            entry->maximize.reset();
+        }
+        if (minimize)
+            announce(window);
+        if (maximize.value_or(false))
             announceMaximize(window, true);
     }
 }
@@ -206,7 +259,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         throw std::runtime_error("[minimize] version mismatch");
     }
 
-    openListener = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) {
+    createListener = Event::bus()->m_events.window.create.listen([](const PHLWINDOW& window) { watch(window); });
+    openListener   = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) {
         watch(window);
         announceInitial(window);
     });
@@ -219,10 +273,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         if (window && window->m_isMapped)
             watch(window);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.5"};
+    return {"minimize", "Passes on requests to be minimised or maximised, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.6"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
+    createListener.reset();
     openListener.reset();
     watched.clear();
 }

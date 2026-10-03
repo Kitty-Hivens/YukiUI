@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """A Wayland window the tests drive, through GTK 4.
 
-    wayland_window.py APP_ID TITLE WIDTH HEIGHT
+    wayland_window.py APP_ID TITLE WIDTH HEIGHT [maximized]
+
+With "maximized" it asks to be maximised before it is first shown, as an
+application that remembers being maximised does.
 
 Prints {"ready": true} once the window is shown, then answers one command a
 line on stdin with one line of JSON:
@@ -29,6 +32,7 @@ gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
 app_id, title, width, height = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+start_maximized = sys.argv[5:6] == ["maximized"]
 
 # Several windows of the same id may run at once, each a process of its own.
 app = Gtk.Application(application_id=app_id, flags=Gio.ApplicationFlags.NON_UNIQUE)
@@ -107,6 +111,8 @@ def on_activate(application):
     controller.connect("key-pressed", on_key("pressed"))
     controller.connect("key-released", on_key("released"))
     window.add_controller(controller)
+    if start_maximized:
+        window.maximize()
     window.connect("map", lambda _window: GLib.idle_add(lambda: answer({"ready": True}) or False))
     window.present()
     GLib.io_add_watch(GLib.IOChannel.unix_new(sys.stdin.fileno()), GLib.PRIORITY_DEFAULT, GLib.IO_IN | GLib.IO_HUP, command)

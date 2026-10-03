@@ -100,9 +100,11 @@ class Window:
 class WaylandWindow(Window):
     kind = "wayland"
 
-    def __init__(self, bench: Bench, wm_class: str, width: int = 700, height: int = 450, title: str = ""):
+    def __init__(self, bench: Bench, wm_class: str, width: int = 700, height: int = 450, title: str = "",
+                 maximized: bool = False):
         super().__init__(bench, wm_class, [sys.executable, str(CLIENTS / "wayland_window.py"), wm_class,
-                                           title or wm_class, str(width), str(height)])
+                                           title or wm_class, str(width), str(height),
+                                           *(["maximized"] if maximized else [])])
 
 
 class X11Window(Window):

@@ -97,6 +97,13 @@ def test_window_opening_as_large_as_the_work_area_is_maximized_wayland(desk):
     window.wait(lambda c: is_maximized(desk, c), "maximised as it opened")
 
 
+def test_window_asking_to_be_maximized_before_it_shows_opens_maximized(desk):
+    # As an application that remembers being maximised asks, before its
+    # first frame, which Hyprland hears and forgets before the window maps.
+    window = desk.wayland(maximized=True)
+    window.wait(lambda c: is_maximized(desk, c), "maximised as it opened")
+
+
 def test_ordinary_window_is_not_maximized_as_it_opens(desk):
     window = desk.x11(width=900, height=600)
     window.wait(lambda c: c["fullscreenClient"] == 0 and not c["tags"], "an ordinary window", timeout=3)
