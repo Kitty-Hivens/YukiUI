@@ -8,7 +8,10 @@
 // every button of the mouse, on the next turn of the event loop, once Hyprland
 // has dealt with it, this looks at the controller and reports what changed:
 //
-//     windowdrag>>begin,<address>,move|resize    picked up, past the threshold
+//     windowdrag>>begin,<address>,move|resize,<x>,<y>,<w>,<h>
+//                                                 picked up, past the threshold,
+//                                                 and where the window stood
+//                                                 before it, global coordinates
 //     windowdrag>>move,<x>,<y>                    the pointer, while moving it,
 //                                                 at most about thirty times a
 //                                                 second, global coordinates
@@ -28,6 +31,12 @@
 // with the same grab. Where it was taken hold of is the last press: until the
 // threshold is passed the window has not moved, and the pointer is already
 // somewhere else.
+//
+// Where the window stood before the drag is taken as the button goes down,
+// once Hyprland has dealt with the press and given the window clicked the
+// focus. By the time the drag is reported the window has moved already, by
+// the first step of the drag, and a window dragged by its own title bar
+// starts its drag later still, when the application asks for it.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/managers/EventManager.hpp>
@@ -37,6 +46,7 @@
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/state/FocusState.hpp>
 
 // The C library, under C linkage.
 #include <lua.hpp>
@@ -56,6 +66,8 @@ namespace {
     bool                  checkQueued = false;
     bool                  regrabbing  = false;
     Vector2D              lastPress;
+    PHLWINDOWREF          pressWindow;
+    CBox                  pressBox;
     std::chrono::steady_clock::time_point lastPosition;
 
     void post(const std::string& data) {
@@ -82,7 +94,9 @@ namespace {
             draggedAddress = std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get()));
             draggedMode    = controller->mode() == MBIND_MOVE ? "move" : "resize";
             lastPosition   = std::chrono::steady_clock::now();
-            post(std::format("begin,{},{}", draggedAddress, draggedMode));
+            const CBox before = pressWindow.lock() == window ? pressBox : target->position();
+            post(std::format("begin,{},{},{},{},{},{}", draggedAddress, draggedMode, static_cast<int>(before.x), static_cast<int>(before.y),
+                             static_cast<int>(before.w), static_cast<int>(before.h)));
             return;
         }
         if (!picked && dragging && !target) {
@@ -126,6 +140,14 @@ namespace {
         return 0;
     }
 
+    // The window the press went to, as it stood then.
+    void notePress() {
+        const auto window = Desktop::focusState()->window();
+        pressWindow       = window;
+        if (window && window->m_target)
+            pressBox = window->m_target->position();
+    }
+
     // Once per turn of the loop, however many events arrived in it.
     void checkSoon() {
         if (checkQueued || !g_pEventLoopManager)
@@ -152,14 +174,17 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     // Listened to, never cancelled.
     moveListener   = Event::bus()->m_events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo&) { checkSoon(); });
     buttonListener = Event::bus()->m_events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo&) {
-        if (event.state == WL_POINTER_BUTTON_STATE_PRESSED && g_pInputManager)
+        if (event.state == WL_POINTER_BUTTON_STATE_PRESSED && g_pInputManager) {
             lastPress = g_pInputManager->getMouseCoordsInternal();
+            if (g_pEventLoopManager)
+                g_pEventLoopManager->doLater([] { notePress(); });
+        }
         checkSoon();
     });
 
     HyprlandAPI::addLuaFunction(handle, "drag_report", "regrab", regrab);
 
-    return {"drag-report", "Reports on the event socket when a window is moved or resized with the mouse", "yuki", "1.0"};
+    return {"drag-report", "Reports on the event socket when a window is moved or resized with the mouse", "yuki", "1.1"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

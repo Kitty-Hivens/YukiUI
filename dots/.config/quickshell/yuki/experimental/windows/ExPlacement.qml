@@ -108,17 +108,23 @@ Scope {
 
     // Every call reads the windows and the screens fresh: the shared lists are
     // a read behind, and a floating window moving raises no event at all.
-    function request(address: string, wanted: string) {
+    function request(address: string, wanted: string, before) {
         if (address !== "*" && !root.usable(address))
             return;
-        root.queue = [...root.queue, { address: address, wanted: wanted }];
+        root.queue = [...root.queue, { address: address, wanted: wanted, before: before ?? null }];
         if (!reader.running)
             reader.running = true;
     }
 
-    function place(address: string, zone: string) {
+    /**
+     * Places a window. `before`, { at, size }, is where it goes back to when
+     * put back, for a window that has moved since it stood there: one dragged
+     * to an edge stands at the edge when it is placed. Without it, where the
+     * window stands now.
+     */
+    function place(address: string, zone: string, before) {
         if (root.zones.includes(zone))
-            root.request(address, zone);
+            root.request(address, zone, before);
     }
     function maximize(address: string) {
         root.request(address, "maximized");

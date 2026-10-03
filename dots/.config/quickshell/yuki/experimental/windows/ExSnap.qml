@@ -25,6 +25,12 @@ Scope {
 
     /** The window being moved, or empty. */
     property string dragged: ""
+    /**
+     * Where it stood before the drag, { at, size }, or null: what a snap goes
+     * back to. Read where it stands when it is let go of, a window snapped by
+     * dragging went back to the edge it was dragged to, half off the screen.
+     */
+    property var draggedFrom: null
     /** Where it would go if let go of now, one of the placement zones, or empty. */
     property string zone: ""
     /** The screen that zone is on, and the zone's rectangle on it in its own coordinates. */
@@ -105,7 +111,7 @@ Scope {
                 return;
             const parts = event.data.split(",");
             if (parts[0] === "begin") {
-                const [, address, mode] = parts;
+                const [, address, mode, x, y, w, h] = parts;
                 if (mode !== "move") {
                     // Resized by hand, it is no longer where it was put.
                     root.placement.release(address);
@@ -114,6 +120,10 @@ Scope {
                 root.dragged = address;
                 root.zone = "";
                 monitorReader.running = true;
+                // A placed window goes back to where it stood before it was
+                // placed. The plugin says where any other stood, from 1.1 on.
+                root.draggedFrom = root.placement.placed[address]?.before
+                    ?? (h !== undefined ? { at: [Number(x), Number(y)], size: [Number(w), Number(h)] } : null);
                 // Pulled away, a placed window takes back its own size under
                 // the pointer and goes on being dragged from there.
                 const size = root.placement.sizeBefore(address);
@@ -128,9 +138,10 @@ Scope {
                 if (mode === "move" && address === root.dragged) {
                     root.zoneAt(Number(x), Number(y));
                     if (root.zone.length > 0)
-                        root.placement.place(address, root.zone);
+                        root.placement.place(address, root.zone, root.draggedFrom);
                 }
                 root.dragged = "";
+                root.draggedFrom = null;
                 root.zone = "";
             }
         }

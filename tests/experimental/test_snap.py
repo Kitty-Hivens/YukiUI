@@ -81,3 +81,29 @@ def test_dragging_to_the_top_maximizes(desk):
     pointer = drag_by_title(desk, window, 960, 0)
     pointer.release()
     window.wait(lambda c: is_maximized(desk, c), "maximised by the drag")
+
+
+def test_restoring_a_window_snapped_by_dragging_puts_it_where_it_stood(desk):
+    # Where it stood before the drag, not where it was let go of at the edge,
+    # half off the screen.
+    window = desk.wayland()
+    before = window.rect
+    pointer = drag_by_title(desk, window, 0, 500)
+    pointer.release()
+    window.wait(lambda c: (*c["at"], *c["size"]) == zone_rect(desk, "left"), "snapped left by the drag")
+    desk.restore(window)
+    client = window.wait(lambda c: not c["tags"], "put back")
+    assert (*client["at"], *client["size"]) == before
+
+
+def test_a_snapped_window_dragged_to_another_edge_still_goes_back_where_it_stood(desk):
+    window = desk.wayland()
+    before = window.rect
+    desk.place(window, "left")
+    window.wait(lambda c: c["tags"] == ["snapped"], "snapped left")
+    pointer = drag_by_title(desk, window, 1919, 500)
+    pointer.release()
+    window.wait(lambda c: (*c["at"], *c["size"]) == zone_rect(desk, "right"), "snapped right by the drag")
+    desk.restore(window)
+    client = window.wait(lambda c: not c["tags"], "put back")
+    assert (*client["at"], *client["size"]) == before
