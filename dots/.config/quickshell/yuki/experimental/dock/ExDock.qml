@@ -514,7 +514,7 @@ Scope {
             // still lets a click elsewhere take them away and count as a click
             // outside. Held exclusively for longer, a click outside was
             // reported as one on the dock and the flyout never closed. What
-            // arrives at the dock is handed to the field; a click into the
+            // arrives at the dock is handed to the field. A click into the
             // field gives the flyout's own window the keys directly.
             readonly property Item keyTarget: quickSettings.keyTarget
             property bool holdingKeys: false
@@ -829,7 +829,7 @@ Scope {
                         if (root.phase !== "" || !(dragArea.pressedButtons & Qt.LeftButton))
                             return;
                         window.closePopups(null);
-                        // Begun while the press is still the dock's; the
+                        // Begun while the press is still the dock's. The
                         // overlay comes up once it has.
                         dragArea.Drag.active = true;
                     }

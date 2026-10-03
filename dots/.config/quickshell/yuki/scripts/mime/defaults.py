@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # Ordered as the page shows them. The types are the ones a desktop actually hands
-# out; a category is a claim that a person wants one application for all of them.
+# out. A category is a claim that a person wants one application for all of them.
 GROUPS: list[dict] = [
     {"key": "browser", "name": "Web browser", "icon": "public",
      "types": ["x-scheme-handler/http", "x-scheme-handler/https", "text/html"]},

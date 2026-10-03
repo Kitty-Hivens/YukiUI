@@ -4,8 +4,8 @@ import qs.experimental.looks
 
 // A stand-in screen: a wallpaper, a dock on one edge and the quick settings
 // its status block opens. Launcher and apps sit in the middle of the dock, the
-// status block at its far end, where the tray lives. The dock is a placeholder
-// until the real one exists.
+// status block at its far end, where the tray lives. A drawing of the dock,
+// for the gallery, not ExDock itself.
 Rectangle {
     id: screen
 

@@ -272,7 +272,7 @@ Singleton {
     /**
      * Shows the desktop of a workspace, or brings back what showing it put
      * away, the way the far corner of the Windows taskbar does. What is on the
-     * workspace is minimised and remembered; with nothing left in sight, the
+     * workspace is minimised and remembered. With nothing left in sight, the
      * next call restores exactly those. A window opened in between counts as
      * something in sight, and puts it all away again.
      */

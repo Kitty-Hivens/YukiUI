@@ -68,7 +68,7 @@ Singleton {
     readonly property WifiAccessPoint active: wifiNetworks.find(n => n.active) ?? null
     readonly property bool anyAskingPassword: wifiNetworks.some(n => n.askingPassword)
     /// Names of the saved wifi profiles, so a view can offer to forget one. A profile
-    /// is named after its SSID unless someone renamed it by hand; forgetting matches
+    /// is named after its SSID unless someone renamed it by hand. Forgetting matches
     /// on the SSID the profile actually carries, so a rename only costs the button.
     property list<string> savedNetworks: []
     /// The connections that carry the machine online without being wifi -- bluetooth
@@ -436,7 +436,7 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             root.update();
             // The daemon needs a moment to bring the device back before a scan means
-            // anything; asking too early just returns the empty list it starts with.
+            // anything. Asking too early just returns the empty list it starts with.
             if (exitCode === 0)
                 backendSettleTimer.restart();
         }
@@ -540,7 +540,7 @@ Singleton {
     onWifiStatusChanged: if (wifiStatus !== "connected" && !root.wifiConnecting && !root.anyAskingPassword) rescanWifi();
 
     // Background scan keeps the list current and autoconnect re-evaluated even
-    // with no monitor events; tighter cadence while disconnected.
+    // with no monitor events. Tighter cadence while disconnected.
     //
     // Held off while a password is being typed or an attempt is in flight: a scan
     // re-associates the radio and has NetworkManager reconsider autoconnect, so the

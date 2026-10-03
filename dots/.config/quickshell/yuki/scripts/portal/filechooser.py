@@ -115,8 +115,8 @@ def _decode_path(value):
 
 def _parse_filters(raw):
     """Flatten a(sa(us)) into what the picker reads: a name and its glob patterns.
-    Mime rules are carried along untouched -- the picker does not match on them
-    yet, but dropping them here would lose the filter's real intent."""
+    Mime rules are carried along untouched: the picker matches the common ones
+    by extension, and dropping them here would lose the filter's real intent."""
     filters = []
     for entry in raw or []:
         name, rules = entry
@@ -330,7 +330,7 @@ def _return(invocation, response, uris):
 
 def _finish(invocation, method_name, options, response, uris):
     # Whatever happens here, the caller must get exactly one reply: a hung D-Bus call
-    # is worse than a failed one and would defeat the fifo read timeout.
+    # is worse than a failed one, and the application waits on it for good.
     try:
         if response == RESPONSE_SUCCESS and isinstance(uris, list) and uris:
             if method_name == "SaveFiles":

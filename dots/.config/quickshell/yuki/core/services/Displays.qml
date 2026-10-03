@@ -148,7 +148,7 @@ Singleton {
     }
 
     // Global. Applied live and written to a managed line in monitors.lua so it
-    // survives a restart; it sits outside the per-output region. keyword refuses
+    // survives a restart. It sits outside the per-output region. keyword refuses
     // a Lua config, so the live apply goes through eval.
     function setTearing(on) {
         root.tearing = on;
@@ -248,7 +248,7 @@ Singleton {
             scale: output.scale,
             transform: output.transform,
             // An output only carries a VRR mode of its own once one has been
-            // chosen for it; otherwise it follows the global setting and the
+            // chosen for it. Otherwise it follows the global setting and the
             // saved config stays silent about it.
             vrr: root.vrrConfig[output.name] ?? root.globalVrr,
             vrrOverride: root.vrrConfig[output.name] !== undefined,
@@ -547,7 +547,7 @@ Singleton {
         id: revertProc
         stdout: StdioCollector { id: revertOut }
         onExited: exitCode => {
-            // The revert is the safety net; if it fails the user must be told
+            // The revert is the safety net. If it fails the user must be told
             // rather than left looking at a layout nobody chose.
             if (exitCode !== 0 || root.evalFailed(revertOut.text))
                 root.lastError = Translation.tr("Revert failed. Run 'hyprctl reload' from a TTY if the screen is unusable.");

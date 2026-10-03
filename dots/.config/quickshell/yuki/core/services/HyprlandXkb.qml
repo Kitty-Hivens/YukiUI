@@ -29,7 +29,6 @@ Singleton {
     property string currentLayoutCode: ""
     // For the service
     property var baseLayoutFilePath: "/usr/share/X11/xkb/rules/base.lst"
-    property bool needsLayoutRefresh: false
 
     // Update the layout code according to the layout name (Hyprland gives the name not the code)
     onCurrentLayoutNameChanged: root.updateLayoutCode()
@@ -83,7 +82,8 @@ Singleton {
         }
     }
 
-    // Find out available layouts and current active layout. Should only be necessary on init
+    // The layouts and the one active: read at start, on every switch for the
+    // place of the new one in the list, and after a reload.
     Process {
         id: fetchLayoutsProc
         running: true
@@ -122,13 +122,10 @@ Singleton {
             if (event.name === "activelayout") {
                 // With one layout known, an event means the list itself may
                 // have changed, as it does when a second layout is set live.
-                if (root.needsLayoutRefresh || root.layoutCodes.length <= 1) {
-                    root.needsLayoutRefresh = false;
+                if (root.layoutCodes.length <= 1) {
                     fetchLayoutsProc.running = true;
+                    return;
                 }
-
-                // If there's only one layout, the updated layout is always the same
-                if (root.layoutCodes.length <= 1) return;
 
                 // The event names the layout but not its place in the list.
                 if (fetchLayoutsProc.running)
@@ -145,7 +142,6 @@ Singleton {
             } else if (event.name == "configreloaded") {
                 // Read now: a reload that changes the layouts need not be
                 // followed by a layout switch to report it.
-                root.needsLayoutRefresh = false;
                 fetchLayoutsProc.running = true;
             }
         }

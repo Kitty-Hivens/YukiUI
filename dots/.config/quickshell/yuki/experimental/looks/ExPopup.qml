@@ -209,7 +209,7 @@ PopupWindow {
     property string ownNamespace: "quickshell:dock"
 
     // A press anywhere else closes the popup and still reaches what it landed
-    // on, window focus included. Heard through the press-report plugin; a grab
+    // on, window focus included. Heard through the press-report plugin. A grab
     // stands in when it is not loaded, at the cost of eating that press.
     Connections {
         target: PointerPress

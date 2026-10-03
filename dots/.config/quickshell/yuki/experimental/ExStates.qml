@@ -10,7 +10,8 @@ Singleton {
     property bool launcherOpen: false
     property bool sessionOpen: false
     /** How many notification centers are open. There is one per dock, so one
-     *  per screen, and two can be open at once. */
+     *  per screen, and only one flyout is open across the docks, so more than
+     *  one only for the moment one hands over to the next. */
     property int notificationViewers: 0
     /** The dock flyout open now, on whichever screen, or null. */
     property var openPopup: null

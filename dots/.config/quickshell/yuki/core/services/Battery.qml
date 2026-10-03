@@ -13,7 +13,7 @@ Singleton {
     /**
      * Whether this process acts on the battery: warns, plays the sounds and
      * suspends. Only the shell does, which turns it on at start. A settings
-     * window is a process of its own and reads the battery to show it; acting
+     * window is a process of its own and reads the battery to show it. Acting
      * there too played the plug sound as the readings came in, and sent every
      * warning and suspend a second time.
      */

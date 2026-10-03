@@ -39,8 +39,8 @@ Singleton {
      * The device this shell asked to pair and has not heard back about.
      *
      * Discovery has to outlive the surface that started it. The pairing prompt
-     * takes focus, which clears the panel's focus grab, which closes the panel
-     * -- and the panel's own teardown then stops the scan, in the middle of the
+     * takes focus, which clears the panel's focus grab, which closes the panel,
+     * and the panel's own teardown then stops the scan, in the middle of the
      * pairing that panel just started. A device BlueZ knows only from a scan can
      * go with the scan, and the pairing goes with the device.
      */
@@ -323,7 +323,7 @@ Singleton {
     Timer {
         id: pairingTimeout
         // Longer than BlueZ will spend on an attempt of its own, so this only
-        // ever catches a pairing that ended without saying so -- a device that
+        // ever catches a pairing that ended without saying so: a device that
         // walked away, or an adapter reset underneath it.
         interval: 90000
         onTriggered: {

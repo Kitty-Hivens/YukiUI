@@ -64,7 +64,7 @@ Singleton {
         }
     }
 
-    // The compositor closes the inhibitor surface when its monitor goes away; recreate on screen changes.
+    // The compositor closes the inhibitor surface when its monitor goes away. Recreate on screen changes.
     Connections {
         target: Quickshell
         function onScreensChanged() {

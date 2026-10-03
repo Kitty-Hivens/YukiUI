@@ -109,7 +109,7 @@ Singleton {
         onAdapterUpdated: fileWriteTimer.restart()
         onLoaded: {
             // A file that was read is not the same as a file that parsed. The
-            // read succeeding is what gets reported here; contents that are not
+            // read succeeding is what gets reported here. Contents that are not
             // JSON only produce a warning, and the options keep whatever they
             // already held -- which at startup is the defaults for every one of
             // them. The shell then comes up as though nothing had ever been
@@ -117,7 +117,7 @@ Singleton {
             // defaults over the file, so a config damaged while the machine was
             // off is finished off by the next thing the user clicks.
             //
-            // Coming up on defaults is survivable; writing them back is not, so
+            // Coming up on defaults is survivable. Writing them back is not, so
             // that is what stops. Rechecked on every load, so repairing the file
             // by hand lifts it again.
             root.contentsUnreadable = !root.contentsAreUsable(configFileView.text());
@@ -134,7 +134,7 @@ Singleton {
         JsonAdapter {
             id: configOptionsJsonAdapter
 
-            property string panelFamily: "ii" // "ii", "waffle"
+            property string panelFamily: "ii" // The environment's id: "ii", "waffle" or "experimental"
 
             /**
              * Environments that are installed but not offered.
@@ -908,7 +908,7 @@ Singleton {
                     /// a card stays where it was put.
                     property list<string> placements: []
                     // The board of the thing this copies opens on its own cards and keeps
-                    // the story feed folded away; ours has nowhere to fetch stories from
+                    // the story feed folded away. Ours has nowhere to fetch stories from
                     // until feeds are named here, so it stays off and silent until then.
                     property JsonObject feed: JsonObject {
                         property bool enable: false

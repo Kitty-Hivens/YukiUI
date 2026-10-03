@@ -36,7 +36,7 @@ QtObject {
 
     /**
      * Asks the shell for a change. The switch has moved already, so it answers
-     * under the finger; a shell that does not answer puts it back by the
+     * under the finger. A shell that does not answer puts it back by the
      * reading that follows, which also says the shell is out of reach.
      */
     function call(target: string, fn: string, args) {

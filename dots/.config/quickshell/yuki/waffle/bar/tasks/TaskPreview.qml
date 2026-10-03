@@ -51,7 +51,7 @@ PopupWindow {
     color: "transparent"
     implicitWidth: contentItem.implicitWidth + ambientShadowWidth + (visualMargin * 2)
     implicitHeight: contentItem.implicitHeight + ambientShadowWidth + (visualMargin * 2)
-    // Anchored to the bar's window, which Tasks hands over, with the button's
+    // Anchored to the bar's window, read off the button as it is shown, with the button's
     // box worked out as the popup is shown. Never to the button as an item: the
     // buttons are rebuilt whenever the workspace changes, the reference to a
     // destroyed one reads as null, and a null anchor item makes Quickshell

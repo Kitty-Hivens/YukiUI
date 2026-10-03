@@ -123,7 +123,7 @@ post_process() {
 check_and_prompt_upscale() {
     local img="$1"
 
-    # notify-send below blocks until the user acts; without this guard every
+    # notify-send below blocks until the user acts. Without this guard every
     # sub-resolution wallpaper switch leaks a stuck prompt process.
     local lock="${XDG_RUNTIME_DIR:-/tmp}/quickshell-upscale-prompt.lock"
     exec {lockfd}>"$lock" 2>/dev/null || return 0

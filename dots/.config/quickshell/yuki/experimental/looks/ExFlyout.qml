@@ -3,7 +3,7 @@ import QtQuick
 /**
  * A flyout drawn inside something that covers the whole screen: the gallery's
  * stand-in screens. The desktop itself uses ExPopup, which is a window of its
- * own; both move the same way, through ExFlyoutSurface.
+ * own. Both move the same way, through ExFlyoutSurface.
  *
  * Where the panel stands comes from two rectangles: the dock decides how far
  * it sits from the screen edge, the button that opened it decides where along

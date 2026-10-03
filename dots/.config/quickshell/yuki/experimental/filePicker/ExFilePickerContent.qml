@@ -486,7 +486,7 @@ FocusScope {
 
     /**
      * The folder a save goes to when a search hit below the one on screen was
-     * picked, empty otherwise. The hit's name alone is the file name; its
+     * picked, empty otherwise. The hit's name alone is the file name. Its
      * folder is kept here rather than in the name, which may not hold a "/".
      */
     property string saveDir: ""

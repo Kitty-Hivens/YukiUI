@@ -10,7 +10,7 @@ import qs.core.services
 import qs.experimental.looks
 
 // Where sound goes and comes from, how loud, and what each application plays
-// through. Devices, volumes and mutes come live from PipeWire; sockets, card
+// through. Devices, volumes and mutes come live from PipeWire. Sockets, card
 // profiles and moving an application go through AudioRouting.
 ColumnLayout {
     id: root

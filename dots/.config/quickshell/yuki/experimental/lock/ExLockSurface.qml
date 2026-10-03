@@ -10,7 +10,7 @@ import qs.experimental.looks
 
 // The lock screen of one monitor: the wallpaper blurred under a light veil, the
 // time, and who is signed in with the password field. Locking itself, the
-// check and the keyring are the shared lock's; this only draws it and hands it
+// check and the keyring are the shared lock's. This only draws it and hands it
 // what is typed.
 MouseArea {
     id: root

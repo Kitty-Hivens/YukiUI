@@ -146,7 +146,6 @@ Singleton {
      * desktop is up says so.
      */
     property bool viewerOpen: false
-    property bool popupInhibited: root.viewerOpen || root.silent
     property var latestTimeForApp: ({})
     Component {
         id: notifComponent

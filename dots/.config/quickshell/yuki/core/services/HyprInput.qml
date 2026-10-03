@@ -15,7 +15,7 @@ import qs.core.functions
  * Two steps, because the compositor keeps them apart: a change is applied at
  * once through the lua dispatcher, and separately written into
  * `custom/general.lua` so it survives the next reload. Applied and not written,
- * it lasts until the config is reloaded; written and not applied, it would need
+ * it lasts until the config is reloaded. Written and not applied, it would need
  * a reload to be felt.
  *
  * That file is chosen over the shell's own override slot because it is sourced

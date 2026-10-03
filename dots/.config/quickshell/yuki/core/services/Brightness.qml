@@ -71,7 +71,7 @@ Singleton {
 
     // Re-read the current value from the hardware. The settings window is a
     // separate process, so a change made there is invisible to this one until
-    // the value is read again; refreshing on demand keeps the two agreeing.
+    // the value is read again. Refreshing on demand keeps the two agreeing.
     function refresh(): void {
         initializeMonitor(0);
     }

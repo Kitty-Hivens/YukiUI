@@ -146,7 +146,7 @@ function snap(entries, name, proposedX, proposedY, threshold) {
 /**
  * Push a dragged output out of whatever it landed on, along the axis of least
  * penetration. Repeated because clearing one neighbour can push it into
- * another; it gives up rather than looping forever in a crowded layout.
+ * another. It gives up rather than looping forever in a crowded layout.
  */
 function resolveOverlap(entries, name, x, y) {
     var moving = entries.find(function (entry) { return entry.name === name; });

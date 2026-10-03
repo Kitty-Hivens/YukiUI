@@ -148,7 +148,7 @@ Singleton {
 
     /**
      * Asked for by name, answered by what is installed -- not by what is
-     * offered. Turning an environment off hides it from the switcher; it does
+     * offered. Turning an environment off hides it from the switcher. It does
      * not evict someone who is already using it.
      */
     function resolve(id) {
