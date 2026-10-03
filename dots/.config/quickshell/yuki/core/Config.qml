@@ -301,6 +301,8 @@ Singleton {
                     }
                 }
                 property string wallpaperPath: ""
+                // The folder wallpapers are picked from, a path. Empty for Pictures/Wallpapers.
+                property string wallpaperFolder: ""
                 property string thumbnailPath: ""
                 property bool hideWhenFullscreen: true
                 property JsonObject parallax: JsonObject {

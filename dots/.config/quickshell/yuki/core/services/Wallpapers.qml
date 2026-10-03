@@ -21,7 +21,10 @@ Singleton {
     property string generateThumbnailsMagickScriptPath: `${FileUtils.trimFileProtocol(Directories.scriptPath)}/thumbnails/generate-thumbnails-magick.sh`
     property alias directory: folderModel.folder
     readonly property string effectiveDirectory: FileUtils.trimFileProtocol(folderModel.folder.toString())
-    property url defaultFolder: Qt.resolvedUrl(`${Directories.pictures}/Wallpapers`)
+    // The folder chosen in the settings, kept in the config, or Pictures/Wallpapers.
+    property url defaultFolder: Config.ready && Config.options.background.wallpaperFolder.length > 0
+        ? FileUtils.fileUrl(Config.options.background.wallpaperFolder)
+        : Qt.resolvedUrl(`${Directories.pictures}/Wallpapers`)
     property alias folderModel: folderModel // Expose for direct binding when needed
     property string searchQuery: ""
     readonly property list<string> extensions: [
@@ -95,24 +98,26 @@ Singleton {
     Process {
         id: validateDirProc
         property string nicePath: ""
+        // The path is an argument of the script, not part of it: spliced in,
+        // a folder named with a quote or a $( ran what followed it.
         function setDirectoryIfValid(path) {
             validateDirProc.nicePath = FileUtils.trimFileProtocol(path).replace(/\/+$/, "")
             if (/^\/*$/.test(validateDirProc.nicePath)) validateDirProc.nicePath = "/";
             validateDirProc.exec([
                 "bash", "-c",
-                `if [ -d "${validateDirProc.nicePath}" ]; then echo dir; elif [ -f "${validateDirProc.nicePath}" ]; then echo file; else echo invalid; fi`
+                'if [ -d "$1" ]; then echo dir; elif [ -f "$1" ]; then echo file; else echo invalid; fi',
+                "wallpapers-validate", validateDirProc.nicePath
             ])
         }
+        // Only a folder that is there is gone to. Anything else was gone to
+        // first and looked at after.
         stdout: StdioCollector {
             onStreamFinished: {
-                    root.directory = Qt.resolvedUrl(validateDirProc.nicePath)
                 const result = text.trim()
-                if (result === "dir") {
-                } else if (result === "file") {
-                    root.directory = Qt.resolvedUrl(FileUtils.parentDirectory(validateDirProc.nicePath))
-                } else {
-                    // Ignore
-                }
+                if (result === "dir")
+                    root.directory = FileUtils.fileUrl(validateDirProc.nicePath)
+                else if (result === "file")
+                    root.directory = FileUtils.fileUrl(FileUtils.parentDirectory(validateDirProc.nicePath))
             }
         }
     }
@@ -157,9 +162,12 @@ Singleton {
         if (!["normal", "large", "x-large", "xx-large"].includes(size)) throw new Error("Invalid thumbnail size");
         thumbgenProc.directory = root.directory
         thumbgenProc.running = false
+        // Paths as arguments, as above: a folder name was spliced into the
+        // script, unquoted, so a space broke it and a $( ran.
         thumbgenProc.command = [
             "bash", "-c",
-            `${thumbgenScriptPath} --size ${size} --machine_progress -d ${FileUtils.trimFileProtocol(root.directory)} || ${generateThumbnailsMagickScriptPath} --size ${size} -d ${FileUtils.trimFileProtocol(root.directory)}`,
+            '"$1" --size "$2" --machine_progress -d "$3" || "$4" --size "$2" -d "$3"',
+            "wallpapers-thumbnails", thumbgenScriptPath, size, FileUtils.trimFileProtocol(root.directory.toString()), generateThumbnailsMagickScriptPath
         ]
         // console.log("[Wallpapers] Updating thumbnails with command ", thumbgenProc.command.join(" "))
         root.thumbnailGenerationProgress = 0

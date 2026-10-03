@@ -63,7 +63,20 @@ ColumnLayout {
     FolderDialog {
         id: folderPicker
         title: Translation.tr("Choose a folder")
-        onAccepted: Wallpapers.setDirectory(FileUtils.trimFileProtocol(folderPicker.selectedFolder.toString()))
+        // Kept, so the page opens on it next time, and the wallpapers are
+        // picked from it whichever environment is up.
+        onAccepted: {
+            const folder = FileUtils.trimFileProtocol(decodeURIComponent(folderPicker.selectedFolder.toString()));
+            Config.options.background.wallpaperFolder = folder;
+            Wallpapers.setDirectory(folder);
+        }
+    }
+    // The pictures of a folder gone to have their thumbnails made too.
+    Connections {
+        target: Wallpapers
+        function onDirectoryChanged() {
+            Wallpapers.generateThumbnail("large");
+        }
     }
 
     RowLayout {
