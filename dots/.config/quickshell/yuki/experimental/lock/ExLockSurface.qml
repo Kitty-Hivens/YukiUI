@@ -19,6 +19,8 @@ MouseArea {
 
     /** 0 to 1 as the lock comes up, back to 0 as it lets go. */
     property real shown: 0
+    /** Up at once rather than faded in, for a screen added to a lock already held. */
+    property bool appearAtOnce: false
     /** The password in plain letters, for this screen only. */
     property bool reveal: false
 
@@ -76,7 +78,10 @@ MouseArea {
     acceptedButtons: Qt.LeftButton
     onPressed: root.forceFieldFocus()
     Component.onCompleted: {
-        enter.start();
+        if (root.appearAtOnce)
+            root.shown = 1;
+        else
+            enter.start();
         root.forceFieldFocus();
     }
 

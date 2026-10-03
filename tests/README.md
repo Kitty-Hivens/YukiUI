@@ -51,5 +51,6 @@ shell logged a script error meanwhile.
 the rules of the environment that is up.
 
 `experimental/` holds the experimental environment's: maximising, snapping by
-the shell and with the mouse, minimising, the geometry memory, and what X11
-applications ask for.
+the shell and with the mouse, minimising, the geometry memory, what X11
+applications ask for, and the lock screen. The lock tests run on a compositor
+of their own, since a session they lock cannot be unlocked again.

@@ -40,14 +40,22 @@ ShellRoot {
 
 
 class Shell:
-    def __init__(self, bench: Bench):
+    """A probe of the shell on the bench. By default the window parts above;
+    a test of another part brings a probe of its own, named apart, and the
+    IPC call that answers once it is up."""
+
+    def __init__(self, bench: Bench, probe: Path = PROBE, source: str = SOURCE,
+                 ready: tuple[str, ...] = ("placement", "list")):
         self.bench = bench
+        self.probe = probe
+        self.source = source
+        self.ready = ready
         self.process: subprocess.Popen | None = None
-        self.log: Path = bench.root / "shell.log"
+        self.log: Path = bench.root / f"{probe.stem}.log"
 
     def start(self):
-        PROBE.write_text(SOURCE)
-        self.process = subprocess.Popen(["qs", "-p", str(PROBE)], env=self.bench.environment(),
+        self.probe.write_text(self.source)
+        self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self.bench.environment(),
                                         stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
         # Up once it answers on its socket.
         wait_until(lambda: self._answers(), timeout=20, what="the shell probe to answer")
@@ -55,9 +63,9 @@ class Shell:
     def _answers(self) -> bool:
         if self.process.poll() is not None:
             raise BenchError(f"the shell probe exited with {self.process.returncode}, see {self.log}")
-        result = subprocess.run(["qs", "-p", str(PROBE), "ipc", "call", "placement", "list"],
+        result = subprocess.run(["qs", "-p", str(self.probe), "ipc", "call", *self.ready],
                                 capture_output=True, text=True, env=self.bench.environment())
-        return result.returncode == 0 and result.stdout.strip().startswith("{")
+        return result.returncode == 0
 
     def stop(self):
         if self.process and self.process.poll() is None:
@@ -72,10 +80,10 @@ class Shell:
         self.start()
 
     def remove_probe(self):
-        PROBE.unlink(missing_ok=True)
+        self.probe.unlink(missing_ok=True)
 
     def call(self, target: str, function: str, *args: str) -> str:
-        result = subprocess.run(["qs", "-p", str(PROBE), "ipc", "call", target, function, *args],
+        result = subprocess.run(["qs", "-p", str(self.probe), "ipc", "call", target, function, *args],
                                 capture_output=True, text=True, env=self.bench.environment())
         if result.returncode != 0:
             raise BenchError(f"ipc {target} {function} failed: {result.stderr.strip()}")
