@@ -107,13 +107,13 @@ Singleton {
 
         // console.log("[Hyprsunset] Enabling");
         root.startHyprsunset();
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset temperature ${root.colorTemperature}`]);
+        Quickshell.execDetached(["hyprctl", "hyprsunset", "temperature", String(root.colorTemperature)]);
     }
 
     function disableTemperature() {
         root.temperatureActive = false;
         // console.log("[Hyprsunset] Disabling");
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset temperature ${root.defaultColorTemperature}`]);
+        Quickshell.execDetached(["hyprctl", "hyprsunset", "temperature", String(root.defaultColorTemperature)]);
     }
 
     function setGamma(gamma) {
@@ -122,7 +122,7 @@ Singleton {
         root.gammaChangeAttempt();
 
         root.startHyprsunset();
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset gamma ${root.gamma}`]);
+        Quickshell.execDetached(["hyprctl", "hyprsunset", "gamma", String(root.gamma)]);
     }
 
     function fetchState() {

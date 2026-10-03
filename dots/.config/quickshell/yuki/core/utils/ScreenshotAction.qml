@@ -25,54 +25,45 @@ Singleton {
     property string imageSearchEngineBaseUrl: Config.options.search.imageSearch.imageSearchEngineBaseUrl
     property string fileUploadApiEndpoint: "https://uguu.se/upload"
 
+    /**
+     * The command for an action on a region of a screenshot.
+     *
+     * Every value goes in as an argument of the script rather than spliced
+     * into it: the screenshot's path was escaped for single quotes and then
+     * left unquoted, so a space in it broke the crop, and the folder to save
+     * in was put between double quotes unescaped.
+     *
+     * The arguments, as the scripts read them: $1 the screenshot, $2 the
+     * region as magick takes it, and after that what the action needs.
+     */
     function getCommand(x, y, width, height, screenshotPath, action, saveDir = "") {
-        // Set command for action
         const rx = Math.round(x);
         const ry = Math.round(y);
         const rw = Math.round(width);
         const rh = Math.round(height);
-        const cropBase = `magick ${StringUtils.shellSingleQuoteEscape(screenshotPath)} `
-            + `-crop ${rw}x${rh}+${rx}+${ry} +repage`
-        const cropToStdout = `${cropBase} -`
-        const cropInPlace = `${cropBase} '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`
-        const cleanup = `rm '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`
-        const slurpRegion = `${rx},${ry} ${rw}x${rh}`
-        const uploadAndGetUrl = (filePath) => {
-            return `curl -sF files[]=@'${StringUtils.shellSingleQuoteEscape(filePath)}' ${root.fileUploadApiEndpoint} | jq -r '.files[0].url'`
-        }
-        const annotationCommand = `${Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy"} -f -`;
+        const crop = `${rw}x${rh}+${rx}+${ry}`;
+        const slurpRegion = `${rx},${ry} ${rw}x${rh}`;
+        const run = (script, ...extra) => ["bash", "-c", script, "screenshot-action", screenshotPath, crop, ...extra];
         switch (action) {
             case ScreenshotAction.Action.Copy:
-                if (saveDir === "") {
-                    // not saving the screenshot, just copy to clipboard
-                    return ["bash", "-c", `${cropToStdout} | wl-copy && ${cleanup}`]
-                    break;
-                }
-                return [
-                    "bash", "-c",
-                    `mkdir -p '${StringUtils.shellSingleQuoteEscape(saveDir)}' && \
-                    saveFileName="screenshot-$(date '+%Y-%m-%d_%H.%M.%S').png" && \
-                    savePath="${saveDir}/$saveFileName" && \
-                    ${cropToStdout} | tee >(wl-copy) > "$savePath" && \
-                    ${cleanup}`
-                ]
-
-                break;
+                if (saveDir === "")
+                    return run('magick "$1" -crop "$2" +repage - | wl-copy && rm -- "$1"');
+                return run('mkdir -p -- "$3" && savePath="$3/screenshot-$(date +%Y-%m-%d_%H.%M.%S).png" && '
+                    + 'magick "$1" -crop "$2" +repage - | tee >(wl-copy) > "$savePath" && rm -- "$1"', saveDir);
             case ScreenshotAction.Action.Edit:
-                return ["bash", "-c", `${cropToStdout} | ${annotationCommand} && ${cleanup}`]
-                break;
+                return run('magick "$1" -crop "$2" +repage - | "$3" -f - && rm -- "$1"',
+                    Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy");
             case ScreenshotAction.Action.Search:
-                return ["bash", "-c", `${cropInPlace} && xdg-open "${root.imageSearchEngineBaseUrl}$(${uploadAndGetUrl(screenshotPath)})" && ${cleanup}`]
-                break;
+                return run('magick "$1" -crop "$2" +repage "$1" && '
+                    + 'url=$(curl -sF "files[]=@$1" "$4" | jq -r ".files[0].url") && xdg-open "$3$url" && rm -- "$1"',
+                    root.imageSearchEngineBaseUrl, root.fileUploadApiEndpoint);
             case ScreenshotAction.Action.CharRecognition:
-                return ["bash", "-c", `${cropInPlace} && tesseract '${StringUtils.shellSingleQuoteEscape(screenshotPath)}' stdout -l $(tesseract --list-langs | awk 'NR>1{print $1}' | tr '\\n' '+' | sed 's/\\+$/\\n/') | wl-copy && ${cleanup}`]
-                break;
+                return run('magick "$1" -crop "$2" +repage "$1" && '
+                    + 'tesseract "$1" stdout -l "$(tesseract --list-langs | awk \'NR>1{print $1}\' | paste -sd+)" | wl-copy && rm -- "$1"');
             case ScreenshotAction.Action.Record:
-                return ["bash", "-c", `${Directories.recordScriptPath} --region '${slurpRegion}'`]
-                break;
+                return ["bash", FileUtils.trimFileProtocol(Directories.recordScriptPath), "--region", slurpRegion];
             case ScreenshotAction.Action.RecordWithSound:
-                return ["bash", "-c", `${Directories.recordScriptPath} --region '${slurpRegion}' --sound`]
-                break;
+                return ["bash", FileUtils.trimFileProtocol(Directories.recordScriptPath), "--region", slurpRegion, "--sound"];
             default:
                 console.warn("[Region Selector] Unknown snip action, skipping snip.");
                 return;

@@ -123,7 +123,7 @@ Singleton {
     Process {
         id: unlockedCheck
         command: [
-            "bash", "-c", `${Directories.scriptPath}/keyring/is_unlocked.sh 2> /dev/null`,
+            "bash", "-c", '"$1" 2> /dev/null', "keyring", FileUtils.trimFileProtocol(`${Directories.scriptPath}/keyring/is_unlocked.sh`),
         ]
         onExited: exitCode => {
             if (exitCode === 0)
@@ -169,7 +169,7 @@ Singleton {
     Process {
         id: getData
         command: [ // We need to use echo for a newline so splitparser does parse
-            "bash", "-c", `${Directories.scriptPath}/keyring/try_lookup.sh 2> /dev/null`,
+            "bash", "-c", '"$1" 2> /dev/null', "keyring", FileUtils.trimFileProtocol(`${Directories.scriptPath}/keyring/try_lookup.sh`),
         ]
         stdout: StdioCollector {
             id: keyringDataOutputCollector

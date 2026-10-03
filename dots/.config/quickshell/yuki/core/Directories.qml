@@ -8,6 +8,8 @@ import QtQuick
 import Quickshell
 
 Singleton {
+    id: root
+
     // XDG Dirs, with "file://"
     readonly property string home: StandardPaths.standardLocations(StandardPaths.HomeLocation)[0]
     readonly property string config: StandardPaths.standardLocations(StandardPaths.ConfigLocation)[0]
@@ -78,6 +80,16 @@ Singleton {
     property string userAvatarPathAccountsService: FileUtils.trimFileProtocol(`/var/lib/AccountsService/icons/${SystemInfo.username}`)
     property string userAvatarPathRicersAndWeirdSystems: FileUtils.trimFileProtocol(`${Directories.home}/.face`)
     property string userAvatarPathRicersAndWeirdSystems2: FileUtils.trimFileProtocol(`${Directories.home}/.face.icon`)
+    /**
+     * Empties a scratch folder by making it again, private when a mode is given.
+     * The path goes in as an argument: spliced between quotes into the script,
+     * a path holding a quote would cut the rm short and run what followed.
+     */
+    function freshDirectory(path: string, mode: string) {
+        Quickshell.execDetached(["bash", "-c", 'rm -rf -- "$1"; if [ -n "$2" ]; then mkdir -p -m "$2" -- "$1"; else mkdir -p -- "$1"; fi',
+            "fresh-directory", path, mode ?? ""]);
+    }
+
     // Cleanup on init
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
@@ -86,17 +98,17 @@ Singleton {
         Quickshell.execDetached(["mkdir", "-p", `${userPlugins}`])
         Quickshell.execDetached(["mkdir", "-p", `${userEnvironments}`])
         Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${coverArt}'; mkdir -p '${coverArt}'`])
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${booruPreviews}'; mkdir -p '${booruPreviews}'`])
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${latexOutput}'; mkdir -p '${latexOutput}'`])
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${cliphistDecode}'; mkdir -p -m 700 '${cliphistDecode}'`])
+        root.freshDirectory(coverArt, "")
+        root.freshDirectory(booruPreviews, "")
+        root.freshDirectory(latexOutput, "")
+        root.freshDirectory(cliphistDecode, "700")
         Quickshell.execDetached(["mkdir", "-p", `${aiChats}`])
         Quickshell.execDetached(["mkdir", "-p", `${userActions}`])
         Quickshell.execDetached(["rm", "-rf", `${tempImages}`])
         // Screen captures were the one scratch directory nobody cleared, so they
         // outlived the session that took them. Created private, like the rest of
         // this space, in case it ever falls back to somewhere shared.
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${screenshotTemp}'; mkdir -p -m 700 '${screenshotTemp}'`])
+        root.freshDirectory(screenshotTemp, "700")
         // Made here rather than by whoever writes into them first, so a request
         // or a capture never fails on a directory that does not exist yet.
         Quickshell.execDetached(["mkdir", "-p", "-m", "700", `${temp}/ai`])

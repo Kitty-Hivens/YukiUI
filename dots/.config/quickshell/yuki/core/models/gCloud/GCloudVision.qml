@@ -26,9 +26,10 @@ GCloudApi {
 
         var seq = []; // command sequence
 
-        const niceFilePath = StringUtils.shellSingleQuoteEscape(FileUtils.trimFileProtocol(imageUri))
+        // Paths as arguments rather than spliced into the script: only one
+        // of the three was escaped.
         seq = [ //
-            ["bash", "-c", `mkdir -p '${Directories.screenshotTemp}'; base64 '${niceFilePath}' -w 0 > '${imageBase64FilePath}'`], //
+            ["bash", "-c", 'mkdir -p -- "$1"; base64 -w 0 -- "$2" > "$3"', "gcloud-base64", Directories.screenshotTemp, FileUtils.trimFileProtocol(imageUri), imageBase64FilePath], //
             (out) => { //
                 root.onlineImageReady = true; //
             }
