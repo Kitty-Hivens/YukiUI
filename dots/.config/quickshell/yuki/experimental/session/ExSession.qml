@@ -32,13 +32,25 @@ Scope {
         wanted: ExStates.sessionOpen
     }
 
+    // The screen in focus as the menu opens, kept while it is up. Bound to
+    // the focus, the menu followed the pointer to another screen, lost the
+    // keyboard on the way and came up again there.
+    property var targetScreen: null
+    Connections {
+        target: ExStates
+        function onSessionOpenChanged() {
+            if (ExStates.sessionOpen)
+                root.targetScreen = Quickshell.screens.find(screen => screen.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0];
+        }
+    }
+
     Loader {
-        active: presence.present
+        active: presence.present && root.targetScreen !== null
 
         sourceComponent: PanelWindow {
             id: window
 
-            screen: Quickshell.screens.find(screen => screen.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
+            screen: root.targetScreen
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:session"

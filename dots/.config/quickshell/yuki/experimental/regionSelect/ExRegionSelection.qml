@@ -47,6 +47,17 @@ Scope {
                 GlobalStates.screenShareRegionOpen = false;
             }
 
+            // Given back once the last screen's overlay has gone, as the
+            // picker does: taken exclusively, the keyboard went nowhere.
+            // Named as it comes up: torn down, the screen it was for can be
+            // gone already.
+            property string focusOwner: ""
+            Component.onCompleted: {
+                window.focusOwner = `exRegionSelection:${window.modelData?.name ?? ""}`;
+                FocusReturn.remember(window.focusOwner);
+            }
+            Component.onDestruction: FocusReturn.restore(window.focusOwner)
+
             Item {
                 anchors.fill: parent
                 focus: true

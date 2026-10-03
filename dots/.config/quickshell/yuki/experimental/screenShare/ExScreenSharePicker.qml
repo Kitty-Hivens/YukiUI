@@ -23,15 +23,27 @@ Scope {
         wanted: GlobalStates.screenSharePickerOpen
     }
 
+    // The screen in focus as the picker opens, kept while it is up. Bound to
+    // the focus, the picker followed the pointer to another screen and built
+    // every live picture again there.
+    property var targetScreen: null
+    Connections {
+        target: GlobalStates
+        function onScreenSharePickerOpenChanged() {
+            if (GlobalStates.screenSharePickerOpen)
+                root.targetScreen = Quickshell.screens.find(screen => screen.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0];
+        }
+    }
+
     Loader {
-        active: presence.present
+        active: presence.present && root.targetScreen !== null
 
         sourceComponent: PanelWindow {
             id: window
 
             property bool showWindows: false
 
-            screen: Quickshell.screens.find(screen => screen.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
+            screen: root.targetScreen
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:screenSharePicker"
@@ -43,6 +55,12 @@ Scope {
                 left: true
                 right: true
             }
+
+            // Taken exclusively, the keyboard went nowhere once the picker
+            // closed, with nothing to fall back to: the application that
+            // asked to share, a game among them, was left without it.
+            Component.onCompleted: FocusReturn.remember("exScreenSharePicker")
+            Component.onDestruction: FocusReturn.restore("exScreenSharePicker")
 
             function toplevelFor(address: string): var {
                 const wanted = address.replace(/^0x/, "");
