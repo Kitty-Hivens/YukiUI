@@ -67,6 +67,25 @@ Scope {
                 onClicked: ExStates.sessionOpen = false
             }
 
+            // Hover moves the pick only once the pointer has moved since the
+            // menu came up. Opened under a pointer standing still, at the
+            // middle of the screen where a window's centre leaves it, the menu
+            // picked what lay there, Logout, and Enter meant to lock logged out.
+            property point firstPointer: Qt.point(-1, -1)
+            property bool pointerMoved: false
+            readonly property point pointer: pointerWatch.point.position
+            onPointerChanged: {
+                if (!pointerWatch.hovered || window.pointerMoved)
+                    return;
+                if (window.firstPointer.x < 0)
+                    window.firstPointer = window.pointer;
+                else if (Math.abs(window.pointer.x - window.firstPointer.x) + Math.abs(window.pointer.y - window.firstPointer.y) > 3)
+                    window.pointerMoved = true;
+            }
+            HoverHandler {
+                id: pointerWatch
+            }
+
             RowLayout {
                 id: row
 
@@ -80,6 +99,12 @@ Scope {
                 Component.onCompleted: row.forceActiveFocus()
 
                 Keys.onPressed: event => {
+                    // Closing, it takes nothing more: an Enter pressed just
+                    // after Escape ran what was picked.
+                    if (!ExStates.sessionOpen) {
+                        event.accepted = true;
+                        return;
+                    }
                     if (event.key === Qt.Key_Escape) {
                         ExStates.sessionOpen = false;
                     } else if (event.key === Qt.Key_Left) {
@@ -119,10 +144,20 @@ Scope {
                             implicitHeight: 88
                             hoverEnabled: true
                             onHoveredChanged: {
-                                if (button.hovered)
+                                if (button.hovered && window.pointerMoved)
                                     row.current = slot.index;
                             }
+                            // Moved without leaving the button it came up under.
+                            Connections {
+                                target: window
+                                function onPointerMovedChanged() {
+                                    if (button.hovered && window.pointerMoved)
+                                        row.current = slot.index;
+                                }
+                            }
                             onClicked: {
+                                if (!ExStates.sessionOpen)
+                                    return;
                                 ExStates.sessionOpen = false;
                                 slot.modelData.run();
                             }
