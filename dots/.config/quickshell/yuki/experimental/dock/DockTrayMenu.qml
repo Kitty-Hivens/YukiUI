@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Services.SystemTray
 
 import qs.experimental.looks
 
@@ -10,8 +11,19 @@ ExPopup {
     id: root
 
     property var trayItem: null
-    /** The submenus gone into, innermost last. Empty at the top. */
-    property list<var> trail: []
+    /**
+     * The submenus gone into, innermost last. Empty at the top. A plain var:
+     * a list<var> held the entries as bare pointers, and one whose program
+     * had quit was read through anyway on the way back.
+     */
+    property var trail: []
+    // The program gone, its menu goes with it. Opened from the arrow, the
+    // menu belongs to no icon that would go away and take it along.
+    readonly property bool itemGone: root.trayItem !== null && !SystemTray.items.values.includes(root.trayItem)
+    onItemGoneChanged: {
+        if (root.itemGone && root.open)
+            root.open = false;
+    }
     readonly property var current: root.trail.length > 0 ? root.trail[root.trail.length - 1] : (root.trayItem?.menu ?? null)
 
     function openFor(item, button: Item) {

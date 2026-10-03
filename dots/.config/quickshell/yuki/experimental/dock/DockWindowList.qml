@@ -45,8 +45,13 @@ ExPopup {
         columns: root.vertical ? Math.max(1, Math.ceil(root.windows.length / root.perLine)) : Math.max(1, Math.min(root.windows.length, root.perLine))
         spacing: ExLooks.spacing.xs
 
+        // The windows themselves, which stay the same objects. A plain list
+        // made the cards anew on every window event, a title changing or the
+        // focus moving, live picture and the pointer's hover with them.
         Repeater {
-            model: root.windows
+            model: ScriptModel {
+                values: root.windows
+            }
 
             AbstractButton {
                 id: card

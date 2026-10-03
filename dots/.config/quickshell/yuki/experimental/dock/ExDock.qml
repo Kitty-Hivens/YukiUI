@@ -216,6 +216,10 @@ Scope {
     function moveTo(edge: string): bool {
         if (root.phase !== "" || !root.edges.includes(edge) || edge === Config.options.experimental.dock.edge)
             return false;
+        // Asked for over IPC, a flyout could be open, placed against the
+        // edge the dock is leaving.
+        for (const dock of root.docks)
+            dock.closePopups(null);
         root.pendingEdge = edge;
         root.shapesBefore = ({});
         root.shapesAfter = ({});
@@ -227,7 +231,7 @@ Scope {
         root.captureAll(() => {
             const shapes = {};
             for (const dock of root.docks)
-                shapes[dock.screen.name] = dock.shape();
+                shapes[dock.modelData.name] = dock.shape();
             root.shapesBefore = shapes;
             root.phase = "prepare";
             prepareTimeout.restart();
@@ -331,7 +335,7 @@ Scope {
             root.captureAll(() => {
                 const shapes = {};
                 for (const dock of root.docks)
-                    shapes[dock.screen.name] = dock.shape();
+                    shapes[dock.modelData.name] = dock.shape();
                 root.shapesAfter = shapes;
                 root.phase = "fly";
                 flightTimeout.restart();
@@ -342,6 +346,23 @@ Scope {
         id: flightTimeout
         interval: 2000
         onTriggered: root.reveal()
+    }
+    // However a step goes wrong, a move does not stay under way for good: the
+    // dock stayed hidden behind its overlay, and every later move was refused.
+    Timer {
+        interval: 8000
+        running: root.phase !== ""
+        onTriggered: {
+            console.warn("[ExDock] a move to another edge never finished, letting go of it");
+            captureTimeout.stop();
+            prepareTimeout.stop();
+            settle.stop();
+            flightTimeout.stop();
+            root.afterCapture = null;
+            root.phase = "";
+            root.shapesBefore = ({});
+            root.shapesAfter = ({});
+        }
     }
     Timer {
         id: revealTimer
@@ -526,8 +547,13 @@ Scope {
                     keysLetGo.stop();
                     keysHandOver.stop();
                     window.holdingKeys = true;
-                    window.seizingKeys = true;
-                    keysSeize.restart();
+                    // Taken outright only with the press-report plugin. Without
+                    // it the flyout holds a focus grab, which a layer turning
+                    // exclusive clears, and quick settings closed as its
+                    // password field came up.
+                    window.seizingKeys = PointerPress.available;
+                    if (window.seizingKeys)
+                        keysSeize.restart();
                 } else if (window.holdingKeys) {
                     // The same care as the launcher's: letting go with the
                     // pointer over the dock can bring back a window on a
@@ -583,6 +609,10 @@ Scope {
                 ExStates.dockWindows = [...ExStates.dockWindows, window];
             }
             Component.onDestruction: {
+                // Gone mid-drag, the drop that ends the move never comes, and
+                // the overlay's catcher on every screen would take every click.
+                if (dragArea.Drag.active)
+                    root.moveTarget = "";
                 root.docks = root.docks.filter(other => other !== window);
                 ExStates.dockWindows = ExStates.dockWindows.filter(other => other !== window);
             }
@@ -660,7 +690,7 @@ Scope {
 
             /** The dock's plate, its icons, and pictures of its tray and status block, where they stand. */
             function shape(): var {
-                const items = [Object.assign({ key: "launcher", kind: "launcher" }, window.place(launcherButton))];
+                const items = launcherButton.visible ? [Object.assign({ key: "launcher", kind: "launcher" }, window.place(launcherButton))] : [];
                 for (let i = 0; i < tasks.count; i++) {
                     const button = tasks.itemAt(i);
                     if (button?.entry)
@@ -811,12 +841,15 @@ Scope {
                         menuPoint.x = event.x;
                         menuPoint.y = event.y;
                         window.closePopups(dockMenu);
+                        // Elsewhere on the dock while it is open, the menu
+                        // comes out again there rather than closing.
+                        dockMenu.open = false;
                         dockMenu.toggle(menuPoint);
                     }
 
                     Drag.dragType: Drag.Automatic
                     Drag.supportedActions: Qt.MoveAction
-                    Drag.mimeData: ({ "application/x-yuki-dock": window.screen.name })
+                    Drag.mimeData: ({ "application/x-yuki-dock": window.modelData.name })
                     Drag.onDragStarted: root.moveTarget = window.edge
                     // A drop the overlay did not take, Escape say, leaves the dock where it is.
                     Drag.onDragFinished: dropAction => {
@@ -923,7 +956,7 @@ Scope {
                     id: tray
 
                     edge: window.edge
-                    entries: root.trayEntries(TrayService.pinnedItems, window.screen.name, "dock")
+                    entries: root.trayEntries(TrayService.pinnedItems, window.modelData.name, "dock")
                     chevronShown: TrayService.unpinnedItems.length > 0 || root.carriedId.length > 0
                     x: window.vertical ? (parent.width - width) / 2 : status.x - width - dock.padding / 2
                     y: window.vertical ? status.y - height - dock.padding / 2 : (parent.height - height) / 2
@@ -947,8 +980,8 @@ Scope {
                     }
                     onCarryFinished: root.carryEnded()
                     // Over the chevron it goes with the hidden ones, at their end.
-                    onCarriedOver: (place, onChevron) => root.carryOver(window.screen.name, onChevron ? "overflow" : "dock", onChevron ? 1000 : place, "tray")
-                    onCarriedAway: root.carryAway(window.screen.name, "tray")
+                    onCarriedOver: (place, onChevron) => root.carryOver(window.modelData.name, onChevron ? "overflow" : "dock", onChevron ? 1000 : place, "tray")
+                    onCarriedAway: root.carryAway(window.modelData.name, "tray")
                     onDroppedAt: (place, onChevron) => root.trayDrop(onChevron ? "overflow" : "dock", onChevron ? 1000 : place)
                 }
 
@@ -1083,11 +1116,11 @@ Scope {
                 dockWindow: window
                 dockSurface: dock
                 edge: window.edge
-                entries: root.trayEntries(TrayService.unpinnedItems, window.screen.name, "overflow")
+                entries: root.trayEntries(TrayService.unpinnedItems, window.modelData.name, "overflow")
                 onCarryStarted: id => root.carriedId = id
                 onCarryFinished: root.carryEnded()
-                onCarriedOver: place => root.carryOver(window.screen.name, "overflow", place, "overflow")
-                onCarriedAway: root.carryAway(window.screen.name, "overflow")
+                onCarriedOver: place => root.carryOver(window.modelData.name, "overflow", place, "overflow")
+                onCarriedAway: root.carryAway(window.modelData.name, "overflow")
                 onDroppedAt: place => root.trayDrop("overflow", place)
                 // Opened where the hidden icons came out, since the icon asked
                 // for lives in a popup that closes to make room.
@@ -1118,6 +1151,11 @@ Scope {
             const dock = root.docks.find(candidate => candidate.screen?.name === screen);
             if (!dock)
                 return "no dock on the focused screen";
+            // Under a fullscreen window the dock sits behind it, and a flyout
+            // opened there would not be seen, while one with a field would
+            // take the keyboard from the game.
+            if (dock.underFullscreen)
+                return "a fullscreen window is in front of the dock";
             return dock.trayMenuAt(place) ? "ok" : `no menu at place ${place}`;
         }
 
@@ -1127,6 +1165,11 @@ Scope {
             const dock = root.docks.find(candidate => candidate.screen?.name === screen);
             if (!dock)
                 return "no dock on the focused screen";
+            // Under a fullscreen window the dock sits behind it, and a flyout
+            // opened there would not be seen, while one with a field would
+            // take the keyboard from the game.
+            if (dock.underFullscreen)
+                return "a fullscreen window is in front of the dock";
             dock.toggleQuickSettings();
             return "ok";
         }
@@ -1137,6 +1180,11 @@ Scope {
             const dock = root.docks.find(candidate => candidate.screen?.name === screen);
             if (!dock)
                 return "no dock on the focused screen";
+            // Under a fullscreen window the dock sits behind it, and a flyout
+            // opened there would not be seen, while one with a field would
+            // take the keyboard from the game.
+            if (dock.underFullscreen)
+                return "a fullscreen window is in front of the dock";
             dock.toggleNotificationCenter();
             return "ok";
         }
@@ -1175,6 +1223,11 @@ Scope {
             const dock = root.docks.find(candidate => candidate.screen?.name === screen);
             if (!dock)
                 return "no dock on the focused screen";
+            // Under a fullscreen window the dock sits behind it, and a flyout
+            // opened there would not be seen, while one with a field would
+            // take the keyboard from the game.
+            if (dock.underFullscreen)
+                return "a fullscreen window is in front of the dock";
             return dock.menuAt(place) ? "ok" : `nothing at place ${place}`;
         }
     }
