@@ -134,6 +134,29 @@ Scope {
         GlobalStates.screenLocked = true;
     }
 
+    /**
+     * Set while the lock was asked for without any way in, as it is before
+     * sleep. The compositor counts the session locked on the lock's first
+     * frame, and the idle daemon lets the machine sleep on that, so a lock
+     * that fades in over the desktop went to sleep see-through. A surface
+     * that animates its way in reads this and comes up whole instead.
+     */
+    property bool immediate: false
+
+    function lockNow() {
+        if (!Config.options.lock.useHyprlock)
+            root.immediate = true;
+        root.lock();
+    }
+
+    Connections {
+        target: GlobalStates
+        function onScreenLockedChanged() {
+            if (!GlobalStates.screenLocked)
+                root.immediate = false;
+        }
+    }
+
     IpcHandler {
         target: "lock"
 
@@ -151,6 +174,15 @@ Scope {
 
         onPressed: {
             root.lock()
+        }
+    }
+
+    GlobalShortcut {
+        name: "lockNow"
+        description: "Locks the screen at once, without the lock's way in. For before sleep"
+
+        onPressed: {
+            root.lockNow()
         }
     }
 

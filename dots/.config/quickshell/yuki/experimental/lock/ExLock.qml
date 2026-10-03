@@ -36,6 +36,6 @@ LockScreen {
 
     lockSurface: ExLockSurface {
         context: root.context
-        appearAtOnce: root.settled
+        appearAtOnce: root.settled || root.immediate
     }
 }
