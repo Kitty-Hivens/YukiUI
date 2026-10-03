@@ -61,10 +61,21 @@ PopupWindow {
     // height covered most of the way in one jump. Growing, the window takes
     // room to spare at once. Shrinking, it keeps its size while the plane
     // shrinks inside it, and is cut down once the plane has been still a
-    // moment. The spare room is transparent and takes no pointer. Only a dock
-    // along the top or the bottom does this: beside a dock at the side the
-    // window is centred on its button, and room to spare would move the plane.
-    readonly property bool roomAlongHeight: root.edge === "bottom" || root.edge === "top"
+    // moment. The spare room is transparent and takes no pointer.
+    //
+    // That needs one edge of the plane to stand still. Against a dock along
+    // the top or the bottom it is the edge facing the dock. Beside a dock at
+    // a side the window was centred on its button and grew both ways, so it
+    // was resized every frame instead. There the plane now grows one way, see
+    // `growth`.
+    readonly property bool vertical: root.edge === "left" || root.edge === "right"
+    /**
+     * Beside a dock at a side, which way the plane grows: "down" from its top,
+     * or "up" from its bottom, towards the longer stretch of the dock from
+     * where it opened. Decided as it is placed.
+     */
+    property string growth: "down"
+    readonly property bool growsUp: root.vertical && root.growth === "up"
     readonly property real spareRoom: 160
     property real heldPlaneHeight: 0
     onPlaneHeightChanged: {
@@ -84,7 +95,7 @@ PopupWindow {
     }
 
     implicitWidth: holder.width + 2 * root.padding + 2 * root.shadowRoom
-    implicitHeight: (root.roomAlongHeight ? Math.max(root.heldPlaneHeight, root.planeHeight) : root.planeHeight) + 2 * root.shadowRoom
+    implicitHeight: Math.max(root.heldPlaneHeight, root.planeHeight) + 2 * root.shadowRoom
     // Only the plate takes the pointer. The room around it for its shadow
     // reaches over the dock, and taking clicks there left the top of the
     // button the popup came from dead: a second click on it landed on the
@@ -99,8 +110,12 @@ PopupWindow {
         // back counts the shadow room around the plane as part of it, so a
         // popup near a corner stopped short of it by that much.
         adjustment: PopupAdjustment.None
-        edges: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom : root.edge === "left" ? Edges.Right : Edges.Left
-        gravity: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom : root.edge === "left" ? Edges.Right : Edges.Left
+        // Beside a side dock the window hangs from the plane's edge that stands
+        // still, so it grows the other way.
+        edges: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom
+            : (root.edge === "left" ? Edges.Right : Edges.Left) | (root.growsUp ? Edges.Top : Edges.Bottom)
+        gravity: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom
+            : (root.edge === "left" ? Edges.Right : Edges.Left) | (root.growsUp ? Edges.Top : Edges.Bottom)
         // A point, not a box: along the dock it is the middle of the button,
         // across it the dock's inner edge, moved out by the gap and back in by
         // the shadow room the popup carries around its plane.
@@ -131,6 +146,13 @@ PopupWindow {
             const along = Math.max(start, Math.min(end, vertical ? button.y : button.x));
             let x = vertical ? button.x : along;
             let y = vertical ? along : button.y;
+            // Beside a side dock: towards the longer stretch of the dock, and
+            // the window's edge put at the plane's edge that stands still.
+            if (vertical) {
+                const middle = dock.y + root.dockSurface.height / 2;
+                root.growth = along > middle ? "up" : "down";
+                y = root.growth === "up" ? along + half + root.shadowRoom : along - half - root.shadowRoom;
+            }
             if (root.edge === "bottom")
                 y = dock.y + inset;
             else if (root.edge === "top")
@@ -249,10 +271,13 @@ PopupWindow {
         // in the very frame the window changes size. Placed from the height
         // the window reports, it stood at the top of a window that had grown
         // for one frame, before the height caught up.
-        anchors.bottom: root.edge === "bottom" ? parent.bottom : undefined
-        anchors.bottomMargin: root.shadowRoom - root.gap
+        // Growing up beside a side dock, the same: hung from the window's
+        // bottom, which is what stands still on the screen.
+        anchors.bottom: root.edge === "bottom" || root.growsUp ? parent.bottom : undefined
+        anchors.bottomMargin: root.edge === "bottom" ? root.shadowRoom - root.gap : 0
         width: root.edge === "right" ? root.shadowRoom + planeWidth + root.gap : root.edge === "left" ? root.width - reach : root.width
-        height: root.edge === "bottom" ? root.shadowRoom + planeHeight + root.gap : root.edge === "top" ? root.height - reach : root.height
+        height: root.edge === "bottom" ? root.shadowRoom + planeHeight + root.gap : root.edge === "top" ? root.height - reach
+            : root.growsUp ? planeHeight + 2 * root.shadowRoom : root.height
 
         ExFlyoutSurface {
             id: surface
@@ -262,7 +287,7 @@ PopupWindow {
             motion: root.motion
             radius: root.surfaceRadius
             restX: root.shadowRoom - parent.x
-            restY: root.edge === "bottom" ? root.shadowRoom : root.shadowRoom - parent.y
+            restY: root.edge === "bottom" || root.growsUp ? root.shadowRoom : root.shadowRoom - parent.y
             width: holder.width + 2 * root.padding
             height: holder.height + 2 * root.padding
 
