@@ -7,11 +7,14 @@ blank: on a click, on Clear all, and when the sender closed it.
 """
 
 import subprocess
+import time
 
 import pytest
 
 from bench.bench import SHELL, wait_until
 from bench.shell import Shell
+
+from .test_markup import listener  # noqa: F401
 
 PROBE = SHELL / "benchNotificationProbe.qml"
 SOURCE = """import QtQuick
@@ -104,3 +107,19 @@ def test_card_follows_a_notification_replaced_in_place(notifications):
     subprocess.run(["notify-send", "-r", str(sent), "-t", "600000", "Downloading", "80%"], env=shell.environment(), check=True)
     wait_until(lambda: shell.call("notificationProbe", "shown") == '{"summary":"Downloading","body":"80%"}',
                what="the card to follow the replacement")
+
+
+def test_pictures_from_elsewhere_are_not_fetched(notifications, listener):
+    # The body is often someone else's words, a chat message passed on as it
+    # came, and a picture in it pointing at a server would tell that server
+    # the message was shown.
+    shell = notifications
+    body = f'Hi <img src="{listener.url("body.png")}"> there'
+    subprocess.run(["notify-send", "-t", "600000", "-i", listener.url("icon.png"),
+                    f"--hint=string:image-path:{listener.url('image.png')}", "Message", body],
+                   env=shell.environment(), check=True)
+    wait_until(lambda: '"summary":"Message"' in shell.call("notificationProbe", "shown"),
+               what="the card to show the notification")
+    time.sleep(1.5)
+    assert listener.requests == []
+    assert shell.call("notificationProbe", "shown") == '{"summary":"Message","body":"Hi  there"}'

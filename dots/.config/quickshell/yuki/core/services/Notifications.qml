@@ -26,10 +26,10 @@ Singleton {
         })) ?? []
         property bool popup: false
         property bool isTransient: notification?.hints.transient ?? false
-        property string appIcon: notification?.appIcon ?? ""
+        property string appIcon: root.localOnly(notification?.appIcon ?? "")
         property string appName: notification?.appName ?? ""
-        property string body: notification?.body ?? ""
-        property string image: notification?.image ?? ""
+        property string body: root.withoutRemoteImages(notification?.body ?? "")
+        property string image: root.localOnly(notification?.image ?? "")
         property string summary: notification?.summary ?? ""
         property double time
         property string urgency: notification?.urgency.toString() ?? "normal"
@@ -62,6 +62,35 @@ Singleton {
                 root.discardNotification(notificationId);
             }
         }
+    }
+
+    /**
+     * A picture or icon a notification names, kept only when it is on this
+     * machine: a path, a file url, an image the server was handed as data, or
+     * an icon name. Anything else would have the shell fetch it from wherever
+     * it points the moment the notification is drawn.
+     */
+    function localOnly(source: string): string {
+        if (source.length === 0 || source.startsWith("/") || source.startsWith("file://") || source.startsWith("image://"))
+            return source;
+        return source.includes("://") ? "" : source;
+    }
+
+    /**
+     * The body without pictures from elsewhere. A body is very often written
+     * by someone other than the program sending it, a chat message or a mail
+     * subject, passed on as it came, and a picture in it pointing at a server
+     * told that server the message had been shown, and to whom, as a tracking
+     * pixel in a mail does. Pictures on this machine stay.
+     */
+    function withoutRemoteImages(body: string): string {
+        if (!/<img/i.test(body))
+            return body;
+        return body.replace(/<img\b[^>]*>/gi, tag => {
+            const found = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
+            const source = found ? (found[1] ?? found[2] ?? found[3] ?? "") : "";
+            return source.startsWith("/") || source.startsWith("file://") ? tag : "";
+        });
     }
 
     function notifToJSON(notif) {
@@ -190,7 +219,9 @@ Singleton {
         // actionIconsSupported: true
         actionsSupported: true
         bodyHyperlinksSupported: true
-        bodyImagesSupported: true
+        // Not offered: pictures in a body are only kept when they are local,
+        // see withoutRemoteImages.
+        bodyImagesSupported: false
         bodyMarkupSupported: true
         bodySupported: true
         imageSupported: true
@@ -376,10 +407,12 @@ Singleton {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,
                     "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
-                    "appIcon": notif.appIcon,
+                    // Read back through the same filter as a live one, since a
+                    // file written before it can hold what it now keeps out.
+                    "appIcon": root.localOnly(notif.appIcon ?? ""),
                     "appName": notif.appName,
-                    "body": notif.body,
-                    "image": notif.image,
+                    "body": root.withoutRemoteImages(notif.body ?? ""),
+                    "image": root.localOnly(notif.image ?? ""),
                     "summary": notif.summary,
                     "time": notif.time,
                     "urgency": notif.urgency,
