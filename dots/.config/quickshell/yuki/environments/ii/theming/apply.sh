@@ -32,6 +32,8 @@ fi
 gsettings set org.gnome.desktop.interface color-scheme "$scheme_preference"
 gsettings set org.gnome.desktop.interface gtk-theme "$gtk_theme"
 gsettings set org.gnome.desktop.interface icon-theme 'Material-Originals'
+# Another environment's accent goes: this one's colours carry their own.
+gsettings reset org.gnome.desktop.interface accent-color
 
 # Qt. One lever covers both halves of it: Kirigami and QML applications read the
 # colour scheme through Kirigami.Theme, and Darkly is a Lightly fork that takes
@@ -43,6 +45,7 @@ if [[ -f "$fragment" ]]; then
     if python3 "$SHELL_ROOT/scripts/colors/merge-kdeglobals.py" \
         "$fragment" "$XDG_CONFIG_HOME/kdeglobals"; then
         kwriteconfig6 --notify --file kdeglobals --group General --key ColorScheme "$scheme_name"
+        kwriteconfig6 --notify --file kdeglobals --group General --key AccentColor --delete
         kwriteconfig6 --notify --file kdeglobals --group Icons --key Theme "$qt_icons"
         kwriteconfig6 --notify --file kdeglobals --group KDE --key widgetStyle Darkly
     else
