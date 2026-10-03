@@ -47,6 +47,8 @@ Item {
 
     /** What a left click does, also reached by number through the dock's IPC. */
     function activate() {
+        if (!root.entry)
+            return;
         if (root.soleWindow)
             TaskbarApps.toggleWindow(root.soleWindow);
         else if (!root.running)

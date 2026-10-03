@@ -10,6 +10,7 @@ import qs.experimental.looks
 Item {
     id: root
 
+    /** Null for the moment between the icon leaving the tray and this going. */
     required property SystemTrayItem item
     /**
      * Where a carried icon stands: "" for none being carried, "carried" for
@@ -35,8 +36,8 @@ Item {
         anchors.fill: parent
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
-        Drag.mimeData: ({ "application/x-yuki-tray": root.item.id })
-        Drag.imageSource: root.item.icon
+        Drag.mimeData: ({ "application/x-yuki-tray": root.item?.id ?? "" })
+        Drag.imageSource: root.item?.icon ?? ""
         Drag.imageSourceSize: Qt.size(24, 24)
         Drag.hotSpot.x: 12
         Drag.hotSpot.y: 12
@@ -70,7 +71,7 @@ Item {
             carrier.Drag.active = true;
         }
         onClicked: event => {
-            if (mouse.carrying)
+            if (mouse.carrying || !root.item)
                 return;
             if (event.button === Qt.RightButton) {
                 if (root.item.hasMenu)
@@ -101,12 +102,12 @@ Item {
     IconImage {
         anchors.centerIn: parent
         implicitSize: 18
-        source: root.item.icon
+        source: root.item?.icon ?? ""
     }
 
     // An application asking to be looked at, a chat with unread messages say.
     Rectangle {
-        visible: root.item.status === Status.NeedsAttention
+        visible: root.item?.status === Status.NeedsAttention
         x: root.width - width - 5
         y: 5
         width: 8

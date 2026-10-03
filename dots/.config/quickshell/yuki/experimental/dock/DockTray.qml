@@ -83,18 +83,29 @@ Item {
         Repeater {
             id: icons
 
+            // The keys alone, each icon finding its entry by its key, as the
+            // dock's buttons do and for the same reason: the entries are made
+            // anew on every pass, and the model then rewrote the rows by place,
+            // so the icons never moved, they changed into one another.
             model: ScriptModel {
-                objectProp: "key"
-                values: root.entries
+                values: root.entries.map(entry => entry.key)
             }
 
             DockTrayIcon {
-                required property var modelData
+                required property string modelData
+                // Null for the moment between its key going and the icon going.
+                readonly property var entry: root.entries.find(candidate => candidate.key === modelData) ?? null
 
-                item: modelData.item
-                carryState: modelData.state
-                onMenuRequested: button => root.menuRequested(modelData.item, button)
-                onCarryStarted: root.carryStarted(modelData.item.id)
+                item: entry?.item ?? null
+                carryState: entry?.state ?? ""
+                onMenuRequested: button => {
+                    if (entry)
+                        root.menuRequested(entry.item, button);
+                }
+                onCarryStarted: {
+                    if (entry)
+                        root.carryStarted(entry.item.id);
+                }
                 onCarryFinished: dropped => root.carryFinished(dropped)
             }
         }

@@ -37,13 +37,18 @@ MouseArea {
         implicitWidth: contentWidth
         clip: true
         interactive: false
+        // The pooled entries themselves, which stay the same object for as long
+        // as the application does. Wrapped in a fresh object on every pass, a
+        // list whose first row matched by key but not by object was rewritten
+        // row by row from there, keys unchecked: with an application gone, the
+        // button that had been it showed the next one along.
         model: ScriptModel {
             objectProp: "appId"
-            values: TaskbarApps.appsOn(root.workspaceId)
+            values: TaskbarApps.appsOn(root.workspaceId).map(app => app.entry)
         }
         delegate: TaskAppButton {
             required property var modelData
-            appEntry: modelData.entry
+            appEntry: modelData
             workspaceId: root.workspaceId
 
             onHoverPreviewRequested: {

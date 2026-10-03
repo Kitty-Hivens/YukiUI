@@ -599,7 +599,7 @@ Scope {
             /** Opens the menu of the tray icon at a place, counted from one. */
             function trayMenuAt(place: int): bool {
                 const icon = tray.iconAt(place);
-                if (!icon || !icon.item.hasMenu)
+                if (!icon?.item?.hasMenu)
                     return false;
                 icon.menuRequested(icon);
                 return true;
@@ -663,7 +663,7 @@ Scope {
                 const items = [Object.assign({ key: "launcher", kind: "launcher" }, window.place(launcherButton))];
                 for (let i = 0; i < tasks.count; i++) {
                     const button = tasks.itemAt(i);
-                    if (button)
+                    if (button?.entry)
                         // A labelled button is drawn as its icon on the way.
                         items.push(Object.assign({ key: button.key, kind: "app", icon: AppSearch.iconFor(button.entry.appId) }, window.place(button.labelled ? button.iconItem : button)));
                 }
@@ -884,18 +884,26 @@ Scope {
                     Repeater {
                         id: tasks
 
+                        // The keys alone, which compare by value, and each button
+                        // finds what it stands for by its key. The buttons are made
+                        // anew on every pass, and given those, a list whose first
+                        // row matched by key but not by object was rewritten row by
+                        // row from there, keys unchecked: with an application gone,
+                        // the button that had been it, and a menu open on it, went
+                        // on as the next one along.
                         model: ScriptModel {
-                            objectProp: "key"
-                            values: window.buttons
+                            values: window.buttons.map(button => button.key)
                         }
 
                         DockTaskButton {
-                            required property var modelData
-                            readonly property string key: modelData.key
-                            entry: modelData.entry
-                            soleWindow: modelData.window ?? null
+                            required property string modelData
+                            readonly property string key: modelData
+                            // Null for the moment between its key going and the button going.
+                            readonly property var button: window.buttons.find(candidate => candidate.key === modelData) ?? null
+                            entry: button?.entry ?? null
+                            soleWindow: button?.window ?? null
                             reach: Math.max(0, (ExLooks.dock.thickness - ExLooks.dock.cell) / 2)
-                            status: launcherEntries.stateFor(modelData.appId)
+                            status: launcherEntries.stateFor(button?.appId ?? "")
                             workspaceId: window.workspaceId
                             showsWindow: toplevel => window.showsWindow(toplevel)
                             edge: window.edge

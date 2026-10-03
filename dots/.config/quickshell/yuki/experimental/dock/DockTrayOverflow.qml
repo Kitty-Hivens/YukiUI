@@ -55,18 +55,25 @@ ExPopup {
             }
 
             Repeater {
+                // By key, as the tray in the dock does.
                 model: ScriptModel {
-                    objectProp: "key"
-                    values: root.entries
+                    values: root.entries.map(entry => entry.key)
                 }
 
                 DockTrayIcon {
-                    required property var modelData
+                    required property string modelData
+                    readonly property var entry: root.entries.find(candidate => candidate.key === modelData) ?? null
 
-                    item: modelData.item
-                    carryState: modelData.state
-                    onMenuRequested: root.menuRequested(modelData.item)
-                    onCarryStarted: root.carryStarted(modelData.item.id)
+                    item: entry?.item ?? null
+                    carryState: entry?.state ?? ""
+                    onMenuRequested: {
+                        if (entry)
+                            root.menuRequested(entry.item);
+                    }
+                    onCarryStarted: {
+                        if (entry)
+                            root.carryStarted(entry.item.id);
+                    }
                     onCarryFinished: dropped => root.carryFinished(dropped)
                 }
             }
