@@ -281,8 +281,10 @@ Scope {
             let asHyprland = client.xwayland ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
             // One an older shell marked as maximised with Hyprland's fullscreen
             // state has its states in step again, or its own request for
-            // fullscreen stays with the application alone.
-            if (client.fullscreenClient !== 0)
+            // fullscreen stays with the application alone. Only that mark:
+            // a window told it is fullscreen on purpose, by the spoof key,
+            // keeps it.
+            if (client.fullscreenClient === 1 && client.fullscreen === 0)
                 asHyprland += `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `;
             wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
             before = root.centred(area);

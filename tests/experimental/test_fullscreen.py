@@ -5,6 +5,8 @@ monitor, dock included, and leaving it puts the window back as it was, placed
 or not.
 """
 
+import time
+
 from .test_maximize import is_maximized
 
 
@@ -70,3 +72,14 @@ def test_window_opening_maximized_goes_fullscreen(desk):
     window.command("fullscreen")
     window.wait(lambda c: is_fullscreen(desk, c), "fullscreen over the whole screen")
     window.wait_state(lambda s: s["fullscreen"], "it is fullscreen")
+
+
+def test_a_fullscreen_spoof_outlives_a_shell_restart(desk):
+    # Super+Alt+F tells a window it is fullscreen while the compositor keeps
+    # it where it is. Only the old maximised mark is the shell's to clear.
+    window = desk.wayland()
+    desk.bench.eval(f'hl.dispatch(hl.dsp.window.fullscreen_state({{ internal = 0, client = 3, window = "address:{window.address}" }}))')
+    spoofed = window.wait(lambda c: c["fullscreenClient"] >= 2 and c["fullscreen"] == 0, "told it is fullscreen")["fullscreenClient"]
+    desk.shell.restart()
+    time.sleep(1.0)
+    assert window.client()["fullscreenClient"] == spoofed
