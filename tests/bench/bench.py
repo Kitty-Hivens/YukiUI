@@ -95,6 +95,7 @@ class Bench:
         self.config_home = root / "config"
         self.state_home = root / "state"
         self.cache_home = root / "cache"
+        self.data_home = root / "data"
         self.process: subprocess.Popen | None = None
         self.signature = ""
         self.wayland_display = ""
@@ -107,11 +108,13 @@ class Bench:
 
     def _build(self):
         self.build.mkdir(parents=True, exist_ok=True)
-        for name in PLUGINS:
-            subprocess.run(["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"],
-                           check=True, capture_output=True)
-        subprocess.run(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"],
-                       check=True, capture_output=True)
+        builds = [["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"] for name in PLUGINS]
+        builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
+        for command in builds:
+            result = subprocess.run(command, capture_output=True, text=True)
+            # What the compiler said, which an exit status alone does not.
+            if result.returncode != 0:
+                raise BenchError(f"{' '.join(command)} failed:\n{result.stdout}{result.stderr}")
 
     @property
     def pointer_tool(self) -> Path:
@@ -177,25 +180,34 @@ end
         return env
 
     def start(self):
-        for directory in (self.home, self.config_home, self.state_home, self.cache_home):
+        for directory in (self.home, self.config_home, self.state_home, self.cache_home, self.data_home):
             directory.mkdir(parents=True, exist_ok=True)
         self._build()
         config = self._config()
-        env = dict(os.environ)
-        env["HYPRLAND_HEADLESS_ONLY"] = "1"
+        # The compositor keeps its own data, state and cache in the run's
+        # folders, not the person's: it writes some of each as it starts.
+        env = dict(os.environ, XDG_DATA_HOME=str(self.data_home), XDG_STATE_HOME=str(self.state_home),
+                   XDG_CACHE_HOME=str(self.cache_home))
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
         self.process = subprocess.Popen(["Hyprland", "-c", str(config)], env=env,
                                         stdout=open(self.root / "hyprland.out", "w"), stderr=subprocess.STDOUT,
                                         start_new_session=True)
-        instance = wait_until(self._instance, timeout=15, what="the nested Hyprland to come up")
-        self.signature = instance["instance"]
-        self.wayland_display = instance["wl_socket"]
-        self.hyprctl("output", "create", "headless", OUTPUT)
-        wait_until(lambda: any(m["name"] == OUTPUT for m in self.monitors()), what=f"output {OUTPUT}")
-        self.x_display = self.lua_value('os.getenv("DISPLAY")')
-        self._reader = threading.Thread(target=self._read_events, daemon=True)
-        self._reader.start()
-        self.focus_output()
+        # A start that fails halfway takes down what it started: a fixture
+        # whose setup raises never reaches its own teardown, and the nested
+        # compositor, in a session of its own, outlived the run.
+        try:
+            instance = wait_until(self._instance, timeout=15, what="the nested Hyprland to come up")
+            self.signature = instance["instance"]
+            self.wayland_display = instance["wl_socket"]
+            self.hyprctl("output", "create", "headless", OUTPUT)
+            wait_until(lambda: any(m["name"] == OUTPUT for m in self.monitors()), what=f"output {OUTPUT}")
+            self.x_display = self.lua_value('os.getenv("DISPLAY")')
+            self._reader = threading.Thread(target=self._read_events, daemon=True)
+            self._reader.start()
+            self.focus_output()
+        except BaseException:
+            self.stop()
+            raise
 
     def _instance(self):
         if self.process.poll() is not None:

@@ -85,8 +85,15 @@ class Shell:
         else:
             self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self.bench.environment(),
                                             stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
-        # Up once it answers on its socket.
-        wait_until(lambda: self._answers(), timeout=20, what="the shell probe to answer")
+        # Up once it answers on its socket. One that never does is taken down
+        # with its probe: a fixture whose setup raises never reaches its
+        # teardown, and the probe stayed in the shell's tree.
+        try:
+            wait_until(lambda: self._answers(), timeout=20, what="the shell probe to answer")
+        except BaseException:
+            self.stop()
+            self.remove_probe()
+            raise
 
     def _answers(self) -> bool:
         if self.process.poll() is not None:

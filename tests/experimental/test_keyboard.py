@@ -23,7 +23,15 @@ def test_alt_reaches_applications(desk):
     window.command("keys")
     kb = desk.keyboard
     kb.type(*kb.hold("Alt_L", "alt"), *kb.tap("f"), *kb.let_go("Alt_L", "alt"))
-    keys = wait_until(lambda: window.command("keys")["keys"] or None, what="keys to reach the window")
+    # Gathered until Alt's release has come, the keys can arrive over more
+    # than one asking.
+    keys = []
+
+    def all_arrived():
+        keys.extend(window.command("keys")["keys"])
+        return any(kind == "released" and name == "Alt_L" for kind, name, _ in keys)
+
+    wait_until(all_arrived, what="keys to reach the window")
     assert ["pressed", "Alt_L", []] in keys
     assert ["pressed", "f", ["alt"]] in keys
     assert ["released", "Alt_L", []] in keys or ["released", "Alt_L", ["alt"]] in keys

@@ -20,12 +20,15 @@ build and run, and a running Hyprland session to start from:
 
 `bench/` starts a Hyprland of its own inside the session, with one headless
 screen of 1920 by 1080 and 52 pixels reserved along the bottom where a dock
-would stand. Nothing of the person's own is read or written: its config, state
-and cache directories are temporary ones under pytest's temporary directory,
-its plugins are built there from `hypr-plugins/`, and the compositor rules are
-the experimental environment's own file from this repository. Its window on
-the session is switched off, so nothing appears on the desktop. It is stopped
-at the end of the run.
+would stand. Nothing of the person's own is written: the config, data, state
+and cache directories of the compositor and of everything started on it are
+temporary ones under pytest's temporary directory, its plugins are built there
+from `hypr-plugins/`, and the compositor rules are the experimental
+environment's own file from this repository. The home folder is read, for
+fonts and icons, and the session bus is the person's unless a test brings a
+bus of its own, as the notification tests do. Its window on the session is
+switched off, so nothing appears on the desktop. It is stopped at the end of
+the run, and a start that fails halfway takes down what it had started.
 
 On it run:
 

@@ -127,7 +127,10 @@ int main(int argc, char **argv) {
         } else if (strcmp(command, "press") == 0 || strcmp(command, "release") == 0) {
             const int code = button_code(fields > 1 ? argument : NULL);
             if (code < 0) {
-                fprintf(stderr, "error unknown button %s\n", argument);
+                // Answered on stdout too: the bench waits for an answer to
+                // every line, and one never given hung the run.
+                printf("error unknown button %s\n", argument);
+                fflush(stdout);
                 continue;
             }
             zwlr_virtual_pointer_v1_button(pointer, now(), code,
@@ -135,7 +138,8 @@ int main(int argc, char **argv) {
         } else if (strcmp(command, "scroll") == 0 && fields > 1) {
             zwlr_virtual_pointer_v1_axis(pointer, now(), WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_int(atoi(argument)));
         } else {
-            fprintf(stderr, "error unknown command %s", line);
+            printf("error unknown command %s", line);
+            fflush(stdout);
             continue;
         }
         zwlr_virtual_pointer_v1_frame(pointer);

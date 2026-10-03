@@ -129,8 +129,13 @@ class Pointer:
     def _send(self, line: str):
         self.process.stdin.write(line + "\n")
         self.process.stdin.flush()
-        if self.process.stdout.readline().strip() != "ok":
-            raise BenchError(f"the pointer refused {line}")
+        # A pointer that hangs is a failure, not a wait, as for the clients.
+        readable, _, _ = select.select([self.process.stdout], [], [], 5.0)
+        if not readable:
+            raise BenchError(f"the pointer did not answer {line}")
+        answer = self.process.stdout.readline().strip()
+        if answer != "ok":
+            raise BenchError(f"the pointer refused {line}: {answer}")
 
     def move(self, x: int, y: int):
         self.x, self.y = x, y

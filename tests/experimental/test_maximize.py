@@ -5,6 +5,7 @@ it so, and puts it back where it stood. Hyprland's own maximise, a kind of
 fullscreen, is suppressed by the environment's rules.
 """
 
+from bench.bench import wait_until
 
 def area(desk):
     return desk.bench.work_area
@@ -133,7 +134,9 @@ def test_placement_outlives_a_shell_restart(desk):
 
     desk.shell.restart()
 
-    placed = desk.placed()
+    # The shell answers before it has read the windows back.
+    placed = wait_until(lambda: (lambda p: p if maximized.address in p and snapped.address in p else None)(desk.placed()),
+                        what="the shell to know the placed windows again")
     assert placed[maximized.address]["zone"] == "maximized"
     assert placed[snapped.address]["zone"] == "left"
     assert "maximized" in maximized.client()["tags"]
@@ -146,7 +149,6 @@ def test_placement_outlives_a_config_reload(desk):
     window.wait(lambda c: is_maximized(desk, c), "maximised")
     desk.bench.reload()
     # The compositor's lua starts afresh, and the shell tells it again.
-    from bench.bench import wait_until
     wait_until(lambda: desk.bench.lua_value(f'YUKI_PLACED["{window.address}"] ~= nil') == "true",
                what="the compositor to know where the window stood again")
     assert "maximized" in window.client()["tags"]
