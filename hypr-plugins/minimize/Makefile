@@ -16,6 +16,6 @@ $(OUT): main.cpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(shell pkg-config --cflags hyprland) $(LDFLAGS)
 
 clean:
-	rm -f minimize.so
+	rm -f $(OUT)
 
 .PHONY: all clean

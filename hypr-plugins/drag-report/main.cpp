@@ -63,7 +63,11 @@ namespace {
     bool                  dragging = false;
     std::string           draggedAddress;
     std::string           draggedMode;
-    bool                  checkQueued = false;
+    // What is waiting for the next turn of the loop, by its number there, so
+    // it can be taken back as the plugin is unloaded: its code goes with the
+    // plugin, and run after that it would end the compositor.
+    uint64_t              checkLater = 0;
+    uint64_t              pressLater = 0;
     bool                  regrabbing  = false;
     Vector2D              lastPress;
     PHLWINDOWREF          pressWindow;
@@ -81,7 +85,7 @@ namespace {
     }
 
     void check() {
-        checkQueued = false;
+        checkLater = 0;
         if (!g_layoutManager || regrabbing)
             return;
         const auto& controller = g_layoutManager->dragController();
@@ -142,6 +146,7 @@ namespace {
 
     // The window the press went to, as it stood then.
     void notePress() {
+        pressLater        = 0;
         const auto window = Desktop::focusState()->window();
         pressWindow       = window;
         if (window && window->m_target)
@@ -150,10 +155,9 @@ namespace {
 
     // Once per turn of the loop, however many events arrived in it.
     void checkSoon() {
-        if (checkQueued || !g_pEventLoopManager)
+        if (checkLater != 0 || !g_pEventLoopManager)
             return;
-        checkQueued = true;
-        g_pEventLoopManager->doLater([] { check(); });
+        checkLater = g_pEventLoopManager->doLater([] { check(); });
     }
 }
 
@@ -176,8 +180,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     buttonListener = Event::bus()->m_events.input.mouse.button.listen([](IPointer::SButtonEvent event, Event::SCallbackInfo&) {
         if (event.state == WL_POINTER_BUTTON_STATE_PRESSED && g_pInputManager) {
             lastPress = g_pInputManager->getMouseCoordsInternal();
-            if (g_pEventLoopManager)
-                g_pEventLoopManager->doLater([] { notePress(); });
+            if (g_pEventLoopManager && pressLater == 0)
+                pressLater = g_pEventLoopManager->doLater([] { notePress(); });
         }
         checkSoon();
     });
@@ -190,4 +194,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
 APICALL EXPORT void PLUGIN_EXIT() {
     moveListener.reset();
     buttonListener.reset();
+    if (g_pEventLoopManager) {
+        if (checkLater != 0)
+            g_pEventLoopManager->removeDoLater(checkLater);
+        if (pressLater != 0)
+            g_pEventLoopManager->removeDoLater(pressLater);
+    }
 }

@@ -19,13 +19,19 @@ namespace {
     HANDLE              handle = nullptr;
     CHyprSignalListener openedListener;
     CHyprSignalListener closedListener;
+    // The refocus waiting for the next turn of the loop, by its number there,
+    // so it can be taken back as the plugin is unloaded: its code goes with
+    // the plugin, and run after that it would end the compositor. Several
+    // surfaces in one turn need one refocus.
+    uint64_t            refocusLater = 0;
 
     // Deferred to the next turn of the event loop, once the surface has its
     // place on the screen, rather than while it is still being mapped.
     void refocusSoon() {
-        if (!g_pEventLoopManager)
+        if (!g_pEventLoopManager || refocusLater != 0)
             return;
-        g_pEventLoopManager->doLater([] {
+        refocusLater = g_pEventLoopManager->doLater([] {
+            refocusLater = 0;
             // Not while an application holds the pointer, a game with raw
             // input above all. A volume display opening over it must not move
             // the pointer's focus away from what has it locked.
@@ -53,10 +59,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     openedListener = Event::bus()->m_events.layer.opened.listen([](const PHLLS&) { refocusSoon(); });
     closedListener = Event::bus()->m_events.layer.closed.listen([](const PHLLS&) { refocusSoon(); });
 
-    return {"layer-refocus", "Gives the pointer to a panel that appears under it without the mouse moving", "yuki", "1.0"};
+    return {"layer-refocus", "Gives the pointer to a panel that appears under it without the mouse moving", "yuki", "1.1"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
     openedListener.reset();
     closedListener.reset();
+    if (g_pEventLoopManager && refocusLater != 0)
+        g_pEventLoopManager->removeDoLater(refocusLater);
 }
