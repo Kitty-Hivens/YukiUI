@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import qs.core.functions
 import qs.core.services.network
 
 /**
@@ -193,19 +194,22 @@ Singleton {
         root.connectAttemptHadPassword = password.length > 0;
         root.connectErrorKind = "";
         root.connectErrorDetail = "";
-        // We use this instead of `nmcli connection up SSID` because this also creates a connection profile.
         // The SSID and the password travel in the environment rather than in the
-        // argument list, which every process on the machine can read.
+        // argument list, which every process on the machine can read. With a
+        // password the script hands it on to nmcli on its stdin. Without one,
+        // `nmcli dev wifi connect` joins an open network or a saved one, and
+        // makes the profile as it goes.
         connectProc.exec({
             "environment": {
                 "LANG": "C",
                 "LC_ALL": "C",
                 "SSID": accessPoint.ssid,
-                "PASSWORD": password
+                "PASSWORD": password,
+                "SECURITY": accessPoint.security
             },
-            "command": ["bash", "-c", password.length > 0
-                ? 'nmcli dev wifi connect "$SSID" password "$PASSWORD"'
-                : 'nmcli dev wifi connect "$SSID"']
+            "command": password.length > 0
+                ? ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/network/wifi_connect.sh"))]
+                : ["bash", "-c", 'nmcli dev wifi connect "$SSID"']
         });
     }
 
@@ -328,8 +332,8 @@ Singleton {
 
     function changePassword(network: WifiAccessPoint, password: string, username = ""): void {
         // TODO: enterprise wifi with username
-        // One `nmcli dev wifi connect ... password ...` rather than a modify of the
-        // profile followed by a retry: for a network never joined before there is no
+        // One attempt with the password rather than a modify of the profile
+        // followed by a retry: for a network never joined before there is no
         // profile of that name to modify, so the modify failed, the retry went out
         // without the password, and the prompt came straight back.
         root.connectToWifiNetwork(network, password);

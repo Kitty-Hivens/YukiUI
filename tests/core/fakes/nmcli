@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""A stand-in for nmcli: answers the calls wifi_connect.sh makes from a state
+file and writes down every call, its arguments and its stdin, to a log.
+
+    FAKE_NM_STATE   {"profiles": {uuid: ssid}, "password": the one that works}
+    FAKE_NM_LOG     one JSON line per call: {"argv": [...], "stdin": "..."}
+"""
+
+import json
+import os
+import sys
+import uuid as uuids
+
+state_path = os.environ["FAKE_NM_STATE"]
+state = json.load(open(state_path))
+argv = sys.argv[1:]
+stdin = ""
+if "passwd-file" in argv:
+    with open(argv[argv.index("passwd-file") + 1]) as passwd:
+        stdin = passwd.read()
+with open(os.environ["FAKE_NM_LOG"], "a") as log:
+    log.write(json.dumps({"argv": argv, "stdin": stdin}) + "\n")
+
+
+SPACES = " \t\n\r\f\v"
+ESCAPES = {"b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v"}
+
+
+def secret_of(line: str) -> str:
+    """The secret of a passwd-file line, read as nmcli 1.58 reads it
+    (nmc_utils_parse_passwd_file, nm_utils_buf_utf8safe_unescape): after the
+    first colon or equals sign, spaces stripped from both ends unless escaped,
+    a backslash and up to three digits as an octal byte, a backslash and any
+    other character as that character."""
+    cut = min(i for i in (line.find(":"), line.find("=")) if i >= 0)
+    value = line[cut + 1:].lstrip(SPACES)
+    if "\\" not in value:
+        return value.rstrip(SPACES)
+    out, i = value[:value.index("\\")], value.index("\\")
+    while True:
+        i += 1
+        if i >= len(value):
+            break
+        ch = value[i]
+        if ch.isdigit():
+            v = int(ch)
+            i += 1
+            for _ in range(2):
+                if i < len(value) and value[i] in "01234567":
+                    v = v * 8 + int(value[i])
+                    i += 1
+                else:
+                    break
+            out += chr(v & 0xFF)
+        else:
+            out += ESCAPES.get(ch, ch)
+            i += 1
+        rest = value.find("\\", i)
+        if rest < 0:
+            out += value[i:].rstrip(SPACES)
+            break
+        out += value[i:rest]
+        i = rest
+    return out
+
+
+def save():
+    json.dump(state, open(state_path, "w"))
+
+
+if argv == ["-g", "UUID,TYPE", "connection", "show"]:
+    for uuid in state["profiles"]:
+        print(f"{uuid}:802-11-wireless")
+elif argv[:3] == ["-g", "802-11-wireless.ssid", "connection"]:
+    print(state["profiles"][argv[4]])
+elif argv[:2] == ["connection", "add"]:
+    uuid = str(uuids.uuid4())
+    state["profiles"][uuid] = argv[argv.index("ssid") + 1]
+    save()
+    print(f"Connection '{argv[argv.index('con-name') + 1]}' ({uuid}) successfully added.")
+elif argv[:3] == ["connection", "up", "uuid"]:
+    secret = secret_of(stdin.rstrip("\n")) if stdin.strip() else ""
+    if secret != state["password"]:
+        print("Error: Connection activation failed: Secrets were required, but not provided.", file=sys.stderr)
+        sys.exit(4)
+    print("Connection successfully activated")
+elif argv[:3] == ["connection", "delete", "uuid"]:
+    del state["profiles"][argv[3]]
+    save()
+else:
+    print(f"Error: the fake nmcli does not know {argv}", file=sys.stderr)
+    sys.exit(2)
