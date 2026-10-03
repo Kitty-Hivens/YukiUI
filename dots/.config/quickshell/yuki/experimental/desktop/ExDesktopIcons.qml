@@ -367,6 +367,14 @@ Item {
     property string dragLead: ""
     /** A folder on the desktop the picked icons are over, to be moved into. */
     property string dropFolder: ""
+    /**
+     * The press the drag belongs to, and the only one whose release drops it.
+     * A file coming or going rebuilds the icons from the first one that moved,
+     * the one held among them, and a release then never arrived: the drag
+     * stayed up, and the next plain click anywhere dropped it, into whatever
+     * folder it had last been over.
+     */
+    property var dragOwner: null
 
     /** The folder icon under a point, other than the ones being dragged. */
     function folderAt(point: point): string {
@@ -382,6 +390,7 @@ Item {
     }
 
     function endDrag() {
+        root.dragOwner = null;
         root.dragging = false;
         root.dragDelta = Qt.point(0, 0);
         root.dragLead = "";
@@ -814,21 +823,36 @@ Item {
                         if (Math.abs(shift.x) + Math.abs(shift.y) < 8)
                             return;
                         root.dragging = true;
+                        root.dragOwner = mouse;
                         root.dragLead = icon.fileName;
+                    } else if (root.dragOwner !== mouse) {
+                        return;
                     }
                     root.dragDelta = shift;
                     root.dropFolder = root.folderAt(point);
                 }
                 onReleased: event => {
                     if (root.dragging) {
-                        root.drop();
+                        if (root.dragOwner === mouse)
+                            root.drop();
+                        else
+                            root.endDrag();
                         return;
                     }
                     if (event.button === Qt.LeftButton && mouse.wasPicked && !(event.modifiers & Qt.ControlModifier))
                         root.pick([icon.filePath]);
                     root.seizeKeys();
                 }
-                onCanceled: root.endDrag()
+                onCanceled: {
+                    if (root.dragOwner === mouse)
+                        root.endDrag();
+                }
+                // Rebuilt under the pointer while it was dragging: the drag
+                // goes with it, and the icons go back where they stood.
+                Component.onDestruction: {
+                    if (root.dragOwner === mouse)
+                        root.endDrag();
+                }
                 onDoubleClicked: event => {
                     if (event.button === Qt.LeftButton)
                         root.open(icon.filePath);
