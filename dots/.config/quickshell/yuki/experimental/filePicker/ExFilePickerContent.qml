@@ -46,10 +46,14 @@ FocusScope {
     // answered differently from a file.
     property var selectedUrls: []
     property var selectedDirs: ({})
-    /** Where Shift extends a selection from. */
-    property int anchorIndex: -1
-    /** The row the arrow keys move from. */
-    property int cursorIndex: -1
+    /**
+     * Where Shift extends a selection from, and the row the arrow keys move
+     * from, by url like the selection. Kept as row numbers they went on
+     * pointing at whatever had moved into those rows since, a download
+     * finishing or a sort, and Enter answered with another file.
+     */
+    property string anchorUrl: ""
+    property string cursorUrl: ""
 
     property bool searchOpen: false
     property bool pathOpen: false
@@ -265,8 +269,10 @@ FocusScope {
         return Qt.locale().toString(date, "d MMM yyyy");
     }
 
-    /** One row of whichever list is on screen, the folder or the search results. */
+    /** One row of whichever list is on screen, the folder or the search results, or null past its end. */
     function entryAt(index: int): var {
+        if (index < 0 || index >= (root.searching ? searchResults.count : folderModel.count))
+            return null;
         if (root.searching) {
             const found = searchResults.get(index);
             return { name: found.fileName, path: found.filePath, url: found.fileUrl, isDir: found.fileIsDir };
@@ -277,6 +283,17 @@ FocusScope {
             url: String(folderModel.get(index, "fileUrl")),
             isDir: folderModel.get(index, "fileIsDir") === true
         };
+    }
+
+    /** Where a url stands in the list on screen now, or -1. */
+    function rowOf(url: string): int {
+        if (url.length === 0)
+            return -1;
+        const count = root.searching ? searchResults.count : folderModel.count;
+        for (let i = 0; i < count; i++)
+            if (root.entryAt(i).url === url)
+                return i;
+        return -1;
     }
 
     function setSelection(entries) {
@@ -290,8 +307,8 @@ FocusScope {
 
     function clearSelection() {
         root.setSelection([]);
-        root.anchorIndex = -1;
-        root.cursorIndex = -1;
+        root.anchorUrl = "";
+        root.cursorUrl = "";
     }
 
     /**
@@ -301,11 +318,14 @@ FocusScope {
      */
     function selectIndex(index: int, modifiers: int) {
         const entry = root.entryAt(index);
-        const extend = root.multiple && (modifiers & Qt.ShiftModifier) && root.anchorIndex >= 0;
+        if (!entry)
+            return;
+        const anchor = root.rowOf(root.anchorUrl);
+        const extend = root.multiple && (modifiers & Qt.ShiftModifier) && anchor >= 0;
         const toggle = root.multiple && (modifiers & Qt.ControlModifier);
         if (extend) {
             const entries = [];
-            for (let i = Math.min(root.anchorIndex, index); i <= Math.max(root.anchorIndex, index); i++)
+            for (let i = Math.min(anchor, index); i <= Math.max(anchor, index); i++)
                 entries.push(root.entryAt(i));
             root.setSelection(entries);
         } else if (toggle) {
@@ -320,12 +340,12 @@ FocusScope {
             if (!had)
                 kept.push(entry);
             root.setSelection(kept);
-            root.anchorIndex = index;
+            root.anchorUrl = entry.url;
         } else {
             root.setSelection([entry]);
-            root.anchorIndex = index;
+            root.anchorUrl = entry.url;
         }
-        root.cursorIndex = index;
+        root.cursorUrl = entry.url;
         fileList.positionViewAtIndex(index, ListView.Contain);
         // Picking a file while saving borrows its name, the usual way to
         // overwrite one on purpose. A search hit lives in a folder of its own.
@@ -344,14 +364,21 @@ FocusScope {
         const count = fileList.count;
         if (count === 0)
             return;
-        const next = root.cursorIndex < 0 ? (step > 0 ? 0 : count - 1)
-            : Math.max(0, Math.min(count - 1, root.cursorIndex + step));
+        const cursor = root.rowOf(root.cursorUrl);
+        const next = cursor < 0 ? (step > 0 ? 0 : count - 1)
+            : Math.max(0, Math.min(count - 1, cursor + step));
         root.selectIndex(next, modifiers & Qt.ShiftModifier);
     }
 
-    /** A double click, or Enter on a row: into a folder, or take the file. */
+    /** A double click on a row: into a folder, or take the file. */
     function activateIndex(index: int) {
         const entry = root.entryAt(index);
+        if (entry)
+            root.activateEntry(entry);
+    }
+
+    /** Into a folder, or take the file. */
+    function activateEntry(entry) {
         if (entry.isDir) {
             root.enterFolder(entry.path);
         } else if (root.saving) {
@@ -559,9 +586,10 @@ FocusScope {
             root.showHidden = !root.showHidden;
         } else if (event.key === Qt.Key_Menu || ((event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_F10)) {
             // The menu a right click opens, at the row the keys are on.
-            const row = root.cursorIndex >= 0 ? fileList.itemAtIndex(root.cursorIndex) : null;
+            const cursor = root.rowOf(root.cursorUrl);
+            const row = cursor >= 0 ? fileList.itemAtIndex(cursor) : null;
             const point = row ? row.mapToItem(root, ExLooks.spacing.xl, row.height) : fileList.mapToItem(root, ExLooks.spacing.xl, 0);
-            viewMenu.target = row && root.selectedUrls.length > 0 ? root.entryAt(root.cursorIndex).path : "";
+            viewMenu.target = row && root.selectedUrls.length > 0 ? root.entryAt(cursor).path : "";
             viewMenu.openAt(point.x, point.y);
         } else if (!ctrl && !alt && event.text.length === 1 && event.text.charCodeAt(0) > 0x20) {
             // Typing at the list searches.
@@ -1412,10 +1440,13 @@ FocusScope {
                             } else if (event.key === Qt.Key_PageUp) {
                                 root.moveCursor(-Math.max(1, Math.floor(fileList.height / root.rowHeight) - 1), event.modifiers);
                             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                if (root.cursorIndex >= 0 && root.selectedUrls.length === 1)
-                                    root.activateIndex(root.cursorIndex);
-                                else
+                                // The one thing selected, taken by its url.
+                                if (root.selectedUrls.length === 1) {
+                                    const url = root.selectedUrls[0];
+                                    root.activateEntry({ path: root.pathOf(url), url: url, isDir: root.selectedDirs[url] === true });
+                                } else {
                                     root.accept();
+                                }
                             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_A && root.multiple) {
                                 const entries = [];
                                 for (let i = 0; i < fileList.count; i++)
@@ -1464,7 +1495,7 @@ FocusScope {
                                 radius: ExLooks.radius.menuItem
                                 color: row.selected ? ExLooks.colors.tonal : "transparent"
                                 // The row the keys move from, when the selection does not show it.
-                                border.width: fileList.activeFocus && root.cursorIndex === row.index && !row.selected ? 1 : 0
+                                border.width: fileList.activeFocus && root.cursorUrl === String(row.fileUrl) && !row.selected ? 1 : 0
                                 border.color: ExLooks.colors.accent
 
                                 ExStateLayer {
