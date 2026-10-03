@@ -6,11 +6,12 @@ arrived, and the drag stayed up: the next plain click on any icon dropped it,
 moving what had been dragged into the folder it was last over.
 """
 
+import json
 import time
 
 import pytest
 
-from bench.bench import SHELL
+from bench.bench import SHELL, wait_until
 from bench.shell import Shell
 from bench.windows import Pointer
 
@@ -63,6 +64,9 @@ def desktop(bench, tmp_path):
         (folder / name).write_text(name)
     user_dirs = bench.config_home / "user-dirs.dirs"
     user_dirs.write_text(f'XDG_DESKTOP_DIR="{folder}"\n')
+    # The cells kept are by name, and an earlier test's are not this one's.
+    for kept in bench.state_home.rglob("desktop-icons.json"):
+        kept.unlink()
     shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("desktopProbe", "ready"))
     pointer = Pointer(bench)
     try:
@@ -99,4 +103,22 @@ def test_drag_cut_short_by_a_new_file_drops_nothing_later(desktop):
     time.sleep(1.0)
     assert sorted(p.name for p in folder.iterdir()) == ["0.txt", "a.txt", "b.txt", "box"]
     assert list((folder / "box").iterdir()) == [], "a click moved files into the folder a drag had ended over"
+    assert not shell.errors()
+
+
+def kept_cells(bench) -> dict:
+    files = list(bench.state_home.rglob("desktop-icons.json"))
+    return json.loads(files[0].read_text())["places"] if files else {}
+
+
+def test_a_renamed_file_keeps_its_cell(desktop, bench):
+    # Renamed, a file keeps the cell it had rather than going to the first
+    # free one, the way Windows keeps it.
+    folder, shell, _ = desktop
+    # The cells are written a moment after they are given.
+    wait_until(lambda: "a.txt" in kept_cells(bench), timeout=4, what="the cells to be kept")
+    (folder / "a.txt").rename(folder / "z.txt")
+    places = wait_until(lambda: "z.txt" in kept_cells(bench) and kept_cells(bench), timeout=4, what="the new name to be kept")
+    assert places["z.txt"] == [0, 1]
+    assert "a.txt" not in places
     assert not shell.errors()

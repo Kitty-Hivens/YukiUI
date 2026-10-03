@@ -465,8 +465,11 @@ Item {
 
     function open(path: string) {
         // A launcher allowed to run is run, anything else goes to what opens it.
+        // Allowed is asked again at the moment of running: what was known came
+        // from when the icon was made, and a launcher written over since under
+        // the same name, without the bit, would have run on that.
         if (root.isRunnable(path))
-            Quickshell.execDetached(["gio", "launch", path]);
+            Quickshell.execDetached(["sh", "-c", 'if [ -x "$1" ]; then exec gio launch "$1"; else exec xdg-open "$1"; fi', "yuki-desktop-open", path]);
         else
             Quickshell.execDetached(["xdg-open", path]);
     }
@@ -737,14 +740,21 @@ Item {
 
             // Asked when the icon appears and whenever the launcher is read
             // again. "Allow launching" marks it allowed itself.
+            // The path is the one asked about: by the time the answer comes the
+            // icon can stand for another file, its rows having moved.
             Process {
                 id: trustCheck
-                command: ["test", "-x", icon.filePath]
-                onExited: exitCode => root.setTrusted(icon.filePath, exitCode === 0)
+                property string asked: ""
+                command: ["test", "-x", trustCheck.asked]
+                onExited: exitCode => root.setTrusted(trustCheck.asked, exitCode === 0)
+            }
+            function checkTrust() {
+                trustCheck.asked = icon.filePath;
+                trustCheck.running = true;
             }
             Component.onCompleted: {
                 if (icon.isDesktopFile)
-                    trustCheck.running = true;
+                    icon.checkTrust();
             }
 
             FileView {
@@ -778,7 +788,7 @@ Item {
                     }
                     icon.launcherName = localName || name;
                     if (!trustCheck.running)
-                        trustCheck.running = true;
+                        icon.checkTrust();
                 }
             }
 
