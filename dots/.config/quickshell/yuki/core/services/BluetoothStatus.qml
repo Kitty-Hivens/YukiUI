@@ -95,14 +95,30 @@ Singleton {
         root.connectFailureDetails = details;
     }
 
+    // Only a key one side has lost reads as a lost pairing, which is offered
+    // pairing again, a step that forgets the old one. An authentication that
+    // was cancelled or ran out of time says nothing about the key.
     function kindOfFailure(reason: string): string {
-        if (/key-missing|Authentication/i.test(reason))
+        if (/key-missing|AuthenticationFailed|AuthenticationRejected/i.test(reason))
             return "keyMissing";
-        if (/page-timeout|connection-timeout|host.?down/i.test(reason))
+        if (/page-timeout|connection-timeout|host.?down|AuthenticationTimeout/i.test(reason))
             return "unreachable";
         if (/refused|aborted-by-remote|abort-by-remote|not-supported|ProfileUnavailable|sdp-search/i.test(reason))
             return "refused";
         return "failed";
+    }
+
+    // A failure said about a device stands only while it is still true. One
+    // that connected afterwards some other way, or that BlueZ no longer
+    // knows, went on showing it, and offering for a key it no longer missed
+    // only to pair again, which forgets the pairing that works.
+    readonly property var deviceStates: Bluetooth.devices.values.map(device => ({ address: device.address, connected: device.connected }))
+    onDeviceStatesChanged: {
+        for (const address of Object.keys(root.connectFailures)) {
+            const device = root.deviceStates.find(state => state.address === address);
+            if (!device || device.connected)
+                root.setFailure(address, "", "");
+        }
     }
 
     Component {
@@ -156,6 +172,13 @@ Singleton {
     property string repairName: ""
     property string repairState: ""
     property BluetoothDevice repairDevice: null
+    // Gone while it was being paired, BlueZ dropping a device it only knew
+    // from the scan or the adapter resetting, the pairing has ended, and
+    // nothing else would say so: the banner would wait on it for good.
+    onRepairDeviceChanged: {
+        if (!root.repairDevice && root.repairState === "pairing")
+            root.repairState = "failed";
+    }
 
     function repair(device) {
         const address = device?.address ?? "";
@@ -303,6 +326,11 @@ Singleton {
         // ever catches a pairing that ended without saying so -- a device that
         // walked away, or an adapter reset underneath it.
         interval: 90000
-        onTriggered: root.settlePairing()
+        onTriggered: {
+            root.settlePairing();
+            // A re-pairing that never said how it ended has ended all the same.
+            if (root.repairState === "pairing")
+                root.repairState = "failed";
+        }
     }
 }

@@ -54,6 +54,16 @@ ColumnLayout {
         if (root.discovering)
             BluetoothStatus.stopDiscovery();
     }
+    // Turned on from here, the scan starts once the adapter is up. Asked for
+    // straight after asking it to power on, BlueZ answered that it was not
+    // ready, and nothing was found until the page was opened again.
+    Connections {
+        target: BluetoothStatus
+        function onEnabledChanged() {
+            if (BluetoothStatus.enabled && root.shown)
+                BluetoothStatus.startDiscovery();
+        }
+    }
 
     spacing: ExLooks.spacing.s
 
@@ -243,8 +253,6 @@ ColumnLayout {
                 if (!root.adapter)
                     return;
                 root.adapter.enabled = wanted;
-                if (wanted && root.shown)
-                    BluetoothStatus.startDiscovery();
             }
         }
     }
