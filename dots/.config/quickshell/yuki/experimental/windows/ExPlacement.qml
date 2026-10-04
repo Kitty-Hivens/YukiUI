@@ -111,6 +111,8 @@ Scope {
     function request(address: string, wanted: string, before) {
         if (address !== "*" && !root.usable(address))
             return;
+        if (address !== "*" && wanted !== "opened" && wanted !== "refit")
+            root.decide(address);
         root.queue = [...root.queue, { address: address, wanted: wanted, before: before ?? null }];
         if (!reader.running)
             reader.running = true;
@@ -297,7 +299,7 @@ Scope {
         // to be maximised, and is, as GNOME does: Steam, say, sizes itself to
         // the screen without saying it is maximised.
         if (wanted === "opened") {
-            if (entry || !root.covers(client, area))
+            if (entry || root.decided[client.address] || !root.covers(client, area))
                 return "";
             wanted = "maximized";
             before = root.centred(area);
@@ -345,6 +347,7 @@ Scope {
                 const next = Object.assign({}, root.placed);
                 delete next[`0x${event.data}`];
                 root.placed = next;
+                delete root.decided[`0x${event.data}`];
             } else if (event.name === "monitoradded" || event.name === "monitorremoved" || event.name === "configreloaded") {
                 refitLater.restart();
             }
@@ -354,6 +357,18 @@ Scope {
     // A window just opened is looked at twice: an X11 application in
     // particular often sizes itself a moment after it has appeared.
     property var opened: []
+
+    // Windows placed or put back since they opened, by address, whose checks
+    // are left out. A check reads where a window stands from a list read
+    // before what was just decided for it took effect, sometimes in the same
+    // batch: a window maximised and put back in its first second and a half
+    // was maximised again by its own late check.
+    property var decided: ({})
+
+    function decide(address: string) {
+        root.decided[address] = true;
+        root.opened = root.opened.filter(check => check.address !== address);
+    }
 
     function watchOpened(address: string) {
         if (!root.usable(address))

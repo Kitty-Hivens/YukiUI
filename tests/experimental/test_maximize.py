@@ -5,7 +5,12 @@ it so, and puts it back where it stood. Hyprland's own maximise, a kind of
 fullscreen, is suppressed by the environment's rules.
 """
 
-from bench.bench import wait_until
+import time
+
+import pytest
+
+from bench.bench import SHELL, wait_until
+from bench.shell import Shell
 
 
 def area(desk):
@@ -153,3 +158,59 @@ def test_placement_outlives_a_config_reload(desk):
     wait_until(lambda: desk.bench.lua_value(f'YUKI_PLACED["{window.address}"] ~= nil') == "true",
                what="the compositor to know where the window stood again")
     assert "maximized" in window.client()["tags"]
+
+
+LATE_PROBE = SHELL / "benchLateCheckProbe.qml"
+LATE_SOURCE = """import QtQuick
+import Quickshell
+import Quickshell.Io
+import qs.experimental.windows
+
+// Written by tests/experimental/test_maximize.py for a test run, and removed after it.
+ShellRoot {
+    ExPlacement {
+        id: placement
+    }
+    IpcHandler {
+        target: "lateCheck"
+        function maximize(address: string): void {
+            placement.maximize(address);
+        }
+        // Put back, with the check made a moment after a window opens landing
+        // in the same batch, as it does when the machine is busy.
+        function restoreBeforeCheck(address: string): void {
+            placement.restore(address);
+            placement.request(address, "opened");
+        }
+        function list(): string {
+            return JSON.stringify(placement.placed);
+        }
+    }
+}
+"""
+
+
+@pytest.fixture
+def late_check(bench):
+    shell = Shell(bench, probe=LATE_PROBE, source=LATE_SOURCE, ready=("lateCheck", "list"))
+    try:
+        shell.start()
+        yield shell
+    finally:
+        shell.stop()
+        shell.remove_probe()
+
+
+def test_a_window_put_back_is_not_maximised_again_by_its_opening_check(desk, late_check):
+    window = desk.x11(width=800, height=500)
+    before = window.rect
+    # Past the checks the window parts on the bench make of it as it opens.
+    time.sleep(2)
+    late_check.call("lateCheck", "maximize", window.address)
+    window.wait(lambda c: is_maximized(desk, c), "maximised")
+
+    late_check.call("lateCheck", "restoreBeforeCheck", window.address)
+    client = window.wait(lambda c: not c["tags"] and c["size"] == [800, 500], "put back")
+    assert (*client["at"], *client["size"]) == before
+    time.sleep(1)
+    assert not window.client()["tags"], "not maximised again by the check"
