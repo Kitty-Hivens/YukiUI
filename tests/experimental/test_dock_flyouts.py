@@ -3,7 +3,10 @@
 A popup window changes size only once the compositor has answered, and beside
 a side dock the window was centred on its button, so it was resized on every
 frame of a panel growing, and grew both ways. The panel now grows one way,
-away from the edge that stands still, in a window that keeps its size.
+away from the edge that stands still. Growing up, its window takes the room
+above it as it opens and keeps that size: Hyprland moves a popup as it sends
+the new size, before the frame drawn for it arrives, and on a busy machine the
+panel was drawn well above its place for a moment.
 
 The notification center opens from the clock, at the far end of a dock on the
 left, so it grows upwards and its bottom edge must not move. The desktop is
@@ -100,7 +103,17 @@ def test_center_beside_a_left_dock_grows_up_from_a_still_bottom(left_dock, bench
     notify(shell, "First")
     time.sleep(0.5)
     shell.call("dock", "notifications")
-    time.sleep(1.2)
+    # Open once two captures in a row find the panel in the same place: on a
+    # busy machine it was still on its way in more than a second later.
+    settled = []
+
+    def still():
+        shot = tmp_path / "settling.png"
+        subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
+        settled.append(plane_edges(shot))
+        return len(settled) > 1 and settled[-1] is not None and settled[-1] == settled[-2]
+
+    wait_until(still, timeout=8, what="the notification center to come to rest")
     frames = []
     shell.call("flyoutProbe", "reset")
     notify(shell, "Second")
@@ -111,11 +124,14 @@ def test_center_beside_a_left_dock_grows_up_from_a_still_bottom(left_dock, bench
         edges = plane_edges(shot)
         if edges:
             frames.append(edges)
-    assert len(frames) > 5, frames
+    # A capture takes a good part of a second on a busy machine, and the few
+    # it then makes are each held to the same.
+    assert len(frames) >= 3, frames
     tops = [top for top, _ in frames]
     bottoms = [bottom for _, bottom in frames]
     assert max(bottoms) - min(bottoms) <= 1, f"the bottom moved: {bottoms}"
     assert tops[-1] < tops[0], f"it did not grow upwards: {tops}"
-    # Room taken once as it grows, and cut down once after: resized on
-    # every frame, nothing was drawn while the compositor answered.
-    assert int(shell.call("flyoutProbe", "resizes")) <= 2
+    # Not resized at all. Resized on every frame, nothing was drawn while the
+    # compositor answered. Resized at all, its top edge moved before its new
+    # frame came, and the frame before was drawn that much higher.
+    assert int(shell.call("flyoutProbe", "resizes")) == 0

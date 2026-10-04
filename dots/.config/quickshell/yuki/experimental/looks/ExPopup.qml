@@ -68,6 +68,13 @@ PopupWindow {
     // a side the window was centred on its button and grew both ways, so it
     // was resized every frame instead. There the plane now grows one way, see
     // `growth`.
+    //
+    // A window growing up is not resized at all while it shows, but takes all
+    // the room above it as it opens. Its top edge moves as it grows, and
+    // Hyprland moves a popup the moment it sends the new size, not once the
+    // new frame arrives, so the frame before was drawn that much higher until
+    // the shell drew again: a frame on an idle machine, a good part of a
+    // second on a busy one.
     readonly property bool vertical: root.edge === "left" || root.edge === "right"
     /**
      * Beside a dock at a side, which way the plane grows: "down" from its top,
@@ -76,6 +83,10 @@ PopupWindow {
      */
     property string growth: "down"
     readonly property bool growsUp: root.vertical && root.growth === "up"
+    /** Whether the window's top edge is the one that moves: over a dock at the bottom, or growing up beside one at a side. */
+    readonly property bool topMoves: root.edge === "bottom" || root.growsUp
+    /** From the bottom of the window to the top of the screen, as last placed. */
+    property real roomAbove: 0
     readonly property real spareRoom: 160
     property real heldPlaneHeight: 0
     onPlaneHeightChanged: {
@@ -95,7 +106,8 @@ PopupWindow {
     }
 
     implicitWidth: holder.width + 2 * root.padding + 2 * root.shadowRoom
-    implicitHeight: Math.max(root.heldPlaneHeight, root.planeHeight) + 2 * root.shadowRoom
+    readonly property real neededHeight: Math.max(root.heldPlaneHeight, root.planeHeight) + 2 * root.shadowRoom
+    implicitHeight: root.topMoves && root.visible ? Math.max(root.roomAbove, root.neededHeight) : root.neededHeight
     // Only the plate takes the pointer. The room around it for its shadow
     // reaches over the dock, and taking clicks there left the top of the
     // button the popup came from dead: a second click on it landed on the
@@ -163,6 +175,10 @@ PopupWindow {
                 x = dock.x + inset;
             root.anchor.rect.x = Math.round(x);
             root.anchor.rect.y = Math.round(y);
+            // The dock's window stands on the bottom of its screen, and the
+            // popup's window hangs above this point when its top is the edge
+            // that moves.
+            root.roomAbove = Math.round(y) + (root.dockWindow.screen?.height ?? 0) - root.dockWindow.height;
             root.anchor.rect.width = 1;
             root.anchor.rect.height = 1;
         }
