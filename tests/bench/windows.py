@@ -67,7 +67,14 @@ class Window:
             client = self.bench.client(self.address)
             return client if client and check(client) else None
 
-        return wait_until(seen, timeout, what=f"{self.wm_class}: {what}")
+        try:
+            return wait_until(seen, timeout, what=f"{self.wm_class}: {what}")
+        except BenchError as error:
+            # What the window was like when the wait gave up, which "last seen
+            # None" does not say: the faults this catches come and go.
+            client = self.bench.client(self.address) or {}
+            facts = {key: client.get(key) for key in ("at", "size", "tags", "floating", "fullscreen", "fullscreenClient", "workspace")}
+            raise BenchError(f"{error}\n  the window then: {facts}") from None
 
     def wait_state(self, check, what: str, timeout: float = 5.0) -> dict:
         """Waits for what the application believes of itself to satisfy `check`."""
