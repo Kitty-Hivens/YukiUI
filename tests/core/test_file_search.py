@@ -22,8 +22,12 @@ def running(pid: int) -> bool:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    # Gone but not yet reaped by its parent still counts as gone.
-    status = Path(f"/proc/{pid}/stat").read_text().split(")")[-1].split()[0]
+    # Gone but not yet reaped by its parent still counts as gone, and so does
+    # one reaped between the two looks.
+    try:
+        status = Path(f"/proc/{pid}/stat").read_text().split(")")[-1].split()[0]
+    except FileNotFoundError:
+        return False
     return status != "Z"
 
 
