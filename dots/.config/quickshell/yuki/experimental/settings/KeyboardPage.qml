@@ -109,9 +109,15 @@ ColumnLayout {
             text: Translation.tr("Switch layout with")
 
             SettingsDropdown {
-                model: root.switchOptions.map(option => option.text)
-                currentIndex: Math.max(0, root.switchOptions.findIndex(option => option.value === HyprInput.optionEntry("grp:")))
-                onActivated: index => HyprInput.set(["input"], "kb_options", HyprInput.optionsWith("grp:", root.switchOptions[index].value))
+                // An option set outside the page and not on the list is shown
+                // as it is, so another can be picked over it. Shown as the
+                // first entry, picking that entry changed nothing.
+                readonly property string set: HyprInput.optionEntry("grp:")
+                readonly property var options: root.switchOptions.some(option => option.value === set) ? root.switchOptions
+                    : [...root.switchOptions, { value: set, text: set }]
+                model: options.map(option => option.text)
+                currentIndex: Math.max(0, options.findIndex(option => option.value === set))
+                onActivated: index => HyprInput.set(["input"], "kb_options", HyprInput.optionsWith("grp:", options[index].value))
             }
         }
         SettingsCard {
@@ -120,9 +126,13 @@ ColumnLayout {
             text: Translation.tr("Caps Lock does")
 
             SettingsDropdown {
-                model: root.capsOptions.map(option => option.text)
-                currentIndex: Math.max(0, root.capsOptions.findIndex(option => option.value === HyprInput.optionEntry("caps:")))
-                onActivated: index => HyprInput.set(["input"], "kb_options", HyprInput.optionsWith("caps:", root.capsOptions[index].value))
+                // As above, for a Caps Lock option the list does not hold.
+                readonly property string set: HyprInput.optionEntry("caps:")
+                readonly property var options: root.capsOptions.some(option => option.value === set) ? root.capsOptions
+                    : [...root.capsOptions, { value: set, text: set }]
+                model: options.map(option => option.text)
+                currentIndex: Math.max(0, options.findIndex(option => option.value === set))
+                onActivated: index => HyprInput.set(["input"], "kb_options", HyprInput.optionsWith("caps:", options[index].value))
             }
         }
         SettingsCard {

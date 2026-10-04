@@ -62,7 +62,13 @@ ColumnLayout {
                     id: currentName
                     Layout.fillWidth: true
                     Layout.leftMargin: group.chosen ? 0 : ExLooks.spacing.m
-                    text: group.chosen?.name ?? (group.modelData.agreed ? Translation.tr("Not set") : Translation.tr("Several applications"))
+                    // A default the group's own list does not hold, one that
+                    // declares none of its types or is not installed, is still
+                    // the default, and is named by its id rather than as none.
+                    text: group.chosen?.name
+                        ?? (!group.modelData.agreed ? Translation.tr("Several applications")
+                        : (group.modelData.current ?? "").length > 0 ? group.modelData.current.replace(/\.desktop$/, "")
+                        : Translation.tr("Not set"))
                     role: "label"
                     elide: Text.ElideRight
                     color: current.ink

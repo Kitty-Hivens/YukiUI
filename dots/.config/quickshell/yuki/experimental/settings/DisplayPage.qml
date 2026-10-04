@@ -145,16 +145,21 @@ ColumnLayout {
 
     // Switched on from here there is no drop point to go by, and an output that
     // is off reports no position, so it goes to the right of the others.
+    // Switched off, the others close up the gap it leaves.
     function setEnabled(on: bool) {
         if (!root.selected)
             return;
         if (!on) {
-            root.change({ enabled: false });
+            const name = root.selected.name;
+            root.patch(name, { enabled: false });
+            root.draft = Arrange.closeGap(root.draft, name);
+            if (!Displays.apply(root.draft))
+                root.resetDraft();
             return;
         }
-        const bounds = Arrange.boundsOf(root.draft);
-        const placed = root.draft.map(entry => entry.name === root.selected.name ? Object.assign({}, entry, { enabled: true, x: bounds.x + bounds.width, y: bounds.y }) : entry);
-        const settled = Arrange.resolveOverlap(placed, root.selected.name, bounds.x + bounds.width, bounds.y);
+        const at = Arrange.placeSwitchedOn(root.draft, root.selected.name);
+        const placed = root.draft.map(entry => entry.name === root.selected.name ? Object.assign({}, entry, { enabled: true, x: at.x, y: at.y }) : entry);
+        const settled = Arrange.resolveOverlap(placed, root.selected.name, at.x, at.y);
         root.change({ enabled: true, x: settled.x, y: settled.y });
     }
 
@@ -194,7 +199,15 @@ ColumnLayout {
         return rates.sort((a, b) => b - a);
     }
 
+    // Asked again once a read already under way is over, not by starting it
+    // over: the answer for the display selected before came back after the
+    // selection had moved and was shown for the new one.
     function readShell() {
+        if (shellState.running) {
+            shellState.again = true;
+            return;
+        }
+        shellState.asked = root.selectedName;
         shellState.command = ["sh", "-c", "qs -p \"$1\" ipc call brightness level \"$2\"; qs -p \"$1\" ipc call nightLight status", "display-page", Quickshell.shellPath("shell.qml"), root.selectedName];
         shellState.running = true;
     }
@@ -253,8 +266,18 @@ ColumnLayout {
 
     Process {
         id: shellState
+        property string asked: ""
+        property bool again: false
+        onRunningChanged: {
+            if (!shellState.running && shellState.again) {
+                shellState.again = false;
+                root.readShell();
+            }
+        }
         stdout: StdioCollector {
             onStreamFinished: {
+                if (shellState.asked !== root.selectedName)
+                    return;
                 // Anything but the two answers means the shell was not there
                 // to ask, and then there is nothing to show for either.
                 const lines = text.trim().split("\n").map(line => line.trim());
@@ -567,9 +590,14 @@ ColumnLayout {
             text: Translation.tr("Display orientation")
 
             SettingsDropdown {
-                model: root.orientations.map(option => option.text)
-                currentIndex: Math.max(0, root.orientations.findIndex(option => option.value === (root.selected?.transform ?? 0)))
-                onActivated: index => root.change({ transform: root.orientations[index].value })
+                // A mirrored transform, 4 to 7, set outside the page is shown
+                // as it is rather than as Landscape, and kept while it is the
+                // one in use.
+                readonly property var options: (root.selected?.transform ?? 0) >= 4
+                    ? [...root.orientations, { value: root.selected.transform, text: Translation.tr("Mirrored") }] : root.orientations
+                model: options.map(option => option.text)
+                currentIndex: Math.max(0, options.findIndex(option => option.value === (root.selected?.transform ?? 0)))
+                onActivated: index => root.change({ transform: options[index].value })
             }
         }
     }

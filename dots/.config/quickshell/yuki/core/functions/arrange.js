@@ -252,6 +252,47 @@ function keepTogether(entries, name, before) {
     });
 }
 
+/**
+ * Close the gap an output leaves as it is switched off.
+ *
+ * Everything that started at or past its right or bottom edge moves in by its
+ * size, as keepTogether moves them for an output that shrinks. Left open, the
+ * gap split the layout in two, and switching off the middle one of three was
+ * refused as displays that do not touch.
+ */
+function closeGap(entries, name) {
+    var gone = entries.find(function (entry) { return entry.name === name; });
+    if (!gone)
+        return entries.slice();
+    var old = rectOf(gone);
+    return entries.map(function (entry) {
+        if (entry.name === name || !entry.enabled)
+            return entry;
+        var shiftX = entry.x >= old.x + old.width ? -old.width : 0;
+        var shiftY = entry.y >= old.y + old.height ? -old.height : 0;
+        if (shiftX === 0 && shiftY === 0)
+            return entry;
+        return Object.assign({}, entry, { x: entry.x + shiftX, y: entry.y + shiftY });
+    });
+}
+
+/**
+ * Where an output switched on goes: against the right edge of the output that
+ * reaches furthest right, at its top. The corner of the whole layout, where it
+ * went before, could touch its neighbour at a corner only, which is no
+ * connection at all.
+ */
+function placeSwitchedOn(entries, name) {
+    var others = enabledOf(entries).filter(function (entry) { return entry.name !== name; });
+    if (others.length === 0)
+        return { x: 0, y: 0 };
+    var rightmost = others.reduce(function (best, entry) {
+        return rectOf(entry).x + rectOf(entry).width > rectOf(best).x + rectOf(best).width ? entry : best;
+    }, others[0]);
+    var rect = rectOf(rightmost);
+    return { x: rect.x + rect.width, y: rect.y };
+}
+
 function modeSupported(entry, availableModes) {
     if (!availableModes)
         return false;
@@ -276,5 +317,7 @@ if (typeof module !== "undefined")
         findOverlap: findOverlap,
         isContiguous: isContiguous,
         keepTogether: keepTogether,
+        closeGap: closeGap,
+        placeSwitchedOn: placeSwitchedOn,
         modeSupported: modeSupported
     };

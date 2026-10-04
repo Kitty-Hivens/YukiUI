@@ -20,8 +20,10 @@ ColumnLayout {
     function duration(seconds): string {
         if (!seconds || seconds <= 0)
             return "";
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.round((seconds % 3600) / 60);
+        // Rounded as a whole, so 59.5 minutes is an hour and not "60 min".
+        const total = Math.round(seconds / 60);
+        const hours = Math.floor(total / 60);
+        const minutes = total % 60;
         return hours > 0 ? Translation.tr("%1 h %2 min").arg(hours).arg(minutes) : Translation.tr("%1 min").arg(minutes);
     }
 

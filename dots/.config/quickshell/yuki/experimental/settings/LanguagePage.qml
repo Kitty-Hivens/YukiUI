@@ -214,8 +214,13 @@ ColumnLayout {
             ExSwitch {
                 enabled: !change.running
                 checked: root.ntp
+                // Back on what the system says, which the reading after the
+                // change brings: a refused change, the password prompt
+                // cancelled say, left the switch where the finger put it.
                 onToggled: {
-                    change.command = ["timedatectl", "set-ntp", checked ? "true" : "false"];
+                    const wanted = checked;
+                    checked = Qt.binding(() => root.ntp);
+                    change.command = ["timedatectl", "set-ntp", wanted ? "true" : "false"];
                     change.running = true;
                 }
             }

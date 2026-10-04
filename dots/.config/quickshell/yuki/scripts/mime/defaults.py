@@ -95,14 +95,17 @@ class Defaults:
 
     Asking xdg-mime once per type ran its shell script thirty-one times, most
     of a second and a half before the page could show anything. This follows
-    the same search, in the same order, over files read once:
+    nearly the same search, over files read once:
 
     1. mimeapps.list, the desktop-specific ones first, in the config dirs and
        then the applications dirs: the first application listed for the type
        under [Default Applications] that is installed.
     2. defaults.list and mimeinfo.cache in the applications dirs: the first
        application listed, installed or not, as xdg-mime takes it.
-    3. Any installed application declaring the type.
+    3. The first installed application declaring the type, in the order the
+       entries were read. xdg-mime's last resort looks at the user's own
+       applications first and takes the one with the highest
+       InitialPreference, which this does not. It is rarely reached.
     """
 
     def __init__(self, entries: dict[str, dict]):
