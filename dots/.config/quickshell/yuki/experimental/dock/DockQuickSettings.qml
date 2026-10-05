@@ -8,6 +8,7 @@ import Quickshell.Services.UPower
 import qs.core
 import qs.core.services
 import qs.experimental
+import qs.experimental.input
 import qs.experimental.looks
 
 // Quick settings, opened from the status block: the switches worth reaching
@@ -121,6 +122,17 @@ ExPopup {
     function openPage(key: string) {
         root.drawnPage = key;
         root.page = key;
+        root.leftPage = "";
+    }
+
+    /** The page last gone back from, for the mouse's forward button. */
+    property string leftPage: ""
+
+    function goBack() {
+        if (root.page.length === 0)
+            return;
+        root.leftPage = root.page;
+        root.page = "";
     }
 
     function openSettings(key: string) {
@@ -133,6 +145,7 @@ ExPopup {
         if (!root.visible) {
             root.page = "";
             root.drawnPage = "";
+            root.leftPage = "";
         }
     }
 
@@ -152,6 +165,15 @@ ExPopup {
         height: column.implicitHeight
         clip: root.shift > 0 && root.shift < 1
 
+        ExNavigationButtons {
+            z: 1
+            onBack: root.goBack()
+            onForward: {
+                if (root.page.length === 0 && root.leftPage.length > 0)
+                    root.openPage(root.leftPage);
+            }
+        }
+
         DockWifiPage {
             id: wifiPage
             width: parent.width
@@ -160,7 +182,7 @@ ExPopup {
             opacity: root.shift
             visible: root.drawnPage === "wifi"
             shown: root.page === "wifi" && root.open
-            onBack: root.page = ""
+            onBack: root.goBack()
             onSettingsRequested: root.openSettings("wifi")
         }
         DockBluetoothPage {
@@ -170,7 +192,7 @@ ExPopup {
             opacity: root.shift
             visible: root.drawnPage === "bluetooth"
             shown: root.page === "bluetooth" && root.open
-            onBack: root.page = ""
+            onBack: root.goBack()
             onSettingsRequested: root.openSettings("bluetooth")
         }
 

@@ -9,8 +9,10 @@
 // compositor has had it, or "error ..." on stderr:
 //
 //   move X Y               pixels on OUTPUT
-//   press [left|right|middle]
-//   release [left|right|middle]
+//   press [left|right|middle|side|extra|back|forward]
+//   release [left|right|middle|side|extra|back|forward]
+//
+// A mouse sends its side buttons as side and extra, or as back and forward.
 //   scroll DY
 //
 // It ends at the end of its input.
@@ -78,6 +80,14 @@ static int button_code(const char *name) {
         return BTN_RIGHT;
     if (strcmp(name, "middle") == 0)
         return BTN_MIDDLE;
+    if (strcmp(name, "side") == 0)
+        return BTN_SIDE;
+    if (strcmp(name, "extra") == 0)
+        return BTN_EXTRA;
+    if (strcmp(name, "back") == 0)
+        return BTN_BACK;
+    if (strcmp(name, "forward") == 0)
+        return BTN_FORWARD;
     return -1;
 }
 

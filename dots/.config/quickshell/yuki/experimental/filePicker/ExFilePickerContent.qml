@@ -11,6 +11,7 @@ import qs.core
 import qs.core.functions
 import qs.core.models
 import qs.core.services
+import qs.experimental.input
 import qs.experimental.looks
 
 // What the file picker window holds: the way to a folder, the places to jump
@@ -1037,16 +1038,14 @@ FocusScope {
         color: ExLooks.colors.surface
     }
 
-    // The mouse's back and forward buttons.
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.BackButton | Qt.ForwardButton
-        onPressed: event => {
-            if (event.button === Qt.BackButton)
-                root.goBack();
-            else
-                root.goForward();
-        }
+    // The mouse's back and forward buttons, over everything: the rows and
+    // the places take only the buttons of their own.
+    ExNavigationButtons {
+        z: 1
+        // Not under the question about replacing a file.
+        enabled: !replaceDialog.visible
+        onBack: root.goBack()
+        onForward: root.goForward()
     }
 
     ColumnLayout {

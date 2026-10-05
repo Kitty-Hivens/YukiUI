@@ -5,6 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import qs.core.services
+import qs.experimental.input
 import qs.experimental.looks
 
 // The settings window's content, laid out as Windows 11 lays out its own: who
@@ -27,19 +28,50 @@ Item {
     readonly property var category: catalogue.category(root.categoryKey)
     readonly property var page: root.pageKey.length > 0 ? catalogue.page(root.pageKey) : null
 
+    /**
+     * The pages the window has shown, oldest first, as { category, page }, and
+     * which of them is on show, for going back and forward the way a browser
+     * does. Opening a page from one gone back to drops those after it.
+     */
+    property var history: []
+    property int historyIndex: -1
+
+    function show(place) {
+        root.categoryKey = place.category;
+        root.pageKey = place.page;
+    }
+
     function open(key: string) {
         search.text = "";
         const page = catalogue.page(key);
-        if (page) {
-            root.categoryKey = page.category;
-            root.pageKey = page.key;
-        } else if (catalogue.category(key)) {
-            root.categoryKey = key;
-            root.pageKey = "";
-        } else {
-            root.categoryKey = "home";
-            root.pageKey = "";
+        const place = page ? { category: page.category, page: page.key }
+            : catalogue.category(key) ? { category: key, page: "" }
+            : { category: "home", page: "" };
+        const here = root.history[root.historyIndex];
+        if (!here || here.category !== place.category || here.page !== place.page) {
+            root.history = [...root.history.slice(0, root.historyIndex + 1), place];
+            root.historyIndex = root.history.length - 1;
         }
+        root.show(place);
+    }
+
+    /** Back a page, or out of a search first. */
+    function back() {
+        if (root.query.length > 0) {
+            search.text = "";
+            return;
+        }
+        if (root.historyIndex <= 0)
+            return;
+        root.historyIndex--;
+        root.show(root.history[root.historyIndex]);
+    }
+
+    function forward() {
+        if (root.historyIndex >= root.history.length - 1)
+            return;
+        root.historyIndex++;
+        root.show(root.history[root.historyIndex]);
     }
 
     Component.onCompleted: root.open(root.startPage)
@@ -265,5 +297,11 @@ Item {
                 }
             }
         }
+    }
+
+    ExNavigationButtons {
+        z: 1
+        onBack: root.back()
+        onForward: root.forward()
     }
 }
