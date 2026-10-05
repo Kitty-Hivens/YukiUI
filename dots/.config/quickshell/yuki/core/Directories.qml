@@ -37,7 +37,10 @@ Singleton {
      * where the variable is not set, and everything below is created private
      * either way.
      */
-    readonly property string temp: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/quickshell`
+    // YUKI_RUNTIME_DIR moves it elsewhere, for a second shell beside the
+    // session's own, the test bench's: in the same folder it wrote the game
+    // guard's state over the session's and emptied its scratch folders.
+    readonly property string temp: Quickshell.env("YUKI_RUNTIME_DIR") || `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/quickshell`
     readonly property string tempMedia: `${Directories.temp}/media`
     property string tempImages: `${Directories.tempMedia}/images`
     property string booruPreviews: FileUtils.trimFileProtocol(`${Directories.cache}/media/boorus`)

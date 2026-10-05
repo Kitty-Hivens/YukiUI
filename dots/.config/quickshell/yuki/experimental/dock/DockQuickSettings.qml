@@ -17,87 +17,28 @@ ExPopup {
     id: root
 
     readonly property var brightness: Brightness.getMonitorForScreen(root.dockWindow.screen)
-    readonly property string powerProfileName: PowerProfiles.profile === PowerProfile.PowerSaver ? Translation.tr("Power saver")
-        : PowerProfiles.profile === PowerProfile.Performance ? Translation.tr("Performance")
-        : Translation.tr("Balanced")
-
-    function nextPowerProfile() {
-        if (PowerProfiles.profile === PowerProfile.PowerSaver)
-            PowerProfiles.profile = PowerProfile.Balanced;
-        else if (PowerProfiles.profile === PowerProfile.Balanced && PowerProfiles.hasPerformanceProfile)
-            PowerProfiles.profile = PowerProfile.Performance;
-        else
-            PowerProfiles.profile = PowerProfile.PowerSaver;
-    }
-
-    /** Which switches there are, in their order. Changes only when one comes or goes. */
-    readonly property var tileKeys: ["wifi", BluetoothStatus.available ? "bluetooth" : "", "nightLight", "doNotDisturb", "powerMode", "keepAwake"].filter(key => key.length > 0)
-
-    /** What a switch shows, read live from the system. */
-    function tileInfo(key: string): var {
-        if (key === "wifi") {
-            // Wi-Fi's own network, not whatever carries the connection: on a
-            // cable or a Bluetooth tether the shared name and glyph describe
-            // those.
-            const network = Network.active?.ssid || (Network.activeConnectionNames["wifi"] ?? "");
-            return {
-                glyph: !Network.wifiEnabled ? "signal_wifi_off"
-                    : Network.connectionType === "wifi" ? Network.materialSymbol
-                    : network.length > 0 ? "wifi" : "wifi_find",
-                text: Translation.tr("Wi-Fi"),
-                subtitle: Network.wifiEnabled ? (network || Translation.tr("Not connected")) : Translation.tr("Off"),
-                checked: Network.wifiEnabled
-            };
-        }
-        if (key === "bluetooth")
-            return {
-                glyph: BluetoothStatus.connected ? "bluetooth_connected" : "bluetooth",
-                text: Translation.tr("Bluetooth"),
-                subtitle: !BluetoothStatus.enabled ? Translation.tr("Off") : (BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("Not connected")),
-                checked: BluetoothStatus.enabled
-            };
-        if (key === "nightLight")
-            return {
-                glyph: "nightlight",
-                text: Translation.tr("Night Light"),
-                subtitle: Hyprsunset.temperatureActive ? Translation.tr("On") : Translation.tr("Off"),
-                checked: Hyprsunset.temperatureActive
-            };
-        if (key === "doNotDisturb")
-            return {
-                glyph: Notifications.silent ? "notifications_off" : "notifications",
-                text: Translation.tr("Do not disturb"),
-                subtitle: Notifications.silent ? Translation.tr("On") : Translation.tr("Off"),
-                checked: Notifications.silent
-            };
-        if (key === "powerMode")
-            return {
-                glyph: PowerProfiles.profile === PowerProfile.PowerSaver ? "energy_savings_leaf" : PowerProfiles.profile === PowerProfile.Performance ? "speed" : "balance",
-                text: Translation.tr("Power mode"),
-                subtitle: root.powerProfileName,
-                checked: PowerProfiles.profile !== PowerProfile.Balanced
-            };
-        return {
-            glyph: "coffee",
-            text: Translation.tr("Keep awake"),
-            subtitle: Idle.inhibit ? Translation.tr("On") : Translation.tr("Off"),
-            checked: Idle.inhibit
-        };
-    }
 
     function runTile(key: string) {
-        if (key === "wifi")
-            Network.toggleWifi();
-        else if (key === "bluetooth" && Bluetooth.defaultAdapter)
-            Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter.enabled;
-        else if (key === "nightLight")
-            Hyprsunset.toggleTemperature(!Hyprsunset.temperatureActive);
-        else if (key === "doNotDisturb")
-            Notifications.silent = !Notifications.silent;
-        else if (key === "powerMode")
-            root.nextPowerProfile();
-        else if (key === "keepAwake")
-            Idle.toggleInhibit();
+        // A tile that acts on the screen has quick settings out of the way first.
+        if (ExQuickTiles.info(key).closes)
+            root.open = false;
+        ExQuickTiles.run(key);
+    }
+
+    /** Arranging the tiles: unpinning, adding, and dragging them into order. */
+    property bool editing: false
+    /** Adding a tile: the list of those not pinned is open. */
+    property bool adding: false
+
+    function startEditing() {
+        editor.keys = ExQuickTiles.pinned.slice();
+        editor.order = ExQuickTiles.pinned.slice();
+        root.adding = false;
+        root.editing = true;
+    }
+    function stopEditing() {
+        root.editing = false;
+        root.adding = false;
     }
 
     /**
@@ -146,6 +87,7 @@ ExPopup {
             root.page = "";
             root.drawnPage = "";
             root.leftPage = "";
+            root.stopEditing();
         }
     }
 
@@ -215,13 +157,14 @@ ExPopup {
 
                 Layout.fillWidth: true
                 Layout.preferredHeight: pager.tileRows * ExLooks.sizes.tileHeight + (pager.tileRows - 1) * ExLooks.spacing.s
+                visible: !root.editing
                 orientation: ListView.Horizontal
                 snapMode: ListView.SnapOneItem
                 highlightRangeMode: ListView.StrictlyEnforceRange
                 highlightMoveDuration: ExLooks.motion.normal
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
-                model: Math.ceil(root.tileKeys.length / pager.perPage)
+                model: Math.ceil(ExQuickTiles.pinned.length / pager.perPage)
 
                 // Scrolling up or down turns the page too, since a mouse has no
                 // sideways wheel. Taken above the pages, since the list takes a
@@ -268,13 +211,13 @@ ExPopup {
                     rowSpacing: ExLooks.spacing.s
 
                     Repeater {
-                        model: root.tileKeys.slice(page.index * pager.perPage, (page.index + 1) * pager.perPage)
+                        model: ExQuickTiles.pinned.slice(page.index * pager.perPage, (page.index + 1) * pager.perPage)
 
                         // State comes from the system, so a click asks for the
                         // change and the tile follows what actually happened.
                         ExToggleTile {
                             required property string modelData
-                            readonly property var info: root.tileInfo(modelData)
+                            readonly property var info: ExQuickTiles.info(modelData)
 
                             // Half the page each, even alone in its row.
                             Layout.preferredWidth: (page.width - page.columnSpacing) / 2
@@ -284,7 +227,7 @@ ExPopup {
                             text: info.text
                             subtitle: info.subtitle
                             checked: info.checked
-                            hasMenu: modelData === "wifi" || modelData === "bluetooth"
+                            hasMenu: info.hasPage ?? false
                             onClicked: root.runTile(modelData)
                             onMenuRequested: root.openPage(modelData)
                         }
@@ -292,9 +235,198 @@ ExPopup {
                 }
             }
 
+            // The pinned tiles laid out for arranging, all of them at once
+            // rather than in pages. Placed by hand rather than by a layout: a
+            // tile dragged to another place moves there as it goes, and a
+            // layout fed a new order made every tile anew, the dragged one
+            // and its drag with it.
+            Item {
+                id: editor
+
+                /** The tiles arranged, made once as editing starts. */
+                property var keys: []
+                /** Where each stands now, as the drag goes. */
+                property var order: []
+                property string dragged: ""
+
+                readonly property real gap: ExLooks.spacing.s
+                readonly property real cellWidth: (width - gap) / 2
+                readonly property real cellHeight: ExLooks.sizes.tileHeight
+                readonly property int rows: Math.ceil(editor.order.length / 2)
+
+                function slotX(index: int): real {
+                    return (index % 2) * (editor.cellWidth + editor.gap);
+                }
+                function slotY(index: int): real {
+                    return Math.floor(index / 2) * (editor.cellHeight + editor.gap);
+                }
+                /** The place under a point, within the tiles there are. */
+                function slotAt(x: real, y: real): int {
+                    const column = x < editor.cellWidth + editor.gap / 2 ? 0 : 1;
+                    const row = Math.max(0, Math.min(editor.rows - 1, Math.floor((y + editor.gap / 2) / (editor.cellHeight + editor.gap))));
+                    return Math.min(editor.order.length - 1, row * 2 + column);
+                }
+                function moveTo(key: string, index: int) {
+                    const next = editor.order.filter(other => other !== key);
+                    next.splice(index, 0, key);
+                    editor.order = next;
+                }
+                function remove(key: string) {
+                    editor.order = editor.order.filter(other => other !== key);
+                    editor.keys = editor.keys.filter(other => other !== key);
+                    ExQuickTiles.unpin(key);
+                }
+                function add(key: string) {
+                    editor.keys = [...editor.keys, key];
+                    editor.order = [...editor.order, key];
+                    ExQuickTiles.pin(key);
+                }
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.max(editor.cellHeight, editor.rows * (editor.cellHeight + editor.gap) - editor.gap)
+                visible: root.editing
+
+                Repeater {
+                    model: editor.keys
+
+                    Item {
+                        id: slot
+
+                        required property string modelData
+                        readonly property int at: editor.order.indexOf(slot.modelData)
+                        readonly property bool lifted: editor.dragged === slot.modelData
+                        readonly property var info: ExQuickTiles.info(slot.modelData)
+                        property point held: Qt.point(0, 0)
+                        property point pointer: Qt.point(0, 0)
+
+                        visible: slot.at >= 0
+                        width: editor.cellWidth
+                        height: editor.cellHeight
+                        x: slot.lifted ? slot.pointer.x - slot.held.x : editor.slotX(slot.at)
+                        y: slot.lifted ? slot.pointer.y - slot.held.y : editor.slotY(slot.at)
+                        z: slot.lifted ? 2 : 1
+                        scale: slot.lifted ? 1.04 : 1
+
+                        Behavior on x {
+                            enabled: !slot.lifted
+                            NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                        }
+                        Behavior on y {
+                            enabled: !slot.lifted
+                            NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                        }
+                        Behavior on scale {
+                            NumberAnimation { duration: ExLooks.motion.fast }
+                        }
+
+                        // Shown as it is, and taking no clicks: here a press
+                        // starts a drag.
+                        ExToggleTile {
+                            anchors.fill: parent
+                            enabled: false
+                            checkable: false
+                            glyph: slot.info.glyph
+                            text: slot.info.text
+                            subtitle: slot.info.subtitle
+                            checked: slot.info.checked
+                        }
+
+                        DragHandler {
+                            id: drag
+
+                            target: null
+                            acceptedButtons: Qt.LeftButton
+                            onActiveChanged: {
+                                if (drag.active) {
+                                    slot.held = drag.centroid.pressPosition;
+                                    slot.pointer = editor.mapFromItem(null, drag.centroid.scenePosition.x, drag.centroid.scenePosition.y);
+                                    editor.dragged = slot.modelData;
+                                } else {
+                                    editor.dragged = "";
+                                    ExQuickTiles.setPinned(editor.order);
+                                }
+                            }
+                            onCentroidChanged: {
+                                if (!drag.active)
+                                    return;
+                                slot.pointer = editor.mapFromItem(null, drag.centroid.scenePosition.x, drag.centroid.scenePosition.y);
+                                const target = editor.slotAt(slot.pointer.x, slot.pointer.y);
+                                if (target !== slot.at)
+                                    editor.moveTo(slot.modelData, target);
+                            }
+                        }
+
+                        // Unpins the tile, as the pin badge does on Windows.
+                        AbstractButton {
+                            id: unpin
+
+                            ExPrimaryOnly {
+                                z: 1
+                            }
+
+                            visible: !slot.lifted
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: -6
+                            width: 24
+                            height: 24
+                            hoverEnabled: true
+                            onClicked: editor.remove(slot.modelData)
+
+                            background: Rectangle {
+                                radius: 12
+                                color: ExLooks.colors.surface
+                                border.width: 1
+                                border.color: ExLooks.colors.border
+
+                                ExStateLayer {
+                                    radius: 12
+                                    ink: ExLooks.colors.text
+                                    hovered: unpin.hovered
+                                    pressed: unpin.down
+                                }
+                            }
+                            contentItem: Item {
+                                ExGlyph {
+                                    anchors.centerIn: parent
+                                    text: "keep_off"
+                                    size: 14
+                                    color: ExLooks.colors.text
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // The tiles that could be added, opened from the button below.
+            ExMenu {
+                Layout.fillWidth: true
+                visible: root.editing && root.adding
+                elevation: 0
+                color: ExLooks.colors.surfaceSunken
+
+                Repeater {
+                    model: ExQuickTiles.unpinned
+
+                    ExMenuItem {
+                        required property string modelData
+                        readonly property var info: ExQuickTiles.info(modelData)
+
+                        glyph: info.glyph
+                        text: info.text
+                        onClicked: {
+                            editor.add(modelData);
+                            if (ExQuickTiles.unpinned.length === 0)
+                                root.adding = false;
+                        }
+                    }
+                }
+            }
+
             Row {
                 Layout.alignment: Qt.AlignHCenter
-                visible: pager.count > 1
+                visible: pager.count > 1 && !root.editing
                 spacing: ExLooks.spacing.xs
 
                 Repeater {
@@ -395,6 +527,13 @@ ExPopup {
                     role: "label"
                 }
                 ExButton {
+                    visible: !root.editing
+                    kind: "control"
+                    glyph: "edit"
+                    onClicked: root.startEditing()
+                }
+                ExButton {
+                    visible: !root.editing
                     kind: "control"
                     glyph: "settings"
                     onClicked: {
@@ -403,12 +542,27 @@ ExPopup {
                     }
                 }
                 ExButton {
+                    visible: !root.editing
                     kind: "control"
                     glyph: "power_settings_new"
                     onClicked: {
                         root.open = false;
                         ExStates.sessionOpen = true;
                     }
+                }
+                ExButton {
+                    visible: root.editing
+                    enabled: ExQuickTiles.unpinned.length > 0
+                    kind: root.adding ? "tonal" : "control"
+                    glyph: "add"
+                    text: Translation.tr("Add")
+                    onClicked: root.adding = !root.adding
+                }
+                ExButton {
+                    visible: root.editing
+                    kind: "accent"
+                    text: Translation.tr("Done")
+                    onClicked: root.stopEditing()
                 }
             }
         }

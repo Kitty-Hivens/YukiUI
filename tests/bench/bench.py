@@ -94,6 +94,7 @@ class Bench:
         self.build = root / "build"
         self.config_home = root / "config"
         self.state_home = root / "state"
+        self.runtime_dir = root / "runtime"
         self.cache_home = root / "cache"
         self.data_home = root / "data"
         self.process: subprocess.Popen | None = None
@@ -172,6 +173,9 @@ end
             "XDG_CONFIG_HOME": str(self.config_home),
             "XDG_STATE_HOME": str(self.state_home),
             "XDG_CACHE_HOME": str(self.cache_home),
+            # The shell's runtime files, the game guard's state and the scratch
+            # folders among them, kept apart from the session shell's.
+            "YUKI_RUNTIME_DIR": str(self.runtime_dir),
         })
         # The home directory and the session bus stay the person's: fonts and
         # icons are found there, and nothing the tests start writes to either.
@@ -180,7 +184,7 @@ end
         return env
 
     def start(self):
-        for directory in (self.home, self.config_home, self.state_home, self.cache_home, self.data_home):
+        for directory in (self.home, self.config_home, self.state_home, self.cache_home, self.data_home, self.runtime_dir):
             directory.mkdir(parents=True, exist_ok=True)
         self._build()
         config = self._config()

@@ -1393,5 +1393,6 @@
   "Touchpad gestures": "Жесты тачпада",
   "Three fingers": "Три пальца",
   "Four fingers": "Четыре пальца",
-  "A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.": "Изменение здесь перечитывает настройки композитора, и всё заданное с прошлой загрузки сбрасывается, игровой режим тоже."
+  "A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.": "Изменение здесь перечитывает настройки композитора, и всё заданное с прошлой загрузки сбрасывается, игровой режим тоже.",
+  "Dark mode": "Тёмная тема"
 }

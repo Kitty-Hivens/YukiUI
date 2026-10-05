@@ -862,6 +862,12 @@ Singleton {
                     property string iconSize: "medium" // "small", "medium" or "large"
                     property string sortBy: "name" // "name", "size", "type" or "date"
                 }
+                property JsonObject quickSettings: JsonObject {
+                    // The tiles of quick settings in their order, by key: a tile of
+                    // the environment's own, or a plugin's id. One whose service or
+                    // plugin is not there is left out and keeps its place.
+                    property list<string> tiles: ["wifi", "bluetooth", "nightLight", "doNotDisturb", "powerMode", "keepAwake", "gameMode", "easyEffects"]
+                }
                 // What swipes on a touchpad do, by how many fingers. Each mode is
                 // "workspaces" (sideways between workspaces, up for search, down
                 // for the desktop), "move" (the window under the fingers moves,
