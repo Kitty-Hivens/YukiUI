@@ -13,6 +13,7 @@ left, so it grows upwards and its bottom edge must not move. The desktop is
 plain red so the panel is easy to find in a capture.
 """
 
+import json
 import subprocess
 import time
 
@@ -27,6 +28,7 @@ SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
+import qs.core.services
 import qs.experimental
 import qs.experimental.dock
 
@@ -54,6 +56,40 @@ ShellRoot {
         }
     }
     id: probe
+
+    function find(item, has) {
+        if (!item)
+            return null;
+        if (has(item))
+            return item;
+        for (const child of item.children ?? []) {
+            const found = probe.find(child, has);
+            if (found)
+                return found;
+        }
+        return null;
+    }
+    // The open center's list of cards, and its cards by what they show.
+    function cardList() {
+        return probe.find(ExStates.openPopup?.contentItem, item => item.model?.objectProp === "notificationId");
+    }
+    function card(summary) {
+        return (probe.cardList()?.contentItem.children ?? []).find(item => item.shown?.summary === summary) ?? null;
+    }
+
+    // Whether a card closed by its cross was still on screen, going, a moment later.
+    property string closedLeaving: ""
+    Timer {
+        id: lookAgain
+        interval: 40
+        onTriggered: {
+            // A delegate let go of at once stays a child for a moment, unseen.
+            const going = probe.card(probe.closing);
+            probe.closedLeaving = going && going.visible && going.opacity > 0.05 ? "yes" : "no";
+        }
+    }
+    property string closing: ""
+
     IpcHandler {
         target: "flyoutProbe"
         function resizes(): int {
@@ -61,6 +97,29 @@ ShellRoot {
         }
         function reset(): void {
             probe.resizes = 0;
+        }
+        function cards(): int {
+            return probe.cardList()?.count ?? -1;
+        }
+        // One card pulled all the way away, and another closed by its cross
+        // right after it, as the cross does.
+        function swipeThenClose(swiped: string, closed: string): void {
+            probe.card(swiped).dismiss();
+            probe.closing = closed;
+            probe.closedLeaving = "";
+            Notifications.discardNotification(probe.card(closed).shown.notificationId);
+            lookAgain.start();
+        }
+        function closedLeaving(): string {
+            return probe.closedLeaving;
+        }
+        // The list's height on show, its limit, and how many cards are made.
+        function listState(): string {
+            const list = probe.cardList();
+            if (!list)
+                return "";
+            const made = list.contentItem.children.filter(item => item.shown !== undefined && item.visible).length;
+            return JSON.stringify({ height: list.height, limit: list.limit, made: made });
         }
     }
 }
@@ -135,3 +194,36 @@ def test_center_beside_a_left_dock_grows_up_from_a_still_bottom(left_dock, bench
     # compositor answered. Resized at all, its top edge moved before its new
     # frame came, and the frame before was drawn that much higher.
     assert int(shell.call("flyoutProbe", "resizes")) == 0
+
+
+def test_a_card_closed_right_after_one_pulled_away_still_slides_out(left_dock):
+    # A card pulled away is out of sight already and leaves the list at once.
+    # That was told to the whole list for a while after, and a card closed by
+    # its cross in that while vanished on the spot.
+    shell = left_dock
+    notify(shell, "Pulled")
+    notify(shell, "Closed")
+    time.sleep(0.5)
+    shell.call("dock", "notifications")
+    wait_until(lambda: shell.call("flyoutProbe", "cards") == "2", what="the center to show both cards")
+    shell.call("flyoutProbe", "swipeThenClose", "Pulled", "Closed")
+    leaving = wait_until(lambda: shell.call("flyoutProbe", "closedLeaving"), what="the probe to look again")
+    assert leaving == "yes", "the card closed by its cross vanished at once"
+
+
+def test_center_makes_only_the_cards_it_can_show(left_dock):
+    # Each screen has a center, kept for the whole session, and every card
+    # it held was made and kept, shut or open.
+    shell = left_dock
+    for i in range(30):
+        notify(shell, f"Card {i}")
+    shell.call("dock", "notifications")
+    wait_until(lambda: shell.call("flyoutProbe", "cards") == "30", what="the center to hold every card")
+
+    def held():
+        listed = shell.call("flyoutProbe", "listState")
+        state = json.loads(listed) if listed else None
+        return state if state and state["height"] == state["limit"] else None
+
+    state = wait_until(held, what="the list to be held at its limit")
+    assert state["made"] < 20, f"{state['made']} of 30 cards made"

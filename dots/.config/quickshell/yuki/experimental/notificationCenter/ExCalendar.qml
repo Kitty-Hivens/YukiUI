@@ -29,13 +29,19 @@ ColumnLayout {
         return cells;
     }
 
+    // The month the calendar is on its way to. The one on show changes only
+    // halfway through the scroll, and a second click before then turned to
+    // the same month as the first.
+    readonly property int aimedYear: scroll.running ? root.pendingYear : root.year
+    readonly property int aimedMonth: scroll.running ? root.pendingMonth : root.month
+
     function turn(step: int) {
-        const target = new Date(root.year, root.month + step, 1);
+        const target = new Date(root.aimedYear, root.aimedMonth + step, 1);
         root.show(target.getFullYear(), target.getMonth(), step);
     }
 
     function backToToday() {
-        const step = Math.sign((root.today.getFullYear() - root.year) * 12 + root.today.getMonth() - root.month);
+        const step = Math.sign((root.today.getFullYear() - root.aimedYear) * 12 + root.today.getMonth() - root.aimedMonth);
         root.show(root.today.getFullYear(), root.today.getMonth(), step);
     }
 
@@ -46,7 +52,7 @@ ColumnLayout {
     property int direction: 1
 
     function show(year: int, month: int, step: int) {
-        if (step === 0 || (year === root.year && month === root.month))
+        if (step === 0 || (year === root.aimedYear && month === root.aimedMonth))
             return;
         root.pendingYear = year;
         root.pendingMonth = month;

@@ -36,13 +36,19 @@ ExPopup {
      * up, the list shrinks and the empty state opens, all at once. A card
      * pulled away by hand is gone already.
      */
-    readonly property int goneAfter: root.clearing ? root.clearTime : cards.swiped ? 0 : ExLooks.motion.fast
+    readonly property int goneAfter: root.clearing ? root.clearTime : cards.goneSwiped !== -1 ? 0 : ExLooks.motion.fast
     /**
      * The empty state, shown once the cards have gone rather than over them as
      * they go, and hidden at once as one arrives.
      */
     property bool showEmpty: root.notifications.length === 0
     onNotificationsChanged: {
+        // Whether this change took the card that was pulled away. Decided
+        // once per change, so a card closed by its cross right after another
+        // was pulled away still slides out.
+        const swiped = cards.swipedId;
+        cards.swipedId = -1;
+        cards.goneSwiped = swiped !== -1 && !root.notifications.some(notif => notif.notificationId === swiped) ? swiped : -1;
         if (root.notifications.length > 0) {
             emptyLater.stop();
             root.showEmpty = false;
@@ -149,26 +155,22 @@ ExPopup {
                     onTriggered: cards.shownHeight = cards.wanted
                 }
 
-                /** A card was just pulled away by hand, and is out of sight already. */
-                property bool swiped: false
-                onSwipedChanged: {
-                    if (cards.swiped)
-                        swipedOver.restart();
-                }
-                Timer {
-                    id: swipedOver
-                    interval: 2 * ExLooks.motion.normal
-                    onTriggered: cards.swiped = false
-                }
+                /** The card pulled away by hand, out of sight already, until the list lets it go. */
+                property int swipedId: -1
+                /** The card the last change let go of that had been pulled away, or -1. */
+                property int goneSwiped: -1
 
                 Layout.fillWidth: true
                 Layout.preferredHeight: cards.shownHeight
                 clip: true
                 spacing: ExLooks.spacing.s
                 boundsBehavior: Flickable.StopAtBounds
-                // Every card made at once, so the height measured is the height
-                // of all of them, not of the ones in view.
-                cacheBuffer: 100000
+                // Every card within the limit made whatever the height on show,
+                // so the height measured up to the limit is that of the cards,
+                // not an estimate. Past it the estimate does, the list being
+                // held at the limit there anyway. Every card kept, as many as
+                // two hundred stayed made on every screen with the center shut.
+                cacheBuffer: cards.limit
 
                 ScrollBar.vertical: ScrollBar {
                     policy: ScrollBar.AsNeeded
@@ -199,8 +201,8 @@ ExPopup {
                     SequentialAnimation {
                         PauseAnimation { duration: root.clearing ? Math.min(ViewTransition.index, 10) * root.cascadeStep : 0 }
                         ParallelAnimation {
-                            NumberAnimation { property: "x"; to: cards.width + 40; duration: cards.swiped ? 0 : ExLooks.motion.fast; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.exit }
-                            NumberAnimation { property: "opacity"; to: 0; duration: cards.swiped ? 0 : ExLooks.motion.fast }
+                            NumberAnimation { property: "x"; to: cards.width + 40; duration: ViewTransition.item?.shown.notificationId === cards.goneSwiped ? 0 : ExLooks.motion.fast; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.exit }
+                            NumberAnimation { property: "opacity"; to: 0; duration: ViewTransition.item?.shown.notificationId === cards.goneSwiped ? 0 : ExLooks.motion.fast }
                         }
                     }
                 }

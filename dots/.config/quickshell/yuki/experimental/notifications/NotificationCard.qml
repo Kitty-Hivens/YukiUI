@@ -128,8 +128,8 @@ Item {
 
     function dismiss() {
         // The list it is in has nothing left to show of it going.
-        if (root.ListView.view?.swiped !== undefined)
-            root.ListView.view.swiped = true;
+        if (root.ListView.view?.swipedId !== undefined)
+            root.ListView.view.swipedId = root.shown.notificationId;
         if (root.inCenter)
             Notifications.discardNotification(root.shown.notificationId);
         else

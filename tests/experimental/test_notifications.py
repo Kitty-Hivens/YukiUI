@@ -52,8 +52,34 @@ ShellRoot {
         }
     }
 
+    function find(item, has) {
+        if (!item)
+            return null;
+        if (has(item))
+            return item;
+        for (const child of item.children ?? []) {
+            const found = probe.find(child, has);
+            if (found)
+                return found;
+        }
+        return null;
+    }
+    function button() {
+        return probe.find(slot.item, item => item.modelData?.identifier !== undefined);
+    }
+    property var marked: null
+
     IpcHandler {
         target: "notificationProbe"
+        function buttonText(): string {
+            return probe.button()?.text ?? "";
+        }
+        function markButton(): void {
+            probe.marked = probe.button();
+        }
+        function sameButton(): bool {
+            return !!probe.marked && probe.button() === probe.marked;
+        }
         function ready(): string {
             return "yes";
         }
@@ -109,6 +135,32 @@ def test_card_follows_a_notification_replaced_in_place(notifications):
     subprocess.run(["notify-send", "-r", str(sent), "-t", "600000", "Downloading", "80%"], env=shell.environment(), check=True)
     wait_until(lambda: shell.call("notificationProbe", "shown") == '{"summary":"Downloading","body":"80%"}',
                what="the card to follow the replacement")
+
+
+def notify_with_action(shell, body, replaces=0) -> int:
+    # Through the bus rather than notify-send, which waits for an answer once
+    # a notification has actions.
+    result = subprocess.run(["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications",
+                             "--object-path", "/org/freedesktop/Notifications",
+                             "--method", "org.freedesktop.Notifications.Notify",
+                             "test", str(replaces), "", "Downloading", body, "['cancel', 'Cancel']", "{}", "600000"],
+                            env=shell.environment(), capture_output=True, text=True, check=True)
+    return int(result.stdout.strip().strip("(),").split()[-1])
+
+
+def test_action_buttons_outlive_an_update_in_place(notifications):
+    # A download updates its notification every second, and a button made
+    # anew under the pointer would drop the press on it. The actions come as
+    # a new list on each update, which the buttons' repeater takes as the
+    # same while what it holds is the same.
+    shell = notifications
+    sent = notify_with_action(shell, "10%")
+    wait_until(lambda: shell.call("notificationProbe", "buttonText") == "Cancel", what="the card's button")
+    shell.call("notificationProbe", "markButton")
+    notify_with_action(shell, "80%", replaces=sent)
+    wait_until(lambda: shell.call("notificationProbe", "shown") == '{"summary":"Downloading","body":"80%"}',
+               what="the card to follow the replacement")
+    assert shell.call("notificationProbe", "sameButton") == "true"
 
 
 def test_pictures_from_elsewhere_are_not_fetched(notifications, listener):
