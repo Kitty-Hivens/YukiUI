@@ -62,16 +62,17 @@ Scope {
     }
 
     /**
-     * Lua telling the compositor where a placed window stood before it was
-     * placed, which it remembers as the window closes, or that it is placed
-     * no more. Sent in the same chunk as the placement: in a process of its
-     * own it could arrive before or after it.
+     * Lua telling the compositor where a placed window is placed and where it
+     * stood before, which it remembers as the window closes and a shell
+     * started anew reads back, or that it is placed no more. Sent in the same
+     * chunk as the placement: in a process of its own it could arrive before
+     * or after it.
      */
     function placedLua(address: string, entry): string {
         const key = `YUKI_PLACED["${address}"]`;
         const before = entry?.before;
         return before
-            ? `YUKI_PLACED = YUKI_PLACED or {} ${key} = { x = ${before.at[0]}, y = ${before.at[1]}, w = ${before.size[0]}, h = ${before.size[1]} } `
+            ? `YUKI_PLACED = YUKI_PLACED or {} ${key} = { zone = "${entry.zone}", x = ${before.at[0]}, y = ${before.at[1]}, w = ${before.size[0]}, h = ${before.size[1]} } `
             : `if YUKI_PLACED then ${key} = nil end `;
     }
 
@@ -98,13 +99,51 @@ Scope {
             + (x11 ? `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end ` : "");
     }
 
-    // A shell started anew knows nothing of what the one before it placed, and
-    // learns it from what the compositor shows, as the minimised windows are:
-    // a window told it is maximised, or covering the work area, is maximised,
-    // and one standing exactly on a half or a quarter is snapped there. Only
-    // where each stood before is lost, and such a window is given a size of
-    // its own when it is put back.
-    Component.onCompleted: root.request("*", "adopt")
+    // A shell started anew learns what the one before it placed from the
+    // compositor, which keeps each placement and where the window stood
+    // before it. A window the compositor knows nothing of is judged by what
+    // it shows, as the minimised windows are: one told it is maximised, or
+    // covering the work area, is maximised, and one standing exactly on a half
+    // or a quarter is snapped there, and given a size of its own when put back.
+    //
+    // Nothing is moved as it is learnt. The dock goes with the shell and comes
+    // back a moment after it, so the work area read now is the screen without
+    // it: fitted to that, a maximised window went on under the dock, and a
+    // snapped one was let go of. The windows are fitted once the room the
+    // layers reserve changes, the dock's coming back included.
+    Component.onCompleted: adopter.running = true
+
+    /** Placements the compositor kept, by address: { zone, before }, read as the shell starts. */
+    property var kept: ({})
+    /** The windows have been learnt, and a change in reserved room is acted on. */
+    property bool adopted: false
+    /** The room reserved along each monitor's edges, by name, as last acted on. */
+    property var reservedSeen: ({})
+
+    Process {
+        id: adopter
+
+        readonly property string path: `${Quickshell.env("XDG_RUNTIME_DIR")}/hypr/${Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")}/yuki-placed`
+
+        command: ["sh", "-c", "rm -f \"$2\"; hyprctl eval \"$1\" >/dev/null 2>&1; cat \"$2\" 2>/dev/null; rm -f \"$2\"", "yuki-placed",
+            `local f = io.open(${JSON.stringify(adopter.path)}, "w") if f then for a, e in pairs(YUKI_PLACED or {}) do if e.zone then f:write(a, "\\t", e.zone, "\\t", e.x, "\\t", e.y, "\\t", e.w, "\\t", e.h, "\\n") end end f:close() end`,
+            adopter.path]
+        stdout: StdioCollector {
+            id: keptOutput
+
+            onStreamFinished: {
+                const kept = {};
+                for (const line of keptOutput.text.split("\n")) {
+                    const [address, zone, x, y, w, h] = line.split("\t");
+                    if (!root.usable(address ?? "") || !root.zones.includes(zone) || h === undefined)
+                        continue;
+                    kept[address] = { zone: zone, before: { at: [Number(x), Number(y)], size: [Number(w), Number(h)] } };
+                }
+                root.kept = kept;
+                root.request("*", "adopt");
+            }
+        }
+    }
 
     // Every call reads the windows and the screens fresh: the shared lists are
     // a read behind, and a floating window moving raises no event at all.
@@ -177,10 +216,14 @@ Scope {
                 }
                 let lua = "";
                 for (const job of queue) {
-                    if (job.address === "*") {
+                    if (job.address === "*" && job.wanted === "layers") {
+                        lua += root.fitToReserved(clients, monitors);
+                    } else if (job.address === "*") {
                         lua += "YUKI_PLACED = {} ";
                         for (const client of clients)
                             lua += root.answer({ address: client.address, wanted: job.wanted }, clients, monitors);
+                        root.reservedSeen = root.reservedOf(monitors);
+                        root.adopted = true;
                     } else {
                         lua += root.answer(job, clients, monitors);
                     }
@@ -204,6 +247,27 @@ Scope {
             w: Math.round(width - left - right),
             h: Math.round(height - top - bottom)
         };
+    }
+
+    function reservedOf(monitors): var {
+        const reserved = {};
+        for (const monitor of monitors)
+            reserved[monitor.name] = String(monitor.reserved ?? []);
+        return reserved;
+    }
+
+    /** Fits the placed windows of every monitor whose reserved room has changed since it was last looked at. */
+    function fitToReserved(clients, monitors): string {
+        if (!root.adopted)
+            return "";
+        const now = root.reservedOf(monitors);
+        const changed = monitors.filter(monitor => now[monitor.name] !== root.reservedSeen[monitor.name]).map(monitor => monitor.id);
+        root.reservedSeen = now;
+        let lua = "";
+        for (const client of clients)
+            if (root.placed[client.address] && changed.includes(client.monitor))
+                lua += root.answer({ address: client.address, wanted: "refit" }, clients, monitors);
+        return lua;
     }
 
     /** The part of a work area a zone stands for. */
@@ -288,11 +352,17 @@ Scope {
             // keeps it.
             if (client.fullscreenClient === 1 && client.fullscreen === 0)
                 asHyprland += `hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, ${target} })) `;
-            wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
-            before = root.centred(area);
+            const kept = root.kept[client.address];
+            if (kept) {
+                wanted = kept.zone;
+                before = kept.before;
+            } else {
+                wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
+                before = root.centred(area);
+            }
             if (!wanted)
                 return asHyprland + root.marksFor(client.address, "", client.xwayland);
-            return asHyprland + root.answer({ address: client.address, wanted: wanted, before: before }, clients, monitors);
+            return asHyprland + root.answer({ address: client.address, wanted: wanted, before: before, stay: true }, clients, monitors);
         }
 
         // An application that opens as large as the work area is taken to want
@@ -323,6 +393,11 @@ Scope {
         const placement = { zone: zone, before: before };
         root.setPlaced(client.address, placement);
         const rect = root.zoneRect(area, zone);
+        // Learnt rather than placed, it stays where it stands, and one fitted
+        // again that already fits is not touched.
+        const fits = client.at[0] === rect.x && client.at[1] === rect.y && client.size[0] === rect.w && client.size[1] === rect.h;
+        if (job.stay || (wanted === "refit" && fits))
+            return root.marksFor(client.address, zone, client.xwayland) + root.placedLua(client.address, placement);
         // Hyprland's own fullscreen state is left alone. Set to anything,
         // its two halves stop following each other, and the window's own
         // request for fullscreen, F11 in a browser, then reached only the
@@ -350,6 +425,10 @@ Scope {
                 delete root.decided[`0x${event.data}`];
             } else if (event.name === "monitoradded" || event.name === "monitorremoved" || event.name === "configreloaded") {
                 refitLater.restart();
+            } else if (event.name === "openlayer" || event.name === "closelayer") {
+                // The room the layers reserve may have changed: the dock came
+                // back, or went.
+                layersLater.restart();
             }
         }
     }
@@ -411,6 +490,11 @@ Scope {
         id: refitLater
         interval: 600
         onTriggered: root.refit()
+    }
+    Timer {
+        id: layersLater
+        interval: 250
+        onTriggered: root.request("*", "layers")
     }
 
     GlobalShortcut {

@@ -122,12 +122,13 @@ local SHARED_CLASSES = { ["org.quickshell"] = true }
 YUKI_GEOMETRY = {}
 -- key -> the armed rule for it.
 YUKI_GEOMETRY_RULES = {}
--- address -> { x, y, w, h }, global: where a window the shell has maximised or
--- snapped stood before it was, told by the shell as it places one. Such a
--- window is remembered as it stood, the way Windows keeps a window's restored
--- place, not as half the screen or all of it. A reload starts lua afresh and
--- empties it, and the shell tells it again as it fits its placed windows to the
--- screen after one.
+-- address -> { zone, x, y, w, h }, global: how a window the shell has
+-- maximised or snapped is placed and where it stood before it was, told by the
+-- shell as it places one. Such a window is remembered as it stood, the way
+-- Windows keeps a window's restored place, not as half the screen or all of
+-- it, and a shell started anew reads its placements back from here. A reload
+-- starts lua afresh and empties it, and the shell tells it again as it fits its
+-- placed windows to the screen after one.
 YUKI_PLACED = {}
 
 local function keyOf(class, title)
