@@ -1133,6 +1133,39 @@ Scope {
         }
     }
 
+    /**
+     * Opens or closes quick settings or the notifications on the dock of the
+     * focused screen, and says why not when it cannot.
+     */
+    function toggleFlyout(which: string): string {
+        const screen = Hyprland.focusedMonitor?.name ?? "";
+        const dock = root.docks.find(candidate => candidate.screen?.name === screen);
+        if (!dock)
+            return "no dock on the focused screen";
+        // Under a fullscreen window the dock sits behind it, and a flyout
+        // opened there would not be seen, while one with a field would take
+        // the keyboard from the game.
+        if (dock.underFullscreen)
+            return "a fullscreen window is in front of the dock";
+        if (which === "quickSettings")
+            dock.toggleQuickSettings();
+        else
+            dock.toggleNotificationCenter();
+        return "ok";
+    }
+
+    // For a touchpad gesture or a key bound to them.
+    GlobalShortcut {
+        name: "dockQuickSettings"
+        description: "Opens or closes quick settings"
+        onPressed: root.toggleFlyout("quickSettings")
+    }
+    GlobalShortcut {
+        name: "dockNotifications"
+        description: "Opens or closes the notifications and the calendar"
+        onPressed: root.toggleFlyout("notifications")
+    }
+
     IpcHandler {
         target: "dock"
 
@@ -1161,32 +1194,12 @@ Scope {
 
         /** Opens or closes quick settings on the dock of the focused screen. */
         function quickSettings(): string {
-            const screen = Hyprland.focusedMonitor?.name ?? "";
-            const dock = root.docks.find(candidate => candidate.screen?.name === screen);
-            if (!dock)
-                return "no dock on the focused screen";
-            // Under a fullscreen window the dock sits behind it, and a flyout
-            // opened there would not be seen, while one with a field would
-            // take the keyboard from the game.
-            if (dock.underFullscreen)
-                return "a fullscreen window is in front of the dock";
-            dock.toggleQuickSettings();
-            return "ok";
+            return root.toggleFlyout("quickSettings");
         }
 
         /** Opens or closes the notifications and the calendar on the dock of the focused screen. */
         function notifications(): string {
-            const screen = Hyprland.focusedMonitor?.name ?? "";
-            const dock = root.docks.find(candidate => candidate.screen?.name === screen);
-            if (!dock)
-                return "no dock on the focused screen";
-            // Under a fullscreen window the dock sits behind it, and a flyout
-            // opened there would not be seen, while one with a field would
-            // take the keyboard from the game.
-            if (dock.underFullscreen)
-                return "a fullscreen window is in front of the dock";
-            dock.toggleNotificationCenter();
-            return "ok";
+            return root.toggleFlyout("notifications");
         }
 
         /**

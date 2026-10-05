@@ -11,3 +11,37 @@ hl.bind("SUPER + D", hl.dsp.window.fullscreen({ mode = "maximized", action = "to
 for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
     hl.bind("SUPER + " .. arrow, hl.dsp.focus({ direction = arrow:sub(1, 1):lower() }), { description = "Window: Focus " .. arrow })
 end
+
+-- Touchpad gestures. Each environment has its own, since a gesture once made
+-- cannot be taken back short of a reload: three fingers move the window under
+-- them and a pinch makes it fullscreen, four switch workspaces sideways and
+-- open the overview up or down.
+hl.gesture({
+    fingers = 3,
+    direction = "swipe",
+    action = "move"
+})
+hl.gesture({
+    fingers = 3,
+    direction = "pinch",
+    action = "fullscreen"
+})
+hl.gesture({
+    fingers = 4,
+    direction = "horizontal",
+    action = "workspace"
+})
+hl.gesture({
+    fingers = 4,
+    direction = "up",
+    action = function()
+        hl.dispatch(hl.dsp.global("quickshell:overviewWorkspacesToggle"))
+    end
+})
+hl.gesture({
+    fingers = 4,
+    direction = "down",
+    action = function()
+        hl.dispatch(hl.dsp.global("quickshell:overviewWorkspacesToggle"))
+    end
+})

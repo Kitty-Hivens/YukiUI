@@ -317,3 +317,66 @@ hl.on("window.close", function(w)
     end
     arm(key)
 end)
+
+-- Touchpad gestures, as the settings have them. The shell writes them down,
+-- one a line: fingers, direction and action, tab between, and reloads, since a
+-- gesture once made cannot be taken back otherwise. Plain lines, as for the
+-- places of windows, and only the actions named here are acted on. Before the
+-- shell has written any, three fingers move the window under them and a pinch
+-- makes it fullscreen, and four switch workspaces sideways.
+-- Found by XDG_STATE_HOME, as the shell writes it: the test bench gives the
+-- compositor and its shells a state folder of their own and leaves HOME the
+-- person's.
+local stateHome = os.getenv("XDG_STATE_HOME")
+if not stateHome or stateHome == "" then
+    stateHome = HOME .. "/.local/state"
+end
+local gesturesPath = stateHome .. "/yuki/gestures"
+
+local GESTURE_DIRECTIONS = { swipe = true, horizontal = true, up = true, down = true, pinch = true }
+-- Hyprland's own, and those the shell answers as global shortcuts.
+local GESTURE_BUILTINS = { workspace = true, move = true, fullscreen = true }
+local GESTURE_GLOBALS = {
+    search = "searchToggle",
+    showDesktop = "showDesktop",
+    notifications = "dockNotifications",
+    quickSettings = "dockQuickSettings",
+    maximize = "maximizeToggle",
+}
+
+local function gestureAction(name)
+    if GESTURE_BUILTINS[name] then
+        return name
+    end
+    local global = GESTURE_GLOBALS[name]
+    if global then
+        return function()
+            hl.dispatch(hl.dsp.global("quickshell:" .. global))
+        end
+    end
+    return nil
+end
+
+local function readGestures()
+    local file = io.open(gesturesPath, "r")
+    if not file then
+        return { { 3, "swipe", "move" }, { 3, "pinch", "fullscreen" }, { 4, "horizontal", "workspace" } }
+    end
+    local found = {}
+    for line in file:lines() do
+        local fingers, direction, action = line:match("^(%d)\t(%a+)\t(%a+)$")
+        fingers = tonumber(fingers)
+        if fingers and fingers >= 3 and fingers <= 5 and GESTURE_DIRECTIONS[direction] then
+            found[#found + 1] = { fingers, direction, action }
+        end
+    end
+    file:close()
+    return found
+end
+
+for _, g in ipairs(readGestures()) do
+    local action = gestureAction(g[3])
+    if action then
+        hl.gesture({ fingers = g[1], direction = g[2], action = action })
+    end
+end

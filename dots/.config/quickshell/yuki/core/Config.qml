@@ -862,6 +862,27 @@ Singleton {
                     property string iconSize: "medium" // "small", "medium" or "large"
                     property string sortBy: "name" // "name", "size", "type" or "date"
                 }
+                // What swipes on a touchpad do, by how many fingers. Each mode is
+                // "workspaces" (sideways between workspaces, up for search, down
+                // for the desktop), "move" (the window under the fingers moves,
+                // and a pinch makes it fullscreen), "none", or "custom", which
+                // takes the three directions below. A direction's action is
+                // "none", "workspace" (sideways only), "search", "showDesktop",
+                // "notifications", "quickSettings" or "maximize".
+                property JsonObject gestures: JsonObject {
+                    property JsonObject three: JsonObject {
+                        property string mode: "move"
+                        property string sideways: "workspace"
+                        property string up: "search"
+                        property string down: "showDesktop"
+                    }
+                    property JsonObject four: JsonObject {
+                        property string mode: "workspaces"
+                        property string sideways: "workspace"
+                        property string up: "none"
+                        property string down: "none"
+                    }
+                }
             }
 
             property JsonObject waffles: JsonObject {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
+import qs.core
 import qs.core.services
 import qs.experimental.looks
 
@@ -14,6 +15,93 @@ ColumnLayout {
     property var shell
 
     Component.onCompleted: HyprInput.refresh()
+
+    readonly property var gestureModes: [
+        { value: "workspaces", text: Translation.tr("Switch workspaces and show the desktop") },
+        { value: "move", text: Translation.tr("Move windows") },
+        { value: "none", text: Translation.tr("Nothing") },
+        { value: "custom", text: Translation.tr("Custom") }
+    ]
+    readonly property var sidewaysActions: [
+        { value: "none", text: Translation.tr("Nothing") },
+        { value: "workspace", text: Translation.tr("Switch workspaces") }
+    ]
+    readonly property var swipeActions: [
+        { value: "none", text: Translation.tr("Nothing") },
+        { value: "search", text: Translation.tr("Search and apps") },
+        { value: "showDesktop", text: Translation.tr("Show the desktop") },
+        { value: "notifications", text: Translation.tr("Notifications") },
+        { value: "quickSettings", text: Translation.tr("Quick settings") },
+        { value: "maximize", text: Translation.tr("Maximise or restore the window") }
+    ]
+
+    function indexOfValue(list, value): int {
+        return Math.max(0, list.findIndex(entry => entry.value === value));
+    }
+
+    /** What swipes with so many fingers do, as Windows offers it: a set, or each direction on its own. */
+    component FingerGestures: SettingsExpander {
+        id: gestures
+
+        /** "three" or "four", where the settings keep it. */
+        required property string key
+        readonly property var set: Config.options.experimental.gestures[gestures.key]
+        readonly property bool custom: gestures.set.mode === "custom"
+
+        Layout.fillWidth: true
+        glyph: "swipe"
+        description: gestures.set.mode === "workspaces" ? Translation.tr("Sideways between workspaces, up for search, down for the desktop")
+            : gestures.set.mode === "move" ? Translation.tr("The window under the fingers moves, a pinch makes it fullscreen")
+            : gestures.custom ? Translation.tr("Each direction as set below")
+            : ""
+
+        control: SettingsDropdown {
+            model: root.gestureModes.map(mode => mode.text)
+            currentIndex: root.indexOfValue(root.gestureModes, gestures.set.mode)
+            onActivated: index => {
+                gestures.set.mode = root.gestureModes[index].value;
+                if (gestures.set.mode === "custom")
+                    gestures.expanded = true;
+            }
+        }
+
+        SettingsCard {
+            Layout.fillWidth: true
+            flat: true
+            enabled: gestures.custom
+            text: Translation.tr("Swipe sideways")
+
+            SettingsDropdown {
+                model: root.sidewaysActions.map(action => action.text)
+                currentIndex: root.indexOfValue(root.sidewaysActions, gestures.set.sideways)
+                onActivated: index => gestures.set.sideways = root.sidewaysActions[index].value
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            flat: true
+            enabled: gestures.custom
+            text: Translation.tr("Swipe up")
+
+            SettingsDropdown {
+                model: root.swipeActions.map(action => action.text)
+                currentIndex: root.indexOfValue(root.swipeActions, gestures.set.up)
+                onActivated: index => gestures.set.up = root.swipeActions[index].value
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            flat: true
+            enabled: gestures.custom
+            text: Translation.tr("Swipe down")
+
+            SettingsDropdown {
+                model: root.swipeActions.map(action => action.text)
+                currentIndex: root.indexOfValue(root.swipeActions, gestures.set.down)
+                onActivated: index => gestures.set.down = root.swipeActions[index].value
+            }
+        }
+    }
 
     spacing: ExLooks.spacing.s
 
@@ -158,6 +246,29 @@ ColumnLayout {
                 value: Math.round(HyprInput.touchpadScrollFactor * 100)
                 onEdited: value => HyprInput.set(["input", "touchpad"], "scroll_factor", value / 100)
             }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
+        title: Translation.tr("Touchpad gestures")
+        visible: HyprInput.touchpadDevice.length > 0
+
+        FingerGestures {
+            key: "three"
+            text: Translation.tr("Three fingers")
+        }
+        FingerGestures {
+            key: "four"
+            text: Translation.tr("Four fingers")
+        }
+        ExText {
+            Layout.fillWidth: true
+            Layout.topMargin: ExLooks.spacing.xs
+            text: Translation.tr("A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.")
+            role: "caption"
+            dim: true
+            wrapMode: Text.Wrap
         }
     }
 }

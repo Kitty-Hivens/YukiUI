@@ -8,6 +8,7 @@ import qs.experimental.background
 import qs.experimental.bluetooth
 import qs.experimental.dock
 import qs.experimental.filePicker
+import qs.experimental.input
 import qs.experimental.launcher
 import qs.experimental.lock
 import qs.experimental.minimize
@@ -57,6 +58,7 @@ Scope {
     ExPlacement {
         id: placement
     }
+    ExGestures {}
     ExSnap {
         placement: placement
     }

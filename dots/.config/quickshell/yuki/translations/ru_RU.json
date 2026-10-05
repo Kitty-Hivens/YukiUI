@@ -1376,5 +1376,22 @@
   "Tap to click": "Касание как щелчок",
   "A light tap counts as a click, two fingers as a right click": "Лёгкое касание считается щелчком, двумя пальцами правым щелчком",
   "Tap and drag": "Касание и перетаскивание",
-  "A tap, then the finger kept down, holds the button while it moves": "Касание, а затем удержание пальца держат кнопку нажатой, пока палец движется"
+  "A tap, then the finger kept down, holds the button while it moves": "Касание, а затем удержание пальца держат кнопку нажатой, пока палец движется",
+  "Switch workspaces and show the desktop": "Переключать рабочие столы и показывать рабочий стол",
+  "Move windows": "Перемещать окна",
+  "Custom": "Своё",
+  "Switch workspaces": "Переключать рабочие столы",
+  "Search and apps": "Поиск и приложения",
+  "Quick settings": "Быстрые настройки",
+  "Maximise or restore the window": "Развернуть или восстановить окно",
+  "Sideways between workspaces, up for search, down for the desktop": "Вбок между рабочими столами, вверх поиск, вниз рабочий стол",
+  "The window under the fingers moves, a pinch makes it fullscreen": "Окно под пальцами перемещается, щипок разворачивает его на весь экран",
+  "Each direction as set below": "Каждое направление как задано ниже",
+  "Swipe sideways": "Смахивание вбок",
+  "Swipe up": "Смахивание вверх",
+  "Swipe down": "Смахивание вниз",
+  "Touchpad gestures": "Жесты тачпада",
+  "Three fingers": "Три пальца",
+  "Four fingers": "Четыре пальца",
+  "A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.": "Изменение здесь перечитывает настройки композитора, и всё заданное с прошлой загрузки сбрасывается, игровой режим тоже."
 }
