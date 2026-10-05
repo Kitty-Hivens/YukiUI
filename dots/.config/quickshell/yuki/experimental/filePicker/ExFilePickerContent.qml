@@ -25,7 +25,8 @@ FocusScope {
     readonly property bool directory: root.request.directory ?? false
     readonly property bool multiple: root.request.multiple ?? false
     readonly property var filters: root.request.filters ?? []
-    property int filterIndex: 0
+    /** The filter on show, from the one the application asked for. */
+    property int filterIndex: Math.max(0, Math.min(root.request.currentFilter ?? 0, root.filters.length - 1))
 
     readonly property string titleText: (root.request.title ?? "").length > 0 ? root.request.title
         : root.saving ? Translation.tr("Save file")
@@ -93,7 +94,7 @@ FocusScope {
      * out again with each part escaped before it leaves.
      */
     function answer(urls) {
-        FilePicker.submit(urls.map(url => root.urlOf(root.pathOf(url))));
+        FilePicker.submit(urls.map(url => root.urlOf(root.pathOf(url))), root.filters.length > 0 ? root.filterIndex : undefined);
     }
 
     function childPath(name: string): string {
@@ -162,9 +163,10 @@ FocusScope {
                     inClass = false;
                 source += ch === "\\" ? "\\\\" : ch;
             } else if (ch === "*") {
-                source += ".*";
+                // Any letter, a newline included, as a glob takes it.
+                source += "[\\s\\S]*";
             } else if (ch === "?") {
-                source += ".";
+                source += "[\\s\\S]";
             } else if (ch === "[") {
                 inClass = true;
                 source += "[";
@@ -402,11 +404,13 @@ FocusScope {
     }
 
     function enterFolder(path: string) {
-        const target = root.urlOf(path);
-        if (target === String(folderModel.folder))
+        // By path: the folder model spells its url with spaces and letters
+        // outside ASCII as they are, and the url made here escapes them, so
+        // the folder on screen did not count as itself.
+        if ((path.replace(/(.)\/+$/, "$1")) === root.currentPath)
             return;
         root.leaveFolder();
-        folderModel.folder = target;
+        folderModel.folder = root.urlOf(path);
     }
 
     function goBack() {
@@ -468,6 +472,7 @@ FocusScope {
         path = path.replace(/(.)\/+$/, "$1");
         probe.check(path, kind => {
             if (kind === "d") {
+                root.closePathEntry();
                 root.enterFolder(path);
             } else if (kind === "f" && !root.directory) {
                 const slash = path.lastIndexOf("/");
@@ -697,16 +702,18 @@ FocusScope {
             id: searchOutput
 
             onStreamFinished: {
-                const lines = searchOutput.text.split("\n");
-                if (lines[0] !== String(search.serial))
+                const text = searchOutput.text;
+                const newline = text.indexOf("\n");
+                if (newline < 0 || text.slice(0, newline) !== String(search.serial))
                     return;
+                const records = text.slice(newline + 1).split("\0");
                 searchResults.clear();
                 if (!root.searching)
                     return;
                 const base = search.folder === "/" ? "" : search.folder;
                 const found = [];
-                for (const line of lines.slice(1)) {
-                    const parts = line.split("\t");
+                for (const record of records) {
+                    const parts = record.split("\t");
                     if (parts.length < 4)
                         continue;
                     const path = parts.slice(3).join("\t");
@@ -773,16 +780,20 @@ FocusScope {
         }
     }
 
-    // Which of the names asked about are already in a folder.
+    // Which of the names asked about are already in a folder. Numbered like
+    // the probe, so the answer of a check replaced by a newer one is dropped
+    // rather than taken for the newer one's.
     Process {
         id: existing
 
         property var callback: null
+        property int serial: 0
 
         function check(folder: string, names, callback) {
             existing.running = false;
+            existing.serial++;
             existing.callback = callback;
-            existing.command = ["sh", "-c", "d=\"$1\"; shift; for f; do [ -e \"$d/$f\" ] && printf '%s\\n' \"$f\"; done; true", "yuki-file-existing", folder, ...names];
+            existing.command = ["sh", "-c", "s=\"$1\"; d=\"$2\"; shift 2; printf '%s\\n' \"$s\"; for f; do [ -e \"$d/$f\" ] && printf '%s\\n' \"$f\"; done; true", "yuki-file-existing", String(existing.serial), folder, ...names];
             existing.running = true;
         }
 
@@ -790,10 +801,13 @@ FocusScope {
             id: existingOutput
 
             onStreamFinished: {
+                const lines = existingOutput.text.split("\n");
+                if (lines[0] !== String(existing.serial))
+                    return;
                 const callback = existing.callback;
                 existing.callback = null;
                 if (callback)
-                    callback(existingOutput.text.split("\n").filter(line => line.length > 0));
+                    callback(lines.slice(1).filter(line => line.length > 0));
             }
         }
     }

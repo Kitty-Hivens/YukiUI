@@ -44,6 +44,12 @@ MODE_BY_METHOD = {"OpenFile": "open", "SaveFile": "save", "SaveFiles": "savefile
 # moment the shell writes the choice, a little before the reader has it.
 LIVENESS_SECONDS = 5
 LIVENESS_MISSES = 2
+# How long one question may take. A shell held up, by swap say, answers late
+# or not at all, and that says nothing about the request. Shorter than the
+# interval, so questions never pile up.
+ASK_SECONDS = 3
+# What _ask_shell hands on for a shell that did not answer in time.
+NO_ANSWER = object()
 
 # glob patterns carry a filter type of 0, mime types 1, in the a(sa(us)) each
 # filter is built from.
@@ -113,19 +119,39 @@ def _decode_path(value):
     return str(value)
 
 
-def _parse_filters(raw):
-    """Flatten a(sa(us)) into what the picker reads: a name and its glob patterns.
-    Mime rules are carried along untouched: the picker matches the common ones
-    by extension, and dropping them here would lose the filter's real intent."""
-    filters = []
-    for entry in raw or []:
-        name, rules = entry
-        filters.append({
-            "name": name,
-            "patterns": [pattern for (kind, pattern) in rules if kind == FILTER_GLOB],
-            "mimes": [pattern for (kind, pattern) in rules if kind == FILTER_MIME],
-        })
-    return filters
+def _parse_filter(entry):
+    """One (sa(us)) as the picker reads it: a name and its glob patterns. Mime
+    rules are carried along untouched: the picker matches the common ones by
+    extension, and dropping them here would lose the filter's real intent."""
+    name, rules = entry
+    return {
+        "name": name,
+        "patterns": [pattern for (kind, pattern) in rules if kind == FILTER_GLOB],
+        "mimes": [pattern for (kind, pattern) in rules if kind == FILTER_MIME],
+    }
+
+
+def _same_filter(a, b):
+    name_a, rules_a = a
+    name_b, rules_b = b
+    return name_a == name_b and [tuple(rule) for rule in rules_a] == [tuple(rule) for rule in rules_b]
+
+
+def _offered_filters(options):
+    """The filters the dialog offers, as the application sent them, and which
+    of them it starts on. The application names that one in current_filter,
+    which with no list of filters is the one filter to apply."""
+    filters = [tuple(entry) for entry in options.get("filters") or []]
+    current = options.get("current_filter")
+    if current is None:
+        return filters, 0
+    current = tuple(current)
+    if not filters:
+        return [current], 0
+    for index, entry in enumerate(filters):
+        if _same_filter(entry, current):
+            return filters, index
+    return filters, 0
 
 
 def _build_request(method_name, title, options):
@@ -139,8 +165,10 @@ def _build_request(method_name, title, options):
         # the files land in, the same shape as a directory open.
         "directory": bool(options.get("directory", False)) or mode == "savefiles",
         "currentFolder": _decode_path(options.get("current_folder")),
-        "filters": _parse_filters(options.get("filters")),
     }
+    filters, current = _offered_filters(options)
+    request["filters"] = [_parse_filter(entry) for entry in filters]
+    request["currentFilter"] = current
     if mode == "savefiles":
         # The names the files will be written under, so the dialog can ask
         # about the ones already in the folder picked.
@@ -170,9 +198,9 @@ def _cleanup_fifo(tmpdir, fifo):
 
 
 def _ask_shell(args, on_reply):
-    """Calls the dialog's ipc target without blocking and hands on its stdout, or
-    None when the shell could not be reached."""
-    argv = ["qs", "-c", CONFIG_NAME, "ipc", "call", IPC_TARGET, *args]
+    """Calls the dialog's ipc target without blocking and hands on its stdout,
+    None when the shell could not be reached, or NO_ANSWER when it was too slow."""
+    argv = ["timeout", str(ASK_SECONDS), "qs", "-c", CONFIG_NAME, "ipc", "call", IPC_TARGET, *args]
     try:
         process = Gio.SubprocessLauncher.new(
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE
@@ -187,7 +215,11 @@ def _ask_shell(args, on_reply):
         except GLib.Error:
             on_reply(None)
             return
-        on_reply(stdout.strip() if ok and process.get_exit_status() == 0 else None)
+        status = process.get_exit_status()
+        if status == 124:
+            on_reply(NO_ANSWER)
+        else:
+            on_reply(stdout.strip() if ok and status == 0 else None)
 
     process.communicate_utf8_async(None, None, done)
 
@@ -245,9 +277,13 @@ def _spawn_picker(request, on_done, connection=None, handle=None):
             return GLib.SOURCE_REMOVE
 
         def on_reply(reply):
-            if state["done"]:
+            if state["done"] or reply is NO_ANSWER:
                 return
-            state["misses"] = 0 if reply == "true" else state["misses"] + 1
+            # A shell that could not be reached, gone say, or one that no
+            # longer knows the request, restarted say, is a miss. One too
+            # slow to answer was let go of above, as neither.
+            missed = reply is None or reply == "false"
+            state["misses"] = state["misses"] + 1 if missed else 0
             if state["misses"] >= LIVENESS_MISSES:
                 log("the shell no longer holds the request, cancelling it")
                 stop_reader()
@@ -302,7 +338,7 @@ def _on_picker_done(on_done, tmpdir, fifo, process, result):
         log("shell reply was not a json object")
         on_done(RESPONSE_FAILED, None)
         return
-    on_done(payload.get("response", RESPONSE_CANCELLED), payload.get("uris"))
+    on_done(payload.get("response", RESPONSE_CANCELLED), payload.get("uris"), payload.get("filter"))
 
 
 def _expand_savefiles(folder_uris, options):
@@ -321,21 +357,37 @@ def _expand_savefiles(folder_uris, options):
     return uris
 
 
-def _return(invocation, response, uris):
+def _results(uris, chosen_filter=None):
     results = {}
     if uris:
         results["uris"] = GLib.Variant("as", uris)
-    invocation.return_value(GLib.Variant("(ua{sv})", (response, results)))
+    if chosen_filter is not None:
+        name, rules = chosen_filter
+        results["current_filter"] = GLib.Variant("(sa(us))", (name, [tuple(rule) for rule in rules]))
+    return results
 
 
-def _finish(invocation, method_name, options, response, uris):
+def _return(invocation, response, uris, chosen_filter=None):
+    invocation.return_value(GLib.Variant("(ua{sv})", (response, _results(uris, chosen_filter))))
+
+
+def _chosen_filter(options, index):
+    """The filter picked in the dialog, by its place in the list it was offered,
+    for an application that saves in the format the filter names."""
+    filters, _current = _offered_filters(options)
+    if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(filters):
+        return filters[index]
+    return None
+
+
+def _finish(invocation, method_name, options, response, uris, filter_index=None):
     # Whatever happens here, the caller must get exactly one reply: a hung D-Bus call
     # is worse than a failed one, and the application waits on it for good.
     try:
         if response == RESPONSE_SUCCESS and isinstance(uris, list) and uris:
             if method_name == "SaveFiles":
                 uris = _expand_savefiles(uris, options)
-            _return(invocation, RESPONSE_SUCCESS, uris)
+            _return(invocation, RESPONSE_SUCCESS, uris, _chosen_filter(options, filter_index))
         elif response == RESPONSE_CANCELLED:
             _return(invocation, RESPONSE_CANCELLED, None)
         else:

@@ -89,3 +89,51 @@ def test_enter_answers_the_file_selected_when_the_folder_changed(bench, picker_s
     uris = answer.wait().get("uris", [])
     assert [uri.rsplit("/", 1)[-1] for uri in uris] == ["a.txt"]
     assert not picker_shell.errors()
+
+
+def test_going_to_the_folder_on_screen_keeps_the_selection(bench, picker_shell, tmp_path):
+    # The folder model spells its url with a space as it is, and the url made
+    # for the path escapes it, so the folder on screen did not count as itself:
+    # going to it again counted as leaving, and let go of the selection.
+    folder = tmp_path / "my files"
+    folder.mkdir()
+    for name in ("a.txt", "b.txt"):
+        (folder / name).write_text(name)
+    answer = Answer(tmp_path / "same.fifo")
+    open_picker(bench, picker_shell, folder, tmp_path / "same.fifo")
+    time.sleep(0.5)
+
+    keyboard = Keyboard(bench)
+    keyboard.type(*keyboard.tap("Down"))
+    time.sleep(0.3)
+    keyboard.type(*keyboard.hold("Control_L", "ctrl"), *keyboard.tap("l"), *keyboard.let_go("Control_L", "ctrl"))
+    time.sleep(0.3)
+    # The field opens on the folder's own path, ended by a slash.
+    keyboard.type(*keyboard.tap("Return"))
+    time.sleep(0.5)
+    keyboard.type(*keyboard.tap("Return"))
+
+    uris = answer.wait().get("uris", [])
+    assert [uri.rsplit("/", 1)[-1] for uri in uris] == ["a.txt"]
+    assert not picker_shell.errors()
+
+
+def test_search_answers_a_name_holding_a_newline(bench, picker_shell, tmp_path):
+    folder = tmp_path / "searched"
+    (folder / "deep").mkdir(parents=True)
+    (folder / "deep" / "needle\nnote.txt").write_text("x")
+    answer = Answer(tmp_path / "search.fifo")
+    open_picker(bench, picker_shell, folder, tmp_path / "search.fifo")
+    time.sleep(0.5)
+
+    keyboard = Keyboard(bench)
+    # Typing at the list searches.
+    keyboard.type("needle")
+    time.sleep(1.5)
+    keyboard.type(*keyboard.tap("Down"))
+    time.sleep(0.3)
+    keyboard.type(*keyboard.tap("Return"))
+
+    uris = answer.wait().get("uris", [])
+    assert [uri.rsplit("/", 2)[-2:] for uri in uris] == [["deep", "needle%0Anote.txt"]]
+    assert not picker_shell.errors()

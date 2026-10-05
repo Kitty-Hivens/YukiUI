@@ -62,10 +62,15 @@ Singleton {
     }
 
     // uris: array of file:// strings. The backend reads this JSON off the fifo.
-    function submit(uris) {
+    // filter: the place of the filter picked in the request's list, handed
+    // back to the application, or left out.
+    function submit(uris, filter) {
         if (!root.active)
             return;
-        root.writeFifo(JSON.stringify({ "response": 0, "uris": uris }));
+        const answer = { "response": 0, "uris": uris };
+        if (filter !== undefined)
+            answer.filter = filter;
+        root.writeFifo(JSON.stringify(answer));
         root.finish();
     }
 

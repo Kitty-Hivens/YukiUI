@@ -42,15 +42,29 @@ def test_stopping_a_search_stops_its_walk(tmp_path):
     wait_until(lambda: not running(walk), timeout=3, what="the walk to stop with the search")
 
 
+def records(out: str) -> tuple[str, list[list[str]]]:
+    """The serial, and each record found, split into its fields."""
+    serial, _, rest = out.partition("\n")
+    return serial, [record.split("\t", 3) for record in rest.split("\0") if record]
+
+
 def test_search_finds_names_below(tmp_path):
     (tmp_path / "deep" / "er").mkdir(parents=True)
     (tmp_path / "deep" / "er" / "Needle.txt").write_text("x")
     (tmp_path / ".hidden").mkdir()
     (tmp_path / ".hidden" / "needle2").write_text("x")
     out = subprocess.run(["sh", str(SCRIPT), str(tmp_path), "*needle*", "0", "7"], capture_output=True, text=True).stdout
-    lines = out.splitlines()
-    assert lines[0] == "7"
-    paths = [line.split("\t")[3] for line in lines[1:]]
-    assert paths == [str(tmp_path / "deep" / "er" / "Needle.txt")]
+    serial, found = records(out)
+    assert serial == "7"
+    assert [fields[3] for fields in found] == [str(tmp_path / "deep" / "er" / "Needle.txt")]
     shown = subprocess.run(["sh", str(SCRIPT), str(tmp_path), "*needle*", "1", "8"], capture_output=True, text=True).stdout
     assert str(tmp_path / ".hidden" / "needle2") in shown
+
+
+def test_a_name_with_a_newline_stays_one_record(tmp_path):
+    # Split on lines, the rest of this name read as a record of its own, a
+    # folder named whatever the name went on to say.
+    (tmp_path / "needle\nd\t0\t0\tforged").write_text("x")
+    out = subprocess.run(["sh", str(SCRIPT), str(tmp_path), "*needle*", "0", "9"], capture_output=True, text=True).stdout
+    _, found = records(out)
+    assert [fields[3] for fields in found] == [str(tmp_path / "needle\nd\t0\t0\tforged")]
