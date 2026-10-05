@@ -94,6 +94,29 @@ ColumnLayout {
 
         SettingsCard {
             Layout.fillWidth: true
+            glyph: "touch_app"
+            text: Translation.tr("Tap to click")
+            description: Translation.tr("A light tap counts as a click, two fingers as a right click")
+
+            ExSwitch {
+                checked: HyprInput.touchpadTapToClick
+                onToggled: HyprInput.set(["input", "touchpad"], "tap_to_click", checked)
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            enabled: HyprInput.touchpadTapToClick
+            glyph: "drag_pan"
+            text: Translation.tr("Tap and drag")
+            description: Translation.tr("A tap, then the finger kept down, holds the button while it moves")
+
+            ExSwitch {
+                checked: HyprInput.touchpadTapAndDrag
+                onToggled: HyprInput.set(["input", "touchpad"], "tap_and_drag", checked)
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
             glyph: "swipe_vertical"
             text: Translation.tr("Content follows the fingers")
 

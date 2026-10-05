@@ -43,6 +43,8 @@ Singleton {
     property bool touchpadDisableWhileTyping: true
     property bool touchpadClickfinger: false
     property real touchpadScrollFactor: 1.0
+    property bool touchpadTapToClick: true
+    property bool touchpadTapAndDrag: true
 
     /** The pointer's speed, from -1 to 1, and whether it speeds up with the hand. */
     property real mouseSensitivity: 0
@@ -98,20 +100,49 @@ Singleton {
         "input:repeat_rate", "input:repeat_delay", "input:numlock_by_default",
         "input:touchpad:natural_scroll", "input:touchpad:disable_while_typing",
         "input:touchpad:clickfinger_behavior", "input:touchpad:scroll_factor",
+        "input:touchpad:tap-to-click", "input:touchpad:tap-and-drag",
         "input:sensitivity", "input:accel_profile", "input:natural_scroll", "input:left_handed", "input:scroll_factor"
     ]
 
+    /**
+     * Reads both afresh. Each read is numbered and says its number first: a
+     * read stopped for a newer one still delivers what it had, and that was
+     * taken for the newer read, values from before a change included.
+     */
+    property int readSerial: 0
+
     function refresh() {
+        root.readSerial++;
         readOptions.running = false;
         readOptions.running = true;
         readDevices.running = false;
         readDevices.running = true;
     }
 
+    /** What a numbered read printed after its number, or null for a read replaced since. */
+    function current(text) {
+        const newline = text.indexOf("\n");
+        if (newline < 0 || text.slice(0, newline) !== String(root.readSerial))
+            return null;
+        return text.slice(newline + 1);
+    }
+
     /** What hyprctl prints for an option that was never set. */
     function optionString(entry) {
         const value = entry.str ?? "";
         return value === "[[EMPTY]]" ? "" : value;
+    }
+
+    /**
+     * A switch as the compositor reports it. It reports one as "bool", and
+     * read as a number every switch here showed off, whatever was set.
+     */
+    function flag(entry, fallback) {
+        if (typeof entry?.bool === "boolean")
+            return entry.bool;
+        if (typeof entry?.int === "number")
+            return entry.int === 1;
+        return fallback;
     }
 
     function takeOptions(text) {
@@ -132,15 +163,17 @@ Singleton {
         root.options = root.optionString(seen["input:kb_options"] ?? ({}));
         root.repeatRate = seen["input:repeat_rate"]?.int ?? root.repeatRate;
         root.repeatDelay = seen["input:repeat_delay"]?.int ?? root.repeatDelay;
-        root.numlock = (seen["input:numlock_by_default"]?.int ?? 0) === 1;
-        root.touchpadNaturalScroll = (seen["input:touchpad:natural_scroll"]?.int ?? 0) === 1;
-        root.touchpadDisableWhileTyping = (seen["input:touchpad:disable_while_typing"]?.int ?? 1) === 1;
-        root.touchpadClickfinger = (seen["input:touchpad:clickfinger_behavior"]?.int ?? 0) === 1;
+        root.numlock = root.flag(seen["input:numlock_by_default"], false);
+        root.touchpadNaturalScroll = root.flag(seen["input:touchpad:natural_scroll"], false);
+        root.touchpadDisableWhileTyping = root.flag(seen["input:touchpad:disable_while_typing"], true);
+        root.touchpadClickfinger = root.flag(seen["input:touchpad:clickfinger_behavior"], false);
+        root.touchpadTapToClick = root.flag(seen["input:touchpad:tap-to-click"], true);
+        root.touchpadTapAndDrag = root.flag(seen["input:touchpad:tap-and-drag"], true);
         root.touchpadScrollFactor = seen["input:touchpad:scroll_factor"]?.float ?? root.touchpadScrollFactor;
         root.mouseSensitivity = seen["input:sensitivity"]?.float ?? root.mouseSensitivity;
         root.mouseAccelProfile = root.optionString(seen["input:accel_profile"] ?? ({}));
-        root.mouseNaturalScroll = (seen["input:natural_scroll"]?.int ?? 0) === 1;
-        root.leftHanded = (seen["input:left_handed"]?.int ?? 0) === 1;
+        root.mouseNaturalScroll = root.flag(seen["input:natural_scroll"], false);
+        root.leftHanded = root.flag(seen["input:left_handed"], false);
         root.mouseScrollFactor = seen["input:scroll_factor"]?.float ?? root.mouseScrollFactor;
         root.ready = true;
     }
@@ -158,10 +191,14 @@ Singleton {
     Process {
         id: readOptions
         running: true
-        command: ["bash", "-c", root.watched.map(option => `hyprctl getoption -j ${option}`).join("; ")]
+        command: ["bash", "-c", `echo ${root.readSerial}; ` + root.watched.map(option => `hyprctl getoption -j ${option}`).join("; ")]
         stdout: StdioCollector {
             id: optionCollector
-            onStreamFinished: root.takeOptions(optionCollector.text)
+            onStreamFinished: {
+                const text = root.current(optionCollector.text);
+                if (text !== null)
+                    root.takeOptions(text);
+            }
         }
     }
 
@@ -195,12 +232,15 @@ Singleton {
     Process {
         id: readDevices
         running: true
-        command: ["hyprctl", "devices", "-j"]
+        command: ["sh", "-c", "echo \"$1\"; hyprctl devices -j", "yuki-devices", String(root.readSerial)]
         stdout: StdioCollector {
             id: deviceCollector
             onStreamFinished: {
+                const text = root.current(deviceCollector.text);
+                if (text === null)
+                    return;
                 try {
-                    root.takeDevices(deviceCollector.text);
+                    root.takeDevices(text);
                 } catch (error) {
                     root.mainKeyboard = "";
                 }
