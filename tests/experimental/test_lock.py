@@ -20,11 +20,37 @@ from bench.shell import Shell
 PROBE = SHELL / "benchLockProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
+import Quickshell.Io
+import qs
+import qs.core
+import qs.core.panels.lock
 import qs.experimental.lock
 
 // Written by tests/experimental/test_lock.py for a test run, and removed after it.
 ShellRoot {
-    ExLock {}
+    ExLock {
+        id: lock
+    }
+
+    Timer {
+        id: lockAgain
+        onTriggered: lock.lock()
+    }
+
+    IpcHandler {
+        target: "lockProbe"
+        // The right password, as PAM would report it, and the lock asked for
+        // again a while later. The keyring is left alone.
+        function acceptThenLock(afterMs: int): void {
+            Config.options.lock.security.unlockKeyring = false;
+            lock.context.unlocked(LockContext.ActionEnum.Unlock);
+            lockAgain.interval = afterMs;
+            lockAgain.start();
+        }
+        function locked(): bool {
+            return GlobalStates.screenLocked;
+        }
+    }
 }
 """
 
@@ -109,3 +135,16 @@ def test_screen_added_while_locked_never_shows_the_desktop(lockable, tmp_path):
         assert max(shares) < 0.05, f"the desktop showed through the lock on the new screen: {shares}"
     finally:
         bench.hyprctl("output", "remove", "LATE")
+
+
+def test_lock_asked_for_as_it_lets_go_stays(lockable, tmp_path):
+    # Between the right password and the lock letting go its surfaces fade
+    # out, and the idle daemon may lock for sleep in that time.
+    bench, shell = lockable
+    shell.call("lock", "activate")
+    wait_until(lambda: film(bench, OUTPUT, tmp_path, 0.1)[-1] < 0.05, what="the lock to be up")
+    shell.call("lockProbe", "acceptThenLock", "100")
+    time.sleep(1.0)
+    assert shell.call("lockProbe", "locked") == "true"
+    shares = film(bench, OUTPUT, tmp_path, 0.3)
+    assert max(shares) < 0.05, f"the lock did not come back whole: {shares}"

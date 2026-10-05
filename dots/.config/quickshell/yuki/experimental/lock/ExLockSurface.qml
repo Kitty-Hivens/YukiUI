@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 
+import qs
 import qs.core
 import qs.core.services
 import qs.core.panels.lock
@@ -48,7 +49,17 @@ MouseArea {
             if (root.context.releasing) {
                 enter.stop();
                 leave.start();
+                return;
             }
+            // Locked again before the lock had let go. Letting go itself
+            // clears this too, and the surface is on its way out then.
+            if (!GlobalStates.screenLocked)
+                return;
+            leave.stop();
+            if (root.appearAtOnce)
+                root.shown = 1;
+            else
+                enter.start();
         }
     }
 
@@ -59,7 +70,6 @@ MouseArea {
         id: enter
         target: root
         property: "shown"
-        from: 0
         to: 1
         duration: ExLooks.motion.slow
         easing.type: Easing.BezierSpline

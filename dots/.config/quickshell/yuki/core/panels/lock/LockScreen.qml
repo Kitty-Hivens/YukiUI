@@ -127,6 +127,16 @@ Scope {
     }
 
     function lock() {
+        // Asked for while the lock was on its way out after the right
+        // password, by the idle daemon before sleep say: the lock stays
+        // rather than letting go once its surfaces have left.
+        if (lockContext.releasing) {
+            releaseTimer.stop();
+            lockContext.alsoInhibitIdle = false;
+            lockContext.reset();
+            lockContext.tryFingerUnlock();
+            return;
+        }
         if (Config.options.lock.useHyprlock) {
             hyprlockProc.running = true;
             return;
