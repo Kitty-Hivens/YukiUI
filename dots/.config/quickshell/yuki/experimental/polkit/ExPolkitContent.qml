@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 import qs.core.services
@@ -11,26 +12,38 @@ import qs.experimental.motion
 Item {
     id: root
 
+    /** What the cards on all screens share: the text typed, and a refusal. */
+    required property var prompt
     readonly property bool usePasswordChars: !(PolkitService.flow?.responseVisible ?? false)
-    property bool failed: false
+    property bool choosing: false
 
-    Component.onCompleted: field.input.forceActiveFocus()
+    Component.onCompleted: {
+        field.text = root.prompt.typed;
+        field.input.forceActiveFocus();
+    }
 
     Connections {
-        target: PolkitService.flow
-        function onAuthenticationFailed() {
-            root.failed = true;
-            field.text = "";
+        target: root.prompt
+        function onTypedChanged() {
+            if (field.text !== root.prompt.typed)
+                field.text = root.prompt.typed;
+        }
+        function onRefused() {
             shake.restart();
             field.input.forceActiveFocus();
         }
-        // A further question in the same request starts from an empty field,
-        // not from the answer to the one before.
+    }
+    Connections {
+        target: PolkitService
+        function onFlowChanged() {
+            root.choosing = false;
+        }
+    }
+    Connections {
+        target: PolkitService.flow
         function onIsResponseRequiredChanged() {
-            if (!PolkitService.flow.isResponseRequired)
-                return;
-            field.text = "";
-            field.input.forceActiveFocus();
+            if (PolkitService.flow.isResponseRequired)
+                field.input.forceActiveFocus();
         }
     }
 
@@ -96,6 +109,85 @@ Item {
                 dim: true
             }
 
+            // Whose password it is. With more than one account that would do,
+            // it opens a list of them to pick from.
+            AbstractButton {
+                id: account
+
+                readonly property var identity: PolkitService.flow?.selectedIdentity ?? null
+                readonly property bool canChoose: PolkitService.identities.length > 1
+
+                ExPrimaryOnly {
+                    z: 1
+                }
+
+                Layout.alignment: Qt.AlignHCenter
+                visible: account.identity !== null && !account.identity.isGroup
+                enabled: account.canChoose
+                hoverEnabled: true
+                focusPolicy: Qt.NoFocus
+                implicitWidth: accountRow.implicitWidth + 2 * ExLooks.spacing.s
+                implicitHeight: ExLooks.sizes.menuItem
+                onClicked: root.choosing = !root.choosing
+
+                background: Rectangle {
+                    radius: ExLooks.radius.menuItem
+                    color: "transparent"
+
+                    ExStateLayer {
+                        ink: ExLooks.colors.text
+                        hovered: account.hovered && account.canChoose
+                        pressed: account.down
+                    }
+                }
+                contentItem: Item {
+                    RowLayout {
+                        id: accountRow
+                        anchors.centerIn: parent
+                        spacing: ExLooks.spacing.s
+
+                        ExGlyph {
+                            text: "person"
+                            size: 18
+                            color: ExLooks.colors.textDim
+                        }
+                        ExText {
+                            text: account.identity?.displayName ?? ""
+                        }
+                        ExGlyph {
+                            visible: account.canChoose
+                            text: root.choosing ? "expand_less" : "expand_more"
+                            size: 18
+                            color: ExLooks.colors.textDim
+                        }
+                    }
+                }
+            }
+            ExMenu {
+                Layout.alignment: Qt.AlignHCenter
+                visible: root.choosing && account.canChoose
+                elevation: 0
+                color: ExLooks.colors.surfaceSunken
+
+                Repeater {
+                    model: PolkitService.identities
+
+                    ExMenuItem {
+                        required property var modelData
+
+                        glyph: modelData === account.identity ? "check" : ""
+                        text: modelData.displayName === modelData.string
+                            ? modelData.string : `${modelData.displayName} (${modelData.string})`
+                        focusPolicy: Qt.NoFocus
+                        onClicked: {
+                            root.choosing = false;
+                            PolkitService.chooseIdentity(modelData);
+                            field.input.forceActiveFocus();
+                        }
+                    }
+                }
+            }
+
             ExTextField {
                 id: field
 
@@ -106,8 +198,10 @@ Item {
                 enabled: PolkitService.interactionAvailable
                 opacity: enabled ? 1 : 0.6
                 onTextChanged: {
+                    if (root.prompt.typed !== field.text)
+                        root.prompt.typed = field.text;
                     if (field.text.length > 0)
-                        root.failed = false;
+                        root.prompt.failed = false;
                 }
 
                 input.Keys.onPressed: event => {
@@ -123,7 +217,7 @@ Item {
             }
             ExText {
                 Layout.alignment: Qt.AlignHCenter
-                visible: root.failed
+                visible: root.prompt.failed
                 text: Translation.tr("Incorrect password")
                 role: "caption"
                 color: ExLooks.colors.destructive
