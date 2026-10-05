@@ -1372,5 +1372,9 @@
   "Opacity": "Непрозрачность",
   "How much of what is behind the dock it covers": "Насколько док закрывает то, что за ним",
   "Blur behind the dock": "Размытие под доком",
-  "What shows through is blurred, windows included": "То, что просвечивает, размывается, окна тоже"
+  "What shows through is blurred, windows included": "То, что просвечивает, размывается, окна тоже",
+  "Tap to click": "Касание как щелчок",
+  "A light tap counts as a click, two fingers as a right click": "Лёгкое касание считается щелчком, двумя пальцами правым щелчком",
+  "Tap and drag": "Касание и перетаскивание",
+  "A tap, then the finger kept down, holds the button while it moves": "Касание, а затем удержание пальца держат кнопку нажатой, пока палец движется"
 }
