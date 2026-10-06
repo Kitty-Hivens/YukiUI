@@ -476,7 +476,7 @@ Scope {
             // up and while it is being moved, and goes a moment after.
             readonly property bool autoHide: Config.options.experimental.dock.autoHide
             readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks].some(popup => popup.open)
-            readonly property bool keepShown: !window.autoHide || dockHover.hovered || window.anyPopupOpen
+            readonly property bool keepShown: !window.autoHide || dockHover.hovered || stripHover.hovered || window.anyPopupOpen
                 || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys || root.carriedId.length > 0
             property bool revealed: !window.autoHide
             /** From in place (0) to out of sight past the edge (1). */
@@ -518,11 +518,9 @@ Scope {
                 y: window.edge === "bottom" ? window.height - height : 0
                 width: window.vertical ? depth : window.width
                 height: window.vertical ? window.height : depth
-            }
-            Item {
-                anchors.fill: parent
+
                 HoverHandler {
-                    id: dockHover
+                    id: stripHover
                 }
             }
 
@@ -806,6 +804,15 @@ Scope {
                     width: window.vertical ? 1 : parent.width
                     height: window.vertical ? parent.height : 1
                 }
+                // On the plate, which holds everything on the dock, rather than
+                // on an item beside it: the status block, the tray and the
+                // buttons of the windows take the hover themselves, and an item
+                // under them, not around them, was no longer hovered, so the
+                // dock slid away from under a pointer resting on the clock.
+                HoverHandler {
+                    id: dockHover
+                }
+
                 // Out of sight while it is being carried to another edge, and
                 // back at once under the overlay, which then fades off it: the
                 // look goes from the one to the other with no thin moment
