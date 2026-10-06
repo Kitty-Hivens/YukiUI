@@ -7,6 +7,7 @@ import Quickshell.Io
 
 import qs.core
 import qs.core.functions
+import qs.core.services
 import qs.core.utils
 
 // The snipping tool, as Windows 11 has it: the screens freeze and dim, a
@@ -68,6 +69,7 @@ Scope {
         root.lastCommand = command;
         root.open = false;
         Quickshell.execDetached(command);
+        CaptureWatch.recheck();
     }
 
     function pickColour() {
@@ -87,10 +89,10 @@ Scope {
 
         property bool withSound: false
 
-        command: ["sh", "-c", "p=\"${XDG_RUNTIME_DIR:-/tmp}/yuki-recorder.pid\"; [ -s \"$p\" ] && kill -0 \"$(cat \"$p\")\" 2>/dev/null"]
+        command: ["sh", "-c", "[ -s \"$1\" ] && kill -0 \"$(cat \"$1\")\" 2>/dev/null", "yuki-recording", CaptureWatch.pidFile]
         onExited: exitCode => {
             if (exitCode === 0) {
-                Quickshell.execDetached(["bash", FileUtils.trimFileProtocol(Directories.recordScriptPath)]);
+                CaptureWatch.stopRecording();
                 return;
             }
             root.openFor("video");

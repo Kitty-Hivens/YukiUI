@@ -17,8 +17,9 @@ else
 fi
 
 # Which recording this script started, so stopping one never reaches a
-# wf-recorder somebody else is running.
-PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/yuki-recorder.pid"
+# wf-recorder somebody else is running. YUKI_RUNTIME_DIR moves it, as it moves
+# the shell's other runtime files, for a shell beside the session's own.
+PIDFILE="${YUKI_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}}/yuki-recorder.pid"
 
 getdate() {
     date '+%Y-%m-%d_%H.%M.%S'

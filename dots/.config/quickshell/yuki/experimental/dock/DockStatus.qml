@@ -7,8 +7,9 @@ import qs.core.services
 import qs.experimental.input
 import qs.experimental.looks
 
-// The keyboard layout, connection, sound, battery and the clock, at the far end
-// of the dock, as buttons: the layout opens the list of layouts, the icons open
+// The keyboard layout, who is capturing, connection, sound, battery and the
+// clock, at the far end of the dock, as buttons: the layout opens the list of
+// layouts, the capture marks the list of who is capturing what, the icons open
 // quick settings, the clock the notifications and the calendar, the way the
 // Windows corner is divided.
 Item {
@@ -29,6 +30,8 @@ Item {
     signal clockClicked
     /** The layout was clicked. */
     signal layoutClicked
+    /** The marks of who is capturing were clicked. */
+    signal captureClicked
 
     /** The layouts, as the dock names them. */
     property ExLayouts layouts: ExLayouts {}
@@ -39,6 +42,8 @@ Item {
     readonly property Item clockButton: clockZone
     /** What the list of layouts opens from. */
     readonly property Item layoutButton: layoutZone
+    /** What the list of who is capturing opens from. */
+    readonly property Item captureButton: captureZone
 
     readonly property string batteryGlyph: {
         if (Battery.isCharging)
@@ -159,7 +164,7 @@ Item {
     GridLayout {
         id: zones
 
-        columns: root.vertical ? 1 : 3
+        columns: root.vertical ? 1 : 4
         rowSpacing: 2
         columnSpacing: 2
 
@@ -197,6 +202,52 @@ Item {
                             font.letterSpacing: 0.4
                         }
                     }
+                }
+            }
+        }
+
+        // Who is capturing, while anyone is: the screen recording the shell
+        // started, a red mark, and the programs taking the screen, a camera,
+        // a microphone or the sound playing, each by its own mark.
+        Zone {
+            id: captureZone
+
+            readonly property var kinds: CaptureWatch.users.map(user => user.kind)
+
+            visible: CaptureWatch.recording || CaptureWatch.users.length > 0
+            inset: 6
+            onActivated: root.captureClicked()
+
+            Grid {
+                columns: root.vertical ? 1 : 5
+                spacing: 4
+
+                ExGlyph {
+                    visible: CaptureWatch.recording
+                    text: "radio_button_checked"
+                    size: 16
+                    fill: 1
+                    color: ExLooks.colors.destructive
+                }
+                ExGlyph {
+                    visible: captureZone.kinds.includes("screen")
+                    text: "screen_share"
+                    size: 18
+                }
+                ExGlyph {
+                    visible: captureZone.kinds.includes("camera")
+                    text: "videocam"
+                    size: 18
+                }
+                ExGlyph {
+                    visible: captureZone.kinds.includes("microphone")
+                    text: "mic"
+                    size: 18
+                }
+                ExGlyph {
+                    visible: captureZone.kinds.includes("sound")
+                    text: "graphic_eq"
+                    size: 18
                 }
             }
         }
