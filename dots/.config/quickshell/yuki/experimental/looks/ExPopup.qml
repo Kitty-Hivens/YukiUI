@@ -37,8 +37,20 @@ PopupWindow {
     signal dismissRequested
 
     readonly property real gap: ExLooks.spacing.s
-    // Room around the plane for its shadow, and for the way in on the dock side.
+    // Room around the plane for its shadow.
     readonly property real shadowRoom: 32
+    /**
+     * The room on the dock's side, which is only the gap: the window ends at
+     * the dock's edge. With the shadow's room there too it reached over the
+     * top of the dock, and appearing under a pointer resting on the button it
+     * came from it was given the pointer before its mask said otherwise. The
+     * compositor works that out again only when the pointer moves, so a
+     * second click on the button without moving the mouse landed on the
+     * window's empty edge and was lost. The shadow on that side falls behind
+     * the dock's edge as it did.
+     */
+    readonly property real nearRoom: root.gap
+    readonly property bool vertical: root.edge === "left" || root.edge === "right"
 
     function toggle(item: Item) {
         if (root.open && root.opener === item) {
@@ -75,7 +87,6 @@ PopupWindow {
     // new frame arrives, so the frame before was drawn that much higher until
     // the shell drew again: a frame on an idle machine, a good part of a
     // second on a busy one.
-    readonly property bool vertical: root.edge === "left" || root.edge === "right"
     /**
      * Beside a dock at a side, which way the plane grows: "down" from its top,
      * or "up" from its bottom, towards the longer stretch of the dock from
@@ -105,13 +116,11 @@ PopupWindow {
         onTriggered: root.heldPlaneHeight = root.planeHeight
     }
 
-    implicitWidth: holder.width + 2 * root.padding + 2 * root.shadowRoom
-    readonly property real neededHeight: Math.max(root.heldPlaneHeight, root.planeHeight) + 2 * root.shadowRoom
+    implicitWidth: holder.width + 2 * root.padding + root.shadowRoom + (root.vertical ? root.nearRoom : root.shadowRoom)
+    readonly property real neededHeight: Math.max(root.heldPlaneHeight, root.planeHeight) + root.shadowRoom + (root.vertical ? root.shadowRoom : root.nearRoom)
     implicitHeight: root.topMoves && root.visible ? Math.max(root.roomAbove, root.neededHeight) : root.neededHeight
-    // Only the plate takes the pointer. The room around it for its shadow
-    // reaches over the dock, and taking clicks there left the top of the
-    // button the popup came from dead: a second click on it landed on the
-    // popup instead.
+    // Only the plate takes the pointer, the room for its shadow letting
+    // clicks through to whatever lies under it.
     mask: Region {
         item: surface
     }
@@ -129,8 +138,7 @@ PopupWindow {
         gravity: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom
             : (root.edge === "left" ? Edges.Right : Edges.Left) | (root.growsUp ? Edges.Top : Edges.Bottom)
         // A point, not a box: along the dock it is the middle of the button,
-        // across it the dock's inner edge, moved out by the gap and back in by
-        // the shadow room the popup carries around its plane.
+        // across it the dock's inner edge, where the window begins.
         //
         // Along the dock the plane does not reach past the dock's ends. One
         // opened from the far end, like quick settings, sits in the corner,
@@ -142,7 +150,7 @@ PopupWindow {
                 return;
             const button = root.opener.mapToItem(null, root.opener.width / 2, root.opener.height / 2);
             const dock = root.dockSurface.mapToItem(null, 0, 0);
-            const inset = root.shadowRoom - root.gap;
+            const inset = root.nearRoom - root.gap;
             const margin = root.dockWindow.detached ? 0 : root.gap;
             const vertical = root.edge === "left" || root.edge === "right";
             const half = (vertical ? surface.height : surface.width) / 2;
@@ -277,7 +285,7 @@ PopupWindow {
     Item {
         readonly property real planeWidth: holder.width + 2 * root.padding
         readonly property real planeHeight: holder.height + 2 * root.padding
-        readonly property real reach: root.shadowRoom - root.gap
+        readonly property real reach: root.nearRoom - root.gap
 
         clip: root.motion === "panel" && surface.progress < 1
         x: root.edge === "left" ? reach : 0
@@ -290,7 +298,7 @@ PopupWindow {
         // Growing up beside a side dock, the same: hung from the window's
         // bottom, which is what stands still on the screen.
         anchors.bottom: root.edge === "bottom" || root.growsUp ? parent.bottom : undefined
-        anchors.bottomMargin: root.edge === "bottom" ? root.shadowRoom - root.gap : 0
+        anchors.bottomMargin: root.edge === "bottom" ? reach : 0
         width: root.edge === "right" ? root.shadowRoom + planeWidth + root.gap : root.edge === "left" ? root.width - reach : root.width
         height: root.edge === "bottom" ? root.shadowRoom + planeHeight + root.gap : root.edge === "top" ? root.height - reach
             : root.growsUp ? planeHeight + 2 * root.shadowRoom : root.height
@@ -302,8 +310,8 @@ PopupWindow {
             edge: root.edge
             motion: root.motion
             radius: root.surfaceRadius
-            restX: root.shadowRoom - parent.x
-            restY: root.edge === "bottom" || root.growsUp ? root.shadowRoom : root.shadowRoom - parent.y
+            restX: (root.edge === "left" ? root.nearRoom : root.shadowRoom) - parent.x
+            restY: root.edge === "bottom" || root.growsUp ? root.shadowRoom : (root.edge === "top" ? root.nearRoom : root.shadowRoom) - parent.y
             width: holder.width + 2 * root.padding
             height: holder.height + 2 * root.padding
 
