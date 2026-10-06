@@ -18,6 +18,7 @@ import qs.experimental.session
 import qs.experimental.polkit
 import qs.experimental.regionSelect
 import qs.experimental.screenShare
+import qs.experimental.screenSnip
 import qs.experimental.surfaces
 import qs.experimental.switcher
 import qs.experimental.windows
@@ -75,5 +76,6 @@ Scope {
     PanelLoader { component: ExBluetoothPairing {} }
     PanelLoader { component: ExScreenSharePicker {} }
     PanelLoader { component: ExRegionSelection {} }
+    PanelLoader { component: ExScreenSnip {} }
     PanelLoader { component: ExFilePicker {} }
 }

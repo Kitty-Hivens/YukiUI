@@ -73,6 +73,13 @@ for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
 end
 hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "Window: Show desktop" })
 
+-- Print Screen opens the snipping tool, as on Windows 11, rather than putting
+-- the whole screen on the clipboard. Win+Shift+S and Win+Shift+R open it too,
+-- for a picture and for a video, through the shell's shortcuts the shared
+-- binds already name. Ctrl+Print Screen still saves the whole screen.
+hl.unbind("Print")
+hl.bind("Print", hl.dsp.global("quickshell:snipOpen"), { description = "Utilities: Snipping tool" })
+
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,
 -- so letting go of Alt is bound. Non-consuming: a bind on the release of a key

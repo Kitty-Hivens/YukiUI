@@ -1394,5 +1394,13 @@
   "Three fingers": "Три пальца",
   "Four fingers": "Четыре пальца",
   "A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.": "Изменение здесь перечитывает настройки композитора, и всё заданное с прошлой загрузки сбрасывается, игровой режим тоже.",
-  "Dark mode": "Тёмная тема"
+  "Dark mode": "Тёмная тема",
+  "Drag across what to take": "Проведите по тому, что взять",
+  "Click the window to take": "Нажмите на окно, которое взять",
+  "Click the screen to take": "Нажмите на экран, который взять",
+  "it records until the key is pressed again": "запись идёт до повторного нажатия клавиши",
+  "its text goes to the clipboard": "текст попадёт в буфер обмена",
+  "it opens for markup": "откроется для пометок",
+  "it goes to the clipboard": "снимок попадёт в буфер обмена",
+  "Esc closes": "Esc закрывает"
 }
