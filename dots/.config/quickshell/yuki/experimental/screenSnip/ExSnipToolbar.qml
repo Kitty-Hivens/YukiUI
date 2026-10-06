@@ -9,7 +9,6 @@ import qs.experimental.looks
 
 // The snipping tool's toolbar, as Windows lays it out: a picture or a video,
 // what to take, what to do with a picture, the colour picker, and closing.
-// Under it, what a click or a drag will do now.
 ColumnLayout {
     id: root
 
@@ -145,30 +144,6 @@ ColumnLayout {
             ToolButton {
                 glyph: "close"
                 onClicked: root.snip.close()
-            }
-        }
-    }
-
-    ExSurface {
-        Layout.alignment: Qt.AlignHCenter
-        implicitWidth: hint.implicitWidth + 2 * ExLooks.spacing.l
-        implicitHeight: 32
-        radius: height / 2
-        elevation: 1
-
-        ExText {
-            id: hint
-            anchors.centerIn: parent
-            role: "caption"
-            text: {
-                const what = root.snip.area === "rect" ? Translation.tr("Drag across what to take")
-                    : root.snip.area === "window" ? Translation.tr("Click the window to take")
-                    : Translation.tr("Click the screen to take");
-                const then = root.snip.media === "video" ? Translation.tr("it records until the key is pressed again")
-                    : root.snip.textOnly ? Translation.tr("its text goes to the clipboard")
-                    : root.snip.markup ? Translation.tr("it opens for markup")
-                    : Translation.tr("it goes to the clipboard");
-                return `${what}, ${then}. ${Translation.tr("Esc closes")}`;
             }
         }
     }

@@ -79,6 +79,9 @@ hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "W
 -- binds already name. Ctrl+Print Screen still saves the whole screen.
 hl.unbind("Print")
 hl.bind("Print", hl.dsp.global("quickshell:snipOpen"), { description = "Utilities: Snipping tool" })
+-- The frozen screens come up as they are, at once, as on Windows. Faded and
+-- grown in as any other layer, the screen seemed to jump.
+hl.layer_rule({ match = { namespace = "^(quickshell:snip)$" }, no_anim = true })
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,
