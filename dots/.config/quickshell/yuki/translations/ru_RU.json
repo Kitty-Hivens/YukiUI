@@ -1399,5 +1399,14 @@
   "Uses the camera": "Использует камеру",
   "Uses the microphone": "Использует микрофон",
   "Records the sound playing": "Записывает звук системы",
-  "Screen recording": "Запись экрана"
+  "Screen recording": "Запись экрана",
+  "Capture": "Захват",
+  "Screenshot": "Снимок экрана",
+  "Recording, %1": "Идёт запись, %1",
+  "Not recording": "Запись не идёт",
+  "Record the sound playing": "Записывать звук системы",
+  "Open recordings": "Открыть записи",
+  "GPU": "ГП",
+  "Up to %1": "До %1",
+  "Clock, of %1 MHz": "Частота, из %1 МГц"
 }

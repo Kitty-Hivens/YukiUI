@@ -1,0 +1,59 @@
+import QtQuick
+import QtQuick.Shapes
+
+import qs.experimental.looks
+
+// Readings over time, newest on the right, from 0 at the bottom to 1 at the
+// top: a line, and under it a wash of the same colour.
+Rectangle {
+    id: graph
+
+    /** The readings, oldest first, each from 0 to 1. */
+    property var values: []
+    /** How many readings fill the width. */
+    property int points: 60
+    property color ink: ExLooks.colors.accent
+
+    readonly property real step: graph.width / Math.max(1, graph.points - 1)
+    readonly property var line: {
+        const count = graph.values.length;
+        const top = 2;
+        const span = graph.height - 2 * top;
+        const points = [];
+        for (let i = 0; i < count; i++) {
+            const value = Math.max(0, Math.min(1, graph.values[i]));
+            points.push(Qt.point(graph.width - (count - 1 - i) * graph.step, top + (1 - value) * span));
+        }
+        return points;
+    }
+
+    radius: ExLooks.radius.card
+    color: ExLooks.colors.surfaceSunken
+    clip: true
+
+    Shape {
+        anchors.fill: parent
+        visible: graph.line.length > 1
+
+        ShapePath {
+            strokeWidth: 0
+            strokeColor: "transparent"
+            fillColor: Qt.alpha(graph.ink, 0.2)
+
+            PathPolyline {
+                path: graph.line.length > 1 ? [Qt.point(graph.line[0].x, graph.height), ...graph.line, Qt.point(graph.width, graph.height)] : []
+            }
+        }
+        ShapePath {
+            strokeWidth: 2
+            strokeColor: graph.ink
+            fillColor: "transparent"
+            joinStyle: ShapePath.RoundJoin
+            capStyle: ShapePath.RoundCap
+
+            PathPolyline {
+                path: graph.line
+            }
+        }
+    }
+}

@@ -82,6 +82,9 @@ hl.bind("Print", hl.dsp.global("quickshell:snipOpen"), { description = "Utilitie
 -- The frozen screens come up as they are, at once, as on Windows. Faded and
 -- grown in as any other layer, the screen seemed to jump.
 hl.layer_rule({ match = { namespace = "^(quickshell:snip)$" }, no_anim = true })
+-- The game bar fades in by itself, the bar and its widgets in place, as on
+-- Windows, rather than growing in as one layer.
+hl.layer_rule({ match = { namespace = "^(quickshell:gamebar)$" }, no_anim = true })
 
 -- Alt+Tab, drawn by the shell. Letting go of Alt is what picks the window, and
 -- a key pressed before the switcher took the keyboard is not released to it,

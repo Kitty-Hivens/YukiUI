@@ -18,4 +18,7 @@ Singleton {
     /** The dock's windows, one per screen. A flyout's focus grab takes them in,
      *  so clicking the dock does not count as clicking away. */
     property list<var> dockWindows: []
+
+    /** Something asked the snipping tool to open, for a picture or a video. */
+    signal snipAsked(string media)
 }

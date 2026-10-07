@@ -9,6 +9,7 @@ import qs.core
 import qs.core.functions
 import qs.core.services
 import qs.core.utils
+import qs.experimental
 
 // The snipping tool, as Windows 11 has it: the screens freeze and dim, a
 // toolbar at the top picks a picture or a video, and a rectangle, a window or
@@ -97,6 +98,13 @@ Scope {
             }
             root.openFor("video");
             root.sound = recordingCheck.withSound;
+        }
+    }
+
+    Connections {
+        target: ExStates
+        function onSnipAsked(media) {
+            root.openFor(media);
         }
     }
 

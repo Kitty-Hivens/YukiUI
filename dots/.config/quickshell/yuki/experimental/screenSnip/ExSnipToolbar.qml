@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import qs.core.services
@@ -16,43 +15,6 @@ ColumnLayout {
     required property var snip
 
     spacing: ExLooks.spacing.s
-
-    component ToolButton: AbstractButton {
-        id: tool
-
-        ExPrimaryOnly {
-            z: 1
-        }
-
-        property string glyph
-        property bool toggled: false
-
-        implicitWidth: 40
-        implicitHeight: 40
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-        opacity: enabled ? 1 : ExLooks.colors.disabledOpacity
-
-        background: Rectangle {
-            radius: ExLooks.radius.control
-            color: tool.toggled ? ExLooks.colors.tonal : "transparent"
-
-            ExStateLayer {
-                ink: ExLooks.colors.text
-                hovered: tool.hovered && tool.enabled
-                pressed: tool.down
-            }
-        }
-        contentItem: Item {
-            ExGlyph {
-                anchors.centerIn: parent
-                text: tool.glyph
-                size: 20
-                fill: tool.toggled ? 1 : 0
-                color: tool.toggled ? ExLooks.colors.tonalInk : ExLooks.colors.text
-            }
-        }
-    }
 
     component Rule: Rectangle {
         Layout.alignment: Qt.AlignVCenter
@@ -74,12 +36,12 @@ ColumnLayout {
             anchors.centerIn: parent
             spacing: ExLooks.spacing.xs
 
-            ToolButton {
+            ExToolButton {
                 glyph: "photo_camera"
                 toggled: root.snip.media === "image"
                 onClicked: root.snip.media = "image"
             }
-            ToolButton {
+            ExToolButton {
                 glyph: "videocam"
                 toggled: root.snip.media === "video"
                 onClicked: root.snip.media = "video"
@@ -87,17 +49,17 @@ ColumnLayout {
 
             Rule {}
 
-            ToolButton {
+            ExToolButton {
                 glyph: "select"
                 toggled: root.snip.area === "rect"
                 onClicked: root.snip.area = "rect"
             }
-            ToolButton {
+            ExToolButton {
                 glyph: "select_window"
                 toggled: root.snip.area === "window"
                 onClicked: root.snip.area = "window"
             }
-            ToolButton {
+            ExToolButton {
                 glyph: "fit_screen"
                 toggled: root.snip.area === "screen"
                 onClicked: root.snip.area = "screen"
@@ -106,7 +68,7 @@ ColumnLayout {
             Rule {}
 
             // A picture: marked up before it is kept, or read for its text.
-            ToolButton {
+            ExToolButton {
                 visible: root.snip.media === "image"
                 glyph: "draw"
                 toggled: root.snip.markup
@@ -116,7 +78,7 @@ ColumnLayout {
                         root.snip.textOnly = false;
                 }
             }
-            ToolButton {
+            ExToolButton {
                 visible: root.snip.media === "image"
                 glyph: "document_scanner"
                 toggled: root.snip.textOnly
@@ -126,13 +88,13 @@ ColumnLayout {
                         root.snip.markup = false;
                 }
             }
-            ToolButton {
+            ExToolButton {
                 visible: root.snip.media === "image"
                 glyph: "colorize"
                 onClicked: root.snip.pickColour()
             }
             // A video: with the sound that is playing, or without.
-            ToolButton {
+            ExToolButton {
                 visible: root.snip.media === "video"
                 glyph: root.snip.sound ? "volume_up" : "volume_off"
                 toggled: root.snip.sound
@@ -141,7 +103,7 @@ ColumnLayout {
 
             Rule {}
 
-            ToolButton {
+            ExToolButton {
                 glyph: "close"
                 onClicked: root.snip.close()
             }

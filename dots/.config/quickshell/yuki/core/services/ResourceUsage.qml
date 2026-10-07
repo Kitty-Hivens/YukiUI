@@ -41,6 +41,28 @@ Singleton {
     property real storageUsed: 0
     readonly property real storageUsedPercentage: storageTotal > 0 ? storageUsed / storageTotal : 0
 
+    // The graphics card, read only while someone is looking: a card that has
+    // gone to sleep is woken by being asked. A card that says how busy it is
+    // gives that. One that only says how fast it runs gives its clock against
+    // the fastest it can go, which is how hard it is being pushed, since such
+    // a card slows down when there is little to draw. One that says neither
+    // is not shown at all.
+    property int gpuWatchers: 0
+    /** "busy", "clock", or empty for a card that says neither. */
+    property string gpuKind: ""
+    /** How busy the card is, or its clock against its fastest, from 0 to 1. */
+    property real gpuUsage: 0
+    /** Its clock in MHz, for a card read by its clock. */
+    property real gpuClock: 0
+    property real gpuMaxClock: 0
+    property list<real> gpuUsageHistory: []
+    property string gpuReadingPath: ""
+    // Unread for a while is not a flat line, so the history starts over.
+    onGpuWatchersChanged: {
+        if (root.gpuWatchers === 0)
+            root.gpuUsageHistory = [];
+    }
+
     readonly property string maxAvailableMemoryString: root.ready ? root.kbToGbString(root.memoryTotal) : ""
     readonly property string maxAvailableSwapString: root.swapTotal > 0 ? root.kbToGbString(root.swapTotal) : ""
     property string maxAvailableCpuString: "--"
@@ -168,6 +190,58 @@ Singleton {
                 root.storageTotal = Number(fields[1]);
                 root.storageUsed = Number(fields[2]);
             }
+        }
+    }
+
+    // Which file says it, found once: busy per cent where the driver keeps
+    // one, as amdgpu does, and the actual clock where it keeps only that, as
+    // xe and i915 do.
+    Process {
+        id: findGpuProc
+        running: root.gpuWatchers > 0 && root.gpuReadingPath.length === 0
+        command: ["sh", "-c", 'for card in /sys/class/drm/card[0-9] /sys/class/drm/card[0-9][0-9]; do '
+            + 'd="$card/device"; '
+            + 'if [ -r "$d/gpu_busy_percent" ]; then echo "busy $d/gpu_busy_percent"; exit; fi; '
+            + 'f="$d/tile0/gt0/freq0"; if [ -r "$f/act_freq" ]; then echo "clock $f/act_freq $(cat "$f/rp0_freq")"; exit; fi; '
+            + 'if [ -r "$card/gt_act_freq_mhz" ]; then echo "clock $card/gt_act_freq_mhz $(cat "$card/gt_RP0_freq_mhz")"; exit; fi; '
+            + 'done']
+        stdout: StdioCollector {
+            id: gpuFound
+            onStreamFinished: {
+                const fields = gpuFound.text.trim().split(/\s+/);
+                if (fields[0] === "busy" && fields[1]) {
+                    root.gpuKind = "busy";
+                    root.gpuReadingPath = fields[1];
+                } else if (fields[0] === "clock" && fields[1] && Number(fields[2]) > 0) {
+                    root.gpuKind = "clock";
+                    root.gpuMaxClock = Number(fields[2]);
+                    root.gpuReadingPath = fields[1];
+                }
+            }
+        }
+    }
+    FileView {
+        id: gpuReading
+        path: root.gpuReadingPath
+        blockLoading: true
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.gpuWatchers > 0 && root.gpuReadingPath.length > 0
+        onTriggered: {
+            gpuReading.reload();
+            const value = Number(gpuReading.text().trim());
+            if (isNaN(value))
+                return;
+            if (root.gpuKind === "busy") {
+                root.gpuUsage = Math.max(0, Math.min(1, value / 100));
+            } else {
+                root.gpuClock = value;
+                root.gpuUsage = Math.max(0, Math.min(1, value / root.gpuMaxClock));
+            }
+            root.gpuUsageHistory = [...root.gpuUsageHistory, root.gpuUsage].slice(-root.historyLength);
         }
     }
 

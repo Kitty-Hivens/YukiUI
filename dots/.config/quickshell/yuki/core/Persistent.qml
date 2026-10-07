@@ -217,6 +217,29 @@ Singleton {
                 }
             }
 
+            property JsonObject gameBar: JsonObject {
+                /// The widgets that come up with the bar.
+                property list<string> open: ["capture", "audio", "performance"]
+                /// Whether a recording started from the bar takes the sound that is playing.
+                property bool recordSound: true
+                /// Which reading the performance widget draws: "cpu", "gpu" or "ram".
+                property string performanceShown: "cpu"
+                /// Where each widget was left, in the screen's points. Below
+                /// zero for one never moved, which goes where it first goes.
+                property JsonObject capture: JsonObject {
+                    property real x: -1
+                    property real y: -1
+                }
+                property JsonObject audio: JsonObject {
+                    property real x: -1
+                    property real y: -1
+                }
+                property JsonObject performance: JsonObject {
+                    property real x: -1
+                    property real y: -1
+                }
+            }
+
             property JsonObject timer: JsonObject {
                 property JsonObject pomodoro: JsonObject {
                     property bool running: false
