@@ -481,10 +481,16 @@ ExPopup {
 
                 ExButton {
                     kind: "flat"
-                    glyph: (Audio.sink?.audio?.muted ?? false) ? "volume_off" : "volume_up"
                     onClicked: {
                         if (Audio.sink?.audio)
                             Audio.sink.audio.muted = !Audio.sink.audio.muted;
+                    }
+
+                    ExStatusGlyph {
+                        anchors.centerIn: parent
+                        name: ExStatusGlyphs.volumeGlyph
+                        color: ExLooks.colors.accent
+                        size: 18
                     }
                 }
                 ExSlider {
@@ -525,9 +531,10 @@ ExPopup {
                 Layout.topMargin: ExLooks.spacing.s
                 spacing: ExLooks.spacing.s
 
-                ExGlyph {
+                ExStatusGlyph {
                     visible: Battery.available
-                    text: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
+                    name: ExStatusGlyphs.batteryGlyph
+                    color: Battery.isLowAndNotCharging ? ExLooks.colors.destructive : ExLooks.colors.text
                     size: 18
                 }
                 ExText {

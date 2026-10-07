@@ -4,6 +4,7 @@ import Quickshell
 
 import qs.core
 import qs.core.services
+import qs.experimental
 import qs.experimental.input
 import qs.experimental.looks
 
@@ -44,19 +45,6 @@ Item {
     readonly property Item layoutButton: layoutZone
     /** What the list of who is capturing opens from. */
     readonly property Item captureButton: captureZone
-
-    readonly property string batteryGlyph: {
-        if (Battery.isCharging)
-            return "battery_charging_full";
-        if (Battery.percentage >= 0.95)
-            return "battery_full";
-        return `battery_${Math.max(0, Math.min(6, Math.round(Battery.percentage * 6)))}_bar`;
-    }
-    readonly property string volumeGlyph: {
-        if (Audio.sink?.audio?.muted ?? false)
-            return "volume_off";
-        return Audio.value > 0.5 ? "volume_up" : (Audio.value > 0 ? "volume_down" : "volume_mute");
-    }
 
     // A touchpad sends a notch in small pieces, which are added up to one.
     property real wheelRest: 0
@@ -265,20 +253,24 @@ Item {
                 rowSpacing: 6
                 columnSpacing: 10
 
-                ExGlyph {
+                ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
-                    text: Network.materialSymbol
+                    name: ExStatusGlyphs.networkGlyph
+                    badge: ExStatusGlyphs.networkBadge
+                    pulse: ExStatusGlyphs.connecting === "bluetooth"
+                    plate: ExLooks.colors.dockPlate
                     size: 18
                 }
-                ExGlyph {
+                ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
-                    text: root.volumeGlyph
+                    name: ExStatusGlyphs.volumeGlyph
                     size: 18
                 }
-                ExGlyph {
+                ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: Battery.available
-                    text: root.batteryGlyph
+                    name: ExStatusGlyphs.batteryGlyph
+                    color: Battery.isLowAndNotCharging ? ExLooks.colors.destructive : ExLooks.colors.text
                     size: 18
                 }
             }

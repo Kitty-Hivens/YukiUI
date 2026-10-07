@@ -7,6 +7,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Widgets
 
 import qs.core.services
+import qs.experimental
 import qs.experimental.looks
 
 // How loud: the sound that comes out, the microphone, and each program
@@ -37,6 +38,8 @@ ColumnLayout {
         property real maximum: 1
         property bool device: true
         property string glyph: ""
+        /** A status glyph, by its name in ExStatusGlyphs, in place of the glyph. */
+        property string status: ""
         property string icon: ""
 
         readonly property bool muted: level.node?.audio?.muted ?? false
@@ -53,8 +56,14 @@ ColumnLayout {
                     level.node.audio.muted = !level.node.audio.muted;
             }
 
+            ExStatusGlyph {
+                visible: level.status.length > 0
+                anchors.centerIn: parent
+                name: level.status
+                color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.text
+            }
             ExGlyph {
-                visible: level.icon.length === 0
+                visible: level.icon.length === 0 && level.status.length === 0
                 anchors.centerIn: parent
                 text: level.glyph
                 size: 20
@@ -107,7 +116,7 @@ ColumnLayout {
     Level {
         visible: Audio.sink !== null
         node: Audio.sink
-        glyph: muted ? "volume_off" : "volume_up"
+        status: ExStatusGlyphs.volumeGlyph
     }
 
     Heading {

@@ -7,6 +7,7 @@ import Quickshell.Wayland
 
 import qs.core
 import qs.core.services
+import qs.experimental
 import qs.experimental.looks
 
 // Volume and brightness as they change, in a pill over the dock on the screen
@@ -22,11 +23,6 @@ Scope {
     readonly property real value: root.kind === "brightness"
         ? (Brightness.getMonitorForScreen(root.screen)?.brightness ?? 0)
         : (Audio.sink?.audio?.volume ?? 0)
-    readonly property string glyph: root.kind === "brightness" ? "brightness_6"
-        : root.muted ? "volume_off"
-        : root.value > 0.5 ? "volume_up"
-        : root.value > 0 ? "volume_down"
-        : "volume_mute"
 
     function show(kind: string) {
         root.kind = kind;
@@ -108,8 +104,13 @@ Scope {
                     spacing: ExLooks.spacing.m
 
                     ExGlyph {
-                        text: root.glyph
-                        color: root.muted && root.kind === "volume" ? ExLooks.colors.textDim : ExLooks.colors.text
+                        visible: root.kind === "brightness"
+                        text: "brightness_6"
+                    }
+                    ExStatusGlyph {
+                        visible: root.kind === "volume"
+                        name: ExStatusGlyphs.volumeGlyph
+                        color: root.muted ? ExLooks.colors.textDim : ExLooks.colors.text
                     }
                     Rectangle {
                         Layout.fillWidth: true
