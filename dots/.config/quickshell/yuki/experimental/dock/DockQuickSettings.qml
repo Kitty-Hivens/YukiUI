@@ -147,6 +147,15 @@ ExPopup {
             visible: root.shift < 1
             spacing: ExLooks.spacing.s
 
+            // What is playing, over the switches, as on Windows 11. Out of the
+            // way while the tiles are arranged.
+            DockMediaCard {
+                Layout.fillWidth: true
+                Layout.bottomMargin: ExLooks.spacing.xs
+                active: root.open
+                visible: shown && !root.editing
+            }
+
             // Three rows of switches at most, and pages beyond that, turned by
             // dragging, by scrolling or with the dots under them.
             ListView {
