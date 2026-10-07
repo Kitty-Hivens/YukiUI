@@ -49,15 +49,22 @@ class Shell:
     With a bus of its own the probe runs under a session bus started for it,
     and `bus` is that bus's address for the test's own clients. A part that
     takes a name on the bus, the notification server say, would otherwise
-    take it from the person's live shell."""
+    take it from the person's live shell.
+
+    A probe draws in software unless it asks for the graphics card. The bench
+    shares the card with the person's session, and a probe's work on it, a
+    probe taken down above all, ended in the card's engine being reset, which
+    is what takes the session's compositor down with it. Only a test that
+    looks at what the card alone draws, a blur say, asks for it."""
 
     def __init__(self, bench: Bench, probe: Path = PROBE, source: str = SOURCE,
-                 ready: tuple[str, ...] = ("placement", "list"), own_bus: bool = False):
+                 ready: tuple[str, ...] = ("placement", "list"), own_bus: bool = False, gpu: bool = False):
         self.bench = bench
         self.probe = probe
         self.source = source
         self.ready = ready
         self.own_bus = own_bus
+        self.gpu = gpu
         self.bus = ""
         self.process: subprocess.Popen | None = None
         self.log: Path = bench.root / f"{probe.stem}.log"
@@ -67,6 +74,12 @@ class Shell:
         env = self.bench.environment()
         if self.bus:
             env["DBUS_SESSION_BUS_ADDRESS"] = self.bus
+        return env
+
+    def _probe_environment(self) -> dict[str, str]:
+        env = self.bench.environment()
+        if not self.gpu:
+            env["QT_QUICK_BACKEND"] = "software"
         return env
 
     def start(self):
@@ -79,11 +92,11 @@ class Shell:
             self.process = subprocess.Popen(
                 ["dbus-run-session", "--", "sh", "-c", 'printf %s "$DBUS_SESSION_BUS_ADDRESS" > "$1"; exec qs -p "$2"',
                  "probe", str(address), str(self.probe)],
-                env=self.bench.environment(), stdout=open(self.log, "a"), stderr=subprocess.STDOUT,
+                env=self._probe_environment(), stdout=open(self.log, "a"), stderr=subprocess.STDOUT,
                 start_new_session=True)
             self.bus = wait_until(lambda: address.exists() and address.read_text(), timeout=10, what="the probe's bus")
         else:
-            self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self.bench.environment(),
+            self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self._probe_environment(),
                                             stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
         # Up once it answers on its socket. One that never does is taken down
         # with its probe: a fixture whose setup raises never reaches its
@@ -137,4 +150,8 @@ class Shell:
         if not self.log.exists():
             return []
         markers = ("TypeError", "ReferenceError", "is not a type", "ERROR")
-        return [line for line in self.log.read_text(errors="replace").splitlines() if any(m in line for m in markers)]
+        # Drawn in software, a live picture of a window has nothing to be
+        # drawn with, which it says, and which is the probe's choice.
+        expected = () if self.gpu else ("Failed to query render formats: No GL context",)
+        return [line for line in self.log.read_text(errors="replace").splitlines()
+                if any(m in line for m in markers) and not any(e in line for e in expected)]
