@@ -111,6 +111,7 @@ class Bench:
         self.build.mkdir(parents=True, exist_ok=True)
         builds = [["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"] for name in PLUGINS]
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
+        builds.append(["make", "-s", "-C", str(REPO / "helpers/clip"), f"OUT={self.clip_tool}"])
         for command in builds:
             result = subprocess.run(command, capture_output=True, text=True)
             # What the compiler said, which an exit status alone does not.
@@ -120,6 +121,11 @@ class Bench:
     @property
     def pointer_tool(self) -> Path:
         return self.build / "pointer"
+
+    @property
+    def clip_tool(self) -> Path:
+        """The clipboard helper, built from this repository as the package builds it."""
+        return self.build / "yuki-clip"
 
     @property
     def environment_rules(self) -> Path:
@@ -176,6 +182,8 @@ end
             # The shell's runtime files, the game guard's state and the scratch
             # folders among them, kept apart from the session shell's.
             "YUKI_RUNTIME_DIR": str(self.runtime_dir),
+            # The clipboard helper as built for this run, not the installed one.
+            "YUKI_CLIP": str(self.clip_tool),
         })
         # The home directory and the session bus stay the person's: fonts and
         # icons are found there, and nothing the tests start writes to either.

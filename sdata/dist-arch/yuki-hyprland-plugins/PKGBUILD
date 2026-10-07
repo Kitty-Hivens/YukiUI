@@ -6,10 +6,12 @@
 # built files live beside the build script in /usr/lib/yuki-hyprland-plugins and
 # belong to no package.
 #
-# The sources are read from hypr-plugins/ at the root of this repository.
+# The sources are read from hypr-plugins/ at the root of this repository. The
+# helper programs in helpers/ go the same way, built into /usr/lib/yuki: they
+# are C talking to the compositor, and need a compiler on the machine as much.
 
 pkgname=yuki-hyprland-plugins
-pkgver=1.11
+pkgver=1.12
 pkgrel=1
 pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
 arch=(any)
@@ -19,6 +21,8 @@ depends=(
   gcc
   make
   pkgconf
+  wayland
+  wayland-protocols
 )
 install=yuki-hyprland-plugins.install
 source=(build yuki-hyprland-plugins.hook)
@@ -32,5 +36,11 @@ package() {
   for dir in "$plugins"/*/; do
     local name=$(basename "$dir")
     install -Dm644 "$dir/main.cpp" "$dir/Makefile" -t "$pkgdir/usr/src/yuki-hyprland-plugins/$name"
+  done
+
+  local helpers="$startdir/../../../helpers"
+  for dir in "$helpers"/*/; do
+    local name=$(basename "$dir")
+    install -Dm644 "$dir/main.c" "$dir/Makefile" -t "$pkgdir/usr/src/yuki-helpers/$name"
   done
 }

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Rebuilds every YukiUI Hyprland plugin against the Hyprland now installed.
+# Rebuilds every YukiUI Hyprland plugin against the Hyprland now installed,
+# and the helper programs beside them.
 #
 # Run by pacman after hyprland is installed or upgraded, and after this package
 # is. The plugin API passes C++ objects between the compositor and the plugin,
@@ -31,6 +32,32 @@ for dir in "$src"/*/; do
         echo "yuki-hyprland-plugins: $name did not build, the previous one is left in place:" >&2
         cat "$work/$name.log" >&2
         status=1
+    fi
+done
+
+# The helpers beside them: programs of their own, built from the same kind of
+# source on the same occasions, into /usr/lib/yuki. They need no particular
+# Hyprland, and are rebuilt with the plugins only because that is when this runs.
+helpers=/usr/src/yuki-helpers
+bin=/usr/lib/yuki
+mkdir -p "$bin"
+for dir in "$helpers"/*/; do
+    name=yuki-$(basename "$dir")
+    if make -s -C "$dir" OUT="$work/$name" >"$work/$name.log" 2>&1; then
+        install -m755 "$work/$name" "$bin/.$name.new"
+        mv -f "$bin/.$name.new" "$bin/$name"
+        echo "yuki-hyprland-plugins: rebuilt $name"
+    else
+        echo "yuki-hyprland-plugins: $name did not build, the previous one is left in place:" >&2
+        cat "$work/$name.log" >&2
+        status=1
+    fi
+done
+for built in "$bin"/yuki-*; do
+    name=$(basename "$built")
+    if [ ! -d "$helpers/${name#yuki-}" ]; then
+        rm -f "$built"
+        echo "yuki-hyprland-plugins: removed $name, it is no longer shipped"
     fi
 done
 

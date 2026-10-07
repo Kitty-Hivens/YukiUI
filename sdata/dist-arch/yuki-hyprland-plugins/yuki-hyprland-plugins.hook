@@ -10,4 +10,5 @@ When = PostTransaction
 Depends = gcc
 Depends = make
 Depends = pkgconf
+Depends = wayland-protocols
 Exec = /usr/lib/yuki-hyprland-plugins/build

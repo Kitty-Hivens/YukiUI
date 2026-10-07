@@ -10,5 +10,7 @@ post_upgrade() {
 post_remove() {
     rm -f /usr/lib/yuki-hyprland-plugins/*.so /usr/lib/yuki-hyprland-plugins/.*.so.new
     rmdir --ignore-fail-on-non-empty /usr/lib/yuki-hyprland-plugins 2>/dev/null
+    rm -f /usr/lib/yuki/yuki-* /usr/lib/yuki/.yuki-*.new
+    rmdir --ignore-fail-on-non-empty /usr/lib/yuki 2>/dev/null
     true
 }
