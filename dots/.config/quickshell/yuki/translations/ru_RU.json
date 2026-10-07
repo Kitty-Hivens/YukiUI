@@ -1412,5 +1412,8 @@
   "Paste": "Вставить",
   "Cut": "Вырезать",
   "copy": "копия",
-  "Could not paste": "Не удалось вставить"
+  "Could not paste": "Не удалось вставить",
+  "Nothing copied yet": "Пока ничего не скопировано",
+  "Copy something to see it here.": "Скопируйте что-нибудь, и оно появится здесь.",
+  "and %1 more": "и ещё %1"
 }

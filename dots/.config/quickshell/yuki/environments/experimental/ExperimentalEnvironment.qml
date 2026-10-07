@@ -6,6 +6,7 @@ import qs.core.services
 import qs.experimental
 import qs.experimental.background
 import qs.experimental.bluetooth
+import qs.experimental.clipboard
 import qs.experimental.dock
 import qs.experimental.filePicker
 import qs.experimental.gameBar
@@ -80,4 +81,5 @@ Scope {
     PanelLoader { component: ExScreenSnip {} }
     PanelLoader { component: ExFilePicker {} }
     PanelLoader { component: ExGameBar {} }
+    PanelLoader { component: ExClipboard {} }
 }
