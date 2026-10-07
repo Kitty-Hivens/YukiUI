@@ -1,9 +1,11 @@
 // Puts something on the clipboard in several forms at once.
 //
-//     yuki-clip TYPE=@FILE TYPE=TEXT ...
+//     yuki-clip -f TYPE FILE -t TYPE TEXT ...
 //
-// Each argument is one form: its MIME type, then after the first "=" either
-// the path of a file holding it, behind an "@", or the text itself. A picture
+// Each form is its MIME type and either the file holding it, after -f, or the
+// text itself, after -t. Given apart rather than joined by a separator: a
+// type can carry parameters, "text/plain;charset=utf-8", and text can hold
+// anything at all. A picture
 // goes on as the picture and as the file it was saved to, say, so a program
 // that takes pictures pastes the picture and one that takes files, a terminal
 // or a game, pastes the file. wl-copy offers one form only.
@@ -139,24 +141,20 @@ static const struct wl_registry_listener registryListener = {
 };
 
 int main(int argc, char **argv) {
-    if (argc < 2)
-        fail("usage: yuki-clip TYPE=@FILE TYPE=TEXT ...");
+    if (argc < 4 || (argc - 1) % 3 != 0)
+        fail("usage: yuki-clip -f TYPE FILE -t TYPE TEXT ...");
 
     forms = calloc((size_t)argc, sizeof *forms);
-    for (int i = 1; i < argc; i++) {
-        char *equals = strchr(argv[i], '=');
-        if (!equals || equals == argv[i])
-            fail("every form is TYPE=@FILE or TYPE=TEXT");
-        // Copied out rather than cut in place: the arguments are what the
-        // process shows as its command line.
+    for (int i = 1; i + 2 < argc; i += 3) {
         struct form *form = &forms[formCount++];
-        form->type = strndup(argv[i], (size_t)(equals - argv[i]));
-        const char *value = equals + 1;
-        if (value[0] == '@') {
-            readFile(value + 1, &form->data, &form->size);
+        form->type = argv[i + 1];
+        if (strcmp(argv[i], "-f") == 0) {
+            readFile(argv[i + 2], &form->data, &form->size);
+        } else if (strcmp(argv[i], "-t") == 0) {
+            form->data = argv[i + 2];
+            form->size = strlen(argv[i + 2]);
         } else {
-            form->data = strdup(value);
-            form->size = strlen(value);
+            fail("every form is -f TYPE FILE or -t TYPE TEXT");
         }
     }
 

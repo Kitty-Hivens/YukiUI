@@ -45,11 +45,10 @@ Singleton {
         const slurpRegion = `${rx},${ry} ${rw}x${rh}`;
         const run = (script, ...extra) => ["bash", "-c", script, "screenshot-action", screenshotPath, crop, ...extra];
         switch (action) {
+            // On the clipboard as the picture and as the file it is kept in,
+            // so it pastes into a terminal or a game as well as into a chat.
             case ScreenshotAction.Action.Copy:
-                if (saveDir === "")
-                    return run('magick "$1" -crop "$2" +repage - | wl-copy && rm -- "$1"');
-                return run('mkdir -p -- "$3" && savePath="$3/screenshot-$(date +%Y-%m-%d_%H.%M.%S).png" && '
-                    + 'magick "$1" -crop "$2" +repage - | tee >(wl-copy) > "$savePath" && rm -- "$1"', saveDir);
+                return ["bash", Directories.clipboardPictureScriptPath, screenshotPath, saveDir, crop];
             case ScreenshotAction.Action.Edit:
                 return run('magick "$1" -crop "$2" +repage - | "$3" -f - && rm -- "$1"',
                     Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy");

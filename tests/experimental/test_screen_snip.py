@@ -106,6 +106,13 @@ def test_a_drawn_rectangle_goes_to_the_clipboard(bench, desk, snip):
     assert picture.size == (300, 200)
     r, g, b = picture.convert("RGB").getpixel((150, 100))
     assert min(r, g, b) > 200, f"the picture is dimmed: {(r, g, b)}"
+    # And as the file it is kept in, for a program that takes files: with no
+    # folder set for screenshots, in the bench's cache.
+    types = subprocess.run(["wl-paste", "--list-types"], env=bench.environment(), capture_output=True, text=True).stdout.split()
+    assert types[:3] == ["image/png", "text/uri-list", "x-special/gnome-copied-files"], types
+    path = subprocess.run(["wl-paste", "--no-newline", "--type", "text/plain"], env=bench.environment(),
+                          capture_output=True, text=True).stdout
+    assert path.startswith(str(bench.cache_home)) and Image.open(path).size == (300, 200), path
 
 
 def test_a_clicked_window_is_taken_whole(bench, desk, snip):

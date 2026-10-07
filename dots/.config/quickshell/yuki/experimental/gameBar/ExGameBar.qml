@@ -82,13 +82,15 @@ Scope {
         Quickshell.execDetached(command);
     }
 
-    /** The whole screen the bar is on, to the clipboard, and to the folder the snipping tool saves in. */
+    /**
+     * The whole screen the bar is on, kept in the folder the snipping tool
+     * saves in, and put on the clipboard as the picture and as the file.
+     */
     function screenshot() {
         const output = root.screenName;
         const folder = Config.options.screenSnip.savePath;
-        root.closeThen(() => root.run(["bash", "-c", folder.length > 0
-            ? 'mkdir -p -- "$2" && grim -o "$1" - | tee >(wl-copy) > "$2/screenshot-$(date +%Y-%m-%d_%H.%M.%S).png"'
-            : 'grim -o "$1" - | wl-copy', "game-bar-screenshot", output, folder]));
+        root.closeThen(() => root.run(["bash", "-c", 'shot=$(mktemp --suffix=.png) && grim -o "$1" "$shot" && exec bash "$2" "$shot" "$3"',
+            "game-bar-screenshot", output, Directories.clipboardPictureScriptPath, folder]));
     }
     function snip() {
         root.closeThen(() => ExStates.snipAsked("image"));

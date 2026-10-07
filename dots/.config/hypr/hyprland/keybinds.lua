@@ -93,13 +93,17 @@ hl.bind("SUPER + SHIFT + ALT + R", hl.dsp.exec_cmd(qsScripts .. "/videos/record.
     { locked = true, description = "Utilities: Record screen (with sound)" })
 --# Fullscreen screenshot
 local grimhyprctl = "grim -o \"$(hyprctl activeworkspace -j | jq -r '.monitor')\""
-hl.bind("Print", hl.dsp.exec_cmd(grimhyprctl .. " - | wl-copy"),
+-- On the clipboard as the picture and as the file it is kept in, so it pastes
+-- into a terminal or a game as well as into a chat. Kept in the folder given,
+-- or in the cache when there is none.
+local function screenshotTo(folder)
+    return "shot=$(mktemp --suffix=.png) && " .. grimhyprctl .. " \"$shot\" && bash "
+        .. qsScripts .. "/clipboard/picture.sh \"$shot\" " .. folder
+end
+hl.bind("Print", hl.dsp.exec_cmd(screenshotTo("''")),
     { locked = true, description = "Utilities: Screenshot >> clipboard" })
-hl.bind("CTRL + Print", hl.dsp.exec_cmd(
-    "mkdir -p $(xdg-user-dir PICTURES)/Screenshots && " ..
-    grimhyprctl .. " $(xdg-user-dir PICTURES)/Screenshots/Screenshot_\"$(date '+%Y-%m-%d_%H.%M.%S')\".png"
-), { locked = true, non_consuming = true, description = "Utilities: Screenshot >> clipboard & file" })
-hl.bind("CTRL + Print", hl.dsp.exec_cmd(grimhyprctl .. " - | wl-copy"), { locked = true, non_consuming = true })
+hl.bind("CTRL + Print", hl.dsp.exec_cmd(screenshotTo("\"$(xdg-user-dir PICTURES)/Screenshots\"")),
+    { locked = true, description = "Utilities: Screenshot >> clipboard & file" })
 --# AI
 hl.bind("SUPER + SHIFT + ALT + mouse:273", hl.dsp.exec_cmd(hyprScripts .. "/ai/primary-buffer-query.sh"),
     { description = "Utilities: Generate AI summary for selected text" })
