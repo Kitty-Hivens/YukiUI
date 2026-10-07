@@ -1,5 +1,8 @@
 """Icons on the desktop, over a desktop folder made for the test.
 
+Copying, cutting and pasting go through the bench's own clipboard, with the
+helper built for the run.
+
 A file coming into the desktop folder rebuilds the icons from the first one
 whose row moved. The icon being dragged was among them, its release never
 arrived, and the drag stayed up: the next plain click on any icon dropped it,
@@ -7,13 +10,14 @@ moving what had been dragged into the folder it was last over.
 """
 
 import json
+import subprocess
 import time
 
 import pytest
 
 from bench.bench import SHELL, wait_until
 from bench.shell import Shell
-from bench.windows import Pointer
+from bench.windows import Keyboard, Pointer
 
 PROBE = SHELL / "benchDesktopProbe.qml"
 SOURCE = """import QtQuick
@@ -30,6 +34,9 @@ ShellRoot {
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Background
         exclusionMode: ExclusionMode.Ignore
+        // As the background asks for the keys.
+        WlrLayershell.keyboardFocus: !icons.wantsKeys ? WlrKeyboardFocus.None
+            : icons.seizing ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
         anchors {
             top: true
             bottom: true
@@ -37,6 +44,7 @@ ShellRoot {
             right: true
         }
         ExDesktopIcons {
+            id: icons
             anchors.fill: parent
             screenModel: window.screen
         }
@@ -121,4 +129,50 @@ def test_a_renamed_file_keeps_its_cell(desktop, bench):
     places = wait_until(lambda: "z.txt" in kept_cells(bench) and kept_cells(bench), timeout=4, what="the new name to be kept")
     assert places["z.txt"] == [0, 1]
     assert "a.txt" not in places
+    assert not shell.errors()
+
+
+def ctrl(key: str) -> list[str]:
+    return [*Keyboard.hold("Control_L", "ctrl"), *Keyboard.tap(key), *Keyboard.let_go("Control_L", "ctrl")]
+
+
+def clipboard(bench, kind: str) -> str:
+    return subprocess.run(["wl-paste", "--no-newline", "--type", kind], env=bench.environment(),
+                          capture_output=True, text=True).stdout
+
+
+def test_files_are_copied_and_pasted_as_the_file_manager_does(desktop, bench):
+    folder, shell, pointer = desktop
+    subprocess.run(["wl-copy", "--clear"], env=bench.environment(), check=True)
+    # A click on the desktop gives it the keys, then all of it is picked.
+    pointer.click(*cell_centre(1))
+    time.sleep(0.3)
+    keyboard = Keyboard(bench)
+    keyboard.type(*ctrl("a"))
+    keyboard.type(*ctrl("c"))
+    listing = wait_until(lambda: clipboard(bench, "x-special/gnome-copied-files"), what="the files on the clipboard")
+    lines = listing.split("\n")
+    assert lines[0] == "copy"
+    assert sorted(lines[1:]) == sorted(f"file://{folder / name}" for name in ("a.txt", "b.txt", "box"))
+    keyboard.type(*ctrl("v"))
+    wait_until(lambda: (folder / "a (copy).txt").exists() and (folder / "box (copy)").is_dir(), what="the copies")
+    assert (folder / "b (copy).txt").read_text() == "b.txt"
+    assert not shell.errors()
+
+
+def test_files_cut_elsewhere_are_moved_in(desktop, bench, tmp_path):
+    folder, shell, pointer = desktop
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    for name in ("one file.txt", "two.txt"):
+        (elsewhere / name).write_text(name)
+    subprocess.run(["bash", str(SHELL / "scripts/clipboard/offer.sh"), "--cut", str(elsewhere / "one file.txt"),
+                    str(elsewhere / "two.txt")], env=bench.environment(), check=True)
+    assert clipboard(bench, "x-special/gnome-copied-files").startswith("cut\nfile://")
+    # On the empty desktop, past the icons.
+    pointer.click(600, 400)
+    time.sleep(0.3)
+    Keyboard(bench).type(*ctrl("v"))
+    wait_until(lambda: (folder / "one file.txt").exists() and (folder / "two.txt").exists(), what="the files to be moved in")
+    assert list(elsewhere.iterdir()) == []
     assert not shell.errors()

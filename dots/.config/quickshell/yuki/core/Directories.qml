@@ -81,6 +81,7 @@ Singleton {
     property string recordScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/videos/record.sh`)
     property string clipboardOfferScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/clipboard/offer.sh`)
     property string clipboardPictureScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/clipboard/picture.sh`)
+    property string clipboardPasteScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/clipboard/paste.sh`)
     property string videoWallpaperPowerScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/wallpaper/video-power.sh`)
     property string userAvatarPathAccountsService: FileUtils.trimFileProtocol(`/var/lib/AccountsService/icons/${SystemInfo.username}`)
     property string userAvatarPathRicersAndWeirdSystems: FileUtils.trimFileProtocol(`${Directories.home}/.face`)

@@ -24,8 +24,9 @@ import qs.experimental.looks
 // A click picks one, Ctrl adds to the pick, a drag over the empty desktop picks
 // everything it crosses. What is picked is dragged together to other cells, or
 // into a folder dropped on. A double click opens, a right click offers what can
-// be done, and while something is picked the keys work on it: Delete, Enter,
-// Ctrl+A, Escape and the arrows.
+// be done, and once the desktop is clicked the keys work on it: Delete, Enter,
+// Ctrl+A, Escape and the arrows, and Ctrl+C, Ctrl+X and Ctrl+V, which copy, cut
+// and paste files the way the file manager does, to and from it.
 //
 // Drawn in the background layer's own window, so the icons stay under every
 // window. Their menu is a window of its own over everything.
@@ -55,14 +56,15 @@ Item {
     readonly property int columns: Math.max(1, Math.floor(root.area.width / root.cellWidth))
 
     /**
-     * The keys are wanted while something is picked and the desktop was the
-     * last thing clicked. Wanted for as long as something is picked, a pointer
-     * merely passing over the empty desktop took the keyboard from the window
-     * being typed into: the compositor hands it to a layer that asks for it on
-     * demand as the pointer goes by.
+     * The keys are wanted while the desktop was the last thing clicked, picked
+     * or not, as on Windows: a paste goes to the empty desktop. Wanted for as
+     * long as something was picked, a pointer merely passing over the empty
+     * desktop took the keyboard from the window being typed into: the
+     * compositor hands it to a layer that asks for it on demand as the
+     * pointer goes by.
      */
     property bool clickedLast: false
-    readonly property bool wantsKeys: root.clickedLast && Object.keys(root.picked).length > 0
+    readonly property bool wantsKeys: root.clickedLast
     /**
      * Asking on demand does not take the keyboard until the pointer moves, so
      * a key pressed right after the click reached the window from before, a
@@ -494,6 +496,66 @@ Item {
         root.trash(root.pickedPaths());
     }
 
+    // --- The clipboard ------------------------------------------------------
+
+    /** What was cut and not pasted yet, drawn faded, as Windows draws it. */
+    property var cutPaths: ({})
+    /** The text the last copy or cut put on the clipboard, to tell when something else has been copied since. */
+    property string offeredText: ""
+
+    /** On the clipboard as files, as the file manager puts them: copied, or cut to be moved. */
+    function offer(paths, cut: bool) {
+        if (paths.length === 0)
+            return;
+        const marks = {};
+        if (cut)
+            for (const path of paths)
+                marks[path] = true;
+        root.cutPaths = marks;
+        root.offeredText = paths.join("\n");
+        Quickshell.execDetached(["bash", Directories.clipboardOfferScriptPath, ...(cut ? ["--cut"] : []), "--", ...paths]);
+    }
+
+    // Anything copied since, here or elsewhere, ends a cut: its files are no
+    // longer the ones on the clipboard.
+    Connections {
+        target: Quickshell
+        function onClipboardTextChanged() {
+            if (Quickshell.clipboardText !== root.offeredText)
+                root.cutPaths = {};
+        }
+    }
+
+    /** What is on the clipboard, into the desktop folder, and picked as it lands. */
+    function paste() {
+        if (pasteJob.running)
+            return;
+        pasteJob.running = true;
+    }
+
+    Process {
+        id: pasteJob
+
+        command: ["bash", Directories.clipboardPasteScriptPath, root.folderPath, Translation.tr("copy")]
+        stdout: StdioCollector {
+            id: pasted
+            onStreamFinished: {
+                const names = pasted.text.split("\n").filter(name => name.length > 0);
+                if (names.length > 0)
+                    root.pick(names.map(name => root.pathOf(name)));
+            }
+        }
+        stderr: StdioCollector {
+            id: pasteErrors
+        }
+        // Nothing to paste is no failure.
+        onExited: exitCode => {
+            if (exitCode === 1)
+                Quickshell.execDetached(["notify-send", "-a", Translation.tr("Desktop"), Translation.tr("Could not paste"), pasteErrors.text.trim()]);
+            root.cutPaths = {};
+        }
+    }
+
     /**
      * Runs a command on files and says so when it fails: a name already taken
      * in the folder dropped on, or a filesystem with no trash, used to leave the
@@ -582,6 +644,12 @@ Item {
             root.openPicked();
         } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
             root.pick(root.names.map(name => root.pathOf(name)));
+        } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ControlModifier)) {
+            root.offer(root.pickedPaths(), false);
+        } else if (event.key === Qt.Key_X && (event.modifiers & Qt.ControlModifier)) {
+            root.offer(root.pickedPaths(), true);
+        } else if (event.key === Qt.Key_V && (event.modifiers & Qt.ControlModifier)) {
+            root.paste();
         } else if (event.key === Qt.Key_Escape) {
             root.pick([]);
         } else if (event.key === Qt.Key_Left) {
@@ -719,6 +787,7 @@ Item {
             readonly property bool isDesktopFile: !icon.fileIsDir && icon.fileName.endsWith(".desktop")
             readonly property bool runnable: icon.isDesktopFile && root.trusted[icon.filePath] === true
             readonly property bool picked: root.picked[icon.filePath] === true
+            readonly property bool cut: root.cutPaths[icon.filePath] === true
             readonly property bool moving: root.dragging && icon.picked
             readonly property bool dropTarget: root.dragging && root.dropFolder === icon.filePath
             // What a launcher calls itself and draws itself with, read off
@@ -734,7 +803,7 @@ Item {
             x: icon.cellRect.x + (icon.moving ? root.dragDelta.x : 0)
             y: icon.cellRect.y + (icon.moving ? root.dragDelta.y : 0)
             z: icon.moving ? 2 : 1
-            opacity: icon.moving ? 0.7 : 1
+            opacity: icon.moving ? 0.7 : icon.cut ? 0.5 : 1
             width: icon.cellRect.width
             height: icon.cellRect.height
 
@@ -997,6 +1066,8 @@ Item {
             const target = menu.target;
             if (!target)
                 return [
+                    { text: Translation.tr("Paste"), glyph: "content_paste", shortcut: "Ctrl+V", run: () => root.paste() },
+                    { separator: true },
                     { text: Translation.tr("Arrange icons"), glyph: "grid_view", run: () => root.arrange() },
                     { text: Translation.tr("Open desktop folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) }
                 ];
@@ -1010,7 +1081,10 @@ Item {
                 list.push({ text: Translation.tr("Allow launching"), glyph: "verified_user", run: () => root.allowLaunching(untrusted) });
             list.push(
                 { text: Translation.tr("Show in folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
-                { text: Translation.tr("Copy location"), glyph: "content_copy", run: () => Quickshell.clipboardText = paths.join("\n") },
+                { separator: true },
+                { text: Translation.tr("Cut"), glyph: "content_cut", shortcut: "Ctrl+X", run: () => root.offer(paths, true) },
+                { text: Translation.tr("Copy"), glyph: "content_copy", shortcut: "Ctrl+C", run: () => root.offer(paths, false) },
+                { text: Translation.tr("Copy location"), glyph: "link", run: () => Quickshell.clipboardText = paths.join("\n") },
                 { separator: true },
                 { text: Translation.tr("Move to trash"), glyph: "delete", shortcut: "Delete", destructive: true, run: () => root.trash(paths) }
             );
