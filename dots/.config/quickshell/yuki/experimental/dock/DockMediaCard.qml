@@ -25,19 +25,77 @@ Rectangle {
     // has nothing to show.
     readonly property bool shown: !!root.player && (root.title.length > 0 || (root.player?.isPlaying ?? false))
     readonly property var entry: DesktopEntries.byId(root.player?.desktopEntry ?? "")
+    readonly property bool playing: root.player?.isPlaying ?? false
 
-    // The player says where it is only when asked, so it is asked once a second
-    // while the track runs and someone can see it.
+    // The player says where it is only when asked, so it is asked once a
+    // second while someone can see it, paused or not: a track paused before
+    // quick settings opened is shown where it stopped.
     Timer {
-        running: root.active && root.shown && (root.player?.isPlaying ?? false)
+        running: root.active && root.shown
         interval: 1000
         repeat: true
         triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
-    /** How far the track has got, from 0 to 1, or -1 when the player does not say how long it is. */
-    readonly property real progress: (root.player?.lengthSupported ?? false) && root.player.length > 0
-        ? Math.max(0, Math.min(1, root.player.position / root.player.length)) : -1
+
+    /** The track has a length and a place in it, so how far it has got can be shown. */
+    readonly property bool timed: (root.player?.lengthSupported ?? false) && (root.player?.positionSupported ?? false) && root.player.length > 0
+    /** And it can be moved through. */
+    readonly property bool seekable: root.timed && (root.player?.canSeek ?? false)
+    /** How far the track has got, from 0 to 1, or 0 when the player does not say. */
+    readonly property real progress: root.timed ? Math.max(0, Math.min(1, root.player.position / root.player.length)) : 0
+
+    function clock(seconds: real): string {
+        const whole = Math.max(0, Math.floor(seconds));
+        const hours = Math.floor(whole / 3600);
+        const minutes = Math.floor(whole / 60) % 60;
+        const rest = String(whole % 60).padStart(2, "0");
+        return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}` : `${minutes}:${rest}`;
+    }
+
+    // The bar moves on smoothly between readings while the track plays, and
+    // jumps when it is moved, a new track starts or the player says otherwise.
+    property real drawnProgress: 0
+    onProgressChanged: {
+        const step = root.progress - root.drawnProgress;
+        if (root.playing && !seek.held && step > 0 && step < 0.05) {
+            glide.to = root.progress;
+            glide.restart();
+        } else {
+            glide.stop();
+            root.drawnProgress = root.progress;
+        }
+    }
+    NumberAnimation {
+        id: glide
+        target: root
+        property: "drawnProgress"
+        duration: 1000
+    }
+
+    // A new track, or another player, slides in from the side it came from.
+    Connections {
+        target: MprisController
+        function onTrackChanged(reverse) {
+            trackIn.from = reverse ? -16 : 16;
+            trackIn.restart();
+        }
+    }
+    // Faded in as it comes to have something to show.
+    onShownChanged: {
+        if (root.shown)
+            appear.restart();
+    }
+    NumberAnimation {
+        id: appear
+        target: root
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: ExLooks.motion.normal
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: ExLooks.motion.standard
+    }
 
     implicitHeight: content.implicitHeight + 2 * ExLooks.spacing.m
     radius: ExLooks.radius.tile
@@ -89,8 +147,40 @@ Rectangle {
         }
 
         RowLayout {
+            id: track
+
+            property real shift: 0
+
             Layout.fillWidth: true
             spacing: ExLooks.spacing.m
+            transform: Translate {
+                x: track.shift
+            }
+
+            ParallelAnimation {
+                id: trackIn
+
+                property real from: 16
+
+                NumberAnimation {
+                    target: track
+                    property: "shift"
+                    from: trackIn.from
+                    to: 0
+                    duration: ExLooks.motion.normal
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: ExLooks.motion.decelerate
+                }
+                NumberAnimation {
+                    target: track
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: ExLooks.motion.normal
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: ExLooks.motion.standard
+                }
+            }
 
             ClippingRectangle {
                 implicitWidth: 56
@@ -100,11 +190,13 @@ Rectangle {
 
                 ExGlyph {
                     anchors.centerIn: parent
-                    visible: art.status !== Image.Ready
+                    opacity: 1 - art.opacity
                     text: "music_note"
                     size: 24
                     color: ExLooks.colors.textDim
                 }
+                // Fades in once it has loaded, rather than popping in over
+                // the note.
                 Image {
                     id: art
                     anchors.fill: parent
@@ -112,7 +204,10 @@ Rectangle {
                     sourceSize: Qt.size(112, 112)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
-                    visible: status === Image.Ready
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity {
+                        NumberAnimation { duration: ExLooks.motion.normal }
+                    }
                 }
             }
             ColumnLayout {
@@ -137,22 +232,98 @@ Rectangle {
             }
         }
 
-        // How far the track has got.
+        // How far the track has got, and moved through by a click or a drag
+        // where the player allows it. Always there, empty for a player that
+        // does not say, so the card does not change height when it starts to.
         Item {
+            id: seek
+
+            readonly property bool held: seekArea.pressed
+            /** Where the bar is held, from 0 to 1. */
+            property real heldAt: 0
+            readonly property bool lit: seekArea.containsMouse || seekArea.pressed
+            readonly property real drawn: seek.held ? seek.heldAt : root.drawnProgress
+
             Layout.fillWidth: true
-            implicitHeight: 3
-            visible: root.progress >= 0
+            implicitHeight: 16
 
             Rectangle {
-                anchors.fill: parent
+                id: groove
+
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: seek.lit && root.seekable ? 6 : 4
                 radius: height / 2
                 color: ExLooks.colors.border
+
+                Behavior on height {
+                    NumberAnimation { duration: ExLooks.motion.fast }
+                }
+
+                Rectangle {
+                    width: groove.width * seek.drawn
+                    height: parent.height
+                    radius: parent.radius
+                    color: ExLooks.colors.accent
+                    visible: root.timed
+                }
             }
             Rectangle {
-                width: parent.width * Math.max(0, root.progress)
-                height: parent.height
-                radius: height / 2
-                color: ExLooks.colors.accent
+                visible: root.seekable
+                x: groove.width * seek.drawn - width / 2
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14
+                height: 14
+                radius: 7
+                color: ExLooks.colors.knob
+                border.width: 1
+                border.color: ExLooks.colors.knobEdge
+                scale: seek.lit ? 1 : 0
+                Behavior on scale {
+                    NumberAnimation { duration: ExLooks.motion.fast; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                }
+            }
+            MouseArea {
+                id: seekArea
+
+                anchors.fill: parent
+                enabled: root.seekable
+                hoverEnabled: true
+                cursorShape: root.seekable ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onPressed: event => seek.heldAt = Math.max(0, Math.min(1, event.x / width))
+                onPositionChanged: event => {
+                    if (pressed)
+                        seek.heldAt = Math.max(0, Math.min(1, event.x / width));
+                }
+                onReleased: {
+                    if (!root.seekable)
+                        return;
+                    root.player.position = seek.heldAt * root.player.length;
+                    root.drawnProgress = seek.heldAt;
+                    glide.stop();
+                    root.player.positionChanged();
+                }
+            }
+        }
+
+        // Where it is and how long it is, held as the bar is dragged.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: -ExLooks.spacing.xs
+            spacing: ExLooks.spacing.s
+
+            ExText {
+                Layout.fillWidth: true
+                text: root.timed ? root.clock((seek.held ? seek.heldAt * root.player.length : root.player.position)) : "--:--"
+                role: "caption"
+                dim: true
+                font.features: ({ "tnum": 1 })
+            }
+            ExText {
+                text: root.timed ? root.clock(root.player.length) : "--:--"
+                role: "caption"
+                dim: true
+                font.features: ({ "tnum": 1 })
             }
         }
 
@@ -167,11 +338,24 @@ Rectangle {
                 onClicked: root.player?.previous()
             }
             ExButton {
-                readonly property bool playing: root.player?.isPlaying ?? false
+                id: playPause
+
                 kind: "tonal"
-                glyph: playing ? "pause" : "play_arrow"
-                enabled: playing ? (root.player?.canPause ?? false) : (root.player?.canPlay ?? false)
+                glyph: root.playing ? "pause" : "play_arrow"
+                enabled: root.playing ? (root.player?.canPause ?? false) : (root.player?.canPlay ?? false)
                 onClicked: root.player?.togglePlaying()
+                // A small give as it turns from one to the other.
+                onGlyphChanged: turn.restart()
+
+                NumberAnimation {
+                    id: turn
+                    target: playPause
+                    property: "scale"
+                    from: 0.86
+                    to: 1
+                    duration: ExLooks.motion.normal
+                    easing.type: Easing.OutBack
+                }
             }
             ExButton {
                 kind: "flat"
