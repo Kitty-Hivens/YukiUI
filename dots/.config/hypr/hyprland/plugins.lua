@@ -13,7 +13,9 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- click outside it and the click still reaches what it landed on.
 -- drag-report: tells the shell when a window is moved or resized with the
 -- mouse, which snapping a window to an edge needs.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report" }
+-- capture-report: tells the shell which programs take the screen from the
+-- compositor, which the compositor alone does not say.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"

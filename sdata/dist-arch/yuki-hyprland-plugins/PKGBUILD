@@ -9,7 +9,7 @@
 # The sources are read from hypr-plugins/ at the root of this repository.
 
 pkgname=yuki-hyprland-plugins
-pkgver=1.10
+pkgver=1.11
 pkgrel=1
 pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
 arch=(any)

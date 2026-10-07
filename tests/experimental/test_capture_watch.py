@@ -6,12 +6,13 @@ here a stand in for the recorder kept in the bench's own runtime folder.
 """
 
 import json
+import signal
 import subprocess
 import time
 
 import pytest
 
-from bench.bench import SHELL, wait_until
+from bench.bench import OUTPUT, SHELL, wait_until
 from bench.shell import Shell
 
 PROBE = SHELL / "benchCaptureWatchProbe.qml"
@@ -81,6 +82,9 @@ ShellRoot {
         function stop(): void {
             CaptureWatch.stopRecording();
         }
+        function users(): string {
+            return JSON.stringify(CaptureWatch.users);
+        }
     }
 }
 """
@@ -135,3 +139,28 @@ def test_the_shells_recording_shows_on_the_dock_and_stops_from_it(bench, watch):
     finally:
         if stand_in.poll() is None:
             stand_in.kill()
+
+
+def screen_takers(shell) -> list[str]:
+    return [user["name"] for user in json.loads(shell.call("captureProbe", "users")) if user["kind"] == "screen"]
+
+
+def test_a_program_taking_the_screen_from_the_compositor_is_named(bench, watch, tmp_path):
+    # Named by the capture-report plugin, which the bench loads. A screenshot
+    # takes the screen for a moment and is not shown at all.
+    subprocess.run(["grim", "-o", OUTPUT, str(tmp_path / "shot.png")], env=bench.environment(), check=True)
+    time.sleep(1.5)
+    assert screen_takers(watch) == []
+
+    recorder = subprocess.Popen(["wf-recorder", "-o", OUTPUT, "-f", str(tmp_path / "taken.mp4"), "-y"],
+                                env=bench.environment(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        wait_until(lambda: screen_takers(watch) == ["wf-recorder"], timeout=5, what="the recorder to be named")
+    finally:
+        recorder.send_signal(signal.SIGINT)
+        try:
+            recorder.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            recorder.kill()
+            recorder.wait(timeout=5)
+    wait_until(lambda: screen_takers(watch) == [], timeout=5, what="the recorder to go once it stopped")

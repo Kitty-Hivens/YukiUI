@@ -28,7 +28,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
 RULES = SHELL / "environments/experimental/compositor/rules.lua"
-PLUGINS = ("minimize", "drag-report")
+PLUGINS = ("minimize", "drag-report", "capture-report")
 
 OUTPUT = "BENCH"
 WIDTH, HEIGHT = 1920, 1080
