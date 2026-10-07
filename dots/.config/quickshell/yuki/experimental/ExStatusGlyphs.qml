@@ -24,7 +24,6 @@ Singleton {
 
     readonly property var codes: ({
         "volume_off": 0xF0581,
-        "volume_mute": 0xF075F,
         "volume_low": 0xF057F,
         "volume_medium": 0xF0580,
         "volume_high": 0xF057E,
@@ -123,8 +122,10 @@ Singleton {
 
     /**
      * The sound, as Windows shows it: headphones, a Bluetooth speaker or a
-     * screen by what they are, and anything else by how loud it plays, in
-     * thirds.
+     * screen by what they are, and anything else by how loud it plays. The
+     * font's speaker has no waves, one or two, so no waves is silence, and
+     * the waves split the rest in halves: a speaker with no waves at a low
+     * volume read as no sound at all.
      */
     readonly property string volumeGlyph: {
         const muted = root.muted;
@@ -141,10 +142,8 @@ Singleton {
         if (muted)
             return "volume_off";
         if (root.volume < 0.005)
-            return "volume_mute";
-        if (root.volume <= 1 / 3)
             return "volume_low";
-        if (root.volume <= 2 / 3)
+        if (root.volume <= 0.5)
             return "volume_medium";
         return "volume_high";
     }
