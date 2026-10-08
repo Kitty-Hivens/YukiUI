@@ -28,7 +28,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
 RULES = SHELL / "environments/experimental/compositor/rules.lua"
-PLUGINS = ("minimize", "drag-report", "capture-report")
+PLUGINS = ("minimize", "drag-report", "capture-report", "data-control-v1")
 
 OUTPUT = "BENCH"
 WIDTH, HEIGHT = 1920, 1080
@@ -112,6 +112,7 @@ class Bench:
         builds = [["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"] for name in PLUGINS]
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
         builds.append(["make", "-s", "-C", str(REPO / "helpers/clip"), f"OUT={self.clip_tool}"])
+        builds.append(["make", "-s", "-C", str(REPO / "tests/bench/data_control"), f"OUT={self.data_control_client}"])
         for command in builds:
             result = subprocess.run(command, capture_output=True, text=True)
             # What the compiler said, which an exit status alone does not.
@@ -121,6 +122,11 @@ class Bench:
     @property
     def pointer_tool(self) -> Path:
         return self.build / "pointer"
+
+    @property
+    def data_control_client(self) -> Path:
+        """A clipboard client of the first version of wlr-data-control, as Wine's driver is."""
+        return self.build / "data-control-v1"
 
     @property
     def clip_tool(self) -> Path:

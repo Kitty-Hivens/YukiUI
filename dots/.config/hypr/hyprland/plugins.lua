@@ -15,7 +15,10 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- mouse, which snapping a window to an edge needs.
 -- capture-report: tells the shell which programs take the screen from the
 -- compositor, which the compositor alone does not say.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report" }
+-- data-control-v1: keeps a clipboard event of the protocol's second version
+-- from clients of its first, which Hyprland 0.56 sends and which killed Wine's
+-- clipboard. Not needed once Hyprland checks the version itself.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "data-control-v1" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"
