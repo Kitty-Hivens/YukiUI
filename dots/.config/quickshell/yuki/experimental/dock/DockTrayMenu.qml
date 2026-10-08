@@ -53,10 +53,27 @@ ExPopup {
         menu: root.current
     }
 
+    /** Some entry shows a glyph or an icon, so every text starts after the room for one. */
+    readonly property bool anyIcon: root.trail.length > 0 || (entries.children?.values ?? []).some(entry => !entry.isSeparator
+        && (entry.icon.length > 0 || entry.buttonType === QsMenuButtonType.CheckBox || entry.buttonType === QsMenuButtonType.RadioButton))
+
+    /**
+     * As wide as the widest entry, within bounds, as Windows sizes a menu: at a
+     * fixed width a menu of three short entries stood mostly empty.
+     */
+    readonly property real widest: {
+        let widest = back.visible ? back.implicitWidth : 0;
+        for (let i = 0; i < rows.count; i++)
+            widest = Math.max(widest, rows.itemAt(i)?.implicitWidth ?? 0);
+        return widest;
+    }
+
     Column {
-        width: ExLooks.sizes.menuWidth
+        width: Math.max(180, Math.min(360, Math.ceil(root.widest)))
 
         ExMenuItem {
+            id: back
+
             visible: root.trail.length > 0
             glyph: "arrow_back"
             text: root.label(root.trail[root.trail.length - 1]?.text ?? "")
@@ -67,6 +84,8 @@ ExPopup {
         }
 
         Repeater {
+            id: rows
+
             model: entries.children
 
             Loader {
@@ -91,6 +110,7 @@ ExPopup {
                         readonly property bool marked: source.checkState === Qt.Checked
 
                         text: root.label(source.text)
+                        iconRoom: root.anyIcon
                         enabled: source.enabled
                         hasSubmenu: source.hasChildren
                         glyph: checkBox ? (marked ? "check_box" : "check_box_outline_blank")

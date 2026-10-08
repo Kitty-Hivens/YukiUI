@@ -13,6 +13,12 @@ AbstractButton {
     property bool hasSubmenu: false
     property bool destructive: false
     property string previewState: ""
+    /**
+     * Room for a glyph or an icon before the text. A menu of which no entry
+     * has one leaves it out, as Windows and GNOME do: kept, it was a wide
+     * empty strip down the left of every such menu.
+     */
+    property bool iconRoom: true
 
     readonly property color ink: destructive ? ExLooks.colors.destructive : ExLooks.colors.text
 
@@ -42,6 +48,7 @@ AbstractButton {
         spacing: ExLooks.spacing.m
 
         Item {
+            visible: root.iconRoom
             Layout.leftMargin: ExLooks.spacing.s + 2
             implicitWidth: 18
             implicitHeight: 18
@@ -63,6 +70,8 @@ AbstractButton {
         }
         ExText {
             Layout.fillWidth: true
+            Layout.leftMargin: root.iconRoom ? 0 : ExLooks.spacing.s + 2
+            Layout.rightMargin: root.shortcut.length > 0 || root.hasSubmenu ? 0 : ExLooks.spacing.s + 2
             text: root.text
             color: root.ink
         }
