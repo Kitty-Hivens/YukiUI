@@ -475,7 +475,7 @@ Scope {
             // over it, while anything it opened is open, while the launcher is
             // up and while it is being moved, and goes a moment after.
             readonly property bool autoHide: Config.options.experimental.dock.autoHide
-            readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks, captureMenu].some(popup => popup.open)
+            readonly property bool anyPopupOpen: [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks, captureMenu, clipboard].some(popup => popup.open)
             readonly property bool keepShown: !window.autoHide || dockHover.hovered || stripHover.hovered || window.anyPopupOpen
                 || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys || root.carriedId.length > 0
             property bool revealed: !window.autoHide
@@ -524,7 +524,8 @@ Scope {
                 }
             }
 
-            // The keyboard, while quick settings has a password field up.
+            // The keyboard, while quick settings has a password field up, and
+            // while the clipboard history is open.
             //
             // A popup that takes no grab gets no keys of its own, and taking a
             // grab would let the compositor shut it on the first click outside.
@@ -535,7 +536,7 @@ Scope {
             // reported as one on the dock and the flyout never closed. What
             // arrives at the dock is handed to the field. A click into the
             // field gives the flyout's own window the keys directly.
-            readonly property Item keyTarget: quickSettings.keyTarget
+            readonly property Item keyTarget: quickSettings.keyTarget ?? clipboard.keyTarget
             property bool holdingKeys: false
             property bool seizingKeys: false
             WlrLayershell.keyboardFocus: !window.holdingKeys ? WlrKeyboardFocus.None
@@ -653,9 +654,18 @@ Scope {
                 notificationCenter.toggle(status.clockButton);
             }
 
+            function toggleClipboard() {
+                closePopups(clipboard);
+                clipboard.toggle(clipboardPoint);
+            }
+
+            function closeClipboard() {
+                clipboard.open = false;
+            }
+
             /** One flyout at a time: everything but the one about to open is shut. */
             function closePopups(except) {
-                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks, captureMenu])
+                for (const popup of [windowList, appMenu, trayMenu, trayOverflow, quickSettings, notificationCenter, layoutMenu, dockMenu, quickLinks, captureMenu, clipboard])
                     if (popup !== except)
                         popup.open = false;
             }
@@ -1065,6 +1075,24 @@ Scope {
                 height: 1
             }
 
+            // The middle of the dock, where the clipboard history comes out:
+            // the same place every time, whatever the pointer is doing.
+            Item {
+                id: clipboardPoint
+                parent: dock
+                x: dock.width / 2
+                y: dock.height / 2
+                width: 1
+                height: 1
+            }
+
+            DockClipboard {
+                id: clipboard
+                dockWindow: window
+                dockSurface: dock
+                edge: window.edge
+            }
+
             DockMenu {
                 id: dockMenu
                 dockWindow: window
@@ -1154,8 +1182,9 @@ Scope {
     }
 
     /**
-     * Opens or closes quick settings or the notifications on the dock of the
-     * focused screen, and says why not when it cannot.
+     * Opens or closes quick settings, the notifications or the clipboard
+     * history on the dock of the focused screen, and says why not when it
+     * cannot.
      */
     function toggleFlyout(which: string): string {
         const screen = Hyprland.focusedMonitor?.name ?? "";
@@ -1169,9 +1198,23 @@ Scope {
             return "a fullscreen window is in front of the dock";
         if (which === "quickSettings")
             dock.toggleQuickSettings();
+        else if (which === "clipboard")
+            dock.toggleClipboard();
         else
             dock.toggleNotificationCenter();
         return "ok";
+    }
+
+    // Win+V, through the history, which first notes the window to paste into.
+    Connections {
+        target: ExClipboardHistory
+        function onToggleRequested() {
+            root.toggleFlyout("clipboard");
+        }
+        function onCloseRequested() {
+            for (const dock of root.docks)
+                dock.closeClipboard();
+        }
     }
 
     // For a touchpad gesture or a key bound to them.

@@ -17,15 +17,29 @@ PROBE = SHELL / "benchClipboardProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.experimental.clipboard
+import qs.core
+import qs.experimental
+import qs.experimental.dock
 
 // Written by tests/experimental/test_clipboard_history.py for a test run, and removed after it.
 ShellRoot {
-    ExClipboard {}
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready)
+                Config.options.experimental.dock.edge = "bottom";
+        }
+    }
+    Component.onCompleted: {
+        ExClipboardHistory.load();
+        if (Config.ready)
+            Config.options.experimental.dock.edge = "bottom";
+    }
+    ExDock {}
     IpcHandler {
         target: "clipboardProbe"
         function ready(): bool {
-            return true;
+            return Config.ready;
         }
     }
 }
