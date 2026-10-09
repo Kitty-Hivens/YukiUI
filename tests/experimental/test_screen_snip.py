@@ -7,6 +7,7 @@ to the clipboard, which on the bench is the nested compositor's own.
 import io
 import subprocess
 import time
+import urllib.parse
 
 import pytest
 from PIL import Image
@@ -108,10 +109,13 @@ def test_a_drawn_rectangle_goes_to_the_clipboard(bench, desk, snip):
     assert min(r, g, b) > 200, f"the picture is dimmed: {(r, g, b)}"
     # And as the file it is kept in, for a program that takes files: with no
     # folder set for screenshots, in the bench's cache.
+    # Never as text: a browser's text field takes text before a picture, and
+    # pasted the path.
     types = subprocess.run(["wl-paste", "--list-types"], env=bench.environment(), capture_output=True, text=True).stdout.split()
-    assert types[:3] == ["image/png", "text/uri-list", "x-special/gnome-copied-files"], types
-    path = subprocess.run(["wl-paste", "--no-newline", "--type", "text/plain"], env=bench.environment(),
-                          capture_output=True, text=True).stdout
+    assert types == ["image/png", "text/uri-list", "x-special/gnome-copied-files"], types
+    link = subprocess.run(["wl-paste", "--no-newline", "--type", "text/uri-list"], env=bench.environment(),
+                          capture_output=True, text=True).stdout.strip()
+    path = urllib.parse.unquote(link.removeprefix("file://"))
     assert path.startswith(str(bench.cache_home)) and Image.open(path).size == (300, 200), path
 
 

@@ -8,7 +8,8 @@
 # for a copy or a cut, and as plain text, one a line. A program that takes
 # files pastes the files, a terminal pastes the paths. With --image the file
 # named goes on as a picture too, first, so a program that takes pictures
-# pastes the picture.
+# pastes the picture, and the paths do not go on as text: a browser's text
+# field takes text before a picture, and pasted the path of a screenshot.
 #
 # Through yuki-clip, which offers all of these at once. Without it only one
 # form can go on: the picture when there is one, the list of links otherwise.
@@ -45,8 +46,8 @@ helper="${YUKI_CLIP:-/usr/lib/yuki/yuki-clip}"
 if [[ -x "$helper" ]]; then
     forms=()
     [[ -n "$image" ]] && forms+=(-f image/png "$image")
-    forms+=(-t text/uri-list "$uriList" -t x-special/gnome-copied-files "$gnomeList"
-        -t "text/plain;charset=utf-8" "$plain" -t text/plain "$plain")
+    forms+=(-t text/uri-list "$uriList" -t x-special/gnome-copied-files "$gnomeList")
+    [[ -z "$image" ]] && forms+=(-t "text/plain;charset=utf-8" "$plain" -t text/plain "$plain")
     exec "$helper" "${forms[@]}"
 fi
 
