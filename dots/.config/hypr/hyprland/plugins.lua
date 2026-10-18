@@ -18,7 +18,9 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- data-control-v1: keeps a clipboard event of the protocol's second version
 -- from clients of its first, which Hyprland 0.56 sends and which killed Wine's
 -- clipboard. Not needed once Hyprland checks the version itself.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "data-control-v1" }
+-- border-resize: a window is resized by its border with the left button only,
+-- and not while the focused window holds the pointer, as a game does.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "data-control-v1", "border-resize" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"

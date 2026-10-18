@@ -28,7 +28,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
 RULES = SHELL / "environments/experimental/compositor/rules.lua"
-PLUGINS = ("minimize", "drag-report", "capture-report", "data-control-v1")
+PLUGINS = ("minimize", "drag-report", "capture-report", "data-control-v1", "border-resize")
 
 OUTPUT = "BENCH"
 WIDTH, HEIGHT = 1920, 1080
@@ -113,6 +113,7 @@ class Bench:
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
         builds.append(["make", "-s", "-C", str(REPO / "helpers/clip"), f"OUT={self.clip_tool}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/data_control"), f"OUT={self.data_control_client}"])
+        builds.append(["make", "-s", "-C", str(REPO / "tests/bench/locked"), f"OUT={self.locked_client}"])
         for command in builds:
             result = subprocess.run(command, capture_output=True, text=True)
             # What the compiler said, which an exit status alone does not.
@@ -122,6 +123,11 @@ class Bench:
     @property
     def pointer_tool(self) -> Path:
         return self.build / "pointer"
+
+    @property
+    def locked_client(self) -> Path:
+        """A fullscreen window that locks the pointer, as a game with raw input does."""
+        return self.build / "locked"
 
     @property
     def data_control_client(self) -> Path:
