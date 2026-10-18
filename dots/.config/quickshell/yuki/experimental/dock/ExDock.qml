@@ -458,11 +458,15 @@ Scope {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "quickshell:dock"
-            // Under a fullscreen window rather than over it. Drawn over, it sat
-            // on top of games and videos, and a layer above a fullscreen window
-            // keeps the compositor from showing that window on its own, which
-            // direct scanout and variable refresh depend on.
-            WlrLayershell.layer: window.underFullscreen ? WlrLayer.Bottom : WlrLayer.Top
+            // Under the applications. Over them, it covered the menus and
+            // popups they open near the edge, and a window dragged across it
+            // went under it. It still keeps its room, so a maximised window
+            // stops at it. Hidden on its own it keeps no room, and comes out
+            // over the windows, which would cover it otherwise. Under a
+            // fullscreen window it stays under it either way: a layer above a
+            // fullscreen window keeps the compositor from showing that window
+            // on its own, which direct scanout and variable refresh depend on.
+            WlrLayershell.layer: window.autoHide && !window.underFullscreen ? WlrLayer.Top : WlrLayer.Bottom
             onUnderFullscreenChanged: {
                 if (window.underFullscreen)
                     window.closePopups(null);

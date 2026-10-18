@@ -1,4 +1,5 @@
-"""A dock that hides on its own stays while the pointer is over it.
+"""A dock that hides on its own stays while the pointer is over it, and comes
+out over the windows, while one that stays is under them.
 
 The dock watched the pointer from an item laid under it, beside its buttons
 rather than around them. Over the clock, whose area takes the hover itself,
@@ -52,6 +53,9 @@ ShellRoot {
             const window = dock.docks[0];
             return JSON.stringify({ revealed: window?.revealed ?? false, kept: window?.keepShown ?? false });
         }
+        function setAutoHide(on: bool): void {
+            Config.options.experimental.dock.autoHide = on;
+        }
     }
 }
 """
@@ -71,6 +75,28 @@ def dock(bench):
 
 def state(shell) -> dict:
     return json.loads(shell.call("autoHideProbe", "state"))
+
+
+def dock_level(bench) -> str:
+    """The layer level the dock is on: "1" under the windows, "2" over them,
+    or empty while it is not up yet, so a wait goes on rather than ends."""
+    for data in json.loads(bench.hyprctl("layers", "-j")).values():
+        for level, layers in data["levels"].items():
+            if any(layer["namespace"] == "quickshell:dock" for layer in layers):
+                return level
+    return ""
+
+
+def test_the_dock_is_under_the_windows_unless_it_hides(bench, dock):
+    # Hiding on its own, it comes out over the windows, which would cover it.
+    wait_until(lambda: dock_level(bench) == "2", what="a hiding dock over the windows")
+    # Staying, it is under them, so their menus and a window dragged across
+    # it are not covered by it.
+    dock.call("autoHideProbe", "setAutoHide", "false")
+    try:
+        wait_until(lambda: dock_level(bench) == "1", what="a dock that stays under the windows")
+    finally:
+        dock.call("autoHideProbe", "setAutoHide", "false")
 
 
 def dock_layer(bench) -> tuple[int, int, int, int]:
