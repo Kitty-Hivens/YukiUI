@@ -23,7 +23,6 @@ Item {
      * a click near the dock's edge, above the icons, used to land on nothing.
      */
     property real crossSize: 0
-    readonly property real reach: Math.max(0, (root.crossSize - (root.vertical ? zones.implicitWidth : zones.implicitHeight)) / 2)
 
     /** The icons were clicked. */
     signal clicked
@@ -96,6 +95,13 @@ Item {
         property bool marked: false
         /** Room either side of the content, along the dock. */
         property real inset: root.vertical ? 6 : 10
+        /**
+         * How far its clicks reach past it on either side, across the dock,
+         * to the dock's edges. Each zone's own: counted from the tallest of
+         * them, the clock with its date, the status icons below it reached
+         * short of the edges, and a click near the top of the dock missed them.
+         */
+        readonly property real reach: Math.max(0, (root.crossSize - (root.vertical ? zone.width : zone.height)) / 2)
         signal activated
         /** The wheel turned over the zone, in eighths of a degree. */
         signal wheeled(real delta)
@@ -108,10 +114,10 @@ Item {
         MouseArea {
             id: mouse
             anchors.fill: parent
-            anchors.topMargin: root.vertical ? 0 : -root.reach
-            anchors.bottomMargin: root.vertical ? 0 : -root.reach
-            anchors.leftMargin: root.vertical ? -root.reach : 0
-            anchors.rightMargin: root.vertical ? -root.reach : 0
+            anchors.topMargin: root.vertical ? 0 : -zone.reach
+            anchors.bottomMargin: root.vertical ? 0 : -zone.reach
+            anchors.leftMargin: root.vertical ? -zone.reach : 0
+            anchors.rightMargin: root.vertical ? -zone.reach : 0
             hoverEnabled: true
             onClicked: zone.activated()
             onWheel: event => zone.wheeled(event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x)

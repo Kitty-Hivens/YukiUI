@@ -43,11 +43,31 @@ ShellRoot {
         if (Config.ready)
             probe.setUp();
     }
-    ExDock {}
+    ExDock {
+        id: dock
+    }
+    function find(item, has) {
+        if (!item)
+            return null;
+        if (has(item))
+            return item;
+        for (const child of item.children ?? []) {
+            const found = probe.find(child, has);
+            if (found)
+                return found;
+        }
+        return null;
+    }
     IpcHandler {
         target: "openerProbe"
         function open(): bool {
             return ExStates.openPopup !== null;
+        }
+        // The middle of the status icons, along the dock, in its window.
+        function statusX(): real {
+            const status = probe.find(dock.docks[0]?.contentItem, item => item.statusButton !== undefined && item.clockButton !== undefined);
+            const button = status?.statusButton;
+            return button ? button.mapToItem(null, button.width / 2, 0).x : -1;
         }
     }
 }
@@ -101,8 +121,9 @@ def test_a_second_click_without_moving_closes_what_the_first_opened(bench, desk,
     x, y, w, h = dock_layer(bench)
     gap = 8 if style == "floating" else 0
     plate_top = y + h - gap - 52
-    # The clock just before the corner button, the status icons before the clock.
-    spot_x = x + w - gap - (30 if which == "clock" else 120)
+    # The clock just before the corner button, the status icons asked of the
+    # dock, as their width follows the glyphs.
+    spot_x = x + w - gap - 30 if which == "clock" else x + round(float(shell.call("openerProbe", "statusX")))
     pointer = desk.pointer()
     pointer.move(WIDTH // 2, HEIGHT // 2)
     pointer.move(spot_x, plate_top + 6)
