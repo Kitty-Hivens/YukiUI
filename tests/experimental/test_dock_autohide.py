@@ -20,6 +20,7 @@ SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
+import qs.experimental.background
 import qs.experimental.dock
 import qs.experimental.looks
 
@@ -47,6 +48,9 @@ ShellRoot {
     ExDock {
         id: dock
     }
+    // The wallpaper, which covers the whole screen, so the dock's layer is
+    // seen against it.
+    ExBackground {}
     IpcHandler {
         target: "autoHideProbe"
         function state(): string {
@@ -77,14 +81,19 @@ def state(shell) -> dict:
     return json.loads(shell.call("autoHideProbe", "state"))
 
 
-def dock_level(bench) -> str:
-    """The layer level the dock is on: "1" under the windows, "2" over them,
-    or empty while it is not up yet, so a wait goes on rather than ends."""
+def layer_level(bench, namespace: str) -> str:
+    """The layer level a namespace is on: "0" the wallpaper's, "1" under the
+    windows, "2" over them, or empty while it is not up yet, so a wait goes on
+    rather than ends."""
     for data in json.loads(bench.hyprctl("layers", "-j")).values():
         for level, layers in data["levels"].items():
-            if any(layer["namespace"] == "quickshell:dock" for layer in layers):
+            if any(layer["namespace"] == namespace for layer in layers):
                 return level
     return ""
+
+
+def dock_level(bench) -> str:
+    return layer_level(bench, "quickshell:dock")
 
 
 def test_the_dock_is_under_the_windows_unless_it_hides(bench, dock):
@@ -95,6 +104,9 @@ def test_the_dock_is_under_the_windows_unless_it_hides(bench, dock):
     dock.call("autoHideProbe", "setAutoHide", "false")
     try:
         wait_until(lambda: dock_level(bench) == "1", what="a dock that stays under the windows")
+        # And over the wallpaper, which covers the whole screen: on the same
+        # level and made after the dock, it hid the dock completely.
+        assert layer_level(bench, "quickshell:background") == "0"
     finally:
         dock.call("autoHideProbe", "setAutoHide", "false")
 

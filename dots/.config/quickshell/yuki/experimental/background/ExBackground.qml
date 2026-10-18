@@ -15,9 +15,11 @@ Variants {
 
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
-        // Bottom rather than background, so the desktop icons can live on the
-        // same layer and still sit under every window.
-        WlrLayershell.layer: WlrLayer.Bottom
+        // The lowest layer, the desktop icons on it with the wallpaper: under
+        // every window, and under the dock, which is on the layer above and
+        // under the windows itself. On the dock's layer, drawn over the whole
+        // screen and made after it, it covered the dock.
+        WlrLayershell.layer: WlrLayer.Background
         WlrLayershell.namespace: "quickshell:background"
         // Keys only while an icon is picked, so Delete and the arrows reach
         // it. Taking them otherwise would let a pointer resting on the empty
