@@ -11,7 +11,7 @@ pkgname=illogical-impulse-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 _commit='f24a60f438587e460c128880ce494c03f290d585'
 pkgdesc='Quickshell built from the fork carrying the polkit session fix, plus extra Qt deps'
 arch=(x86_64 aarch64)
