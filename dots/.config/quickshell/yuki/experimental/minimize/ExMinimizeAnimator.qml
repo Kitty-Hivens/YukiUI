@@ -31,8 +31,16 @@ Scope {
 
     property int duration: 300
 
-    /** A batch of windows whose pictures are all in place: they can go now. */
-    signal released(var batch)
+    property int nextBatch: 0
+
+    /**
+     * A batch of windows whose pictures are all in place: they can go now.
+     * Named by its number rather than handed over: an object passed through a
+     * signal arrives as another object since Qt 6.12, and the flights waiting
+     * for their batch never knew it was theirs, so they never set off and
+     * their pictures stayed on screen for good.
+     */
+    signal released(int batchId)
 
     function toplevelOf(address: string): var {
         const bare = address.replace(/^0x/, "");
@@ -70,7 +78,7 @@ Scope {
     }
 
     function launch(kind: string, windows, go) {
-        const batch = { left: 0, go: go, released: false };
+        const batch = { id: root.nextBatch++, left: 0, go: go, released: false };
         const added = [];
         for (const win of windows) {
             const toplevel = root.toplevelOf(win.address);
@@ -117,7 +125,7 @@ Scope {
             return;
         batch.released = true;
         batch.go();
-        root.released(batch);
+        root.released(batch.id);
     }
 
     function land(flight) {
@@ -252,8 +260,8 @@ Scope {
                             }
                             Connections {
                                 target: root
-                                function onReleased(batch) {
-                                    if (batch === flight.modelData.batch && flight.leaving)
+                                function onReleased(batchId) {
+                                    if (batchId === flight.modelData.batch.id && flight.leaving)
                                         startDelay.start();
                                 }
                             }
@@ -280,6 +288,17 @@ Scope {
                                     }
                                 }
                             }
+                            // However the flight goes wrong, it comes down: left in
+                            // the air, its picture stayed over the screen for good,
+                            // over the window come back, which then looked as if it
+                            // had stopped drawing. The window itself is moved on a
+                            // deadline of its own in Minimize.
+                            Timer {
+                                interval: root.duration + 2000
+                                running: true
+                                onTriggered: root.land(flight.modelData)
+                            }
+
                             Rectangle {
                                 anchors.fill: parent
                                 visible: !flight.leaving && !shot.hasContent
