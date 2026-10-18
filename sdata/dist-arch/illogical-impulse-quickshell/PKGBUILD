@@ -4,15 +4,20 @@
 # so under a uwsm session the agent never registers and no password prompt can appear.
 # See https://github.com/quickshell-mirror/quickshell/pull/875 -- once that merges, drop
 # this build and go back to depending on the repo `quickshell`.
+#
+# Built from the fork's `yuki` branch, the fix put on top of a newer upstream, not from
+# its master, which the pull request is opened from and is left as it is. The upstream
+# under it has to be new enough to build against the Qt installed: Qt 6.12 refuses
+# meta types that are only declared, which upstream stopped using in October 2026.
 
 groups=(illogical-impulse)
 _pkgname=quickshell
 pkgname=illogical-impulse-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
-pkgver=0.3.0
-pkgrel=2
-_commit='f24a60f438587e460c128880ce494c03f290d585'
+pkgver=0.3.2
+pkgrel=1
+_commit='fabe4defd44e574a2f48805bd7c1841cac374eeb'
 pkgdesc='Quickshell built from the fork carrying the polkit session fix, plus extra Qt deps'
 arch=(x86_64 aarch64)
 url='https://github.com/Kitty-Hivens/quickshell'
