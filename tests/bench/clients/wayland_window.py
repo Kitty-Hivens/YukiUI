@@ -16,6 +16,8 @@ line on stdin with one line of JSON:
     state                      what the window believes of itself
     keys                       the keys it has been given since last asked,
                                with the modifiers held, and forgets them
+    clicks                     how many presses of a mouse button reached it
+                               since last asked, and forgets them
     close                      close the window and end
 
 Everything it asks for goes to the compositor as an xdg_toplevel request, the
@@ -83,12 +85,25 @@ def on_key(kind):
     return record
 
 
+# Presses of a mouse button that reached the window.
+clicks = 0
+
+
+def on_click(_gesture, _count, _x, _y):
+    global clicks
+    clicks += 1
+
+
 def run(name):
     if name == "state":
         answer(state())
     elif name == "keys":
         answer({"keys": keys[:]})
         keys.clear()
+    elif name == "clicks":
+        global clicks
+        answer({"clicks": clicks})
+        clicks = 0
     elif name in ("maximize", "unmaximize", "minimize", "fullscreen", "unfullscreen"):
         getattr(window, name)()
         answer({"ok": name})
@@ -111,6 +126,10 @@ def on_activate(application):
     controller.connect("key-pressed", on_key("pressed"))
     controller.connect("key-released", on_key("released"))
     window.add_controller(controller)
+    gesture = Gtk.GestureClick()
+    gesture.set_button(0)
+    gesture.connect("pressed", on_click)
+    window.add_controller(gesture)
     if start_maximized:
         window.maximize()
     window.connect("map", lambda _window: GLib.idle_add(lambda: answer({"ready": True}) or False))

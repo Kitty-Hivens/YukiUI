@@ -65,6 +65,12 @@ hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Ка
 hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, size = {"(monitor_w*0.25)", "(monitor_h*0.25)"} })
 hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, float = true})
 hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, pin = true})
+-- Never takes the keyboard on its own: it took it as it opened and at every
+-- request of the player, and Escape, meant for the window that had been in
+-- use, closed it. It still has it once clicked, as any window. Kept from
+-- focus altogether, it took no clicks either, and its buttons were dead.
+hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, no_initial_focus = true})
+hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, focus_on_activate = false})
 
 -- Screen sharing
 hl.window_rule({match = {title = ".*is sharing (a window|your screen).*" }, float = true})
