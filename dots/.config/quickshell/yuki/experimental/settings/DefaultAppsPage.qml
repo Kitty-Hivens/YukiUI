@@ -84,13 +84,18 @@ ColumnLayout {
             Popup {
                 id: picker
 
-                readonly property real rowHeight: 44
+                // As a menu row, and taller only for a row with a second line.
+                readonly property real rowHeight: ExLooks.sizes.menuItem
+                readonly property real tallRowHeight: 44
+                readonly property real rowsHeight: group.modelData.candidates.reduce((sum, entry) => sum + (entry.ambiguous ? picker.tallRowHeight : picker.rowHeight), 0)
                 readonly property real headHeight: head.visible ? head.implicitHeight + ExLooks.spacing.s : 0
 
-                x: current.width - picker.width
+                // Under the box and as wide as it, as on Windows. A fixed 340
+                // stood a two-entry list far out past its box.
+                x: 0
                 y: current.height + 4
-                width: 340
-                height: Math.min(420, picker.headHeight + group.modelData.candidates.length * picker.rowHeight + 2 * ExLooks.sizes.menuPadding)
+                width: Math.max(current.width, 240)
+                height: Math.min(420, picker.headHeight + picker.rowsHeight + 2 * ExLooks.sizes.menuPadding)
                 // Kept inside the window, moved up rather than cut off.
                 margins: ExLooks.spacing.s
                 padding: 0
@@ -144,7 +149,7 @@ ColumnLayout {
                                 readonly property bool current: choice.modelData.id === group.modelData.current
 
                                 width: ListView.view.width
-                                height: picker.rowHeight
+                                height: choice.modelData.ambiguous ? picker.tallRowHeight : picker.rowHeight
                                 hoverEnabled: true
                                 onClicked: {
                                     picker.close();
@@ -168,7 +173,7 @@ ColumnLayout {
 
                                     IconImage {
                                         Layout.leftMargin: ExLooks.spacing.s + 2
-                                        implicitSize: 24
+                                        implicitSize: 18
                                         source: Quickshell.iconPath(choice.modelData.icon, "application-x-executable")
                                     }
                                     ColumnLayout {
@@ -178,6 +183,7 @@ ColumnLayout {
                                         ExText {
                                             Layout.fillWidth: true
                                             text: choice.modelData.name
+                                            role: "label"
                                             elide: Text.ElideRight
                                         }
                                         // Two applications can carry one name, and

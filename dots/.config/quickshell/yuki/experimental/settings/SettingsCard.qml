@@ -93,6 +93,14 @@ AbstractButton {
                 id: controlSlot
                 Layout.alignment: Qt.AlignVCenter
                 spacing: ExLooks.spacing.s
+                // A row places its children along it only, so one shorter
+                // than the rest stood at the top, a switch beside a button
+                // say. Each is put on the row's middle; one that anchors
+                // itself there already is left as it is.
+                onPositioningComplete: {
+                    for (const child of controlSlot.children)
+                        child.y = Math.round((controlSlot.height - child.height) / 2);
+                }
             }
             ExGlyph {
                 visible: root.leads
