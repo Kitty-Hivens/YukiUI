@@ -93,8 +93,15 @@ Item {
         default property alias content: holder.data
         /** Carries the dot that says something is waiting. */
         property bool marked: false
-        /** Room either side of the content, along the dock. */
-        property real inset: root.vertical ? 6 : 8
+        /**
+         * Room either side of the content, along the dock. Little enough that
+         * the icons of two zones side by side stand as far apart as those
+         * within one: with room for the hover plate the dock looked broken
+         * into groups.
+         */
+        property real inset: root.vertical ? 6 : 4
+        /** How far the hover plate reaches past that room, for space round what it lights. */
+        readonly property real overhang: root.vertical ? 0 : Math.max(0, 8 - zone.inset)
         /**
          * How far its clicks reach past it on either side, across the dock,
          * to the dock's edges. Each zone's own: counted from the tallest of
@@ -123,8 +130,11 @@ Item {
             onWheel: event => zone.wheeled(event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x)
         }
 
+        // Over the neighbour's room, which is fine: only one is ever lit.
         Rectangle {
             anchors.fill: parent
+            anchors.leftMargin: -zone.overhang
+            anchors.rightMargin: -zone.overhang
             radius: ExLooks.radius.control
             color: "transparent"
 
@@ -167,8 +177,6 @@ Item {
             id: layoutZone
 
             visible: root.layouts.codes.length > 1
-            // Close to its letters, as the icons beside it are to theirs.
-            inset: 6
             onActivated: root.layoutClicked()
 
             // As wide as the widest of the layouts in use, whichever is shown,
@@ -209,38 +217,49 @@ Item {
             readonly property var kinds: CaptureWatch.users.map(user => user.kind)
 
             visible: CaptureWatch.recording || CaptureWatch.users.length > 0
-            inset: 6
             onActivated: root.captureClicked()
 
-            Grid {
+            // In the font of the icons beside them, each as wide as its ink, so
+            // they keep the same gaps as those icons.
+            GridLayout {
                 columns: root.vertical ? 1 : 5
-                spacing: 4
+                rowSpacing: 6
+                columnSpacing: 10
 
-                ExGlyph {
+                ExStatusGlyph {
+                    Layout.alignment: Qt.AlignCenter
                     visible: CaptureWatch.recording
-                    text: "radio_button_checked"
+                    name: "record_circle"
+                    variants: [name]
                     size: 16
-                    fill: 1
                     color: ExLooks.colors.destructive
                 }
-                ExGlyph {
+                ExStatusGlyph {
+                    Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("screen")
-                    text: "screen_share"
+                    name: "monitor_share"
+                    variants: [name]
                     size: 18
                 }
-                ExGlyph {
+                ExStatusGlyph {
+                    Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("camera")
-                    text: "videocam"
+                    name: "video"
+                    variants: [name]
                     size: 18
                 }
-                ExGlyph {
+                ExStatusGlyph {
+                    Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("microphone")
-                    text: "mic"
+                    name: "microphone"
+                    variants: [name]
                     size: 18
                 }
-                ExGlyph {
+                ExStatusGlyph {
+                    Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("sound")
-                    text: "graphic_eq"
+                    name: "waveform"
+                    variants: [name]
                     size: 18
                 }
             }
@@ -290,6 +309,8 @@ Item {
         Zone {
             id: clockZone
 
+            // Set off from the icons, as the Windows clock is.
+            inset: 8
             // Notifications that arrived and have not been looked at.
             marked: Notifications.unread > 0
             onActivated: root.clockClicked()

@@ -75,7 +75,12 @@ Singleton {
         "battery_charging_80": 0xF008A,
         "battery_charging_90": 0xF008B,
         "battery_charging_100": 0xF0085,
-        "battery_alert_variant_outline": 0xF10CD
+        "battery_alert_variant_outline": 0xF10CD,
+        "record_circle": 0xF0EC2,
+        "monitor_share": 0xF1483,
+        "video": 0xF0567,
+        "microphone": 0xF036C,
+        "waveform": 0xF147D
     })
 
     // Every glyph each status can show, for a place that keeps it as wide as
@@ -86,7 +91,9 @@ Singleton {
     readonly property var chargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery_charging"))
     readonly property var dischargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery") && !name.startsWith("battery_charging"))
     readonly property var networkGlyphs: Object.keys(root.codes).filter(name => !root.volumeGlyphs.includes(name)
-        && !name.startsWith("battery") && name !== "shield_lock" && name !== "alert_circle")
+        && !name.startsWith("battery") && !root.captureGlyphs.includes(name) && name !== "shield_lock" && name !== "alert_circle")
+    /** The marks of who is capturing, drawn in the same font as the icons beside them. */
+    readonly property var captureGlyphs: ["record_circle", "monitor_share", "video", "microphone", "waveform"]
 
     /** The character that draws a glyph, or nothing for a name not listed. */
     function text(name: string): string {
