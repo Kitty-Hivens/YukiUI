@@ -19,12 +19,26 @@ from .bench import SHELL, Bench, BenchError, wait_until
 PROBE = SHELL / "benchProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
+import Quickshell.Io
+import qs.core
 import qs.core.services
 import qs.experimental.switcher
 import qs.experimental.windows
 
 // Written by tests/bench/shell.py for a test run, and removed after it.
 ShellRoot {
+    // The dock's style, which the placement leaves a gap round windows by.
+    // There is no dock here, only its setting. Empty until the config is read:
+    // set before that, the file read over it.
+    IpcHandler {
+        target: "benchConfig"
+        function setDockStyle(style: string): string {
+            if (!Config.ready)
+                return "";
+            Config.options.experimental.dock.style = style;
+            return Config.options.experimental.dock.style;
+        }
+    }
     Binding {
         target: Minimize
         property: "enabled"

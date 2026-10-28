@@ -5,6 +5,7 @@ import Quickshell.Io
 
 import qs.core
 import qs.core.services
+import qs.experimental.looks
 
 // Where a window is put as Windows puts it: maximised, or snapped to half of
 // its screen or a quarter of it, and put back where it stood.
@@ -77,9 +78,20 @@ Scope {
     }
 
     /**
-     * Lua marking a window by its placement: the tag the compositor rules give
-     * square corners by, "maximized", "snapped" for the halves and quarters,
-     * or neither, and for an X11 window whether it is maximised, which
+     * The room left round a placed window, and between two standing side by
+     * side. With the dock standing off the edge the windows stand off it too,
+     * by as much, and keep their round corners. Against an attached dock they
+     * meet the edges and each other, as on Windows.
+     */
+    readonly property real gap: Config.options.experimental.dock.style !== "attached" ? ExLooks.dock.floatingGap : 0
+
+    /**
+     * Lua marking a window by its placement: "maximized", "snapped" for the
+     * halves and quarters, or neither, which is how a shell started anew
+     * knows it, and the tags the compositor rules draw it by. Against the
+     * edges, with no gap, "square" takes its round corners off, and a
+     * maximised one is "bare" as well, with no border or shadow. For an X11
+     * window, whether it is maximised, which
      * Hyprland never tells one, so it draws itself to match and its own
      * maximise button means what it shows. It is sent before the window is
      * resized, which is what carries it to the window.
@@ -94,8 +106,11 @@ Scope {
         const target = `window = "address:${address}"`;
         const maximized = zone === "maximized";
         const snapped = zone.length > 0 && !maximized;
+        const flush = zone.length > 0 && root.gap === 0;
         return `hl.dispatch(hl.dsp.window.tag({ tag = "${maximized ? "+" : "-"}maximized", ${target} })) `
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped ? "+" : "-"}snapped", ${target} })) `
+            + `hl.dispatch(hl.dsp.window.tag({ tag = "${flush ? "+" : "-"}square", ${target} })) `
+            + `hl.dispatch(hl.dsp.window.tag({ tag = "${flush && maximized ? "+" : "-"}bare", ${target} })) `
             + (x11 ? `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end ` : "");
     }
 
@@ -249,6 +264,12 @@ Scope {
         };
     }
 
+    /** What the zones are cut from: the work area less the gap along its edges. */
+    function placementArea(monitor): var {
+        const area = root.workArea(monitor);
+        return { x: area.x + root.gap, y: area.y + root.gap, w: area.w - 2 * root.gap, h: area.h - 2 * root.gap };
+    }
+
     function reservedOf(monitors): var {
         const reserved = {};
         for (const monitor of monitors)
@@ -270,23 +291,26 @@ Scope {
         return lua;
     }
 
-    /** The part of a work area a zone stands for. */
+    /** The part of a placement area a zone stands for, the gap left between neighbours. */
     function zoneRect(area, zone: string): var {
-        const halfW = Math.round(area.w / 2);
-        const halfH = Math.round(area.h / 2);
+        const gap = root.gap;
+        const halfW = Math.round((area.w - gap) / 2);
+        const halfH = Math.round((area.h - gap) / 2);
+        const farX = area.x + halfW + gap;
+        const farY = area.y + halfH + gap;
         switch (zone) {
         case "left":
             return { x: area.x, y: area.y, w: halfW, h: area.h };
         case "right":
-            return { x: area.x + halfW, y: area.y, w: area.w - halfW, h: area.h };
+            return { x: farX, y: area.y, w: area.x + area.w - farX, h: area.h };
         case "topleft":
             return { x: area.x, y: area.y, w: halfW, h: halfH };
         case "topright":
-            return { x: area.x + halfW, y: area.y, w: area.w - halfW, h: halfH };
+            return { x: farX, y: area.y, w: area.x + area.w - farX, h: halfH };
         case "bottomleft":
-            return { x: area.x, y: area.y + halfH, w: halfW, h: area.h - halfH };
+            return { x: area.x, y: farY, w: halfW, h: area.y + area.h - farY };
         case "bottomright":
-            return { x: area.x + halfW, y: area.y + halfH, w: area.w - halfW, h: area.h - halfH };
+            return { x: farX, y: farY, w: area.x + area.w - farX, h: area.y + area.h - farY };
         }
         return area;
     }
@@ -323,7 +347,10 @@ Scope {
         const monitor = monitors.find(candidate => candidate.id === client.monitor);
         if (!monitor)
             return "";
+        // Whether a window is as large as the screen allows is judged by the
+        // work area, where it stands and is put by the placement area.
         const area = root.workArea(monitor);
+        const room = root.placementArea(monitor);
         const target = `window = "address:${client.address}"`;
         const entry = root.placed[client.address];
         let wanted = job.wanted;
@@ -357,7 +384,7 @@ Scope {
                 wanted = kept.zone;
                 before = kept.before;
             } else {
-                wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, area);
+                wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || root.covers(client, area) ? "maximized" : root.zoneUnder(client, room);
                 before = root.centred(area);
             }
             if (!wanted)
@@ -392,7 +419,7 @@ Scope {
             return "";
         const placement = { zone: zone, before: before };
         root.setPlaced(client.address, placement);
-        const rect = root.zoneRect(area, zone);
+        const rect = root.zoneRect(room, zone);
         // Learnt rather than placed, it stays where it stands, and one fitted
         // again that already fits is not touched.
         const fits = client.at[0] === rect.x && client.at[1] === rect.y && client.size[0] === rect.w && client.size[1] === rect.h;

@@ -37,11 +37,13 @@ hl.config({
     },
 })
 
--- A maximised window meets the edges of the screen and a snapped one its
--- neighbour, so, as on Windows, neither has round corners, and a maximised
--- one has no border or shadow either. The shell tags the windows it places.
-hl.window_rule({ match = { tag = "maximized" }, rounding = 0, border_size = 0, no_shadow = true })
-hl.window_rule({ match = { tag = "snapped" }, rounding = 0 })
+-- Against an attached dock a maximised window meets the edges of the screen
+-- and a snapped one its neighbour, so, as on Windows, neither has round
+-- corners, and a maximised one has no border or shadow either. With the dock
+-- standing off the edge they stand off the edges as well, and are drawn as
+-- any other window. The shell tags the windows it places by which it is.
+hl.window_rule({ match = { tag = "square" }, rounding = 0 })
+hl.window_rule({ match = { tag = "bare" }, border_size = 0, no_shadow = true })
 
 -- Blur behind the dock, as its settings ask. The shell calls this as it
 -- starts, whenever the setting changes and after every reload, which builds

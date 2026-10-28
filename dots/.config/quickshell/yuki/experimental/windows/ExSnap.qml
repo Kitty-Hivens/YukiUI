@@ -101,7 +101,7 @@ Scope {
                             y: monitor.y,
                             w: (turned ? monitor.height : monitor.width) / scale,
                             h: (turned ? monitor.width : monitor.height) / scale,
-                            area: root.placement.workArea(monitor)
+                            area: root.placement.placementArea(monitor)
                         };
                     });
                 } catch (error) {

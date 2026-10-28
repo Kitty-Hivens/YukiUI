@@ -2,7 +2,7 @@
 
 import time
 
-from experimental.test_maximize import area, is_maximized, without_decorations
+from experimental.test_maximize import SNAPPED, area, is_maximized, without_decorations
 
 
 def zone_rect(desk, zone):
@@ -21,7 +21,7 @@ def test_snapped_window_is_square(desk):
     for zone in ("left", "right", "topleft", "bottomright"):
         desk.place(window, zone)
         rect = zone_rect(desk, zone)
-        window.wait(lambda c, rect=rect: (*c["at"], *c["size"]) == rect and c["tags"] == ["snapped"], f"snapped {zone}")
+        window.wait(lambda c, rect=rect: (*c["at"], *c["size"]) == rect and set(c["tags"]) == SNAPPED, f"snapped {zone}")
         window.wait_state(without_decorations, f"it draws no decorations in {zone}")
 
 
@@ -29,7 +29,7 @@ def test_restoring_a_snapped_window_puts_it_back(desk):
     window = desk.wayland()
     before = window.rect
     desk.place(window, "left")
-    window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+    window.wait(lambda c: set(c["tags"]) == SNAPPED, "snapped")
     desk.restore(window)
     client = window.wait(lambda c: not c["tags"], "put back")
     assert (*client["at"], *client["size"]) == before
@@ -64,7 +64,7 @@ def test_pulling_a_snapped_window_away_gives_its_size_back_under_the_pointer(des
     window = desk.wayland()
     _, _, width, height = window.rect
     desk.place(window, "left")
-    window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+    window.wait(lambda c: set(c["tags"]) == SNAPPED, "snapped")
     pointer = drag_by_title(desk, window, 900, 400)
     client = window.wait(lambda c: tuple(c["size"]) == (width, height), "its own size back")
     x, y = client["at"]
@@ -100,7 +100,7 @@ def test_a_snapped_window_dragged_to_another_edge_still_goes_back_where_it_stood
     window = desk.wayland()
     before = window.rect
     desk.place(window, "left")
-    window.wait(lambda c: c["tags"] == ["snapped"], "snapped left")
+    window.wait(lambda c: set(c["tags"]) == SNAPPED, "snapped left")
     pointer = drag_by_title(desk, window, 1919, 500)
     pointer.release()
     window.wait(lambda c: (*c["at"], *c["size"]) == zone_rect(desk, "right"), "snapped right by the drag")
@@ -119,7 +119,7 @@ def test_a_snapped_window_flicked_away_gets_its_own_size(desk):
         window = desk.wayland()
         _, _, width, height = window.rect
         desk.place(window, "left")
-        window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+        window.wait(lambda c: set(c["tags"]) == SNAPPED, "snapped")
         x, y, w, _ = window.rect
         pointer = desk.pointer()
         pointer.move(x + w // 2, y + TITLE)

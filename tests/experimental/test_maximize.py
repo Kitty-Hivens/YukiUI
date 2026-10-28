@@ -16,6 +16,10 @@ from bench.shell import Shell
 def area(desk):
     return desk.bench.work_area
 
+# The tags of a snapped window against an attached dock, the bench's: snapped,
+# and drawn square, meeting the edges and its neighbour.
+SNAPPED = {"snapped", "square"}
+
 
 def is_maximized(desk, client) -> bool:
     # Hyprland's fullscreen state stays untouched: set apart from its client
@@ -42,7 +46,7 @@ def test_wayland_window_draws_no_decorations_of_its_own(desk):
     window = desk.wayland()
     window.wait_state(without_decorations, "it is maximised and tiled")
     desk.place(window, "left")
-    window.wait(lambda c: c["tags"] == ["snapped"], "snapped")
+    window.wait(lambda c: set(c["tags"]) == SNAPPED, "snapped")
     window.wait_state(without_decorations, "it is still maximised and tiled")
 
 
