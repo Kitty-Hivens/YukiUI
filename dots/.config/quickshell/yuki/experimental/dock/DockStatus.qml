@@ -70,12 +70,17 @@ Item {
         enabled: root.showSeconds
         precision: SystemClock.Seconds
     }
-    /** The time as the dock shows it: the shell's format, with seconds after the minutes when asked. */
-    readonly property string time: {
-        if (!root.showSeconds)
-            return DateTime.time;
+    /** The shell's format of the time, with seconds after the minutes when asked. */
+    readonly property string timeFormat: {
         const format = Config.options?.time.format ?? "hh:mm";
-        return Qt.locale().toString(secondsClock.date, format.includes("ss") ? format : format.replace("mm", "mm:ss"));
+        return !root.showSeconds || format.includes("ss") ? format : format.replace("mm", "mm:ss");
+    }
+    /** The time as the dock shows it. */
+    readonly property string time: root.showSeconds ? Qt.locale().toString(secondsClock.date, root.timeFormat) : DateTime.time
+
+    /** The time at an hour of a day, for how wide the clock can get. */
+    function sampleTime(hour: int): string {
+        return Qt.locale().toString(new Date(2000, 0, 1, hour, 0, 0), root.timeFormat);
     }
 
     /** The time and what follows it, "pm" say, apart. */
@@ -322,17 +327,39 @@ Item {
             ColumnLayout {
                 spacing: 0
 
+                // Its digits all of one width, and across the dock never
+                // narrower than the widest time the format gives, an hour of
+                // two digits in the morning or the evening: the font's own
+                // digits differ, and everything before the clock moved a little
+                // as the minutes turned.
                 ExText {
+                    id: timeLabel
+
                     Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignRight
+                    Layout.minimumWidth: root.vertical ? 0 : Math.ceil(Math.max(morning.advanceWidth, evening.advanceWidth))
+                    horizontalAlignment: root.vertical ? Text.AlignHCenter : Text.AlignRight
                     text: root.vertical ? root.clockParts[0] : root.time
                     role: "label"
+                    font.features: ({ "tnum": 1 })
                     elide: Text.ElideNone
+
+                    TextMetrics {
+                        id: morning
+                        font: timeLabel.font
+                        text: root.sampleTime(10)
+                    }
+                    TextMetrics {
+                        id: evening
+                        font: timeLabel.font
+                        text: root.sampleTime(22)
+                    }
                 }
                 ExText {
                     Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignRight
                     visible: text.length > 0
                     text: root.vertical ? root.clockParts[1] : (Config.options.experimental.dock.clockDate ? DateTime.shortDate : "")
                     role: "caption"
+                    font.features: ({ "tnum": 1 })
                     dim: true
                     elide: Text.ElideNone
                 }
