@@ -115,15 +115,29 @@ ColumnLayout {
             text: Translation.tr("Pointer speed")
 
             ExSlider {
+                id: speedSlider
                 implicitWidth: 240
                 from: -1
                 to: 1
                 stepSize: 0.05
                 value: HyprInput.mouseSensitivity
-                // Written once the knob is let go, not on every step of a drag.
+                // Felt as the knob moves, as on Windows, at most every 120 ms,
+                // and once more as it is let go.
+                onMoved: {
+                    if (!speedWrite.running)
+                        speedWrite.start();
+                }
                 onPressedChanged: {
-                    if (!pressed)
+                    if (!pressed) {
+                        speedWrite.stop();
                         HyprInput.set(["input"], "sensitivity", Math.round(value * 100) / 100);
+                    }
+                }
+
+                Timer {
+                    id: speedWrite
+                    interval: 120
+                    onTriggered: HyprInput.set(["input"], "sensitivity", Math.round(speedSlider.value * 100) / 100)
                 }
             }
         }

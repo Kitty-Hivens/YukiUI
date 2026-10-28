@@ -379,14 +379,27 @@ ColumnLayout {
                 to: 100
                 stepSize: 1
                 value: parseInt(root.brightness) || 0
-                // Sent once the knob is let go: a panel driven over DDC takes a
-                // moment per step and would fall behind a drag.
+                // Seen on the screen as the knob moves, as on Windows, but sent
+                // at most every 150 ms: a panel driven over DDC takes a moment
+                // per step and would fall behind a drag. Sent once more as the
+                // knob is let go.
+                onMoved: {
+                    if (!brightnessSend.running)
+                        brightnessSend.start();
+                }
                 onPressedChanged: {
                     if (brightnessSlider.pressed)
                         return;
+                    brightnessSend.stop();
                     root.brightness = String(Math.round(brightnessSlider.value));
                     root.shell?.call("brightness", "setLevel", [root.selectedName, Math.round(brightnessSlider.value)]);
                     readSoon.restart();
+                }
+
+                Timer {
+                    id: brightnessSend
+                    interval: 150
+                    onTriggered: root.shell?.call("brightness", "setLevel", [root.selectedName, Math.round(brightnessSlider.value)])
                 }
             }
         }
@@ -465,9 +478,23 @@ ColumnLayout {
                     to: 3500
                     stepSize: 100
                     value: 6000 - Config.options.light.night.colorTemperature
+                    // Seen as the knob moves, at most every 120 ms, and once
+                    // more as it is let go.
+                    onMoved: {
+                        if (!warmthWrite.running)
+                            warmthWrite.start();
+                    }
                     onPressedChanged: {
-                        if (!warmth.pressed)
+                        if (!warmth.pressed) {
+                            warmthWrite.stop();
                             Config.options.light.night.colorTemperature = 6000 - Math.round(warmth.value);
+                        }
+                    }
+
+                    Timer {
+                        id: warmthWrite
+                        interval: 120
+                        onTriggered: Config.options.light.night.colorTemperature = 6000 - Math.round(warmth.value)
                     }
                 }
             }

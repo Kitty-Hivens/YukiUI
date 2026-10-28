@@ -151,10 +151,25 @@ ColumnLayout {
                     to: 100
                     stepSize: 1
                     value: root.dock.opacity
-                    // Written once the knob is let go, not on every step of a drag.
+                    // Shown on the dock as the knob moves, so it can be judged
+                    // there, but written at most every 80 ms: the dock is in
+                    // another process and hears of it through the config file.
+                    // Written once more as the knob is let go, for the last step.
+                    onMoved: {
+                        if (!opacityWrite.running)
+                            opacityWrite.start();
+                    }
                     onPressedChanged: {
-                        if (!pressed)
+                        if (!pressed) {
+                            opacityWrite.stop();
                             Config.options.experimental.dock.opacity = Math.round(value);
+                        }
+                    }
+
+                    Timer {
+                        id: opacityWrite
+                        interval: 80
+                        onTriggered: Config.options.experimental.dock.opacity = Math.round(opacitySlider.value)
                     }
                 }
             }
