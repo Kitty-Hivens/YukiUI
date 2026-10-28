@@ -292,7 +292,8 @@ Item {
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.volumeGlyph
-                    variants: ExStatusGlyphs.volumeGlyphs
+                    variants: ExStatusGlyphs.volumeVariants
+                    ghost: name === "volume_low" || name === "volume_medium" ? "volume_high" : ""
                     size: 18
                 }
                 ExStatusGlyph {

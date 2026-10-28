@@ -26,6 +26,8 @@ Item {
     property color plate: "transparent"
     /** Fades in and out, for a connection being made. */
     property bool pulse: false
+    /** A glyph drawn faintly under it, by name, or empty: the full speaker, whose waves not reached stay as a shadow. */
+    property string ghost: ""
 
     /** From the left of the leftmost ink of the variants to the right of the rightmost, or null without them. */
     readonly property var ink: {
@@ -48,6 +50,17 @@ Item {
 
     FontMetrics {
         id: metrics
+        font: glyph.font
+    }
+
+    Text {
+        visible: root.ghost.length > 0
+        x: glyph.x
+        anchors.verticalCenter: parent.verticalCenter
+        text: ExStatusGlyphs.text(root.ghost)
+        color: root.color
+        opacity: 0.3
+        renderType: Text.NativeRendering
         font: glyph.font
     }
 

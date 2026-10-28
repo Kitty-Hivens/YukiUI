@@ -134,6 +134,25 @@ Singleton {
         return "speakers";
     }
 
+    /**
+     * The glyphs the sound can show on the output playing now, for a place
+     * as wide as the widest of them. Counted across every output, the screen's
+     * speaker set the width, and a plain speaker stood in a wide empty stretch.
+     */
+    readonly property var volumeVariants: {
+        switch (root.outputKind) {
+        case "headphones":
+            return ["headphones", "headphones_off"];
+        case "bluetoothHeadphones":
+            return ["headphones_bluetooth", "headphones_off"];
+        case "bluetoothSpeaker":
+            return ["speaker_bluetooth", "speaker_off"];
+        case "display":
+            return ["monitor_speaker", "monitor_speaker_off"];
+        }
+        return ["volume_off", "volume_low", "volume_medium", "volume_high"];
+    }
+
     readonly property bool muted: Audio.sink?.audio?.muted ?? false
     readonly property real volume: Audio.sink?.audio?.volume ?? 0
 
