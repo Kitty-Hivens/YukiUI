@@ -94,7 +94,7 @@ Item {
         /** Carries the dot that says something is waiting. */
         property bool marked: false
         /** Room either side of the content, along the dock. */
-        property real inset: root.vertical ? 6 : 10
+        property real inset: root.vertical ? 6 : 8
         /**
          * How far its clicks reach past it on either side, across the dock,
          * to the dock's edges. Each zone's own: counted from the tallest of
@@ -259,9 +259,12 @@ Item {
                 rowSpacing: 6
                 columnSpacing: 10
 
+                // As wide as the ink of their widest glyphs, so the gaps
+                // between them are even.
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.networkGlyph
+                    variants: ExStatusGlyphs.networkGlyphs
                     badge: ExStatusGlyphs.networkBadge
                     pulse: ExStatusGlyphs.connecting === "bluetooth"
                     plate: ExLooks.colors.dockPlate
@@ -270,12 +273,14 @@ Item {
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.volumeGlyph
+                    variants: ExStatusGlyphs.volumeGlyphs
                     size: 18
                 }
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: Battery.available
                     name: ExStatusGlyphs.batteryGlyph
+                    variants: Battery.isCharging ? ExStatusGlyphs.chargingGlyphs : ExStatusGlyphs.dischargingGlyphs
                     color: Battery.isLowAndNotCharging ? ExLooks.colors.destructive : ExLooks.colors.text
                     size: 18
                 }

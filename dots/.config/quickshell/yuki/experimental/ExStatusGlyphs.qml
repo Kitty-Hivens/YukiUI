@@ -78,6 +78,16 @@ Singleton {
         "battery_alert_variant_outline": 0xF10CD
     })
 
+    // Every glyph each status can show, for a place that keeps it as wide as
+    // the widest of them. The battery's by whether it is charging: the bolt
+    // makes it nearly twice as wide, and kept that wide for good it left an
+    // empty stretch beside the battery whenever it was not charging.
+    readonly property var volumeGlyphs: Object.keys(root.codes).filter(name => /^(volume|headphones|speaker|monitor_speaker)/.test(name))
+    readonly property var chargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery_charging"))
+    readonly property var dischargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery") && !name.startsWith("battery_charging"))
+    readonly property var networkGlyphs: Object.keys(root.codes).filter(name => !root.volumeGlyphs.includes(name)
+        && !name.startsWith("battery") && name !== "shield_lock" && name !== "alert_circle")
+
     /** The character that draws a glyph, or nothing for a name not listed. */
     function text(name: string): string {
         const code = root.codes[name];
