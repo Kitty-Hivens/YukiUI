@@ -117,17 +117,25 @@ Singleton {
             root.brightnessChanged();
         }
 
+        // Only once the value has been read: from the nought it starts at to
+        // the value read, it animated the backlight down and up again, and
+        // every frame of it was written back.
         Behavior on multipliedBrightness {
-            enabled: monitor.animateChanges
+            enabled: monitor.animateChanges && monitor.ready
             NumberAnimation {
                 duration: 200
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
             }
         }
+        // The backlight is written only for a change made here, never for the
+        // value read from it. Each shell starting, the settings window
+        // opening, and a shell on the test bench wrote it as they came up, and
+        // the machine's screen dimmed for a moment each time.
         onMultipliedBrightnessChanged: {
-            if (monitor.animationEnabled) syncBrightness();
-            else setTimer.restart();
+            if (!monitor.ready)
+                return;
+            setTimer.restart();
         }
 
         function initialize() {

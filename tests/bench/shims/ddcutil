@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The bench's ddcutil: no external monitors, and nothing reaches a real one.
+printf 'ddcutil %s\n' "$*" >> "${YUKI_BENCH_SHIM_LOG:-/dev/null}"
+exit 0

@@ -125,6 +125,11 @@ class Bench:
         return self.build / "pointer"
 
     @property
+    def shim_log(self) -> Path:
+        """What the stand-in hardware tools were asked, one call a line."""
+        return self.root / "shims.log"
+
+    @property
     def locked_client(self) -> Path:
         """A fullscreen window that locks the pointer, as a game with raw input does."""
         return self.build / "locked"
@@ -196,6 +201,11 @@ end
             "YUKI_RUNTIME_DIR": str(self.runtime_dir),
             # The clipboard helper as built for this run, not the installed one.
             "YUKI_CLIP": str(self.clip_tool),
+            # Stand-ins for the tools that drive the backlight, which is the
+            # machine's and so the person's: a shell started on the bench set
+            # it as it came up, and their screen dimmed.
+            "PATH": f"{REPO / 'tests/bench/shims'}:{os.environ.get('PATH', '')}",
+            "YUKI_BENCH_SHIM_LOG": str(self.shim_log),
         })
         # The home directory and the session bus stay the person's: fonts and
         # icons are found there, and nothing the tests start writes to either.

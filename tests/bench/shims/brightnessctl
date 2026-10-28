@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# The bench's brightnessctl: a backlight at half of 1000 that nothing changes.
+# What the shell asks of it is written to YUKI_BENCH_SHIM_LOG, so a test can
+# see it, and the machine's own backlight, which the bench shares with the
+# person's session, is never touched.
+printf 'brightnessctl %s\n' "$*" >> "${YUKI_BENCH_SHIM_LOG:-/dev/null}"
+for arg in "$@"; do
+    case "$arg" in
+        g) echo 500; exit 0 ;;
+        m) echo 1000; exit 0 ;;
+    esac
+done
+exit 0
