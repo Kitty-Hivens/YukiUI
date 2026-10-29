@@ -58,12 +58,6 @@ hl.window_rule({match = {class = "^(Zotero)$" },                             siz
 -- Tiling
 hl.window_rule({match = {class = "^dev\\.warp\\.Warp$" }, tile = true})
 
--- The test bench's nested compositor. Started inside this session it opens a
--- window of its own for a moment, until its config turns that output off, and
--- the window flashed over the screen and took the keyboard. It goes straight
--- to a workspace nobody sees.
-hl.window_rule({match = {class = "^(aquamarine)$" }, workspace = "special:bench silent", no_initial_focus = true, no_anim = true})
-
 -- Picture-in-Picture
 hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, float = true})
 hl.window_rule({match = {title = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture|Картинка в картинке)(.*)$" }, keep_aspect_ratio = true})
