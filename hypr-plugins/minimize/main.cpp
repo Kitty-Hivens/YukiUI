@@ -170,6 +170,29 @@ namespace {
         return nullptr;
     }
 
+    // Whether a window would float if it opened now: Hyprland floats it itself,
+    // as it judged when the window opened, a dialog, a window with a parent, one
+    // of a fixed size, or a rule loaded now floats it. A family that tiles takes
+    // every other floating window into its layout as it comes up. The rules are
+    // read again for the purpose, without the one-time rules, which are gone by
+    // now: what a window was given as it opened came from the family before.
+    int shouldFloat(lua_State* state) {
+        const std::string address = luaL_checkstring(state, 1);
+        bool              floats  = false;
+        for (const auto& window : Desktop::windowState()->windows()) {
+            if (!window || std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) != address)
+                continue;
+            floats = window->m_requestsFloat;
+            if (!floats && window->m_ruleApplicator) {
+                window->m_ruleApplicator->readStaticRules(true);
+                floats = window->m_ruleApplicator->static_.floating.value_or(false);
+            }
+            break;
+        }
+        lua_pushboolean(state, floats);
+        return 1;
+    }
+
     int resetFocus(lua_State*) {
         Desktop::focusState()->resetWindowFocus();
         return 0;
@@ -289,6 +312,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
 
     HyprlandAPI::addLuaFunction(handle, "minimize", "reset_focus", resetFocus);
     HyprlandAPI::addLuaFunction(handle, "minimize", "set_window_state", setWindowState);
+    HyprlandAPI::addLuaFunction(handle, "minimize", "should_float", shouldFloat);
 
     // Windows that were already open when the plugin came in.
     for (const auto& window : Desktop::windowState()->windows())

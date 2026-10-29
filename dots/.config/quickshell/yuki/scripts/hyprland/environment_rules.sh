@@ -19,6 +19,9 @@
 #
 # Written beside TARGET under a name of its own and renamed into place, so the
 # compositor never reads half a file and two runs at once never share one.
+#
+# Prints "replaced" when TARGET was written, so the shell knows to wait for the
+# compositor to read it back, and nothing when it was left alone.
 
 set -u
 
@@ -49,3 +52,4 @@ mv -f "$staged" "$target" || exit 1
 if ! $existed; then
     hyprctl reload > /dev/null
 fi
+echo replaced

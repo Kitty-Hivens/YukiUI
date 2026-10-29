@@ -233,6 +233,8 @@ Scope {
                 for (const job of queue) {
                     if (job.address === "*" && job.wanted === "layers") {
                         lua += root.fitToReserved(clients, monitors);
+                    } else if (job.address === "*" && job.wanted === "inherit") {
+                        lua += root.inherit(clients, monitors);
                     } else if (job.address === "*") {
                         lua += "YUKI_PLACED = {} ";
                         for (const client of clients)
@@ -340,9 +342,58 @@ Scope {
         return "";
     }
 
+    /**
+     * Lua taking over the windows another environment tiled, as this one comes
+     * up in its place: a desktop of overlapping windows has no tiling, and a
+     * tiled window under the floating ones could never be brought up over
+     * them. Each is floated. One alone on its workspace filled it, and is
+     * maximised. The others go where their application last stood, or, with
+     * nothing remembered, to a size of their own in the middle, each a step
+     * down and across from the last so none hides another whole.
+     */
+    function inherit(clients, monitors): string {
+        const tiled = clients.filter(client => client.mapped && !client.floating && client.workspace.id >= 1 && client.fullscreen === 0);
+        const steps = ({});
+        let lua = "";
+        for (const client of tiled) {
+            const monitor = monitors.find(candidate => candidate.id === client.monitor);
+            if (!monitor)
+                continue;
+            const target = `window = "address:${client.address}"`;
+            lua += `hl.dispatch(hl.dsp.window.float({ action = "enable", ${target} })) `;
+            const area = root.workArea(monitor);
+            if (!tiled.some(other => other !== client && other.workspace.id === client.workspace.id)) {
+                lua += root.answer({ address: client.address, wanted: "maximized", before: root.centred(area), floatedNow: true }, clients, monitors);
+                continue;
+            }
+            const step = steps[client.workspace.id] ?? 0;
+            steps[client.workspace.id] = step + 1;
+            const back = root.centred(area);
+            const x = Math.min(back.at[0] + step * 32, area.x + area.w - back.size[0]);
+            const y = Math.min(back.at[1] + step * 32, area.y + area.h - back.size[1]);
+            lua += `if not (YUKI_PLACE_REMEMBERED and YUKI_PLACE_REMEMBERED("${client.address}")) then `
+                + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${back.size[0]}, y = ${back.size[1]} })) `
+                + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${x}, y = ${y} })) end `;
+        }
+        return lua;
+    }
+
+    // Only as this environment comes up in another's place, once the
+    // compositor runs under its rules: started anew, it finds its own windows.
+    Connections {
+        target: Environments
+        enabled: Environments.switchedFrom.length > 0
+
+        function onRulesSettled() {
+            root.request("*", "inherit");
+        }
+    }
+
     function answer(job, clients, monitors): string {
         const client = clients.find(candidate => candidate.address === job.address);
-        if (!client || !client.floating || client.workspace.id < 1 || client.fullscreen !== 0)
+        // A window floated in the same batch, as one taken over is, is still
+        // tiled in the list read before it.
+        if (!client || (!client.floating && !job.floatedNow) || client.workspace.id < 1 || client.fullscreen !== 0)
             return "";
         const monitor = monitors.find(candidate => candidate.id === client.monitor);
         if (!monitor)

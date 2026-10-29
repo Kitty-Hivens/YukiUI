@@ -5,6 +5,7 @@ import QtQml
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs.core
 import qs.core.functions
@@ -159,6 +160,25 @@ Singleton {
     property string activeId: ""
     property var active: null
 
+    /**
+     * The environment that was up before this one, when this one came up in
+     * its place, or empty when it came up again: with the shell started anew,
+     * or after a failed swap back to it.
+     *
+     * The windows still stand as the last one left them, floating and placed or
+     * tiled, and only the one coming up knows how its own desktop holds them.
+     * Read from a file of the state, since the shell started anew has no
+     * memory of it, and set before the new one is built so it reads it as it
+     * comes up.
+     */
+    property string switchedFrom: ""
+
+    FileView {
+        id: lastMounted
+        path: FileUtils.trimFileProtocol(`${Directories.state}/user/environment-mounted.txt`)
+        blockLoading: true
+    }
+
     onActiveIdChanged: root.remount()
 
     function remount() {
@@ -174,6 +194,9 @@ Singleton {
             console.warn(`[Environments] ${id} is not installed, nothing mounted`);
             return;
         }
+        const previous = (lastMounted.text() ?? "").trim();
+        root.switchedFrom = previous.length > 0 && previous !== id ? previous : "";
+        lastMounted.setText(id);
         const component = Qt.createComponent(manifest.url, Component.PreferSynchronous);
         if (component.status !== Component.Ready) {
             root.noteFailure(id, component.status === Component.Error ? component.errorString() : "the entry did not finish building");
@@ -207,8 +230,56 @@ Singleton {
      */
     function writeCompositorRules(id: string, source: string) {
         const header = `-- Written by the shell for the environment that is up (${id}). Replaced on every switch, do not edit.`;
-        Quickshell.execDetached(["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hyprland/environment_rules.sh")),
-            header, source ?? "", root.compositorRulesPath]);
+        rulesWriter.command = ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hyprland/environment_rules.sh")),
+            header, source ?? "", root.compositorRulesPath];
+        rulesWriter.running = true;
+    }
+
+    /**
+     * The rules of the environment that is up are the ones the compositor
+     * runs under: written and read back, or already there. What an environment
+     * asks of the compositor about the windows it inherits, whether one would
+     * float say, is answered by the rules loaded, and until the reload those
+     * are still the previous environment's.
+     */
+    signal rulesSettled
+
+    property bool awaitingReload: false
+
+    Process {
+        id: rulesWriter
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (text.trim() !== "replaced") {
+                    root.rulesSettled();
+                    return;
+                }
+                root.awaitingReload = true;
+                reloadTimeout.restart();
+            }
+        }
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "configreloaded" || !root.awaitingReload)
+                return;
+            root.awaitingReload = false;
+            reloadTimeout.stop();
+            root.rulesSettled();
+        }
+    }
+    // A reload that never comes, the compositor not watching the file say,
+    // does not hold the environment back for good.
+    Timer {
+        id: reloadTimeout
+        interval: 3000
+        onTriggered: {
+            if (!root.awaitingReload)
+                return;
+            root.awaitingReload = false;
+            root.rulesSettled();
+        }
     }
 
     /**

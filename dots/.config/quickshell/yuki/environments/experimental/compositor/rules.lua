@@ -264,6 +264,28 @@ for key in pairs(YUKI_GEOMETRY) do
     end
 end
 
+-- Puts a window already open where its application last stood, as the armed
+-- rule puts its first window as it opens, for one this environment takes over
+-- from another as it comes up. False when nothing is remembered for it.
+function YUKI_PLACE_REMEMBERED(address)
+    for _, w in ipairs(hl.get_windows()) do
+        if w.address == address then
+            local g = usableWindow(w) and YUKI_GEOMETRY[windowKey(w)]
+            local m = w.monitor
+            if not g or not m then
+                return false
+            end
+            local width = math.min(g.w, m.width)
+            local height = math.min(g.h, m.height)
+            local target = "address:" .. address
+            hl.dispatch(hl.dsp.window.resize({ window = target, x = width, y = height }))
+            hl.dispatch(hl.dsp.window.move({ window = target, x = m.x + math.max(0, math.min(g.x, m.width - width)), y = m.y + math.max(0, math.min(g.y, m.height - height)) }))
+            return true
+        end
+    end
+    return false
+end
+
 -- An X11 application places and sizes its own window, Steam among them, which
 -- comes back as large as it was, so it is not remembered here, and a place
 -- remembered for one before is dropped as it opens. A window rule cannot tell

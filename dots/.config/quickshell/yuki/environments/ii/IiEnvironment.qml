@@ -32,6 +32,8 @@ Scope {
     // draw, and hands core the pages they offer. See [Surfaces].
     IiSurfaces {}
 
+    IiWindowAdoption {}
+
     PanelLoader { extraCondition: !Config.options.bar.vertical; component: Bar {} }
     PanelLoader { component: Background {} }
     PanelLoader { component: BluetoothPairing {} }
