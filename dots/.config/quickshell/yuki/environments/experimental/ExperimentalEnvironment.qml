@@ -58,7 +58,18 @@ Scope {
     ExSurfaces {}
 
     // Copies are kept from the start, whether or not the history is ever opened.
-    Component.onCompleted: ExClipboardHistory.load()
+    //
+    // Qt programs keep the KDE platform theme's own file dialog, which suits
+    // this desktop, rather than the portal another environment may have sent
+    // them to. Set to 0 rather than unset: the theme reads it as a number, and
+    // the bus has no way to unset one. Read once by a program as it starts.
+    Component.onCompleted: {
+        ExClipboardHistory.load();
+        Quickshell.execDetached(["sh", "-c",
+            "hyprctl eval 'hl.env(\"PLASMA_INTEGRATION_USE_PORTAL\", \"0\")' >/dev/null; "
+            + "systemctl --user set-environment PLASMA_INTEGRATION_USE_PORTAL=0; "
+            + "dbus-update-activation-environment PLASMA_INTEGRATION_USE_PORTAL=0"]);
+    }
 
     ExPlacement {
         id: placement

@@ -28,6 +28,16 @@ import qs.ii.verticalBar
 import qs.ii.wallpaperSelector
 
 Scope {
+    // Qt programs pick files through the portal, which is the shell's picker:
+    // the KDE platform theme's own dialog does not belong to this desktop. Set
+    // where programs started from now on read it, the compositor for its own
+    // binds and the user's service manager and the bus for the rest, and read
+    // once by a program as it starts.
+    Component.onCompleted: Quickshell.execDetached(["sh", "-c",
+        "hyprctl eval 'hl.env(\"PLASMA_INTEGRATION_USE_PORTAL\", \"1\")' >/dev/null; "
+        + "systemctl --user set-environment PLASMA_INTEGRATION_USE_PORTAL=1; "
+        + "dbus-update-activation-environment PLASMA_INTEGRATION_USE_PORTAL=1"])
+
     // Answers core's requests for the windows this desktop owns but does not
     // draw, and hands core the pages they offer. See [Surfaces].
     IiSurfaces {}
