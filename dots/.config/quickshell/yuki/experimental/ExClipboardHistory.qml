@@ -113,9 +113,15 @@ Singleton {
     // What is copied is kept as it is copied, while this desktop is up. Each
     // copy kept says so with a line, and the history is read again: a file
     // that was not there as the shell started is not watched for changes.
+    //
+    // Ended by the kernel as the shell ends. wl-paste reads nothing from the
+    // shell and never noticed it gone, so every start of the shell left one
+    // more behind, and each of them asked the program copied from for what it
+    // copied, twice: a Qt program encodes a picture anew for every such
+    // request, on its own main thread.
     Process {
         running: true
-        command: ["wl-paste", "--watch", "sh", "-c", 'python3 "$1" store; echo kept', "clipboard-history", root.script]
+        command: ["setpriv", "--pdeathsig", "TERM", "--", "wl-paste", "--watch", "sh", "-c", 'python3 "$1" store; echo kept', "clipboard-history", root.script]
         stdout: SplitParser {
             onRead: index.reload()
         }
