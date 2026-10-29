@@ -10,7 +10,8 @@ application's request begins as well.
 
 import time
 
-from experimental.test_maximize import is_maximized
+from experimental.test_maximize import area, is_maximized
+from experimental.test_placement_gap import set_style
 
 
 def test_a_maximized_window_is_not_resized_by_its_border(bench, desk):
@@ -32,3 +33,31 @@ def test_a_maximized_window_is_not_resized_by_its_border(bench, desk):
     client = window.client()
     assert (*client["at"], *client["size"]) == before, "the maximised window was resized by its border"
     assert "maximized" in client["tags"]
+
+
+def test_a_press_by_a_maximized_windows_border_is_not_swallowed(bench, desk):
+    # Refused once it had begun, the resize took the press with it, and the
+    # strip round a maximised window, between it and the edges with a
+    # floating dock, took no clicks at all.
+    bench.eval('hl.config({ general = { resize_on_border = true } })')
+    set_style(desk, "floating")
+    try:
+        x, y, w, h = area(desk)
+        under = desk.wayland(width=w, height=h)
+        time.sleep(0.5)
+        bench.eval(f'hl.dispatch(hl.dsp.window.move({{ window = "address:{under.address}", x = {x}, y = {y} }}))')
+        window = desk.wayland()
+        desk.place(window, "maximized")
+        top = window.wait(lambda c: "maximized" in c["tags"] and c["at"][0] > x, "maximised a gap off the edges")
+        under.command("clicks")
+        window.command("clicks")
+        tx, ty = top["at"]
+        _, th = top["size"]
+        pointer = desk.pointer()
+        pointer.move(tx + 30, ty + th // 2)
+        pointer.click(tx - 3, ty + th // 2)
+        time.sleep(0.4)
+        reached = under.command("clicks")["clicks"] + window.command("clicks")["clicks"]
+        assert reached > 0, "the press by the border reached nothing"
+    finally:
+        set_style(desk, "attached")

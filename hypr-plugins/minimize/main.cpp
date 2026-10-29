@@ -40,14 +40,27 @@
 // which Hyprland then lines up with neither its border nor its corners, so the
 // shell leaves Wayland windows as Hyprland has them.
 //
-// A maximised window keeps its size. On Windows it fills its place until it is
-// put back, and its edges cannot be pulled. Here it is an ordinary floating
-// window, tagged maximized by the shell, and Hyprland resized it like any other
-// from its border, from a mouse bind or at the application's request, all of
-// which begin at the drag controller. A resize of a window so tagged is not
-// begun there. Moving it is: pulled away, it is put back by the shell.
+// A window an environment holds at a size of its own keeps it. On Windows a
+// maximised window fills its place until it is put back, and its edges cannot
+// be pulled; the experimental environment maximises by giving an ordinary
+// floating window the work area, and Hyprland resized it like any other from
+// its border, from a mouse bind or at the application's request, all of which
+// begin at the drag controller. A resize of a window carrying the tag named by
+// plugin:minimize:fixed_size_tag is not begun there. Moving it is: pulled
+// away, it is put back by the shell. The tag is the environment's to name, in
+// its compositor rules; with none named, nothing is held.
+//
+// Whether a window would float if it opened now, for an environment that tiles
+// and takes over the windows another left floating. hl.plugin.minimize.
+// should_float(address) answers with Hyprland's own judgement as the window
+// opened, a dialog, a window with a parent, one of a fixed size, or with the
+// rules loaded now. The rules are only read for it: nothing of them is
+// applied to the window asked about.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/config/values/types/StringValue.hpp>
+#include <hyprland/src/desktop/rule/Engine.hpp>
+#include <hyprland/src/desktop/rule/windowRule/WindowRule.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
@@ -72,13 +85,16 @@ namespace {
     CHyprSignalListener openListener;
     CFunctionHook*      dragBeginHook = nullptr;
 
+    SP<Config::Values::CStringValue> fixedSizeTag;
+
     using DragBegin = void (*)(Layout::Supplementary::CDragStateController*, SP<Layout::ITarget>, eMouseBindMode, std::optional<Layout::eRectCorner>, bool);
 
     void dragBegin(Layout::Supplementary::CDragStateController* controller, SP<Layout::ITarget> target, eMouseBindMode mode, std::optional<Layout::eRectCorner> edge,
                    bool exclusiveDeviceGrab) {
-        if (mode != MBIND_MOVE && target) {
+        const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
+        if (mode != MBIND_MOVE && target && !tag.empty()) {
             const auto window = target->window();
-            if (window && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged("maximized"))
+            if (window && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag))
                 return;
         }
         reinterpret_cast<DragBegin>(dragBeginHook->m_original)(controller, std::move(target), mode, edge, exclusiveDeviceGrab);
@@ -170,24 +186,34 @@ namespace {
         return nullptr;
     }
 
-    // Whether a window would float if it opened now: Hyprland floats it itself,
-    // as it judged when the window opened, a dialog, a window with a parent, one
-    // of a fixed size, or a rule loaded now floats it. A family that tiles takes
-    // every other floating window into its layout as it comes up. The rules are
-    // read again for the purpose, without the one-time rules, which are gone by
-    // now: what a window was given as it opened came from the family before.
+    // Whether the rules loaded now float a window, the last of them to say so
+    // winning, as when the rules are applied to a window opening.
+    bool rulesFloat(const PHLWINDOW& window) {
+        bool floats = false;
+        for (const auto& rule : Desktop::Rule::ruleEngine()->rules()) {
+            if (rule->type() != Desktop::Rule::RULE_TYPE_WINDOW)
+                continue;
+            const auto windowRule = reinterpretPointerCast<Desktop::Rule::CWindowRule>(rule);
+            if (!windowRule->matches(window, true))
+                continue;
+            for (const auto& effect : windowRule->effects()) {
+                if (effect.key == Desktop::Rule::WINDOW_RULE_EFFECT_FLOAT)
+                    floats = std::get<bool>(effect.value);
+                else if (effect.key == Desktop::Rule::WINDOW_RULE_EFFECT_TILE)
+                    floats = !std::get<bool>(effect.value);
+            }
+        }
+        return floats;
+    }
+
     int shouldFloat(lua_State* state) {
         const std::string address = luaL_checkstring(state, 1);
         bool              floats  = false;
         for (const auto& window : Desktop::windowState()->windows()) {
-            if (!window || std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) != address)
-                continue;
-            floats = window->m_requestsFloat;
-            if (!floats && window->m_ruleApplicator) {
-                window->m_ruleApplicator->readStaticRules(true);
-                floats = window->m_ruleApplicator->static_.floating.value_or(false);
+            if (window && std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) == address) {
+                floats = window->m_requestsFloat || rulesFloat(window);
+                break;
             }
-            break;
         }
         lua_pushboolean(state, floats);
         return 1;
@@ -314,6 +340,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     HyprlandAPI::addLuaFunction(handle, "minimize", "set_window_state", setWindowState);
     HyprlandAPI::addLuaFunction(handle, "minimize", "should_float", shouldFloat);
 
+    fixedSizeTag = makeShared<Config::Values::CStringValue>("plugin:minimize:fixed_size_tag", "Windows with this tag are not resized", "");
+    if (!HyprlandAPI::addConfigValueV2(handle, fixedSizeTag))
+        HyprlandAPI::addNotification(handle, "[minimize] could not register fixed_size_tag, no window keeps its size", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+
     // Windows that were already open when the plugin came in.
     for (const auto& window : Desktop::windowState()->windows())
         if (window && window->m_isMapped)
@@ -331,7 +361,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     if (!dragBeginHook || !dragBeginHook->hook())
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the drag controller, maximised windows stay resizable", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps maximised windows from being resized, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.7"};
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.8"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

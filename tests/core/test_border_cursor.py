@@ -2,17 +2,16 @@
 
 Hyprland showed it on every side of every window, judged by its shape alone.
 A tiled window does not move on a side against the edge of the screen, only
-on one it shares with a neighbour, and a window the experimental environment
-has maximised does not move at all. The border-resize plugin leaves those
-sides out, and says through hl.plugin.border_resize.cursor() what the cursor
-is overridden with, which is read here rather than off a picture.
+on one it shares with a neighbour, and a window an environment holds at its
+size, by the tag it names to the plugins, does not move at all. The
+border-resize plugin leaves those sides out, and says through
+hl.plugin.border_resize.cursor() what the cursor is overridden with, which is
+read here rather than off a picture.
 """
 
 import time
 
 import pytest
-
-from experimental.test_maximize import is_maximized
 
 # Just outside a side, in the grab area round the window.
 OUTSIDE = 3
@@ -91,15 +90,55 @@ def test_tiled_windows_show_it_only_towards_a_neighbour(bench, desk, borders):
     assert not wrong, "\n".join(wrong)
 
 
-def test_a_maximized_window_shows_it_nowhere(bench, desk, borders):
-    window = desk.wayland()
-    desk.place(window, "maximized")
-    window.wait(lambda c: is_maximized(desk, c), "maximised")
+def test_tiled_window_moves_only_on_a_side_it_shares(bench, desk, borders):
+    # What the cursor follows, checked rather than assumed: pulled by a side
+    # against the screen's edge a tiled window stays as it is.
+    bench.eval('hl.window_rule({ match = { class = "^(bench\\\\.tiled.*)$" }, float = false, tile = true })')
+    left = desk.wayland(stem="tiled")
+    time.sleep(0.5)
+    desk.wayland(stem="tiled")
+    time.sleep(0.8)
     pointer = desk.pointer()
-    x, y, w, h = rect(window)
-    # Its lower side, the one by the dock, where it can be reached.
-    hover(desk, pointer, x + w // 2, y + h + OUTSIDE, (x + w // 2, y + h - 30))
-    assert cursor(bench) == ""
+    for side, moves in (("left", False), ("right", True)):
+        before = rect(left)
+        (x, y), inside = side_points(before)[side]
+        hover(desk, pointer, x, y, inside)
+        pointer.press()
+        pointer.glide(x + (60 if side == "left" else -60), y)
+        pointer.release()
+        time.sleep(0.5)
+        assert (rect(left) != before) == moves, f"pulled by its {side} side: {before} -> {rect(left)}"
+
+
+def held(bench, desk, named: bool):
+    """A floating window tagged held, the tag named to the plugin or not."""
+    if named:
+        bench.eval('hl.config({ plugin = { border_resize = { fixed_size_tag = "held" } } })')
+    window = desk.wayland()
+    time.sleep(0.5)
+    bench.eval(f'hl.dispatch(hl.dsp.window.tag({{ tag = "+held", window = "address:{window.address}" }}))')
+    return window
+
+
+def test_a_window_held_at_its_size_shows_it_nowhere(bench, desk, borders):
+    window = held(bench, desk, named=True)
+    pointer = desk.pointer()
+    shown = []
+    for side, (point, inside) in side_points(rect(window)).items():
+        hover(desk, pointer, *point, inside)
+        if cursor(bench):
+            shown.append(side)
+    assert not shown, f"a resize cursor on {shown}"
+
+
+def test_a_tag_no_environment_named_holds_nothing(bench, desk, borders):
+    # The bench loads the experimental environment's rules, which name
+    # maximized; held is named by nobody here.
+    window = held(bench, desk, named=False)
+    pointer = desk.pointer()
+    (x, y), inside = side_points(rect(window))["left"]
+    hover(desk, pointer, x, y, inside)
+    assert cursor(bench).endswith("_side")
 
 
 def test_a_floating_window_shows_it_on_every_side(bench, desk, borders):

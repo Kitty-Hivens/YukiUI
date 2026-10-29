@@ -57,6 +57,17 @@ hl.config({
 hl.window_rule({ match = { tag = "square" }, rounding = 0 })
 hl.window_rule({ match = { tag = "bare" }, border_size = 0, no_shadow = true })
 
+-- A maximised window fills its place until it is put back, as on Windows: its
+-- border neither resizes it nor shows the resize cursor. Named to the plugins
+-- that hold it, when they are loaded; an environment that names nothing holds
+-- nothing.
+if hl.plugin.minimize then
+    hl.config({ plugin = { minimize = { fixed_size_tag = "maximized" } } })
+end
+if hl.plugin.border_resize then
+    hl.config({ plugin = { border_resize = { fixed_size_tag = "maximized" } } })
+end
+
 -- Blur behind the dock, as its settings ask. The shell calls this as it
 -- starts, whenever the setting changes and after every reload, which builds
 -- the rules anew. A pixel at or below the given opacity is not blurred, which

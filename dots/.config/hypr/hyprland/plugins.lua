@@ -7,7 +7,8 @@
 local dir = "/usr/lib/yuki-hyprland-plugins/"
 
 -- minimize: what the shell's minimising and maximising need from inside the
--- compositor.
+-- compositor, keeping a window an environment holds at its size from being
+-- resized, and whether a window would float, for an environment that tiles.
 -- layer-refocus: a panel that appears under a still pointer gets the pointer.
 -- press-report: tells the shell where each press lands, so a panel closes on a
 -- click outside it and the click still reaches what it landed on.
@@ -19,7 +20,8 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- from clients of its first, which Hyprland 0.56 sends and which killed Wine's
 -- clipboard. Not needed once Hyprland checks the version itself.
 -- border-resize: a window is resized by its border with the left button only,
--- and not while the focused window holds the pointer, as a game does.
+-- and not while the focused window holds the pointer, as a game does, and the
+-- resize cursor shows only on the sides that can be pulled.
 local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "data-control-v1", "border-resize" }
 
 for _, name in ipairs(plugins) do

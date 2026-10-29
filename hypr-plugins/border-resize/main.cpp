@@ -16,13 +16,19 @@
 // area round a window, and a right press there does nothing, as a right press
 // on the edge of a window does nothing on Windows.
 //
+// A window an environment holds at a size of its own, which the minimize
+// plugin keeps from being resized, carries the tag named by
+// plugin:border_resize:fixed_size_tag, the environment's to name. A press by
+// its border goes on as an ordinary press: refused further on, a resize
+// begun there swallowed the press, and the strip round a maximised window
+// took no clicks at all.
+//
 // Hyprland shows the resize cursor on every side of every window, judged by
-// the shape of the window alone. A maximised window, which the minimize plugin
-// keeps from being resized, showed it all round, and so did a tiled window on
-// its sides against the edge of the screen, which the layout does not move.
-// The cursor now leaves out the sides that cannot be pulled: every side of a
-// window tagged maximized, and the sides of a tiled window with no tiled
-// neighbour beyond them on its workspace.
+// the shape of the window alone. A window held at its size showed it all
+// round, and so did a tiled window on its sides against the edge of the
+// screen, which the layout does not move. The cursor now leaves out the sides
+// that cannot be pulled: every side of a window held at its size, and the
+// sides of a tiled window with no tiled neighbour beyond them on its workspace.
 //
 // hl.plugin.border_resize.cursor() gives the shape the cursor is overridden
 // with, or an empty string, for the tests to read.
@@ -48,6 +54,8 @@
 #undef private
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/config/values/types/StringValue.hpp>
+#include <hyprland/src/desktop/state/ViewState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/devices/IPointer.hpp>
@@ -66,11 +74,26 @@ namespace {
     CFunctionHook* hook       = nullptr;
     CFunctionHook* cursorHook = nullptr;
 
+    SP<Config::Values::CStringValue> fixedSizeTag;
+
     using ResizeWithBorder      = void (*)(CKeybindManager*, const IPointer::SButtonEvent&);
     using SetCursorIconOnBorder = void (*)(CInputManager*, PHLWINDOW);
 
+    bool heldAtSize(const PHLWINDOW& window) {
+        const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
+        return window && !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
+    }
+
+    // The window whose border a press is on, found as the resize itself finds it.
+    PHLWINDOW windowUnderCursor() {
+        if (!g_pInputManager)
+            return nullptr;
+        using namespace Desktop::View;
+        return Desktop::viewState()->hitTest().windowAt(g_pInputManager->getMouseCoordsInternal(), RESERVED_EXTENTS | INPUT_EXTENTS | ALLOW_FLOATING);
+    }
+
     void resizeWithBorder(CKeybindManager* manager, const IPointer::SButtonEvent& event) {
-        if (event.button != BTN_LEFT || (g_pInputManager && g_pInputManager->isConstrained())) {
+        if (event.button != BTN_LEFT || (g_pInputManager && g_pInputManager->isConstrained()) || heldAtSize(windowUnderCursor())) {
             if (g_pSeatManager)
                 g_pSeatManager->sendPointerButton(event.timeMs, event.button, event.state);
             return;
@@ -115,12 +138,13 @@ namespace {
     }
 
     // How far a neighbour may stand from a side and still be the one that side
-    // is shared with: the gaps between tiles and the borders of both.
+    // is shared with: twice the gap between tiles and the borders of both, for
+    // gaps of up to about twenty pixels, which the layouts here keep under.
     constexpr double NEIGHBOUR_REACH = 48;
 
     // The sides of a window that pulling moves.
     uint8_t pullableSides(const PHLWINDOW& window) {
-        if (window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged("maximized"))
+        if (heldAtSize(window))
             return 0;
         if (window->m_isFloating)
             return SIDE_ALL;
@@ -223,7 +247,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
 
     HyprlandAPI::addLuaFunction(handle, "border_resize", "cursor", cursor);
 
-    return {"border-resize", "Resizes by the border with the left button only and not while a game holds the pointer, and shows the resize cursor only where a resize can happen", "yuki", "1.1"};
+    fixedSizeTag = makeShared<Config::Values::CStringValue>("plugin:border_resize:fixed_size_tag", "Windows with this tag show no resize cursor and are not resized by their border", "");
+    if (!HyprlandAPI::addConfigValueV2(handle, fixedSizeTag))
+        HyprlandAPI::addNotification(handle, "[border-resize] could not register fixed_size_tag", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+
+    return {"border-resize", "Resizes by the border with the left button only and not while a game holds the pointer, and shows the resize cursor only where a resize can happen", "yuki", "1.2"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
