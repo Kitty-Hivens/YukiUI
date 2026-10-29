@@ -42,6 +42,8 @@ Scope {
         value: true
     }
 
+    TilingAdoption {}
+
     PanelLoader { component: WaffleActionCenter {} }
     PanelLoader { component: WaffleBar {} }
     PanelLoader { component: WaffleBackground {} }

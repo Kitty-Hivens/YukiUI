@@ -151,6 +151,12 @@ Singleton {
                 property bool inhibit: false
             }
 
+            property JsonObject environment: JsonObject {
+                /// The environment last brought up, so one coming up can tell a
+                /// switch from the shell merely starting again.
+                property string mounted: ""
+            }
+
             property JsonObject lock: JsonObject {
                 property bool locked: false
             }

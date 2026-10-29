@@ -201,6 +201,30 @@ Scope {
         root.setPlaced(address, null);
         Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", HyprlandData.windowByAddress[address]?.xwayland ?? false) + root.placedLua(address, null)]);
     }
+    /**
+     * Lets go of every window, as this environment gives way to another: the
+     * tags it places windows by, which the compositor rules and the plugins
+     * hold them by only while this environment names them, an X11 window's
+     * belief that it is maximised, and what the compositor keeps of where the
+     * windows stood. The windows stay where they are, for the next to take.
+     */
+    function releaseAll() {
+        root.placed = ({});
+        Quickshell.execDetached(["hyprctl", "eval", `
+            local minimize = hl.plugin.minimize
+            for _, w in ipairs(hl.get_windows()) do
+                local target = "address:" .. w.address
+                for _, tag in ipairs({ "maximized", "snapped", "square", "bare" }) do
+                    hl.dispatch(hl.dsp.window.tag({ tag = "-" .. tag, window = target }))
+                end
+                if w.xwayland and minimize and minimize.set_window_state then
+                    minimize.set_window_state(w.address, false, true)
+                end
+            end
+            YUKI_PLACED = {}
+        `]);
+    }
+
     /** Fits every placed window to its screen's work area again, after the dock moved say. */
     function refit() {
         for (const address of Object.keys(root.placed))
@@ -382,7 +406,7 @@ Scope {
     // compositor runs under its rules: started anew, it finds its own windows.
     Connections {
         target: Environments
-        enabled: Environments.switchedFrom.length > 0
+        enabled: Environments.switched
 
         function onRulesSettled() {
             root.request("*", "inherit");

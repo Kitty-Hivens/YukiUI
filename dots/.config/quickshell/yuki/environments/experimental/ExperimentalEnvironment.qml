@@ -60,6 +60,17 @@ Scope {
     // Copies are kept from the start, whether or not the history is ever opened.
     Component.onCompleted: ExClipboardHistory.load()
 
+    /**
+     * Called as another environment takes this one's place. What this desktop
+     * keeps on windows is let go of: minimised ones come back now, before the
+     * next one comes up and takes the windows over, and placed ones lose the
+     * marks they were held by.
+     */
+    function leave() {
+        Minimize.releaseAll();
+        placement.releaseAll();
+    }
+
     ExPlacement {
         id: placement
     }

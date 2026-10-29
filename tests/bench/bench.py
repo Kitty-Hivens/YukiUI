@@ -220,11 +220,8 @@ end
         config = self._config()
         # The compositor keeps its own data, state and cache in the run's
         # folders, not the person's: it writes some of each as it starts.
-        # YUKI_BENCH tells the rules they run on the bench, so what they hand on
-        # to the user's services as a session starts is not handed on from here:
-        # the bench runs inside the person's session.
         env = dict(os.environ, XDG_DATA_HOME=str(self.data_home), XDG_STATE_HOME=str(self.state_home),
-                   XDG_CACHE_HOME=str(self.cache_home), YUKI_BENCH="1")
+                   XDG_CACHE_HOME=str(self.cache_home))
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
         self.process = subprocess.Popen(["Hyprland", "-c", str(config)], env=env,
                                         stdout=open(self.root / "hyprland.out", "w"), stderr=subprocess.STDOUT,

@@ -5,7 +5,6 @@ import QtQml
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import qs.core
 import qs.core.functions
@@ -161,28 +160,28 @@ Singleton {
     property var active: null
 
     /**
-     * The environment that was up before this one, when this one came up in
-     * its place, or empty when it came up again: with the shell started anew,
-     * or after a failed swap back to it.
+     * Whether the environment that is up came up in another's place, rather
+     * than again: with the shell started anew, or after a swap that failed and
+     * fell back to it.
      *
      * The windows still stand as the last one left them, floating and placed or
      * tiled, and only the one coming up knows how its own desktop holds them.
-     * Read from a file of the state, since the shell started anew has no
-     * memory of it, and set before the new one is built so it reads it as it
-     * comes up.
+     * Told by the environment last brought up, which the state keeps, since a
+     * shell started anew has no memory of it; set before the new one is built,
+     * so it reads it as it comes up. False while the state is still being read.
      */
-    property string switchedFrom: ""
-
-    FileView {
-        id: lastMounted
-        path: FileUtils.trimFileProtocol(`${Directories.state}/user/environment-mounted.txt`)
-        blockLoading: true
-    }
+    property bool switched: false
 
     onActiveIdChanged: root.remount()
 
     function remount() {
         if (root.active) {
+            // What it keeps on windows outside the shell, it takes back: the
+            // environment coming up has its own ways with them. Not as the
+            // shell ends, which leaves the windows as they are for the same
+            // environment to find again.
+            if (typeof root.active.leave === "function")
+                root.active.leave();
             root.active.destroy();
             root.active = null;
         }
@@ -194,9 +193,8 @@ Singleton {
             console.warn(`[Environments] ${id} is not installed, nothing mounted`);
             return;
         }
-        const previous = (lastMounted.text() ?? "").trim();
-        root.switchedFrom = previous.length > 0 && previous !== id ? previous : "";
-        lastMounted.setText(id);
+        const previous = Persistent.ready ? Persistent.states.environment.mounted : "";
+        root.switched = previous.length > 0 && previous !== id;
         const component = Qt.createComponent(manifest.url, Component.PreferSynchronous);
         if (component.status !== Component.Ready) {
             root.noteFailure(id, component.status === Component.Error ? component.errorString() : "the entry did not finish building");
@@ -208,8 +206,21 @@ Singleton {
             return;
         }
         root.active = object;
+        // Written once it stands, so one that fails to build is not taken for
+        // the environment up: the fallback after it would read as a switch.
+        if (Persistent.ready)
+            Persistent.states.environment.mounted = id;
         console.log(`[Environments] ${id} mounted`);
         root.writeCompositorRules(id, manifest.compositor);
+    }
+
+    // Brought up before the state was read, it is noted once it is.
+    Connections {
+        target: Persistent
+        function onReadyChanged() {
+            if (Persistent.ready && root.active && root.activeId.length > 0)
+                Persistent.states.environment.mounted = root.activeId;
+        }
     }
 
     /**
@@ -230,9 +241,16 @@ Singleton {
      */
     function writeCompositorRules(id: string, source: string) {
         const header = `-- Written by the shell for the environment that is up (${id}). Replaced on every switch, do not edit.`;
-        rulesWriter.command = ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hyprland/environment_rules.sh")),
-            header, source ?? "", root.compositorRulesPath];
-        rulesWriter.running = true;
+        // Awaited from before the script runs: the first time the file is
+        // made, the script itself reloads the compositor, and the reload could
+        // be over before it says so.
+        root.awaitingReload = true;
+        reloadTimeout.restart();
+        // A process of its own each time, as the script allows: one shared
+        // process, still running, let a second write go by unwritten.
+        rulesWriter.createObject(root, {
+            command: ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hyprland/environment_rules.sh")), header, source ?? "", root.compositorRulesPath]
+        }).running = true;
     }
 
     /**
@@ -246,27 +264,39 @@ Singleton {
 
     property bool awaitingReload: false
 
-    Process {
+    function settle() {
+        if (!root.awaitingReload)
+            return;
+        root.awaitingReload = false;
+        reloadTimeout.stop();
+        // What the session hands on to the user's services as it starts, the
+        // variables an environment's rules list in UWSM_FINALIZE_VARNAMES
+        // among them, is handed on again for the one now up: programs started
+        // from the shell take their environment from there. Run by the
+        // compositor, which holds the values the rules just set.
+        if (root.switched)
+            Quickshell.execDetached(["hyprctl", "eval", 'hl.exec_cmd("uwsm finalize")']);
+        root.rulesSettled();
+    }
+
+    Component {
         id: rulesWriter
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (text.trim() !== "replaced") {
-                    root.rulesSettled();
-                    return;
+        Process {
+            id: writer
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    // Left as it was, nothing is reloaded and nothing awaited.
+                    if (text.trim() !== "replaced")
+                        root.settle();
                 }
-                root.awaitingReload = true;
-                reloadTimeout.restart();
             }
+            onExited: writer.destroy()
         }
     }
     Connections {
-        target: Hyprland
-        function onRawEvent(event) {
-            if (event.name !== "configreloaded" || !root.awaitingReload)
-                return;
-            root.awaitingReload = false;
-            reloadTimeout.stop();
-            root.rulesSettled();
+        target: HyprlandConfig
+        function onReloaded() {
+            root.settle();
         }
     }
     // A reload that never comes, the compositor not watching the file say,
@@ -274,12 +304,7 @@ Singleton {
     Timer {
         id: reloadTimeout
         interval: 3000
-        onTriggered: {
-            if (!root.awaitingReload)
-                return;
-            root.awaitingReload = false;
-            root.rulesSettled();
-        }
+        onTriggered: root.settle()
     }
 
     /**
