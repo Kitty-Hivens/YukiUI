@@ -90,8 +90,9 @@ Singleton {
     readonly property var volumeGlyphs: Object.keys(root.codes).filter(name => /^(volume|headphones|speaker|monitor_speaker)/.test(name))
     readonly property var chargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery_charging"))
     readonly property var dischargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery") && !name.startsWith("battery_charging"))
-    readonly property var networkGlyphs: Object.keys(root.codes).filter(name => !root.volumeGlyphs.includes(name)
-        && !name.startsWith("battery") && !root.captureGlyphs.includes(name) && name !== "shield_lock" && name !== "alert_circle")
+    readonly property var networkGlyphs: ["wifi_strength_outline", "wifi_strength_1", "wifi_strength_2", "wifi_strength_3", "wifi_strength_4",
+        "wifi_strength_alert_outline", "wifi_strength_1_alert", "wifi_strength_2_alert", "wifi_strength_3_alert", "wifi_strength_4_alert",
+        "wifi_strength_off_outline", "ethernet", "lan_disconnect", "web_off", "cellphone_wireless", "network_strength_4", "network_strength_4_alert"]
     /** The marks of who is capturing, drawn in the same font as the icons beside them. */
     readonly property var captureGlyphs: ["record_circle", "monitor_share", "video", "microphone", "waveform"]
 
