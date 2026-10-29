@@ -29,41 +29,6 @@ IFS=$'\n'
 colorlist=($colornames)     # Array of color names
 colorvalues=($colorstrings) # Array of color values
 
-# A generated colour by name, without its $.
-value_of() {
-  for i in "${!colorlist[@]}"; do
-    if [[ "${colorlist[$i]}" == "\$$1" ]]; then
-      echo "${colorvalues[$i]}"
-      return
-    fi
-  done
-}
-set_value() {
-  for i in "${!colorlist[@]}"; do
-    if [[ "${colorlist[$i]}" == "\$$1" ]]; then
-      colorvalues[$i]="$2"
-      return
-    fi
-  done
-  colorlist+=("\$$1")
-  colorvalues+=("$2")
-}
-
-# The terminal's background and text are the first and eighth colours of the
-# generated scheme, named apart so the sixteen colours can differ from them.
-# A light scheme has its black as light as the background and its white as dark
-# as the text, so whatever a program printed in black vanished. There black is
-# the text colour, white a light grey, bright black a mid grey and bright white
-# the background, as light terminal schemes have them.
-set_value termBackground "$(value_of term0)"
-set_value termForeground "$(value_of term7)"
-if grep -qi '^\$darkmode: *false' "$STATE_DIR/user/generated/material_colors.scss"; then
-  set_value term0 "$(value_of termForeground)"
-  set_value term7 "$(value_of outlineVariant)"
-  set_value term8 "$(value_of outline)"
-  set_value term15 "$(value_of termBackground)"
-fi
-
 apply_kitty() {  
   # Check if terminal escape sequence template exists
   if [ ! -f "$SCRIPT_DIR/terminal/kitty-theme.conf" ]; then

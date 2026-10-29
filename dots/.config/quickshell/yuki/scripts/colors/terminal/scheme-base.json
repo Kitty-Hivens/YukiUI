@@ -1,5 +1,7 @@
 {
     "dark": {
+        "termBackground" : "#282828",
+        "termForeground" : "#A89984",
         "term0"   : "#282828",
         "term1"   : "#CC241D",
         "term2"   : "#98971A",
@@ -18,21 +20,23 @@
         "term15"  : "#EBDBB2"
     },
     "light": {
-        "term0"   : "#FDF9F3",
-        "term1"   : "#FF6188",
-        "term2"   : "#A9DC76",
-        "term3"   : "#FC9867",
-        "term4"   : "#FFD866",
-        "term5"   : "#F47FD4",
-        "term6"   : "#78DCE8",
-        "term7"   : "#333034",
-        "term8"   : "#121212",
-        "term9"   : "#FF6188",
-        "term10"  : "#A9DC76",
-        "term11"  : "#FC9867",
-        "term12"  : "#FFD866",
-        "term13"  : "#F47FD4",
-        "term14"  : "#78DCE8",
-        "term15"  : "#333034"
+        "termBackground" : "#FAFAFA",
+        "termForeground" : "#383A42",
+        "term0"   : "#383A42",
+        "term1"   : "#E45649",
+        "term2"   : "#50A14F",
+        "term3"   : "#C18401",
+        "term4"   : "#4078F2",
+        "term5"   : "#A626A4",
+        "term6"   : "#0184BC",
+        "term7"   : "#5C5F66",
+        "term8"   : "#7A7D85",
+        "term9"   : "#CA1243",
+        "term10"  : "#3B8E3A",
+        "term11"  : "#A86D00",
+        "term12"  : "#2F5FD0",
+        "term13"  : "#8E1D8C",
+        "term14"  : "#0B6E99",
+        "term15"  : "#383A42"
     }
 }

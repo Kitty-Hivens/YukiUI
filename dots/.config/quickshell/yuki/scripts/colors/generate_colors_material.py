@@ -58,6 +58,28 @@ def boost_chroma_tone (argb: int, chroma: float = 1, tone: float = 1) -> int:
     hct = Hct.from_int(argb)
     return Hct.from_hct(hct.hue, hct.chroma * chroma, hct.tone * tone).to_int()
 
+def contrast_ratio (a: int, b: int) -> float:
+    """WCAG contrast between two colours."""
+    def luminance (argb: int) -> float:
+        channels = []
+        for value in rgba_from_argb(argb)[:3]:
+            value /= 255
+            channels.append(value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+    lighter, darker = sorted((luminance(a), luminance(b)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+def readable_on (argb: int, background: int, darkmode: bool, minimum: float = 4.5) -> int:
+    """The colour with its tone moved away from the background until text in it reads, hue and chroma kept."""
+    hct = Hct.from_int(argb)
+    tone = hct.tone
+    step = 1 if darkmode else -1
+    result = argb
+    while contrast_ratio(result, background) < minimum and 0 < tone < 100:
+        tone += step
+        result = Hct.from_hct(hct.hue, hct.chroma, tone).to_int()
+    return result
+
 darkmode = (args.mode == 'dark')
 transparent = (args.transparency == 'transparent')
 
@@ -142,7 +164,8 @@ if args.termscheme is not None:
         if(args.scheme == 'monochrome') :
             term_colors[color] = val
             continue
-        if args.blend_bg_fg and color == "term0":
+        # The background, and in a dark scheme black, which is the background there.
+        if args.blend_bg_fg and (color == "termBackground" or (darkmode and color == "term0")):
             harmonized = boost_chroma_tone(hex_to_argb(material_colors['surfaceContainerLow']), 1.2, 0.95)
         elif args.blend_bg_fg and color == "term15":
             harmonized = boost_chroma_tone(hex_to_argb(material_colors['onSurface']), 3, 1)
@@ -150,6 +173,18 @@ if args.termscheme is not None:
             harmonized = harmonize(hex_to_argb(val), primary_color_argb, args.harmonize_threshold, args.harmony)
             harmonized = boost_chroma_tone(harmonized, 1, 1 + (args.term_fg_boost * (1 if darkmode else -1)))
         term_colors[color] = argb_to_hex(harmonized)
+
+    # Every colour text is printed in reads on the background. Pulled towards
+    # the accent and shifted in tone, a colour could end up close to the
+    # background: green and blue on a light background fell to a contrast of
+    # three and under, and the whites of a light scheme vanished. The
+    # background itself and, in a dark scheme, black are left as they are.
+    if 'termBackground' in term_colors:
+        background = hex_to_argb(term_colors['termBackground'])
+        for color in term_colors:
+            if color == 'termBackground' or (darkmode and color == 'term0'):
+                continue
+            term_colors[color] = argb_to_hex(readable_on(hex_to_argb(term_colors[color]), background, darkmode))
 
 if args.debug == False:
     print(f"$darkmode: {darkmode};")
