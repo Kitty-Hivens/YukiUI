@@ -1,4 +1,5 @@
 import QtQuick
+import Qt5Compat.GraphicalEffects
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 
@@ -99,10 +100,30 @@ Item {
         }
     }
 
+    /**
+     * A symbolic icon of the icon theme, which whatever shows it is to draw in
+     * its own text colour. As it comes it is light, made for a dark panel, and
+     * on a light dock it could not be seen.
+     */
+    readonly property bool symbolic: /^image:\/\/icon\/[^?]*-symbolic(\?|$)/.test(root.item?.icon ?? "")
+
     IconImage {
+        id: icon
+
         anchors.centerIn: parent
         implicitSize: 18
         source: root.item?.icon ?? ""
+        visible: !root.symbolic
+    }
+
+    Loader {
+        anchors.fill: icon
+        active: root.symbolic
+
+        sourceComponent: ColorOverlay {
+            source: icon
+            color: ExLooks.colors.text
+        }
     }
 
     // An application asking to be looked at, a chat with unread messages say.
