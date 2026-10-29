@@ -1,5 +1,17 @@
 -- Compositor rules of the experimental environment.
 
+-- Qt programs keep the KDE platform theme's own file dialog, which suits this
+-- desktop, rather than the portal another environment sends them to. 0 rather
+-- than unset: the theme reads it as a number, once, as a program starts.
+-- Handed on to the user's services as well, as the session hands on its
+-- variables as it starts, since programs started from the shell take their
+-- environment from there; not by the test bench, whose compositor runs inside
+-- the person's session.
+hl.env("PLASMA_INTEGRATION_USE_PORTAL", "0")
+if not os.getenv("YUKI_BENCH") then
+    hl.exec_cmd("uwsm finalize PLASMA_INTEGRATION_USE_PORTAL")
+end
+
 -- A desktop of overlapping windows, not a tiling one: everything opens floating.
 hl.window_rule({ match = { class = ".*" }, float = true })
 

@@ -1,5 +1,16 @@
 -- Compositor rules of the Illogical Impulse environment.
 
+-- Qt programs pick files through the portal, which is the shell's own picker:
+-- the KDE platform theme's dialog belongs to another desktop. The theme reads
+-- this once, as a program starts. Handed on to the user's services as well, as
+-- the session hands on its variables as it starts, since programs started from
+-- the shell take their environment from there; not by the test bench, whose
+-- compositor runs inside the person's session.
+hl.env("PLASMA_INTEGRATION_USE_PORTAL", "1")
+if not os.getenv("YUKI_BENCH") then
+    hl.exec_cmd("uwsm finalize PLASMA_INTEGRATION_USE_PORTAL")
+end
+
 -- Windows tile, so the keys that place them work on the layout: the split
 -- ratio, a window taken out of the tiling and put back, Hyprland's own
 -- maximise, and focus moved in a direction.
