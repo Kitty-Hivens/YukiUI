@@ -239,8 +239,13 @@ def main():
     command = sys.argv[1:] or [""]
     if command[0] == "store":
         # What wl-paste hands over on standard input is read here form by
-        # form instead, so it is let go of at once.
-        sys.stdin.close()
+        # form instead, but it is read to the end first, not let go of. A Qt
+        # program writes what was copied on its own main thread and does
+        # nothing else until it is all taken: with standard input closed it
+        # stood still, and so never answered the forms asked for below, until
+        # each request ran out of time. Telegram froze on every photo copied.
+        while sys.stdin.buffer.read(1 << 16):
+            pass
         store()
     elif command[0] == "offer" and len(command) == 2:
         offer(command[1])
