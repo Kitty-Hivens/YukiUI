@@ -39,9 +39,18 @@
 // A GTK window told it is not maximised draws a margin for a shadow of its own,
 // which Hyprland then lines up with neither its border nor its corners, so the
 // shell leaves Wayland windows as Hyprland has them.
+//
+// A maximised window keeps its size. On Windows it fills its place until it is
+// put back, and its edges cannot be pulled. Here it is an ordinary floating
+// window, tagged maximized by the shell, and Hyprland resized it like any other
+// from its border, from a mouse bind or at the application's request, all of
+// which begin at the drag controller. A resize of a window so tagged is not
+// begun there. Moving it is: pulled away, it is put back by the shell.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/layout/supplementary/DragController.hpp>
+#include <hyprland/src/layout/target/Target.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/protocols/XDGShell.hpp>
@@ -61,6 +70,19 @@ namespace {
     HANDLE              handle = nullptr;
     CHyprSignalListener createListener;
     CHyprSignalListener openListener;
+    CFunctionHook*      dragBeginHook = nullptr;
+
+    using DragBegin = void (*)(Layout::Supplementary::CDragStateController*, SP<Layout::ITarget>, eMouseBindMode, std::optional<Layout::eRectCorner>, bool);
+
+    void dragBegin(Layout::Supplementary::CDragStateController* controller, SP<Layout::ITarget> target, eMouseBindMode mode, std::optional<Layout::eRectCorner> edge,
+                   bool exclusiveDeviceGrab) {
+        if (mode != MBIND_MOVE && target) {
+            const auto window = target->window();
+            if (window && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged("maximized"))
+                return;
+        }
+        reinterpret_cast<DragBegin>(dragBeginHook->m_original)(controller, std::move(target), mode, edge, exclusiveDeviceGrab);
+    }
 
     struct SWatched {
         PHLWINDOWREF        window;
@@ -273,7 +295,19 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         if (window && window->m_isMapped)
             watch(window);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.6"};
+    void* target = nullptr;
+    for (const auto& match : HyprlandAPI::findFunctionsByName(handle, "dragBegin")) {
+        if (match.demangled.find("CDragStateController::dragBegin") != std::string::npos) {
+            target = match.address;
+            break;
+        }
+    }
+    if (target)
+        dragBeginHook = HyprlandAPI::createFunctionHook(handle, target, reinterpret_cast<void*>(&dragBegin));
+    if (!dragBeginHook || !dragBeginHook->hook())
+        HyprlandAPI::addNotification(handle, "[minimize] could not hook the drag controller, maximised windows stay resizable", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps maximised windows from being resized, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.7"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

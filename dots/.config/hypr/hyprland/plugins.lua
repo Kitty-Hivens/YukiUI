@@ -19,8 +19,7 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- from clients of its first, which Hyprland 0.56 sends and which killed Wine's
 -- clipboard. Not needed once Hyprland checks the version itself.
 -- border-resize: a window is resized by its border with the left button only,
--- not while the focused window holds the pointer, as a game does, and never
--- one the experimental environment has maximised.
+-- and not while the focused window holds the pointer, as a game does.
 local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "data-control-v1", "border-resize" }
 
 for _, name in ipairs(plugins) do

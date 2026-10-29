@@ -14,14 +14,8 @@
 // pointer: the game, which holds it. Otherwise nothing holds it in the grab
 // area round a window, and a right press there does nothing, as a right press
 // on the edge of a window does nothing on Windows.
-//
-// A window the experimental environment has maximised, which it tags so, is not
-// resized by its border either: as on Windows, it fills its place until it is
-// put back.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
-#include <hyprland/src/desktop/state/ViewState.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/devices/IPointer.hpp>
 #include <hyprland/src/managers/KeybindManager.hpp>
 #include <hyprland/src/managers/SeatManager.hpp>
@@ -37,17 +31,8 @@ namespace {
 
     using ResizeWithBorder = void (*)(CKeybindManager*, const IPointer::SButtonEvent&);
 
-    // The window whose border the press is on, found as the resize itself finds it.
-    bool maximizedUnderCursor() {
-        if (!g_pInputManager)
-            return false;
-        using namespace Desktop::View;
-        const auto window = Desktop::viewState()->hitTest().windowAt(g_pInputManager->getMouseCoordsInternal(), RESERVED_EXTENTS | INPUT_EXTENTS | ALLOW_FLOATING);
-        return window && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged("maximized");
-    }
-
     void resizeWithBorder(CKeybindManager* manager, const IPointer::SButtonEvent& event) {
-        if (event.button != BTN_LEFT || (g_pInputManager && g_pInputManager->isConstrained()) || maximizedUnderCursor()) {
+        if (event.button != BTN_LEFT || (g_pInputManager && g_pInputManager->isConstrained())) {
             if (g_pSeatManager)
                 g_pSeatManager->sendPointerButton(event.timeMs, event.button, event.state);
             return;
@@ -79,14 +64,14 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     }
     if (!target) {
         HyprlandAPI::addNotification(handle, "[border-resize] nothing to hook in this Hyprland, left as it is", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
-        return {"border-resize", "Resizes by the border with the left button only, not while a game holds the pointer, and never a maximised window", "yuki", "1.0"};
+        return {"border-resize", "Resizes by the border with the left button only, and not while a game holds the pointer", "yuki", "1.0"};
     }
 
     hook = HyprlandAPI::createFunctionHook(handle, target, reinterpret_cast<void*>(&resizeWithBorder));
     if (!hook || !hook->hook())
         HyprlandAPI::addNotification(handle, "[border-resize] could not hook, left as it is", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
 
-    return {"border-resize", "Resizes by the border with the left button only, not while a game holds the pointer, and never a maximised window", "yuki", "1.0"};
+    return {"border-resize", "Resizes by the border with the left button only, and not while a game holds the pointer", "yuki", "1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

@@ -3,7 +3,9 @@
 On Windows a maximised window fills its place until it is put back, and its
 edges cannot be pulled. Here Hyprland resized one like any floating window when
 its lower border was taken hold of, and it stayed tagged as maximised at the
-new size. The border-resize plugin leaves such a press alone.
+new size. The minimize plugin refuses to begin a resize of a window tagged
+maximized, at the drag controller, where a resize from a mouse bind or at the
+application's request begins as well.
 """
 
 import time
