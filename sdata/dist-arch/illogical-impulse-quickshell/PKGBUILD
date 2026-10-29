@@ -9,6 +9,11 @@
 # its master, which the pull request is opened from and is left as it is. The upstream
 # under it has to be new enough to build against the Qt installed: Qt 6.12 refuses
 # meta types that are only declared, which upstream stopped using in October 2026.
+#
+# The branch also keeps a tray menu's entries whole across a partial DBusMenu update.
+# Upstream applies every ItemsPropertiesUpdated as the full set of properties and resets
+# what it leaves out, so a program announcing a new toggle state alone, Easy Effects with
+# its presets, had its checkmark entries drawn as plain ones after the first pick.
 
 groups=(illogical-impulse)
 _pkgname=quickshell
@@ -16,9 +21,9 @@ pkgname=illogical-impulse-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
 pkgver=0.3.2
-pkgrel=1
-_commit='fabe4defd44e574a2f48805bd7c1841cac374eeb'
-pkgdesc='Quickshell built from the fork carrying the polkit session fix, plus extra Qt deps'
+pkgrel=2
+_commit='dea7f9c6ca49dbb33f07c29f08cb45475eb4ab21'
+pkgdesc='Quickshell built from the fork carrying the polkit session and DBusMenu fixes, plus extra Qt deps'
 arch=(x86_64 aarch64)
 url='https://github.com/Kitty-Hivens/quickshell'
 license=('LGPL-3.0-only')
@@ -74,7 +79,7 @@ build() {
   cmake -GNinja -B build \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration)" \
+    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates)" \
     -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
     -DINSTALL_QML_PREFIX=lib/qt6/qml
 
