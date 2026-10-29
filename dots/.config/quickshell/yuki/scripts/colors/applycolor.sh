@@ -75,14 +75,9 @@ apply_anyterm() {
   done
 }
 
-# Kitty first, the sequences after it. Kitty rereads its config on the signal
-# but draws nothing until something wakes it, so with the sequences sent first
-# it showed the old colours until a key was pressed in it. Arriving after,
-# they set the same colours and wake it.
 apply_term() {
-  apply_kitty
-  sleep 0.5
-  apply_anyterm
+  apply_anyterm &
+  apply_kitty &
 }
 
 # Check if terminal theming is enabled in config
