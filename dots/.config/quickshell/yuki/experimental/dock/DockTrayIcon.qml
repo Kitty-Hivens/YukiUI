@@ -114,6 +114,23 @@ Item {
         implicitSize: 18
         source: root.item?.icon ?? ""
         visible: !root.symbolic
+        // An icon of the icon theme is coloured by the palette as it is drawn,
+        // so one kept from before the palette changed keeps the other mode's
+        // colours.
+        Component.onCompleted: icon.backer.cache = false
+    }
+
+    // Drawn anew when the system palette changes, with the light or dark mode.
+    SystemPalette {
+        id: systemPalette
+    }
+    Connections {
+        target: systemPalette
+
+        function onPaletteChanged() {
+            icon.source = "";
+            icon.source = Qt.binding(() => root.item?.icon ?? "");
+        }
     }
 
     Loader {
