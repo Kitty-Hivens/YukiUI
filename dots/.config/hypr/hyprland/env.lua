@@ -10,9 +10,6 @@ hl.env("XDG_DATA_DIRS", home_dir .. "/.local/share/flatpak/exports/share:/var/li
 -- Themes
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("QT_QPA_PLATFORMTHEME", "kde")
--- The KDE platform theme draws a file dialog of its own. Asked to, it goes
--- through the portal instead, which is the shell's file picker, as for GTK.
-hl.env("PLASMA_INTEGRATION_USE_PORTAL", "1")
 hl.env("XDG_MENU_PREFIX", "plasma-")
 
 -- Virtual environment
