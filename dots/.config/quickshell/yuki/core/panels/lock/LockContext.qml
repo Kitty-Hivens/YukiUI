@@ -98,6 +98,10 @@ Scope {
      */
     readonly property int maxFingerAttempts: 3
     property int fingerAttempts: 0
+    /** The reader is waiting for a finger now. */
+    readonly property bool fingerListening: fingerPam.active
+    /** The reader was given up on until the next lock. */
+    readonly property bool fingerGivenUp: root.fingerAttempts >= root.maxFingerAttempts
 
     function tryFingerUnlock() {
         if (!root.fingerprintsConfigured || root.fingerAttempts >= root.maxFingerAttempts)

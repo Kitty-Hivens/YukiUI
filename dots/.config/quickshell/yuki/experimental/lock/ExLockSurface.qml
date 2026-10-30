@@ -24,6 +24,11 @@ MouseArea {
     property bool appearAtOnce: false
     /** The password in plain letters, for this screen only. */
     property bool reveal: false
+    /** Whether Caps Lock is on, which the lock reads for every screen. */
+    property bool capsLock: false
+
+    /** A key reached the field, which can have been Caps Lock. */
+    signal keyTyped
 
     function forceFieldFocus() {
         field.input.forceActiveFocus();
@@ -204,7 +209,29 @@ MouseArea {
                     glyph: "lock"
                     placeholder: Translation.tr("Password")
                     enabled: !root.context.unlockInProgress
-                    opacity: enabled ? 1 : 0.6
+                    input.opacity: enabled ? 1 : 0.6
+                    // A wrong password marks the field until the next one is typed.
+                    glyphColor: root.context.showFailure ? ExLooks.colors.destructive : ExLooks.colors.textDim
+                    border.width: root.context.showFailure || field.input.activeFocus ? 2 : 1
+                    border.color: root.context.showFailure ? ExLooks.colors.destructive
+                        : field.input.activeFocus ? ExLooks.colors.accent : ExLooks.colors.border
+
+                    Behavior on border.color {
+                        ColorAnimation { duration: ExLooks.motion.fast }
+                    }
+
+                    // The password being checked, along the field's lower edge.
+                    ExProgressLine {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.leftMargin: ExLooks.radius.control
+                        anchors.rightMargin: ExLooks.radius.control
+                        anchors.bottomMargin: 1
+                        height: 2
+                        running: root.context.unlockInProgress
+                    }
+
                     onTextChanged: {
                         if (root.context.currentText !== field.text)
                             root.context.currentText = field.text;
@@ -220,42 +247,58 @@ MouseArea {
                         value: root.reveal ? TextInput.Normal : TextInput.Password
                     }
 
-                    trailing: AbstractButton {
-                        id: eye
+                    trailing: [
+                        // Caps Lock on, as Windows marks it in the password field.
+                        Item {
+                            visible: root.capsLock
+                            implicitWidth: 28
+                            implicitHeight: 28
 
-                        ExPrimaryOnly {
-                            z: 1
-                        }
-
-                        visible: field.text.length > 0
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        hoverEnabled: true
-                        // The field keeps the keys while this is clicked.
-                        focusPolicy: Qt.NoFocus
-                        onClicked: root.reveal = !root.reveal
-
-                        background: Rectangle {
-                            radius: ExLooks.radius.menuItem
-                            color: "transparent"
-
-                            ExStateLayer {
-                                ink: ExLooks.colors.text
-                                hovered: eye.hovered
-                                pressed: eye.down
-                            }
-                        }
-                        contentItem: Item {
                             ExGlyph {
                                 anchors.centerIn: parent
-                                text: root.reveal ? "visibility_off" : "visibility"
+                                text: "keyboard_capslock_badge"
                                 size: 18
-                                color: ExLooks.colors.textDim
+                                color: ExLooks.colors.accent
+                            }
+                        },
+                        AbstractButton {
+                            id: eye
+
+                            ExPrimaryOnly {
+                                z: 1
+                            }
+
+                            visible: field.text.length > 0
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            hoverEnabled: true
+                            // The field keeps the keys while this is clicked.
+                            focusPolicy: Qt.NoFocus
+                            onClicked: root.reveal = !root.reveal
+
+                            background: Rectangle {
+                                radius: ExLooks.radius.menuItem
+                                color: "transparent"
+
+                                ExStateLayer {
+                                    ink: ExLooks.colors.text
+                                    hovered: eye.hovered
+                                    pressed: eye.down
+                                }
+                            }
+                            contentItem: Item {
+                                ExGlyph {
+                                    anchors.centerIn: parent
+                                    text: root.reveal ? "visibility_off" : "visibility"
+                                    size: 18
+                                    color: ExLooks.colors.textDim
+                                }
                             }
                         }
-                    }
+                    ]
 
                     input.Keys.onPressed: event => {
+                        root.keyTyped();
                         root.context.resetClearTimer();
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             if (root.context.currentText.length > 0)
@@ -267,20 +310,27 @@ MouseArea {
                         }
                     }
                 }
+                // Breathing while the reader waits for a finger, faded once
+                // it has been given up on until the next lock.
                 ExGlyph {
+                    id: fingerprint
+
+                    readonly property bool listening: root.context.fingerListening && !root.context.fingerGivenUp
+
                     visible: root.context.fingerprintsConfigured
                     text: "fingerprint"
                     size: 24
-                    color: ExLooks.colors.accent
-                }
-            }
+                    color: root.context.fingerGivenUp ? ExLooks.colors.textDim : ExLooks.colors.accent
+                    opacity: root.context.fingerGivenUp ? 0.5 : 1
 
-            ExText {
-                Layout.alignment: Qt.AlignHCenter
-                visible: root.context.unlockInProgress || root.context.showFailure
-                text: root.context.unlockInProgress ? Translation.tr("Checking…") : Translation.tr("Incorrect password")
-                role: "caption"
-                color: root.context.showFailure && !root.context.unlockInProgress ? ExLooks.colors.destructive : ExLooks.colors.textDim
+                    SequentialAnimation on opacity {
+                        running: fingerprint.listening && fingerprint.visible
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.4; duration: 900; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
+                        onStopped: fingerprint.opacity = Qt.binding(() => root.context.fingerGivenUp ? 0.5 : 1)
+                    }
+                }
             }
         }
     }

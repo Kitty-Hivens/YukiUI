@@ -9,6 +9,7 @@ Rectangle {
     property alias input: input
     property string placeholder: ""
     property string glyph: ""
+    property color glyphColor: ExLooks.colors.textDim
     /** Controls drawn inside the field after the text, such as a button to show a password. */
     property alias trailing: trailingSlot.data
 
@@ -28,7 +29,7 @@ Rectangle {
             visible: root.glyph.length > 0
             text: root.glyph
             size: 18
-            color: ExLooks.colors.textDim
+            color: root.glyphColor
         }
 
         Item {
