@@ -1,5 +1,14 @@
 -- Compositor rules of the Waffle environment.
 
+-- Qt programs keep the KDE platform theme's own file dialog until this
+-- environment has a picker of its own, rather than the portal another
+-- environment sends them to. 0 rather than unset: the theme reads it as a
+-- number, once, as a program starts. Listed for uwsm to hand on to the user's
+-- services, where programs started from the shell take their environment
+-- from: as the session starts, and again when the shell switches to here.
+hl.env("PLASMA_INTEGRATION_USE_PORTAL", "0")
+hl.env("UWSM_FINALIZE_VARNAMES", "PLASMA_INTEGRATION_USE_PORTAL")
+
 -- Focus by click, as on Windows 11, which this environment follows. The
 -- pointer still reaches what it is over, scrolling included, but only a click
 -- moves the keyboard. With focus following the pointer, the window a person
