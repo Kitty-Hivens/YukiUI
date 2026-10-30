@@ -458,15 +458,15 @@ Scope {
             screen: modelData
             color: "transparent"
             WlrLayershell.namespace: "quickshell:dock"
-            // Under the applications. Over them, it covered the menus and
-            // popups they open near the edge, and a window dragged across it
-            // went under it. It still keeps its room, so a maximised window
-            // stops at it. Hidden on its own it keeps no room, and comes out
-            // over the windows, which would cover it otherwise. Under a
-            // fullscreen window it stays under it either way: a layer above a
+            // Over the applications, as the Windows taskbar and the bars of
+            // the other environments are. Under them, the shadow of a window
+            // standing over the dock fell on it, so the dock was darker with
+            // a window there and darker still with that window focused. The
+            // menus of a Wayland application are kept off the room it keeps.
+            // Under a fullscreen window it goes under it: a layer above a
             // fullscreen window keeps the compositor from showing that window
             // on its own, which direct scanout and variable refresh depend on.
-            WlrLayershell.layer: window.autoHide && !window.underFullscreen ? WlrLayer.Top : WlrLayer.Bottom
+            WlrLayershell.layer: window.underFullscreen ? WlrLayer.Bottom : WlrLayer.Top
             onUnderFullscreenChanged: {
                 if (window.underFullscreen)
                     window.closePopups(null);
