@@ -10,16 +10,17 @@ import qs.core.services
 import qs.experimental
 import qs.experimental.looks
 
-// How loud: the sound that comes out, the microphone, and each program
-// playing, muted by its icon. Which device sound goes to is chosen in the
+// How loud: the sound that comes out and the microphone, each a glyph and a
+// slider as in quick settings, and every program playing on a card under
+// them, each muted by its icon. Which device sound goes to is chosen in the
 // settings.
 ColumnLayout {
     id: root
 
     readonly property var playing: Audio.outputAppNodes
 
+    Layout.fillWidth: true
     spacing: ExLooks.spacing.s
-    Layout.preferredWidth: 320
 
     // The names and icons behind streams are only worked out while shown.
     Component.onCompleted: StreamApps.subscribers++
@@ -49,8 +50,6 @@ ColumnLayout {
 
         ExButton {
             kind: "flat"
-            implicitWidth: 32
-            implicitHeight: 32
             onClicked: {
                 if (level.node?.audio)
                     level.node.audio.muted = !level.node.audio.muted;
@@ -60,19 +59,20 @@ ColumnLayout {
                 visible: level.status.length > 0
                 anchors.centerIn: parent
                 name: level.status
-                color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.text
+                size: 18
+                color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.accent
             }
             ExGlyph {
                 visible: level.icon.length === 0 && level.status.length === 0
                 anchors.centerIn: parent
                 text: level.glyph
-                size: 20
-                color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.text
+                size: 18
+                color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.accent
             }
             IconImage {
                 visible: level.icon.length > 0
                 anchors.centerIn: parent
-                implicitSize: 20
+                implicitSize: 22
                 opacity: level.muted ? 0.35 : 1
                 source: level.icon
             }
@@ -92,36 +92,12 @@ ColumnLayout {
                     level.node.audio.volume = value;
             }
         }
-        ExText {
-            Layout.preferredWidth: 40
-            horizontalAlignment: Text.AlignRight
-            text: `${Math.round((level.node?.audio?.volume ?? 0) * 100)}%`
-            role: "caption"
-            dim: true
-            font.features: ({ "tnum": 1 })
-        }
     }
 
-    component Heading: ExText {
-        Layout.fillWidth: true
-        Layout.topMargin: ExLooks.spacing.xs
-        role: "caption"
-        dim: true
-    }
-
-    Heading {
-        visible: Audio.sink !== null
-        text: Audio.friendlyDeviceName(Audio.defaultSinkEndpoint ?? Audio.sink)
-    }
     Level {
         visible: Audio.sink !== null
         node: Audio.sink
         status: ExStatusGlyphs.volumeGlyph
-    }
-
-    Heading {
-        visible: Audio.source !== null
-        text: Audio.friendlyDeviceName(Audio.defaultSourceEndpoint ?? Audio.source)
     }
     Level {
         visible: Audio.source !== null
@@ -129,62 +105,86 @@ ColumnLayout {
         glyph: muted ? "mic_off" : "mic"
     }
 
-    Heading {
-        text: Translation.tr("Applications")
-    }
-    ExText {
-        visible: root.playing.length === 0
+    // The programs, on a card as quick settings sets off what is playing.
+    Rectangle {
         Layout.fillWidth: true
-        text: Translation.tr("Nothing is playing")
-        role: "label"
-        dim: true
-    }
-
-    // As many as fit, and the rest scrolled to.
-    Flickable {
-        visible: root.playing.length > 0
-        Layout.fillWidth: true
-        implicitHeight: Math.min(apps.implicitHeight, 260)
-        contentHeight: apps.implicitHeight
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
+        Layout.topMargin: ExLooks.spacing.xs
+        implicitHeight: card.implicitHeight + 2 * ExLooks.spacing.m
+        radius: ExLooks.radius.tile
+        color: ExLooks.colors.surfaceSunken
 
         ColumnLayout {
-            id: apps
+            id: card
 
-            width: parent.width
-            spacing: ExLooks.spacing.xs
+            x: ExLooks.spacing.m
+            y: ExLooks.spacing.m
+            width: parent.width - 2 * ExLooks.spacing.m
+            spacing: ExLooks.spacing.s
 
-            Repeater {
-                model: root.playing
+            ExText {
+                Layout.fillWidth: true
+                text: Translation.tr("Applications")
+                role: "caption"
+                dim: true
+            }
+            ExText {
+                visible: root.playing.length === 0
+                Layout.fillWidth: true
+                text: Translation.tr("Nothing is playing")
+                role: "label"
+            }
+
+            // As many as fit, and the rest scrolled to.
+            Flickable {
+                visible: root.playing.length > 0
+                Layout.fillWidth: true
+                implicitHeight: Math.min(apps.implicitHeight, 240)
+                contentHeight: apps.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
 
                 ColumnLayout {
-                    id: app
+                    id: apps
 
-                    required property var modelData
-                    readonly property string context: Audio.appNodeContext(app.modelData)
+                    width: parent.width
+                    spacing: ExLooks.spacing.s
 
-                    Layout.fillWidth: true
-                    spacing: 0
+                    Repeater {
+                        model: root.playing
 
-                    ExText {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 40
-                        text: app.context.length > 0 ? `${Audio.appNodeDisplayName(app.modelData)}: ${app.context}` : Audio.appNodeDisplayName(app.modelData)
-                        role: "caption"
-                    }
-                    // Above a hundred for a program, not for a device: quiet
-                    // material is the program's problem, a card pushed past
-                    // its ceiling is how speakers start distorting.
-                    Level {
-                        node: app.modelData
-                        device: false
-                        maximum: 1.5
-                        icon: {
-                            const own = StreamApps.iconFor(app.modelData);
-                            if (AppSearch.iconExists(own))
-                                return Quickshell.iconPath(own, "image-missing");
-                            return Quickshell.iconPath(AppSearch.guessIcon(app.modelData?.properties["application.icon-name"] ?? app.modelData?.properties["node.name"] ?? ""), "image-missing");
+                        ColumnLayout {
+                            id: app
+
+                            required property var modelData
+                            readonly property string context: Audio.appNodeContext(app.modelData)
+
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            // In line with the slider under it.
+                            ExText {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: ExLooks.sizes.control + ExLooks.spacing.s
+                                text: app.context.length > 0 ? `${Audio.appNodeDisplayName(app.modelData)}: ${app.context}` : Audio.appNodeDisplayName(app.modelData)
+                                textFormat: Text.PlainText
+                                elide: Text.ElideRight
+                                role: "label"
+                            }
+                            // Above a hundred for a program, not for a device:
+                            // quiet material is the program's problem, a card
+                            // pushed past its ceiling is how speakers start
+                            // distorting.
+                            Level {
+                                node: app.modelData
+                                device: false
+                                maximum: 1.5
+                                icon: {
+                                    const own = StreamApps.iconFor(app.modelData);
+                                    if (AppSearch.iconExists(own))
+                                        return Quickshell.iconPath(own, "image-missing");
+                                    return Quickshell.iconPath(AppSearch.guessIcon(app.modelData?.properties["application.icon-name"] ?? app.modelData?.properties["node.name"] ?? ""), "image-missing");
+                                }
+                            }
                         }
                     }
                 }

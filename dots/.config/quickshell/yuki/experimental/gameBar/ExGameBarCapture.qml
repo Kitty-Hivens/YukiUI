@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 import qs.core
@@ -10,8 +9,8 @@ import qs.experimental.looks
 
 // Taking the screen: a picture of all of it, a part of it through the
 // snipping tool, or a video of it until stopped, with the sound that is
-// playing or without. Whatever takes the screen puts the bar away first, so
-// the bar is not in the picture.
+// playing or without. Tiles, as quick settings has them. Whatever takes the
+// screen puts the bar away first, so the bar is not in the picture.
 ColumnLayout {
     id: root
 
@@ -20,90 +19,8 @@ ColumnLayout {
 
     readonly property bool recording: CaptureWatch.recording
 
-    spacing: ExLooks.spacing.m
-    Layout.preferredWidth: 320
-
-    // A round button with what it does under it.
-    component Action: AbstractButton {
-        id: action
-
-        ExPrimaryOnly {
-            z: 1
-        }
-
-        property string glyph
-        property bool accent: false
-
-        Layout.fillWidth: true
-        implicitHeight: plate.height + ExLooks.spacing.xs + caption.implicitHeight
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-
-        background: Item {}
-        contentItem: Item {
-            Rectangle {
-                id: plate
-
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 52
-                height: 52
-                radius: height / 2
-                color: action.accent ? ExLooks.colors.accent : ExLooks.colors.control
-
-                ExStateLayer {
-                    ink: action.accent ? ExLooks.colors.accentInk : ExLooks.colors.controlInk
-                    hovered: action.hovered
-                    pressed: action.down
-                }
-                ExGlyph {
-                    anchors.centerIn: parent
-                    text: action.glyph
-                    size: 24
-                    fill: action.accent ? 1 : 0
-                    color: action.accent ? ExLooks.colors.accentInk : ExLooks.colors.controlInk
-                }
-            }
-            ExText {
-                id: caption
-
-                anchors.top: plate.bottom
-                anchors.topMargin: ExLooks.spacing.xs
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                text: action.text
-                role: "caption"
-                dim: true
-            }
-        }
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: ExLooks.spacing.s
-
-        Action {
-            glyph: "photo_camera"
-            text: Translation.tr("Screenshot")
-            onClicked: root.bar.screenshot()
-        }
-        Action {
-            glyph: "screenshot_region"
-            text: Translation.tr("Region")
-            onClicked: root.bar.snip()
-        }
-        Action {
-            glyph: root.recording ? "stop" : "radio_button_checked"
-            text: root.recording ? Translation.tr("Stop") : Translation.tr("Record")
-            accent: root.recording
-            onClicked: {
-                if (root.recording)
-                    CaptureWatch.stopRecording();
-                else
-                    root.bar.startRecording();
-            }
-        }
-    }
+    Layout.fillWidth: true
+    spacing: ExLooks.spacing.s
 
     // How long the recording has run, counted while it is shown.
     property real now: Date.now()
@@ -122,45 +39,62 @@ ColumnLayout {
         return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}` : `${minutes}:${rest}`;
     }
 
-    RowLayout {
+    GridLayout {
         Layout.fillWidth: true
-        spacing: ExLooks.spacing.s
+        columns: 2
+        columnSpacing: ExLooks.spacing.s
+        rowSpacing: ExLooks.spacing.s
 
-        Rectangle {
-            visible: root.recording
-            implicitWidth: 8
-            implicitHeight: 8
-            radius: 4
-            color: ExLooks.colors.destructive
-        }
-        ExText {
+        ExToggleTile {
             Layout.fillWidth: true
-            text: root.recording ? Translation.tr("Recording, %1").arg(root.elapsed()) : Translation.tr("Not recording")
-            role: "label"
-            dim: !root.recording
-            font.features: ({ "tnum": 1 })
+            Layout.preferredWidth: 1
+            checkable: false
+            glyph: "photo_camera"
+            text: Translation.tr("Screenshot")
+            subtitle: Translation.tr("Whole screen")
+            onClicked: root.bar.screenshot()
         }
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: ExLooks.spacing.s
-
-        ExText {
+        ExToggleTile {
             Layout.fillWidth: true
-            text: Translation.tr("Record the sound playing")
-            wrapMode: Text.Wrap
+            Layout.preferredWidth: 1
+            checkable: false
+            glyph: "screenshot_region"
+            text: Translation.tr("Region")
+            subtitle: Translation.tr("Part of the screen")
+            onClicked: root.bar.snip()
         }
-        ExSwitch {
+        ExToggleTile {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            checkable: false
+            checked: root.recording
+            glyph: root.recording ? "stop_circle" : "radio_button_checked"
+            text: root.recording ? Translation.tr("Stop") : Translation.tr("Record")
+            subtitle: root.recording ? root.elapsed() : Translation.tr("Whole screen")
+            onClicked: {
+                if (root.recording)
+                    CaptureWatch.stopRecording();
+                else
+                    root.bar.startRecording();
+            }
+        }
+        ExToggleTile {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            checkable: false
             checked: Persistent.states.gameBar.recordSound
-            onToggled: Persistent.states.gameBar.recordSound = checked
+            glyph: "graphic_eq"
+            text: Translation.tr("System sound")
+            subtitle: checked ? Translation.tr("On") : Translation.tr("Off")
+            onClicked: Persistent.states.gameBar.recordSound = !Persistent.states.gameBar.recordSound
         }
     }
 
-    // Its glyph in line with the text above, the plate reaching out past it.
+    // Its glyph in line with the tiles' glyphs, the plate reaching out past it.
     ExButton {
         Layout.alignment: Qt.AlignLeft
-        Layout.leftMargin: -ExLooks.sizes.buttonPadding + ExLooks.spacing.xs
+        Layout.topMargin: ExLooks.spacing.xs
+        Layout.leftMargin: -ExLooks.sizes.buttonPadding + ExLooks.spacing.m + 2
         kind: "flat"
         glyph: "folder_open"
         text: Translation.tr("Open recordings")

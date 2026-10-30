@@ -20,7 +20,7 @@ ExSurface {
     implicitWidth: tools.implicitWidth + 2 * ExLooks.spacing.s
     implicitHeight: tools.implicitHeight + 2 * ExLooks.spacing.s
     radius: ExLooks.radius.panel
-    elevation: 2
+    elevation: 1
 
     component Rule: Rectangle {
         Layout.alignment: Qt.AlignVCenter

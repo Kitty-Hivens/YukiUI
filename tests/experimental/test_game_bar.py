@@ -65,7 +65,7 @@ ShellRoot {
             return probe.rect(probe.find(bar.window?.contentItem, item => item.glyph === glyph && item.toggled !== undefined));
         }
         function action(glyph: string): string {
-            return probe.rect(probe.find(bar.window?.contentItem, item => item.glyph === glyph && item.accent !== undefined));
+            return probe.rect(probe.find(bar.window?.contentItem, item => item.glyph === glyph && item.subtitle !== undefined));
         }
         function saved(key: string): string {
             const place = Persistent.states.gameBar[key];

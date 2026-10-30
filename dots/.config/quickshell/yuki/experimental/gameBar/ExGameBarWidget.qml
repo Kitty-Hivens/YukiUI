@@ -6,9 +6,10 @@ import QtQuick.Layouts
 import qs.core
 import qs.experimental.looks
 
-// A widget of the game bar: a plate with its name along the top, moved by
-// dragging the name, and closed from there. Its contents go under the name.
-// Where it is left is kept, and it comes back there, held on the screen.
+// A widget of the game bar: a panel as the dock's flyouts are, with its name
+// along the top, moved by dragging the name and closed from there. Its
+// contents go under the name. Where it is left is kept, and it comes back
+// there, held on the screen. Every widget is as wide as the others.
 Item {
     id: frame
 
@@ -20,6 +21,9 @@ Item {
     property real defaultX: 0
     property real defaultY: 0
 
+    /** How wide what a widget holds is, the same for all of them. */
+    readonly property real contentWidth: 336
+
     default property alias content: column.data
 
     readonly property var saved: Persistent.states.gameBar[frame.key]
@@ -29,13 +33,13 @@ Item {
     visible: frame.bar.isShown(frame.key)
     x: Math.round(Math.max(0, Math.min((frame.parent?.width ?? 0) - frame.width, frame.wantedX)))
     y: Math.round(Math.max(0, Math.min((frame.parent?.height ?? 0) - frame.height, frame.wantedY)))
-    implicitWidth: column.implicitWidth + 2 * ExLooks.spacing.m
-    implicitHeight: column.implicitHeight + ExLooks.spacing.xs + ExLooks.spacing.m
+    implicitWidth: frame.contentWidth + 2 * ExLooks.spacing.l
+    implicitHeight: column.implicitHeight + 2 * ExLooks.spacing.l - ExLooks.spacing.xs
 
     ExSurface {
         anchors.fill: parent
-        radius: ExLooks.radius.menu
-        elevation: 2
+        radius: ExLooks.radius.panel
+        elevation: 1
 
         // A click on the widget between its controls is not a click beside it.
         MouseArea {
@@ -47,17 +51,17 @@ Item {
     ColumnLayout {
         id: column
 
-        x: ExLooks.spacing.m
-        y: ExLooks.spacing.xs
-        width: frame.width - 2 * ExLooks.spacing.m
-        spacing: ExLooks.spacing.s
+        x: ExLooks.spacing.l
+        // The close button's plate reaches above the line of the name.
+        y: ExLooks.spacing.l - ExLooks.spacing.xs
+        width: frame.contentWidth
+        spacing: ExLooks.spacing.m
 
         Item {
             id: handle
 
             Layout.fillWidth: true
-            implicitWidth: titleRow.implicitWidth
-            implicitHeight: 36
+            implicitHeight: 32
 
             DragHandler {
                 id: drag
@@ -81,24 +85,25 @@ Item {
             }
 
             RowLayout {
-                id: titleRow
-
                 anchors.fill: parent
                 spacing: ExLooks.spacing.s
 
                 ExGlyph {
                     text: frame.glyph
-                    size: 18
-                    color: ExLooks.colors.textDim
+                    size: 20
+                    color: ExLooks.colors.accent
                 }
                 ExText {
                     Layout.fillWidth: true
                     text: frame.title
                     role: "label"
+                    font.weight: ExLooks.font.weightTitle
+                    font.pixelSize: ExLooks.font.body
                 }
                 ExToolButton {
-                    implicitWidth: 28
-                    implicitHeight: 28
+                    Layout.rightMargin: -ExLooks.spacing.xs
+                    implicitWidth: 32
+                    implicitHeight: 32
                     glyph: "close"
                     onClicked: frame.bar.setShown(frame.key, false)
                 }

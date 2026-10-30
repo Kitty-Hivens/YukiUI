@@ -1415,5 +1415,8 @@
   "Could not paste": "Не удалось вставить",
   "Nothing copied yet": "Пока ничего не скопировано",
   "Copy something to see it here.": "Скопируйте что-нибудь, и оно появится здесь.",
-  "and %1 more": "и ещё %1"
+  "and %1 more": "и ещё %1",
+  "Whole screen": "Весь экран",
+  "Part of the screen": "Часть экрана",
+  "%1 seconds": "%1 с"
 }

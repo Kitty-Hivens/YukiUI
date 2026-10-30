@@ -8,15 +8,16 @@ import qs.core
 import qs.core.services
 import qs.experimental.looks
 
-// How hard the machine is working, as Windows lays it out: the readings in a
-// column, and the one picked drawn large beside them, over the last while.
+// How hard the machine is working: a tile for each reading, and the one
+// picked drawn large under them over the last while, on a card as quick
+// settings sets off what is playing.
 //
 // The graphics card is shown by how busy it is where the driver says so, and
 // otherwise by its clock against the fastest it goes, which is what Intel's
 // drivers give. A card that says neither is left out. How many frames a game
 // draws is the game's to say, through an overlay inside it, and the shell
 // cannot see it.
-RowLayout {
+ColumnLayout {
     id: root
 
     /** The widget is on screen, and the card is read only then. */
@@ -45,6 +46,7 @@ RowLayout {
     readonly property var readings: {
         const list = [{
             key: "cpu",
+            glyph: "memory",
             name: Translation.tr("CPU"),
             value: ResourceUsage.cpuReady ? root.percent(ResourceUsage.cpuUsage) : "--",
             detail: ResourceUsage.maxAvailableCpuString.length > 0 && ResourceUsage.maxAvailableCpuString !== "--"
@@ -54,6 +56,7 @@ RowLayout {
         if (ResourceUsage.gpuKind === "busy")
             list.push({
                 key: "gpu",
+                glyph: "developer_board",
                 name: Translation.tr("GPU"),
                 value: ResourceUsage.gpuUsageHistory.length > 0 ? root.percent(ResourceUsage.gpuUsage) : "--",
                 detail: "",
@@ -62,6 +65,7 @@ RowLayout {
         else if (ResourceUsage.gpuKind === "clock")
             list.push({
                 key: "gpu",
+                glyph: "developer_board",
                 name: Translation.tr("GPU"),
                 value: ResourceUsage.gpuUsageHistory.length > 0 ? `${Math.round(ResourceUsage.gpuClock)} MHz` : "--",
                 detail: Translation.tr("Clock, of %1 MHz").arg(Math.round(ResourceUsage.gpuMaxClock)),
@@ -69,6 +73,7 @@ RowLayout {
             });
         list.push({
             key: "ram",
+            glyph: "memory_alt",
             name: Translation.tr("RAM"),
             value: ResourceUsage.ready ? root.percent(ResourceUsage.memoryUsedPercentage) : "--",
             detail: ResourceUsage.ready
@@ -79,99 +84,120 @@ RowLayout {
     }
     readonly property var shown: root.readings.find(reading => reading.key === Persistent.states.gameBar.performanceShown) ?? root.readings[0]
 
-    spacing: ExLooks.spacing.m
+    Layout.fillWidth: true
+    spacing: ExLooks.spacing.s
 
-    ColumnLayout {
-        Layout.alignment: Qt.AlignTop
-        Layout.preferredWidth: 130
-        spacing: ExLooks.spacing.xs
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: ExLooks.spacing.s
 
         Repeater {
             model: root.readings
 
-            AbstractButton {
-                id: row
+            // A tile with the reading as its state, picked as a tile is
+            // switched on.
+            ExToggleTile {
+                id: tile
 
                 required property var modelData
-                readonly property bool picked: row.modelData.key === root.shown.key
-
-                ExPrimaryOnly {
-                    z: 1
-                }
 
                 Layout.fillWidth: true
-                implicitHeight: 44
-                hoverEnabled: true
-                focusPolicy: Qt.NoFocus
-                onClicked: Persistent.states.gameBar.performanceShown = row.modelData.key
-
-                background: Rectangle {
-                    radius: ExLooks.radius.menuItem
-                    color: row.picked ? ExLooks.colors.tonal : "transparent"
-
-                    ExStateLayer {
-                        ink: ExLooks.colors.text
-                        hovered: row.hovered
-                        pressed: row.down
-                    }
-                }
-                contentItem: Item {
-                    ColumnLayout {
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: ExLooks.spacing.s
-                        width: parent.width - 2 * ExLooks.spacing.s
-                        spacing: 0
-
-                        ExText {
-                            Layout.fillWidth: true
-                            text: row.modelData.name
-                            role: "caption"
-                            color: row.picked ? ExLooks.colors.tonalInk : ExLooks.colors.textDim
-                        }
-                        ExText {
-                            Layout.fillWidth: true
-                            text: row.modelData.value
-                            role: "label"
-                            color: row.picked ? ExLooks.colors.tonalInk : ExLooks.colors.text
-                            font.features: ({ "tnum": 1 })
-                        }
-                    }
-                }
+                Layout.preferredWidth: 1
+                implicitWidth: 0
+                checkable: false
+                checked: tile.modelData.key === root.shown.key
+                glyph: tile.modelData.glyph
+                text: tile.modelData.name
+                subtitle: tile.modelData.value
+                onClicked: Persistent.states.gameBar.performanceShown = tile.modelData.key
             }
         }
     }
 
-    ColumnLayout {
+    Rectangle {
         Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.preferredWidth: 240
-        spacing: ExLooks.spacing.xs
+        implicitHeight: graphColumn.implicitHeight + 2 * ExLooks.spacing.m
+        radius: ExLooks.radius.tile
+        color: ExLooks.colors.surfaceSunken
 
-        RowLayout {
-            Layout.fillWidth: true
+        ColumnLayout {
+            id: graphColumn
+
+            x: ExLooks.spacing.m
+            y: ExLooks.spacing.m
+            width: parent.width - 2 * ExLooks.spacing.m
             spacing: ExLooks.spacing.s
 
-            ExText {
-                text: root.shown.value
-                role: "title"
-                font.pixelSize: 26
-                font.features: ({ "tnum": 1 })
-            }
-            ExText {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignBottom
-                Layout.bottomMargin: 4
-                text: root.shown.detail
-                role: "caption"
-                dim: true
+                spacing: ExLooks.spacing.s
+
+                ExText {
+                    text: root.shown.value
+                    role: "title"
+                    font.pixelSize: 26
+                    font.features: ({ "tnum": 1 })
+                }
+                ExText {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignBottom
+                    Layout.bottomMargin: 4
+                    text: root.shown.detail
+                    role: "caption"
+                    dim: true
+                    elide: Text.ElideRight
+                }
             }
-        }
-        ExGameBarGraph {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumHeight: 110
-            values: root.shown.history
-            points: ResourceUsage.historyLength
+
+            // The graph between its scale: the top and the bottom on the
+            // right, how long it reaches back under it.
+            Item {
+                Layout.fillWidth: true
+                implicitHeight: 96 + ExLooks.spacing.xs + scaleLength.implicitHeight
+
+                ExGameBarGraph {
+                    id: graph
+
+                    width: parent.width - scaleTop.implicitWidth - ExLooks.spacing.s
+                    height: 96
+                    values: root.shown.history
+                    points: ResourceUsage.historyLength
+                }
+                // A hairline along the bottom of the graph, its floor.
+                Rectangle {
+                    y: graph.height - 1
+                    width: graph.width
+                    height: 1
+                    color: ExLooks.colors.border
+                }
+                ExText {
+                    id: scaleTop
+
+                    anchors.right: parent.right
+                    y: -2
+                    text: "100"
+                    role: "caption"
+                    dim: true
+                    font.features: ({ "tnum": 1 })
+                }
+                ExText {
+                    anchors.right: parent.right
+                    y: graph.height - implicitHeight + 2
+                    text: "0"
+                    role: "caption"
+                    dim: true
+                }
+                ExText {
+                    id: scaleLength
+
+                    anchors.bottom: parent.bottom
+                    // The card is read every second, the rest at the
+                    // interval the settings give.
+                    text: Translation.tr("%1 seconds").arg(Math.round(ResourceUsage.historyLength * (root.shown.key === "gpu" ? 1000 : (Config.options?.resources?.updateInterval ?? 3000)) / 1000))
+                    role: "caption"
+                    dim: true
+                }
+            }
         }
     }
 }

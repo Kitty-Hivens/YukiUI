@@ -4,8 +4,9 @@ import QtQuick.Shapes
 import qs.experimental.looks
 
 // Readings over time, newest on the right, from 0 at the bottom to 1 at the
-// top: a line, and under it a wash of the same colour.
-Rectangle {
+// top: a line, and under it a wash of the same colour fading to nothing. It
+// has no plate of its own and is drawn on whatever holds it.
+Item {
     id: graph
 
     /** The readings, oldest first, each from 0 to 1. */
@@ -27,18 +28,24 @@ Rectangle {
         return points;
     }
 
-    radius: ExLooks.radius.card
-    color: ExLooks.colors.surfaceSunken
     clip: true
 
     Shape {
         anchors.fill: parent
         visible: graph.line.length > 1
+        preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             strokeWidth: 0
             strokeColor: "transparent"
-            fillColor: Qt.alpha(graph.ink, 0.2)
+            fillGradient: LinearGradient {
+                x1: 0
+                y1: 0
+                x2: 0
+                y2: graph.height
+                GradientStop { position: 0; color: Qt.alpha(graph.ink, 0.32) }
+                GradientStop { position: 1; color: Qt.alpha(graph.ink, 0) }
+            }
 
             PathPolyline {
                 path: graph.line.length > 1 ? [Qt.point(graph.line[0].x, graph.height), ...graph.line, Qt.point(graph.width, graph.height)] : []

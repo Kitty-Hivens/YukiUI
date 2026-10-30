@@ -32,6 +32,12 @@ Scope {
     /** The command last run for a capture, for the tests. */
     property var lastCommand: []
 
+    // The readings are taken from the start, so the graph has the last while
+    // to show the moment the bar opens. Brought up with the bar, it began
+    // empty every time. They are a read of /proc every few seconds, as ii's
+    // bar has them all along. The card is read only while the bar shows it.
+    readonly property bool readingsKept: ResourceUsage.ready
+
     function show() {
         // Nothing of this desktop belongs over the lock screen.
         if (GlobalStates.screenLocked)
