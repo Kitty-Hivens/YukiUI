@@ -43,6 +43,19 @@ apply_kitty() {
     sed -i "s/${colorlist[$i]} #/${colorvalues[$i]#\#}/g" "$STATE_DIR"/user/generated/terminal/kitty-theme.conf
   done
 
+  # On a light background only. Dark text there is drawn thin on Linux and
+  # reads as washed out, and the pale greys programs pick for a dark terminal
+  # are lifted to a readable contrast. On a dark background the same lift
+  # turned every dim colour white.
+  if grep -q '^\$darkmode: False' "$STATE_DIR"/user/generated/material_colors.scss; then
+    cat >> "$STATE_DIR"/user/generated/terminal/kitty-theme.conf <<'EOF'
+
+text_composition_strategy 1.7 0
+dim_opacity 0.6
+text_fg_override_threshold 4.5 ratio
+EOF
+  fi
+
   # Reload
   if ! pgrep -f kitty >/dev/null; then
     return
