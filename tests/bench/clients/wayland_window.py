@@ -25,9 +25,14 @@ way any GTK application asks.
 """
 
 import json
+import os
 import sys
 
-import gi
+# Drawn light whatever the person's own session prefers, which GTK reads over
+# their bus: tests tell the window from what lies over it by its brightness.
+os.environ["GTK_THEME"] = "Adwaita:light"
+
+import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
