@@ -84,7 +84,7 @@ ColumnLayout {
             checkable: false
             checked: Persistent.states.gameBar.recordSound
             glyph: "graphic_eq"
-            text: Translation.tr("System sound")
+            text: Translation.tr("Sound")
             subtitle: checked ? Translation.tr("On") : Translation.tr("Off")
             onClicked: Persistent.states.gameBar.recordSound = !Persistent.states.gameBar.recordSound
         }

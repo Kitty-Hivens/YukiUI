@@ -14,6 +14,7 @@ Item {
     /** How many readings fill the width. */
     property int points: 60
     property color ink: ExLooks.colors.accent
+    property real strokeWidth: 2
 
     readonly property real step: graph.width / Math.max(1, graph.points - 1)
     readonly property var line: {
@@ -52,7 +53,7 @@ Item {
             }
         }
         ShapePath {
-            strokeWidth: 2
+            strokeWidth: graph.strokeWidth
             strokeColor: graph.ink
             fillColor: "transparent"
             joinStyle: ShapePath.RoundJoin

@@ -40,6 +40,8 @@ Singleton {
         readonly property color control: root.dark ? "#34363e" : "#e2e5ec"
         readonly property color controlInk: root.dark ? "#e9eaf0" : "#15161a"
         readonly property color destructive: root.dark ? "#ff7b72" : "#c01c28"
+        /** Between fine and too much: a reading running high. */
+        readonly property color warning: root.dark ? "#f0b45a" : "#b86e00"
 
         /** Laid over a fill in the fill's own foreground colour. */
         readonly property real hoverOpacity: 0.06

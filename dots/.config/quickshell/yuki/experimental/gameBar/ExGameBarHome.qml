@@ -17,6 +17,21 @@ ExSurface {
 
     readonly property var gameMode: ExQuickTiles.info("gameMode")
 
+    /** On screen: it comes down from the top. */
+    property bool shown: false
+    property real arrival: root.shown ? 1 : 0
+    Behavior on arrival {
+        NumberAnimation {
+            duration: ExLooks.motion.normal
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: ExLooks.motion.decelerate
+        }
+    }
+    opacity: root.arrival
+    transform: Translate {
+        y: -(1 - root.arrival) * 16
+    }
+
     implicitWidth: tools.implicitWidth + 2 * ExLooks.spacing.s
     implicitHeight: tools.implicitHeight + 2 * ExLooks.spacing.s
     radius: ExLooks.radius.panel

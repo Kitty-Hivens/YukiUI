@@ -46,8 +46,25 @@ PanelWindow {
         focus: true
         Keys.onEscapePressed: window.bar.close()
 
-        opacity: 0
-        Component.onCompleted: stage.opacity = 1
+        // Everything comes in once the first frame is on screen. Started as
+        // the window was made, the fade and the widgets' coming had run their
+        // course before that frame, which comes a good part of a second later.
+        property bool presented: false
+        Connections {
+            target: stage.Window.window
+            enabled: !stage.presented
+            function onFrameSwapped() {
+                stage.presented = true;
+            }
+        }
+        // Never left unseen, holding the keyboard, should that frame not be reported.
+        Timer {
+            running: !stage.presented
+            interval: 1000
+            onTriggered: stage.presented = true
+        }
+
+        opacity: stage.presented ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
                 duration: ExLooks.motion.fast
@@ -73,6 +90,7 @@ PanelWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             y: ExLooks.spacing.xl
             bar: window.bar
+            shown: stage.presented
         }
 
         // Where the widgets first go, as Windows has them: taking pictures in
@@ -84,6 +102,8 @@ PanelWindow {
 
             bar: window.bar
             key: "capture"
+            order: 0
+            shown: stage.presented
             title: Translation.tr("Capture")
             glyph: "screen_record"
             defaultX: ExLooks.spacing.xl
@@ -96,6 +116,8 @@ PanelWindow {
         ExGameBarWidget {
             bar: window.bar
             key: "audio"
+            order: 2
+            shown: stage.presented
             title: Translation.tr("Audio")
             glyph: "volume_up"
             defaultX: ExLooks.spacing.xl
@@ -108,6 +130,8 @@ PanelWindow {
 
             bar: window.bar
             key: "performance"
+            order: 1
+            shown: stage.presented
             title: Translation.tr("Performance")
             glyph: "monitoring"
             defaultX: stage.width - performance.width - ExLooks.spacing.xl

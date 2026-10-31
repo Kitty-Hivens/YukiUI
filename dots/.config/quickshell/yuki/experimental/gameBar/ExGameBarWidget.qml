@@ -24,6 +24,40 @@ Item {
     /** How wide what a widget holds is, the same for all of them. */
     readonly property real contentWidth: 336
 
+    /** Its place among the widgets coming in, each a moment after the one before. */
+    property int order: 0
+    /** The bar is on screen, and the widget may come in. */
+    property bool shown: false
+    // From below and faded (0) to in place (1), each time it comes on screen.
+    property real arrival: 0
+    function arrive() {
+        if (!frame.shown || !frame.visible)
+            return;
+        frame.arrival = 0;
+        entrance.restart();
+    }
+    onVisibleChanged: frame.arrive()
+    onShownChanged: frame.arrive()
+    SequentialAnimation {
+        id: entrance
+
+        PauseAnimation {
+            duration: frame.order * 40
+        }
+        NumberAnimation {
+            target: frame
+            property: "arrival"
+            to: 1
+            duration: ExLooks.motion.normal
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: ExLooks.motion.decelerate
+        }
+    }
+    opacity: frame.arrival
+    transform: Translate {
+        y: (1 - frame.arrival) * 16
+    }
+
     default property alias content: column.data
 
     readonly property var saved: Persistent.states.gameBar[frame.key]
