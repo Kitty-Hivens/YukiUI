@@ -14,6 +14,10 @@
 # Upstream applies every ItemsPropertiesUpdated as the full set of properties and resets
 # what it leaves out, so a program announcing a new toggle state alone, Easy Effects with
 # its presets, had its checkmark entries drawn as plain ones after the first pick.
+#
+# And a process the shell starts goes with the shell. Upstream stops it only when the
+# shell exits cleanly, so a shell that crashed or was killed left its helpers running
+# for the rest of the session, a gamemode request among them, holding gamemode on.
 
 groups=(illogical-impulse)
 _pkgname=quickshell
@@ -21,9 +25,9 @@ pkgname=illogical-impulse-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
 pkgver=0.3.2
-pkgrel=2
-_commit='dea7f9c6ca49dbb33f07c29f08cb45475eb4ab21'
-pkgdesc='Quickshell built from the fork carrying the polkit session and DBusMenu fixes, plus extra Qt deps'
+pkgrel=3
+_commit='8c0c80d1b4b496dd8877e00077ec471d9e282051'
+pkgdesc='Quickshell built from the fork carrying the polkit session, DBusMenu and child process fixes, plus extra Qt deps'
 arch=(x86_64 aarch64)
 url='https://github.com/Kitty-Hivens/quickshell'
 license=('LGPL-3.0-only')
@@ -79,7 +83,7 @@ build() {
   cmake -GNinja -B build \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates)" \
+    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates, children die with the shell)" \
     -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
     -DINSTALL_QML_PREFIX=lib/qt6/qml
 
