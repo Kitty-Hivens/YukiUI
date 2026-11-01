@@ -89,6 +89,26 @@ ShellRoot {
             arrow?.clicked();
             return arrow !== null;
         }
+        function pressGlyph(glyph: string): bool {
+            const button = probe.find(ExStates.openPopup?.contentItem, item => item.glyph === glyph && item.kind !== undefined && item.visible);
+            button?.clicked();
+            return button !== null;
+        }
+        // The button inside a tile of the tile editor, by the tile's key.
+        function pressTileButton(key: string): bool {
+            const slot = probe.find(ExStates.openPopup?.contentItem, item => item.modelData === key && item.lifted !== undefined);
+            const button = probe.find(slot, item => item !== slot && item.implicitWidth === 28 && item.checkable !== undefined);
+            button?.clicked();
+            return button !== null;
+        }
+        // Where a tile of the editor stands within it.
+        function tileAt(key: string): string {
+            const slot = probe.find(ExStates.openPopup?.contentItem, item => item.modelData === key && item.lifted !== undefined);
+            return slot ? JSON.stringify({ x: Math.round(slot.x), y: Math.round(slot.y), shown: slot.shown }) : "";
+        }
+        function pinned(): string {
+            return JSON.stringify(ExQuickTiles.pinned);
+        }
         function pressEntry(text: string): bool {
             const entry = probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.iconRoom !== undefined);
             entry?.clicked();

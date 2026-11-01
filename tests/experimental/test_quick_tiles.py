@@ -51,6 +51,24 @@ ShellRoot {
         function padding(): real {
             return ExStates.openPopup.padding;
         }
+        // How far below the top of the panel's content the tiles start: a
+        // line saying what to do stands over them.
+        function tilesTop(): real {
+            const find = (item, has) => {
+                if (!item)
+                    return null;
+                if (has(item))
+                    return item;
+                for (const child of item.children ?? []) {
+                    const found = find(child, has);
+                    if (found)
+                        return found;
+                }
+                return null;
+            };
+            const editor = find(ExStates.openPopup?.contentItem, item => item.spareTop !== undefined);
+            return editor ? editor.mapToItem(editor.parent.parent, 0, 0).y : -1;
+        }
         function cell(): string {
             return JSON.stringify({ width: (400 - ExLooks.spacing.s) / 2, height: ExLooks.sizes.tileHeight, gap: ExLooks.spacing.s });
         }
@@ -109,11 +127,12 @@ def test_tiles_are_dragged_into_order_unpinned_and_kept(bench, desk, dock, tmp_p
     subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
     left, top = panel_corner(shot)
     padding = float(dock.call("tilesProbe", "padding"))
+    tiles_top = top + padding + float(dock.call("tilesProbe", "tilesTop"))
     cell = json_call(dock, "cell")
 
     def centre(index):
         x = left + padding + (index % 2) * (cell["width"] + cell["gap"]) + cell["width"] / 2
-        y = top + padding + (index // 2) * (cell["height"] + cell["gap"]) + cell["height"] / 2
+        y = tiles_top + (index // 2) * (cell["height"] + cell["gap"]) + cell["height"] / 2
         return round(x), round(y)
 
     before = json_call(dock, "pinned")
@@ -128,11 +147,11 @@ def test_tiles_are_dragged_into_order_unpinned_and_kept(bench, desk, dock, tmp_p
     expected = before[1:4] + [before[0]] + before[4:]
     wait_until(lambda: json_call(dock, "saved")[:len(expected)] == expected, what=f"the order {expected}")
 
-    # The unpin badge stands over the tile's top right corner.
-    corner_x = round(left + padding + cell["width"] - 6)
-    corner_y = round(top + padding + 6)
-    pointer.glide(corner_x, corner_y)
-    pointer.click(corner_x, corner_y)
+    # The button that takes a tile out stands at the tile's right end.
+    button_x = round(left + padding + cell["width"] - 8 - 14)
+    button_y = centre(0)[1]
+    pointer.glide(button_x, button_y)
+    pointer.click(button_x, button_y)
     wait_until(lambda: expected[0] not in json_call(dock, "pinned"), what=f"{expected[0]} to be unpinned")
     assert expected[0] in json_call(dock, "unpinned")
     assert not dock.errors()

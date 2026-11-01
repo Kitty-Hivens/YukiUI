@@ -25,20 +25,16 @@ ExPopup {
         ExQuickTiles.run(key);
     }
 
-    /** Arranging the tiles: unpinning, adding, and dragging them into order. */
+    /** Arranging the tiles: which are shown, and in what order. */
     property bool editing: false
-    /** Adding a tile: the list of those not pinned is open. */
-    property bool adding: false
 
     function startEditing() {
-        editor.keys = ExQuickTiles.pinned.slice();
+        editor.keys = [...ExQuickTiles.pinned, ...ExQuickTiles.unpinned];
         editor.order = ExQuickTiles.pinned.slice();
-        root.adding = false;
         root.editing = true;
     }
     function stopEditing() {
         root.editing = false;
-        root.adding = false;
     }
 
     /**
@@ -107,9 +103,12 @@ ExPopup {
         height: root.page === "sound" ? soundPage.implicitHeight : column.implicitHeight
         clip: root.shift > 0 && root.shift < 1
         // In step with the slide, so the switches leave a panel still their
-        // size rather than one already the sound page's.
+        // size rather than one already the sound page's. Only then: what
+        // grows on the switches, the tile editor say, grows smoothly itself,
+        // and followed a second time the panel lagged behind it and what was
+        // at its foot showed below its edge.
         Behavior on height {
-            enabled: root.visible
+            enabled: root.visible && root.drawnPage === "sound"
             NumberAnimation {
                 duration: ExLooks.motion.normal
                 easing.type: Easing.BezierSpline
@@ -265,24 +264,41 @@ ExPopup {
                 }
             }
 
-            // The pinned tiles laid out for arranging, all of them at once
-            // rather than in pages. Placed by hand rather than by a layout: a
-            // tile dragged to another place moves there as it goes, and a
-            // layout fed a new order made every tile anew, the dragged one
-            // and its drag with it.
+            ExText {
+                Layout.fillWidth: true
+                visible: root.editing
+                text: Translation.tr("Drag to reorder")
+                role: "caption"
+                dim: true
+            }
+
+            // The tiles laid out for arranging: those shown, in their order
+            // and dragged into another, and under them the rest, each moved
+            // across by its own button. One set of tiles placed by hand
+            // rather than two layouts, so a tile moved from one part to the
+            // other travels there rather than vanishing from one and turning
+            // up in the other, and a dragged tile moves as it goes. Drawn
+            // plain whatever their state, since arranging is about where a
+            // tile goes and not about whether it is on: coloured by state,
+            // the editor looked like quick settings with badges on it.
             Item {
                 id: editor
 
-                /** The tiles arranged, made once as editing starts. */
+                /** Every tile, made once as editing starts. */
                 property var keys: []
-                /** Where each stands now, as the drag goes. */
+                /** The tiles shown, in their order, as the drag goes. */
                 property var order: []
+                readonly property var spare: editor.keys.filter(key => !editor.order.includes(key))
                 property string dragged: ""
 
                 readonly property real gap: ExLooks.spacing.s
                 readonly property real cellWidth: (width - gap) / 2
                 readonly property real cellHeight: ExLooks.sizes.tileHeight
-                readonly property int rows: Math.ceil(editor.order.length / 2)
+                readonly property int rows: Math.max(1, Math.ceil(editor.order.length / 2))
+                readonly property real shownHeight: editor.rows * (editor.cellHeight + editor.gap) - editor.gap
+                /** Where the rest start, under a caption naming them. */
+                readonly property real spareTop: editor.shownHeight + ExLooks.spacing.l + spareCaption.implicitHeight + ExLooks.spacing.s
+                readonly property int spareRows: Math.ceil(editor.spare.length / 2)
 
                 function slotX(index: int): real {
                     return (index % 2) * (editor.cellWidth + editor.gap);
@@ -290,7 +306,15 @@ ExPopup {
                 function slotY(index: int): real {
                     return Math.floor(index / 2) * (editor.cellHeight + editor.gap);
                 }
-                /** The place under a point, within the tiles there are. */
+                /** Where a tile goes: among those shown, or among the rest. */
+                function home(key: string): point {
+                    const at = editor.order.indexOf(key);
+                    if (at >= 0)
+                        return Qt.point(editor.slotX(at), editor.slotY(at));
+                    const rest = editor.spare.indexOf(key);
+                    return Qt.point(editor.slotX(rest), editor.spareTop + editor.slotY(rest));
+                }
+                /** The place among those shown under a point. */
                 function slotAt(x: real, y: real): int {
                     const column = x < editor.cellWidth + editor.gap / 2 ? 0 : 1;
                     const row = Math.max(0, Math.min(editor.rows - 1, Math.floor((y + editor.gap / 2) / (editor.cellHeight + editor.gap))));
@@ -303,18 +327,41 @@ ExPopup {
                 }
                 function remove(key: string) {
                     editor.order = editor.order.filter(other => other !== key);
-                    editor.keys = editor.keys.filter(other => other !== key);
                     ExQuickTiles.unpin(key);
                 }
                 function add(key: string) {
-                    editor.keys = [...editor.keys, key];
                     editor.order = [...editor.order, key];
                     ExQuickTiles.pin(key);
                 }
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(editor.cellHeight, editor.rows * (editor.cellHeight + editor.gap) - editor.gap)
+                Layout.preferredHeight: editor.spare.length > 0
+                    ? editor.spareTop + editor.spareRows * (editor.cellHeight + editor.gap) - editor.gap
+                    : editor.shownHeight
                 visible: root.editing
+
+                Behavior on Layout.preferredHeight {
+                    enabled: root.editing
+                    NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                }
+
+                ExText {
+                    id: spareCaption
+
+                    y: editor.shownHeight + ExLooks.spacing.l
+                    width: parent.width
+                    opacity: editor.spare.length > 0 ? 1 : 0
+                    text: Translation.tr("More tiles")
+                    role: "caption"
+                    dim: true
+
+                    Behavior on y {
+                        NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                    }
+                    Behavior on opacity {
+                        NumberAnimation { duration: ExLooks.motion.fast }
+                    }
+                }
 
                 Repeater {
                     model: editor.keys
@@ -323,17 +370,17 @@ ExPopup {
                         id: slot
 
                         required property string modelData
-                        readonly property int at: editor.order.indexOf(slot.modelData)
+                        readonly property bool shown: editor.order.includes(slot.modelData)
                         readonly property bool lifted: editor.dragged === slot.modelData
                         readonly property var info: ExQuickTiles.info(slot.modelData)
+                        readonly property point home: editor.home(slot.modelData)
                         property point held: Qt.point(0, 0)
                         property point pointer: Qt.point(0, 0)
 
-                        visible: slot.at >= 0
                         width: editor.cellWidth
                         height: editor.cellHeight
-                        x: slot.lifted ? slot.pointer.x - slot.held.x : editor.slotX(slot.at)
-                        y: slot.lifted ? slot.pointer.y - slot.held.y : editor.slotY(slot.at)
+                        x: slot.lifted ? slot.pointer.x - slot.held.x : slot.home.x
+                        y: slot.lifted ? slot.pointer.y - slot.held.y : slot.home.y
                         z: slot.lifted ? 2 : 1
                         scale: slot.lifted ? 1.04 : 1
 
@@ -349,22 +396,93 @@ ExPopup {
                             NumberAnimation { duration: ExLooks.motion.fast }
                         }
 
-                        // Shown as it is, and taking no clicks: here a press
-                        // starts a drag.
-                        ExToggleTile {
+                        // A shown tile on a plate, one of the rest only outlined.
+                        Rectangle {
                             anchors.fill: parent
-                            enabled: false
-                            checkable: false
-                            glyph: slot.info.glyph
-                            text: slot.info.text
-                            subtitle: slot.info.subtitle
-                            checked: slot.info.checked
+                            radius: ExLooks.radius.tile
+                            color: slot.shown ? ExLooks.colors.control : "transparent"
+                            border.width: slot.shown ? 0 : 1
+                            border.color: ExLooks.colors.border
+
+                            Behavior on color {
+                                ColorAnimation { duration: ExLooks.motion.normal }
+                            }
+
+                            ExStateLayer {
+                                ink: ExLooks.colors.text
+                                hovered: grab.hovered && slot.shown
+                                pressed: slot.lifted
+                            }
                         }
 
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: ExLooks.spacing.m + 2
+                            anchors.rightMargin: ExLooks.spacing.s
+                            spacing: ExLooks.spacing.m
+
+                            ExGlyph {
+                                text: slot.info.glyph
+                                color: ExLooks.colors.text
+                            }
+                            ExText {
+                                Layout.fillWidth: true
+                                text: slot.info.text
+                                role: "label"
+                                elide: Text.ElideRight
+                            }
+                            // Takes the tile out of quick settings, or puts it in.
+                            AbstractButton {
+                                id: toggle
+
+                                ExPrimaryOnly {
+                                    z: 1
+                                }
+
+                                implicitWidth: 28
+                                implicitHeight: 28
+                                hoverEnabled: true
+                                onClicked: {
+                                    if (slot.shown)
+                                        editor.remove(slot.modelData);
+                                    else
+                                        editor.add(slot.modelData);
+                                }
+
+                                background: Rectangle {
+                                    radius: 14
+                                    color: slot.shown ? ExLooks.colors.surface : ExLooks.colors.accent
+
+                                    ExStateLayer {
+                                        radius: 14
+                                        ink: slot.shown ? ExLooks.colors.text : ExLooks.colors.accentInk
+                                        hovered: toggle.hovered
+                                        pressed: toggle.down
+                                    }
+                                }
+                                contentItem: Item {
+                                    ExGlyph {
+                                        anchors.centerIn: parent
+                                        text: slot.shown ? "remove" : "add"
+                                        size: 18
+                                        color: slot.shown ? ExLooks.colors.text : ExLooks.colors.accentInk
+                                    }
+                                }
+                            }
+                        }
+
+                        HoverHandler {
+                            id: grab
+                            enabled: slot.shown
+                            cursorShape: slot.lifted ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        }
+
+                        // Only those shown are put in order.
                         DragHandler {
                             id: drag
 
                             target: null
+                            enabled: slot.shown
                             acceptedButtons: Qt.LeftButton
                             onActiveChanged: {
                                 if (drag.active) {
@@ -381,74 +499,9 @@ ExPopup {
                                     return;
                                 slot.pointer = editor.mapFromItem(null, drag.centroid.scenePosition.x, drag.centroid.scenePosition.y);
                                 const target = editor.slotAt(slot.pointer.x, slot.pointer.y);
-                                if (target !== slot.at)
+                                if (target !== editor.order.indexOf(slot.modelData))
                                     editor.moveTo(slot.modelData, target);
                             }
-                        }
-
-                        // Unpins the tile, as the pin badge does on Windows.
-                        AbstractButton {
-                            id: unpin
-
-                            ExPrimaryOnly {
-                                z: 1
-                            }
-
-                            visible: !slot.lifted
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: -6
-                            width: 24
-                            height: 24
-                            hoverEnabled: true
-                            onClicked: editor.remove(slot.modelData)
-
-                            background: Rectangle {
-                                radius: 12
-                                color: ExLooks.colors.surface
-                                border.width: 1
-                                border.color: ExLooks.colors.border
-
-                                ExStateLayer {
-                                    radius: 12
-                                    ink: ExLooks.colors.text
-                                    hovered: unpin.hovered
-                                    pressed: unpin.down
-                                }
-                            }
-                            contentItem: Item {
-                                ExGlyph {
-                                    anchors.centerIn: parent
-                                    text: "keep_off"
-                                    size: 14
-                                    color: ExLooks.colors.text
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // The tiles that could be added, opened from the button below.
-            ExMenu {
-                Layout.fillWidth: true
-                visible: root.editing && root.adding
-                elevation: 0
-                color: ExLooks.colors.surfaceSunken
-
-                Repeater {
-                    model: ExQuickTiles.unpinned
-
-                    ExMenuItem {
-                        required property string modelData
-                        readonly property var info: ExQuickTiles.info(modelData)
-
-                        glyph: info.glyph
-                        text: info.text
-                        onClicked: {
-                            editor.add(modelData);
-                            if (ExQuickTiles.unpinned.length === 0)
-                                root.adding = false;
                         }
                     }
                 }
@@ -593,14 +646,6 @@ ExPopup {
                         root.open = false;
                         ExStates.sessionOpen = true;
                     }
-                }
-                ExButton {
-                    visible: root.editing
-                    enabled: ExQuickTiles.unpinned.length > 0
-                    kind: root.adding ? "tonal" : "control"
-                    glyph: "add"
-                    text: Translation.tr("Add")
-                    onClicked: root.adding = !root.adding
                 }
                 ExButton {
                     visible: root.editing
