@@ -104,8 +104,18 @@ ExPopup {
 
     Item {
         width: 400
-        height: column.implicitHeight
+        height: root.page === "sound" ? soundPage.implicitHeight : column.implicitHeight
         clip: root.shift > 0 && root.shift < 1
+        // In step with the slide, so the switches leave a panel still their
+        // size rather than one already the sound page's.
+        Behavior on height {
+            enabled: root.visible
+            NumberAnimation {
+                duration: ExLooks.motion.normal
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: ExLooks.motion.standard
+            }
+        }
 
         ExNavigationButtons {
             z: 1
@@ -138,8 +148,9 @@ ExPopup {
             onSettingsRequested: root.openSettings("bluetooth")
         }
         DockSoundPage {
+            id: soundPage
+
             width: parent.width
-            height: parent.height
             x: (1 - root.shift) * 48
             opacity: root.shift
             visible: root.drawnPage === "sound"

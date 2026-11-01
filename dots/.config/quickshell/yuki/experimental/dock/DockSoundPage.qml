@@ -12,7 +12,7 @@ import qs.experimental.looks
 
 // Sound in quick settings, behind the arrow at the end of the volume, as on
 // Windows 11: which device sound comes out of, and how loud each application
-// plays. Sockets, profiles and sending one application elsewhere are the
+// plays. Unlike the other pages it is as tall as what it holds. Sockets, profiles and sending one application elsewhere are the
 // settings' Sound page, which the button at the bottom opens.
 ColumnLayout {
     id: root
@@ -33,10 +33,42 @@ ColumnLayout {
             return;
         root.counted = root.shown;
         StreamApps.subscribers += root.counted ? 1 : -1;
+        AudioRouting.subscribers += root.counted ? 1 : -1;
     }
     Component.onDestruction: {
-        if (root.counted)
+        if (root.counted) {
             StreamApps.subscribers--;
+            AudioRouting.subscribers--;
+        }
+    }
+
+    /**
+     * What a device is, as Windows names it: what comes out of it, then
+     * where it is. The names cards give themselves, a codec's or a chip's,
+     * tell a person nothing, so what the active socket says comes first, and
+     * the name is kept for a device that says nothing else about itself, as a
+     * USB one in its pro profile has no sockets to say it with.
+     */
+    function describe(node): var {
+        const props = node?.properties ?? {};
+        const name = node?.name ?? "";
+        const port = AudioRouting.activePortFor(node);
+        const form = props["device.form-factor"] ?? "";
+        const bus = name.startsWith("bluez_") ? "bluetooth" : (props["device.bus"] ?? "");
+        const where = bus === "bluetooth" ? Translation.tr("Bluetooth")
+            : bus === "usb" ? Translation.tr("USB")
+            : form === "internal" || bus === "pci" ? Translation.tr("Built-in") : "";
+        if (bus === "bluetooth")
+            return { title: Audio.friendlyDeviceName(node), where: where, glyph: "headphones" };
+        if (/hdmi|displayport|iec958/i.test(`${port} ${name}`))
+            return { title: Translation.tr("HDMI"), where: Audio.friendlyDeviceName(node), glyph: "tv" };
+        if (/headphone/i.test(port) || form === "headphone")
+            return { title: Translation.tr("Headphones"), where: where, glyph: "headphones" };
+        if (/headset/i.test(port) || form === "headset")
+            return { title: Translation.tr("Headset"), where: where, glyph: "headset_mic" };
+        if (/speaker/i.test(port) || form === "internal" || form === "speaker")
+            return { title: Translation.tr("Speakers"), where: where, glyph: "speaker" };
+        return { title: Audio.friendlyDeviceName(node), where: where, glyph: bus === "usb" ? "usb" : "speaker" };
     }
 
     // Without this the volume of an application is never delivered.
@@ -71,11 +103,13 @@ ColumnLayout {
         }
     }
 
+    // As tall as what it holds, up to a limit past which it scrolls: kept
+    // at the height of the switches it was half empty.
     Flickable {
         id: scroller
 
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.preferredHeight: Math.min(lists.implicitHeight, 360)
         clip: true
         contentHeight: lists.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
@@ -106,6 +140,8 @@ ColumnLayout {
 
                     required property var modelData
                     readonly property bool inUse: device.modelData.id === Audio.defaultSinkEndpoint?.id
+                    readonly property var described: root.describe(device.modelData)
+                    readonly property color ink: device.inUse ? ExLooks.colors.tonalInk : ExLooks.colors.text
 
                     ExPrimaryOnly {
                         z: 1
@@ -119,9 +155,14 @@ ColumnLayout {
                             Audio.setDefaultSink(device.modelData);
                     }
 
+                    // The one in use on a plate, as a switched on choice.
                     background: Rectangle {
                         radius: ExLooks.radius.control
-                        color: "transparent"
+                        color: device.inUse ? ExLooks.colors.tonal : "transparent"
+
+                        Behavior on color {
+                            ColorAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
+                        }
 
                         ExStateLayer {
                             ink: ExLooks.colors.text
@@ -140,9 +181,9 @@ ColumnLayout {
 
                             ExGlyph {
                                 Layout.preferredWidth: 24
-                                text: (device.modelData?.name ?? "").startsWith("bluez_") ? "headphones" : "speaker"
+                                text: device.described.glyph
                                 fill: device.inUse ? 1 : 0
-                                color: device.inUse ? ExLooks.colors.accent : ExLooks.colors.text
+                                color: device.ink
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -150,24 +191,22 @@ ColumnLayout {
 
                                 ExText {
                                     Layout.fillWidth: true
-                                    text: Audio.friendlyDeviceName(device.modelData)
+                                    text: device.described.title
                                     textFormat: Text.PlainText
                                     elide: Text.ElideRight
                                     role: "label"
+                                    color: device.ink
                                 }
                                 ExText {
                                     Layout.fillWidth: true
-                                    visible: device.inUse
-                                    text: Translation.tr("In use")
+                                    visible: text.length > 0
+                                    text: device.described.where
+                                    textFormat: Text.PlainText
+                                    elide: Text.ElideRight
                                     role: "caption"
-                                    dim: true
+                                    color: device.ink
+                                    opacity: 0.8
                                 }
-                            }
-                            ExGlyph {
-                                visible: device.inUse
-                                text: "check"
-                                size: 20
-                                color: ExLooks.colors.accent
                             }
                         }
                     }

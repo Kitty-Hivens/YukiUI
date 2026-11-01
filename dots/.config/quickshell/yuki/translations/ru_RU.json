@@ -1427,5 +1427,11 @@
   "Notification settings": "Параметры уведомлений",
   "Date and time settings": "Параметры даты и времени",
   "Keyboard settings": "Параметры клавиатуры",
-  "More sound settings": "Доп. настройки звука"
+  "More sound settings": "Доп. настройки звука",
+  "Speakers": "Динамики",
+  "Headphones": "Наушники",
+  "Headset": "Гарнитура",
+  "Built-in": "Встроенные",
+  "USB": "USB",
+  "HDMI": "HDMI"
 }
