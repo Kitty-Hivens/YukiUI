@@ -32,6 +32,11 @@ Item {
     signal layoutClicked
     /** The marks of who is capturing were clicked. */
     signal captureClicked
+    /**
+     * A part was right clicked, for its own menu to come out of the item
+     * given: "network", "volume", "battery", "clock" or "layout".
+     */
+    signal menuRequested(string kind, Item at)
 
     /** The layouts, as the dock names them. */
     property ExLayouts layouts: ExLayouts {}
@@ -115,6 +120,8 @@ Item {
          */
         readonly property real reach: Math.max(0, (root.crossSize - (root.vertical ? zone.width : zone.height)) / 2)
         signal activated
+        /** Right clicked, where in the zone. */
+        signal menuRequested(point at)
         /** The wheel turned over the zone, in eighths of a degree. */
         signal wheeled(real delta)
 
@@ -131,7 +138,15 @@ Item {
             anchors.leftMargin: root.vertical ? -zone.reach : 0
             anchors.rightMargin: root.vertical ? -zone.reach : 0
             hoverEnabled: true
-            onClicked: zone.activated()
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            // A right click stays with the zone. Let through, it reached the
+            // dock under it and opened the dock's own menu over the clock.
+            onClicked: event => {
+                if (event.button === Qt.RightButton)
+                    zone.menuRequested(mouse.mapToItem(zone, event.x, event.y));
+                else
+                    zone.activated();
+            }
             onWheel: event => zone.wheeled(event.angleDelta.y !== 0 ? event.angleDelta.y : -event.angleDelta.x)
         }
 
@@ -183,6 +198,7 @@ Item {
 
             visible: root.layouts.codes.length > 1
             onActivated: root.layoutClicked()
+            onMenuRequested: root.menuRequested("layout", layoutZone)
 
             // As wide as the widest of the layouts in use, whichever is shown,
             // so switching layouts does not shift the dock.
@@ -223,6 +239,8 @@ Item {
 
             visible: CaptureWatch.recording || CaptureWatch.users.length > 0
             onActivated: root.captureClicked()
+            // The list it opens is already all there is to say about it.
+            onMenuRequested: root.captureClicked()
 
             // In the font of the icons beside them, each as wide as its ink, so
             // they keep the same gaps as those icons.
@@ -277,6 +295,17 @@ Item {
             // The wheel over the icons turns the sound, as it does over the
             // Windows ones.
             onWheeled: delta => root.turnVolume(delta)
+            // The icon nearest along the dock, so a click between two still
+            // lands on one of them.
+            onMenuRequested: at => {
+                const icons = [[networkIcon, "network"], [volumeIcon, "volume"], [batteryIcon, "battery"]].filter(icon => icon[0].visible);
+                const distance = icon => {
+                    const centre = icon[0].mapToItem(statusZone, icon[0].width / 2, icon[0].height / 2);
+                    return root.vertical ? Math.abs(centre.y - at.y) : Math.abs(centre.x - at.x);
+                };
+                const nearest = icons.reduce((best, icon) => distance(icon) < distance(best) ? icon : best);
+                root.menuRequested(nearest[1], nearest[0]);
+            }
 
             GridLayout {
                 columns: root.vertical ? 1 : 3
@@ -286,6 +315,8 @@ Item {
                 // As wide as the ink of their widest glyphs, so the gaps
                 // between them are even.
                 ExStatusGlyph {
+                    id: networkIcon
+
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.networkGlyph
                     variants: ExStatusGlyphs.networkGlyphs
@@ -295,6 +326,8 @@ Item {
                     size: 18
                 }
                 ExStatusGlyph {
+                    id: volumeIcon
+
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.volumeGlyph
                     variants: ExStatusGlyphs.volumeVariants
@@ -302,6 +335,8 @@ Item {
                     size: 18
                 }
                 ExStatusGlyph {
+                    id: batteryIcon
+
                     Layout.alignment: Qt.AlignCenter
                     visible: Battery.available
                     name: ExStatusGlyphs.batteryGlyph
@@ -320,6 +355,7 @@ Item {
             // Notifications that arrived and have not been looked at.
             marked: Notifications.unread > 0
             onActivated: root.clockClicked()
+            onMenuRequested: root.menuRequested("clock", clockZone)
 
             // Across the dock, the time over the date. Down a vertical dock
             // there is no room for either at length, so the time goes over

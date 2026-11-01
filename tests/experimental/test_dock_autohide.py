@@ -96,14 +96,14 @@ def dock_level(bench) -> str:
     return layer_level(bench, "quickshell:dock")
 
 
-def test_the_dock_is_under_the_windows_unless_it_hides(bench, dock):
+def test_the_dock_is_over_the_windows_hiding_or_not(bench, dock):
     # Hiding on its own, it comes out over the windows, which would cover it.
     wait_until(lambda: dock_level(bench) == "2", what="a hiding dock over the windows")
-    # Staying, it is under them, so their menus and a window dragged across
-    # it are not covered by it.
+    # Staying, it is over them as well, as the other environments' bars are:
+    # under them, the shadows of the windows fell on it and darkened it.
     dock.call("autoHideProbe", "setAutoHide", "false")
     try:
-        wait_until(lambda: dock_level(bench) == "1", what="a dock that stays under the windows")
+        wait_until(lambda: dock_level(bench) == "2", what="a dock that stays over the windows")
         # And over the wallpaper, which covers the whole screen: on the same
         # level and made after the dock, it hid the dock completely.
         assert layer_level(bench, "quickshell:background") == "0"

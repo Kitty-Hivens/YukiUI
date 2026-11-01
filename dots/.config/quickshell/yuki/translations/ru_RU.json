@@ -1418,5 +1418,13 @@
   "and %1 more": "и ещё %1",
   "Whole screen": "Весь экран",
   "Part of the screen": "Часть экрана",
-  "%1 seconds": "%1 с"
+  "%1 seconds": "%1 с",
+  "Wi-Fi settings": "Параметры Wi-Fi",
+  "Sound settings": "Параметры звука",
+  "Power settings": "Параметры питания",
+  "Turn on do not disturb": "Включить «Не беспокоить»",
+  "Turn off do not disturb": "Выключить «Не беспокоить»",
+  "Notification settings": "Параметры уведомлений",
+  "Date and time settings": "Параметры даты и времени",
+  "Keyboard settings": "Параметры клавиатуры"
 }
