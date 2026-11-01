@@ -69,6 +69,24 @@ ShellRoot {
             const editor = find(ExStates.openPopup?.contentItem, item => item.spareTop !== undefined);
             return editor ? editor.mapToItem(editor.parent.parent, 0, 0).y : -1;
         }
+        // Where the tiles not shown start, below the top of the tiles, and
+        // which they are, in their order.
+        function spare(): string {
+            const find = (item, has) => {
+                if (!item)
+                    return null;
+                if (has(item))
+                    return item;
+                for (const child of item.children ?? []) {
+                    const found = find(child, has);
+                    if (found)
+                        return found;
+                }
+                return null;
+            };
+            const editor = find(ExStates.openPopup?.contentItem, item => item.spareTop !== undefined);
+            return JSON.stringify({ top: editor?.spareTop ?? -1, keys: editor?.spare ?? [] });
+        }
         function cell(): string {
             return JSON.stringify({ width: (400 - ExLooks.spacing.s) / 2, height: ExLooks.sizes.tileHeight, gap: ExLooks.spacing.s });
         }
@@ -154,4 +172,49 @@ def test_tiles_are_dragged_into_order_unpinned_and_kept(bench, desk, dock, tmp_p
     pointer.click(button_x, button_y)
     wait_until(lambda: expected[0] not in json_call(dock, "pinned"), what=f"{expected[0]} to be unpinned")
     assert expected[0] in json_call(dock, "unpinned")
+    assert not dock.errors()
+
+
+def test_tiles_are_dragged_in_from_the_rest_and_out_to_it(bench, desk, dock, tmp_path):
+    dock.call("dock", "quickSettings")
+    time.sleep(1.0)
+    dock.call("tilesProbe", "edit")
+    wait_until(lambda: dock.call("tilesProbe", "editing") == "true", what="quick settings to be arranged")
+    time.sleep(1.0)
+    shot = tmp_path / "editing.png"
+    subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
+    left, top = panel_corner(shot)
+    padding = float(dock.call("tilesProbe", "padding"))
+    tiles_top = top + padding + float(dock.call("tilesProbe", "tilesTop"))
+    cell = json_call(dock, "cell")
+
+    def centre(index, below=0.0):
+        x = left + padding + (index % 2) * (cell["width"] + cell["gap"]) + cell["width"] / 2
+        y = tiles_top + below + (index // 2) * (cell["height"] + cell["gap"]) + cell["height"] / 2
+        return round(x), round(y)
+
+    def drag(start, end):
+        pointer = desk.pointer()
+        pointer.move(*start)
+        pointer.press()
+        pointer.glide(*end)
+        time.sleep(0.3)
+        pointer.release()
+
+    spare = json_call(dock, "spare")
+    assert spare["keys"], "every tile is shown already"
+    coming = spare["keys"][0]
+    before = json_call(dock, "pinned")
+    # From the first of the rest onto the first place of those shown.
+    drag(centre(0, spare["top"]), centre(0))
+    wait_until(lambda: json_call(dock, "saved")[:1] == [coming], what=f"{coming} to be shown first")
+    assert json_call(dock, "pinned") == [coming] + before
+
+    # And back out, from the first place to well below the tiles shown.
+    time.sleep(0.5)
+    spare = json_call(dock, "spare")
+    drag(centre(0), centre(0, spare["top"] + cell["height"]))
+    time.sleep(1)
+    wait_until(lambda: coming not in json_call(dock, "pinned"), what=f"{coming} to be taken out")
+    assert json_call(dock, "pinned") == before
     assert not dock.errors()

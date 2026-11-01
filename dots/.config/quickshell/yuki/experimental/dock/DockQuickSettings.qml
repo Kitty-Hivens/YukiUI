@@ -274,7 +274,7 @@ ExPopup {
 
             // The tiles laid out for arranging: those shown, in their order
             // and dragged into another, and under them the rest, each moved
-            // across by its own button. One set of tiles placed by hand
+            // across by its own button or dragged across. One set of tiles placed by hand
             // rather than two layouts, so a tile moved from one part to the
             // other travels there rather than vanishing from one and turning
             // up in the other, and a dragged tile moves as it goes. Drawn
@@ -320,6 +320,12 @@ ExPopup {
                     const row = Math.max(0, Math.min(editor.rows - 1, Math.floor((y + editor.gap / 2) / (editor.cellHeight + editor.gap))));
                     return Math.min(editor.order.length - 1, row * 2 + column);
                 }
+                /** The place a tile brought in from the rest takes under a point, one past the end included. */
+                function joinAt(x: real, y: real): int {
+                    const column = x < editor.cellWidth + editor.gap / 2 ? 0 : 1;
+                    const row = Math.max(0, Math.floor((y + editor.gap / 2) / (editor.cellHeight + editor.gap)));
+                    return Math.min(editor.order.length, row * 2 + column);
+                }
                 function moveTo(key: string, index: int) {
                     const next = editor.order.filter(other => other !== key);
                     next.splice(index, 0, key);
@@ -334,16 +340,16 @@ ExPopup {
                     ExQuickTiles.pin(key);
                 }
 
+                // As tall as the two parts can ever take, for as long as the
+                // tiles are arranged. The panel stands on the dock and grows
+                // upwards, so a row opened or closed by a tile moved across
+                // moved every tile under the pointer, the one being dragged
+                // towards among them.
+                readonly property int mostRows: Math.floor(editor.keys.length / 2) + 1
                 Layout.fillWidth: true
-                Layout.preferredHeight: editor.spare.length > 0
-                    ? editor.spareTop + editor.spareRows * (editor.cellHeight + editor.gap) - editor.gap
-                    : editor.shownHeight
+                Layout.preferredHeight: editor.mostRows * (editor.cellHeight + editor.gap) - editor.gap
+                    + ExLooks.spacing.l + spareCaption.implicitHeight + ExLooks.spacing.s
                 visible: root.editing
-
-                Behavior on Layout.preferredHeight {
-                    enabled: root.editing
-                    NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
-                }
 
                 ExText {
                     id: spareCaption
@@ -410,7 +416,7 @@ ExPopup {
 
                             ExStateLayer {
                                 ink: ExLooks.colors.text
-                                hovered: grab.hovered && slot.shown
+                                hovered: grab.hovered
                                 pressed: slot.lifted
                             }
                         }
@@ -473,16 +479,20 @@ ExPopup {
 
                         HoverHandler {
                             id: grab
-                            enabled: slot.shown
                             cursorShape: slot.lifted ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                         }
 
-                        // Only those shown are put in order.
+                        // Dragged within those shown it is put in order, and
+                        // dragged between the two parts it is put in or taken
+                        // out where it is dropped. The line it crosses lies a
+                        // little lower going out than coming in: a tile that
+                        // opens or closes a row of those shown moves that
+                        // line, and on one line it went in and out again
+                        // under a still pointer.
                         DragHandler {
                             id: drag
 
                             target: null
-                            enabled: slot.shown
                             acceptedButtons: Qt.LeftButton
                             onActiveChanged: {
                                 if (drag.active) {
@@ -498,6 +508,19 @@ ExPopup {
                                 if (!drag.active)
                                     return;
                                 slot.pointer = editor.mapFromItem(null, drag.centroid.scenePosition.x, drag.centroid.scenePosition.y);
+                                const middle = slot.pointer.y - slot.held.y + editor.cellHeight / 2;
+                                if (slot.shown && middle > editor.shownHeight + ExLooks.spacing.l) {
+                                    editor.order = editor.order.filter(other => other !== slot.modelData);
+                                    return;
+                                }
+                                if (!slot.shown) {
+                                    if (middle < editor.shownHeight + ExLooks.spacing.l / 2) {
+                                        const next = editor.order.slice();
+                                        next.splice(editor.joinAt(slot.pointer.x, slot.pointer.y), 0, slot.modelData);
+                                        editor.order = next;
+                                    }
+                                    return;
+                                }
                                 const target = editor.slotAt(slot.pointer.x, slot.pointer.y);
                                 if (target !== editor.order.indexOf(slot.modelData))
                                     editor.moveTo(slot.modelData, target);
