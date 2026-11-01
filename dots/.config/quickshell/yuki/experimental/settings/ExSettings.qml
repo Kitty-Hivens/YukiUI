@@ -20,13 +20,28 @@ Item {
      *  layout waiting to be kept that has to be taken back. */
     property bool displaysTouched: false
 
+    /**
+     * Where the window is asked to be, which the list on the left marks at
+     * once and the history keeps.
+     */
     property string categoryKey: "home"
     /** A page within the category, or empty for the category's own page. */
     property string pageKey: ""
     readonly property string query: search.text.trim()
+    readonly property bool searching: root.query.length > 0
 
-    readonly property var category: catalogue.category(root.categoryKey)
-    readonly property var page: root.pageKey.length > 0 ? catalogue.page(root.pageKey) : null
+    /**
+     * What is on show, which the title and the page itself read. It catches up
+     * with the place asked for once that page is built, so the title never
+     * names a page still being built over the one before it.
+     */
+    property string shownCategory: "home"
+    property string shownPage: ""
+    property bool shownSearching: false
+    property var pending: null
+
+    readonly property var category: catalogue.category(root.shownCategory)
+    readonly property var page: root.shownPage.length > 0 ? catalogue.page(root.shownPage) : null
 
     /**
      * The pages the window has shown, oldest first, as { category, page }, and
@@ -37,9 +52,121 @@ Item {
     property int historyIndex: -1
 
     function show(place) {
+        root.entrance = root.entranceTo(place);
         root.categoryKey = place.category;
         root.pageKey = place.page;
+        root.loadPage();
     }
+
+    // Typing into the search shows its results, and clearing it the page
+    // again. Typing more only narrows the results the page already shows.
+    onSearchingChanged: {
+        root.entrance = "up";
+        root.loadPage();
+    }
+
+    /**
+     * Two pages take turns: the next is built in the background while the
+     * one on show stays, and comes in once it is whole. Built in one go, a
+     * heavy page held the window blank for half a second and then appeared
+     * at once, its coming in already over.
+     */
+    property int front: 0
+    function loadPage() {
+        const category = catalogue.category(root.categoryKey);
+        const page = root.pageKey.length > 0 ? catalogue.page(root.pageKey) : null;
+        root.pending = { category: root.categoryKey, page: root.pageKey, searching: root.searching };
+        const url = Qt.resolvedUrl(root.searching ? "SearchPage.qml"
+            : page ? (page.component ?? "NotYetPage.qml")
+            : (category?.component ?? "CategoryPage.qml"));
+        const back = root.front === 0 ? pageB : pageA;
+        back.setSource(url, {
+            settings: root,
+            catalogue: catalogue,
+            shell: shellLink
+        });
+    }
+    /**
+     * The page built and waiting for its first frame, or -1. Laid out and
+     * drawn the first time is the costly part of a heavy page, the sound page
+     * on the bench a good part of a second, and only a page on show pays it,
+     * so it is shown all but transparent under the one on show until a frame
+     * with it in has gone out. Swapped in before that, it came in blank and
+     * stayed so while that frame was drawn.
+     */
+    property int warming: -1
+    function pageReady(which: int) {
+        if (which === root.front)
+            return;
+        root.warming = which;
+        warmFallback.restart();
+    }
+    Connections {
+        target: root.Window.window
+        enabled: root.warming >= 0
+        function onFrameSwapped() {
+            root.swapIn();
+        }
+    }
+    // Never left waiting for a frame that is not reported.
+    Timer {
+        id: warmFallback
+        interval: 500
+        onTriggered: root.swapIn()
+    }
+    function swapIn() {
+        const which = root.warming;
+        if (which < 0)
+            return;
+        root.warming = -1;
+        warmFallback.stop();
+        const leaving = which === 0 ? pageB : pageA;
+        if (root.pending) {
+            root.shownCategory = root.pending.category;
+            root.shownPage = root.pending.page;
+            root.shownSearching = root.pending.searching;
+        }
+        root.front = which;
+        leaving.source = "";
+        // A new page starts at its top, and comes in.
+        scroller.contentY = 0;
+        root.arrive();
+    }
+
+    /**
+     * How the next page comes in, as Windows 11 moves its own: "in" from the
+     * right going from a category into one of its pages, "out" from the left
+     * coming back up to the category, "up" from below for anything else.
+     */
+    property string entrance: "up"
+    function entranceTo(place): string {
+        if (place.category === root.categoryKey) {
+            if (place.page.length > 0 && root.pageKey.length === 0)
+                return "in";
+            if (place.page.length === 0 && root.pageKey.length > 0)
+                return "out";
+        }
+        return "up";
+    }
+
+    /** From where the page comes in (0) to in place (1). */
+    property real arrival: 1
+    function arrive() {
+        arrivalAnimation.stop();
+        root.arrival = 0;
+        arrivalAnimation.start();
+    }
+    NumberAnimation {
+        id: arrivalAnimation
+        target: root
+        property: "arrival"
+        to: 1
+        duration: ExLooks.motion.normal
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: ExLooks.motion.decelerate
+    }
+    readonly property real arrivalX: (1 - root.arrival) * (root.entrance === "in" ? 40 : root.entrance === "out" ? -40 : 0)
+    readonly property real arrivalY: (1 - root.arrival) * (root.entrance === "up" ? 24 : 0)
 
     function open(key: string) {
         search.text = "";
@@ -208,7 +335,13 @@ Item {
             spacing: 0
 
             // Category, then the page within it, the category going back.
+            // Comes in with the page under it.
             Row {
+                opacity: root.arrival
+                transform: Translate {
+                    x: root.arrivalX
+                    y: root.arrivalY
+                }
                 Layout.leftMargin: ExLooks.spacing.xl + ExLooks.spacing.l
                 Layout.topMargin: ExLooks.spacing.xl
                 Layout.bottomMargin: ExLooks.spacing.m
@@ -221,7 +354,7 @@ Item {
                         z: 1
                     }
 
-                    readonly property bool leads: root.page !== null && root.query.length === 0
+                    readonly property bool leads: root.page !== null && !root.shownSearching
 
                     anchors.verticalCenter: parent.verticalCenter
                     enabled: crumb.leads
@@ -229,7 +362,7 @@ Item {
                     onClicked: root.open(root.categoryKey)
 
                     contentItem: ExText {
-                        text: root.query.length > 0 ? Translation.tr("Search") : (root.category?.name ?? "")
+                        text: root.shownSearching ? Translation.tr("Search") : (root.category?.name ?? "")
                         font.pixelSize: 28
                         font.weight: ExLooks.font.weightTitle
                         color: crumb.leads && !crumb.hovered ? ExLooks.colors.textDim : ExLooks.colors.text
@@ -271,28 +404,30 @@ Item {
 
                     x: ExLooks.spacing.xl + ExLooks.spacing.l
                     width: Math.min(1000, scroller.width - 2 * x)
-                    implicitHeight: pageLoader.item?.implicitHeight ?? 0
+                    implicitHeight: (root.front === 0 ? pageA : pageB).item?.implicitHeight ?? 0
+                    opacity: root.arrival
+                    transform: Translate {
+                        x: root.arrivalX
+                        y: root.arrivalY
+                    }
 
                     Loader {
-                        id: pageLoader
+                        id: pageA
 
                         width: parent.width
-                        // A new page starts at its top.
-                        onLoaded: scroller.contentY = 0
+                        asynchronous: true
+                        visible: root.front === 0 || root.warming === 0
+                        opacity: root.warming === 0 ? 0.01 : 1
+                        onLoaded: root.pageReady(0)
+                    }
+                    Loader {
+                        id: pageB
 
-                        readonly property string source_: root.query.length > 0 ? "SearchPage.qml"
-                            : root.page ? (root.page.component ?? "NotYetPage.qml")
-                            : (root.category?.component ?? "CategoryPage.qml")
-                        onSource_Changed: pageLoader.setSource(Qt.resolvedUrl(pageLoader.source_), {
-                            settings: root,
-                            catalogue: catalogue,
-                            shell: shellLink
-                        })
-                        Component.onCompleted: pageLoader.setSource(Qt.resolvedUrl(pageLoader.source_), {
-                            settings: root,
-                            catalogue: catalogue,
-                            shell: shellLink
-                        })
+                        width: parent.width
+                        asynchronous: true
+                        visible: root.front === 1 || root.warming === 1
+                        opacity: root.warming === 1 ? 0.01 : 1
+                        onLoaded: root.pageReady(1)
                     }
                 }
             }
