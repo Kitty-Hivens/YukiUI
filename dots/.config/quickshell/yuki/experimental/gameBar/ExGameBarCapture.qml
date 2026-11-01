@@ -49,6 +49,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             checkable: false
+            restFill: ExLooks.colors.glassControl
             glyph: "photo_camera"
             text: Translation.tr("Screenshot")
             subtitle: Translation.tr("Whole screen")
@@ -58,6 +59,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             checkable: false
+            restFill: ExLooks.colors.glassControl
             glyph: "screenshot_region"
             text: Translation.tr("Region")
             subtitle: Translation.tr("Part of the screen")
@@ -67,6 +69,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             checkable: false
+            restFill: ExLooks.colors.glassControl
             checked: root.recording
             glyph: root.recording ? "stop_circle" : "radio_button_checked"
             text: root.recording ? Translation.tr("Stop") : Translation.tr("Record")
@@ -82,6 +85,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 1
             checkable: false
+            restFill: ExLooks.colors.glassControl
             checked: Persistent.states.gameBar.recordSound
             glyph: "graphic_eq"
             text: Translation.tr("Sound")

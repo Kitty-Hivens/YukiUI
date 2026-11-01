@@ -72,6 +72,7 @@ Item {
 
     ExSurface {
         anchors.fill: parent
+        color: ExLooks.colors.glass
         radius: ExLooks.radius.panel
         elevation: 1
 

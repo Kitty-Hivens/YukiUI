@@ -19,10 +19,12 @@ AbstractButton {
     property string subtitle: ""
     property bool hasMenu: false
     property string previewState: ""
+    /** The plate while off. */
+    property color restFill: ExLooks.colors.control
 
     signal menuRequested
 
-    readonly property color fill: checked ? ExLooks.colors.accent : ExLooks.colors.control
+    readonly property color fill: checked ? ExLooks.colors.accent : root.restFill
     readonly property color ink: checked ? ExLooks.colors.accentInk : ExLooks.colors.controlInk
     readonly property real menuWidth: 44
 

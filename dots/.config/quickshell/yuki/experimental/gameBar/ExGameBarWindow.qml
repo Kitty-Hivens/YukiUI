@@ -75,7 +75,7 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            color: ExLooks.colors.scrim
+            color: ExLooks.colors.scrimLight
         }
         // A click beside the widgets puts the bar away.
         MouseArea {

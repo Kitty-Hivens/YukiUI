@@ -135,7 +135,7 @@ ColumnLayout {
 
                 background: Rectangle {
                     radius: ExLooks.radius.tile
-                    color: tile.picked ? ExLooks.colors.accent : ExLooks.colors.control
+                    color: tile.picked ? ExLooks.colors.accent : ExLooks.colors.glassControl
 
                     Behavior on color {
                         ColorAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
@@ -194,7 +194,7 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: graphColumn.implicitHeight + 2 * ExLooks.spacing.m
         radius: ExLooks.radius.tile
-        color: ExLooks.colors.surfaceSunken
+        color: ExLooks.colors.glassSunken
 
         ColumnLayout {
             id: graphColumn

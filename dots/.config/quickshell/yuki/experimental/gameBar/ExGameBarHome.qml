@@ -34,6 +34,7 @@ ExSurface {
 
     implicitWidth: tools.implicitWidth + 2 * ExLooks.spacing.s
     implicitHeight: tools.implicitHeight + 2 * ExLooks.spacing.s
+    color: ExLooks.colors.glass
     radius: ExLooks.radius.panel
     elevation: 1
 

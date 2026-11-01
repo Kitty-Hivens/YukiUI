@@ -67,6 +67,19 @@ Singleton {
         readonly property color scrimInk: "#ffffff"
         /** Over the blurred wallpaper of the lock screen. */
         readonly property color lockVeil: root.dark ? "#66101216" : "#66eef0f4"
+
+        /**
+         * A plane over a game, which the compositor blurs the game behind:
+         * the surface, the controls on it and what is sunk into it let the
+         * game's colour through. The compositor blurs only what is more
+         * opaque than its threshold, which the glass is and the scrim under
+         * it, with a shadow on top, is not.
+         */
+        readonly property color glass: root.dark ? "#b326272d" : "#b8ffffff"
+        readonly property color glassControl: root.dark ? "#17ffffff" : "#14000000"
+        readonly property color glassSunken: root.dark ? "#2e000000" : "#0d000000"
+        /** The game behind the game bar, dimmed less than a screen under a dialog. */
+        readonly property color scrimLight: root.dark ? "#40000000" : "#2615161a"
     }
 
     readonly property QtObject radius: QtObject {

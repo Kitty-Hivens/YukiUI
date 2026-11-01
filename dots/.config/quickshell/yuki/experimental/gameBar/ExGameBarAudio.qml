@@ -111,7 +111,7 @@ ColumnLayout {
         Layout.topMargin: ExLooks.spacing.xs
         implicitHeight: card.implicitHeight + 2 * ExLooks.spacing.m
         radius: ExLooks.radius.tile
-        color: ExLooks.colors.surfaceSunken
+        color: ExLooks.colors.glassSunken
 
         ColumnLayout {
             id: card
