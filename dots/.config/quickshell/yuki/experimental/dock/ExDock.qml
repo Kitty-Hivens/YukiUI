@@ -643,6 +643,14 @@ Scope {
                 quickSettings.toggle(status.statusButton);
             }
 
+            /** Quick settings opened straight on its sound page. */
+            function openMixer() {
+                closePopups(quickSettings);
+                if (!quickSettings.open)
+                    quickSettings.toggle(status.statusButton);
+                quickSettings.openPage("sound");
+            }
+
             function toggleLayoutMenu() {
                 closePopups(layoutMenu);
                 layoutMenu.toggle(status.layoutButton);
@@ -1114,6 +1122,7 @@ Scope {
                 dockWindow: window
                 dockSurface: dock
                 edge: window.edge
+                onMixerRequested: window.openMixer()
             }
 
             DockQuickLinks {

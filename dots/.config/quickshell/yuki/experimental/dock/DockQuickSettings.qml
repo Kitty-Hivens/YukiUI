@@ -42,8 +42,8 @@ ExPopup {
     }
 
     /**
-     * The page behind a tile's arrow, "wifi" or "bluetooth", or empty for the
-     * switches. It slides in over the switches and keeps their size, so the
+     * The page behind a tile's arrow, "wifi" or "bluetooth", or behind the
+     * volume's, "sound", or empty for the switches. It slides in over the switches and keeps their size, so the
      * window does not change shape under the pointer.
      */
     property string page: ""
@@ -136,6 +136,16 @@ ExPopup {
             shown: root.page === "bluetooth" && root.open
             onBack: root.goBack()
             onSettingsRequested: root.openSettings("bluetooth")
+        }
+        DockSoundPage {
+            width: parent.width
+            height: parent.height
+            x: (1 - root.shift) * 48
+            opacity: root.shift
+            visible: root.drawnPage === "sound"
+            shown: root.page === "sound" && root.open
+            onBack: root.goBack()
+            onSettingsRequested: root.openSettings("sound")
         }
 
         ColumnLayout {
@@ -499,6 +509,13 @@ ExPopup {
                     to: 1
                     value: Audio.sink?.audio?.volume ?? 0
                     onMoved: Audio.setDeviceVolume(Audio.sink, value)
+                }
+                // The device and each application, as the arrow at the end
+                // of the Windows 11 volume opens them.
+                ExButton {
+                    kind: "flat"
+                    glyph: "chevron_right"
+                    onClicked: root.openPage("sound")
                 }
             }
 

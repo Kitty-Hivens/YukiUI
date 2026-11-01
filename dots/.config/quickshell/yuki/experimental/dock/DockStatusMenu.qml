@@ -6,7 +6,7 @@ import qs.experimental.looks
 
 // What a right click on the status block offers, for whichever part of it was
 // clicked, as each icon in the Windows corner has its own: the connection its
-// settings, the sound muting and its settings, the battery the power settings,
+// settings, the sound muting, its mixer and its settings, the battery the power settings,
 // the clock do not disturb and the settings of notifications and of the time,
 // the layout the keyboard settings.
 ExPopup {
@@ -14,6 +14,9 @@ ExPopup {
 
     /** The part clicked: "network", "volume", "battery", "clock" or "layout". */
     property string kind: ""
+
+    /** The sound page of quick settings is asked for. */
+    signal mixerRequested
 
     readonly property bool muted: Audio.sink?.audio?.muted ?? false
 
@@ -39,6 +42,7 @@ ExPopup {
                             Audio.sink.audio.muted = !Audio.sink.audio.muted;
                     }
                 },
+                { key: "mixer", text: Translation.tr("Volume mixer"), glyph: "tune", run: () => root.mixerRequested() },
                 { key: "separator", separator: true },
                 { key: "sound", text: Translation.tr("Sound settings"), glyph: "settings", run: root.settings("sound") }
             ];

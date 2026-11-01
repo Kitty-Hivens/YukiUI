@@ -4,6 +4,10 @@ The parts of the block took only the left button, so a right click fell
 through to the dock under them and opened the dock's own menu over the clock.
 Each part now has its own, and each icon of the three in the middle its own,
 as in the Windows corner.
+
+The sound icon's menu also leads to the sound page of quick settings, which
+the arrow at the end of the volume opens as well: the device sound comes out
+of, and how loud each application plays.
 """
 
 import json
@@ -73,6 +77,23 @@ ShellRoot {
             for (const dock of ExStates.dockWindows)
                 dock.closePopups(null);
         }
+        // The page quick settings shows, while it is the one open.
+        function page(): string {
+            const popup = ExStates.openPopup;
+            return popup?.open && popup.page !== undefined ? popup.page : "";
+        }
+        // Pressed as a click would, inside the open popup, which is a window
+        // of its own: the arrow after the volume, an entry of a menu by its text.
+        function pressArrow(): bool {
+            const arrow = probe.find(ExStates.openPopup?.contentItem, item => item.glyph === "chevron_right" && item.kind === "flat" && item.visible);
+            arrow?.clicked();
+            return arrow !== null;
+        }
+        function pressEntry(text: string): bool {
+            const entry = probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.iconRoom !== undefined);
+            entry?.clicked();
+            return entry !== null;
+        }
     }
 }
 """
@@ -137,3 +158,17 @@ def test_the_empty_dock_still_has_the_dock_menu(bench, desk, dock):
     # the status block at the end.
     right_click(desk, plate["x"] + plate["width"] // 4, plate["y"] + plate["height"] // 2)
     assert wait_until(lambda: dock.call("statusMenuProbe", "open"), what="a menu to open") == "dock"
+
+
+def test_the_arrow_after_the_volume_opens_the_sound_page(dock):
+    dock.call("dock", "quickSettings")
+    wait_until(lambda: dock.call("statusMenuProbe", "open") == "other", what="quick settings to open")
+    assert dock.call("statusMenuProbe", "pressArrow") == "true"
+    wait_until(lambda: dock.call("statusMenuProbe", "page") == "sound", what="the sound page")
+
+
+def test_the_mixer_in_the_sound_menu_opens_the_sound_page(bench, desk, dock):
+    right_click(desk, *centre(bench, dock, "volume"))
+    wait_until(lambda: dock.call("statusMenuProbe", "open") == "volume", what="the sound menu")
+    assert dock.call("statusMenuProbe", "pressEntry", "Volume mixer") == "true"
+    wait_until(lambda: dock.call("statusMenuProbe", "page") == "sound", what="quick settings on the sound page")
