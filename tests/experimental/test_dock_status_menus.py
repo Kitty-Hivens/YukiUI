@@ -109,6 +109,11 @@ ShellRoot {
         function pinned(): string {
             return JSON.stringify(ExQuickTiles.pinned);
         }
+        function pressText(text: string): bool {
+            const button = probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.kind !== undefined && item.visible);
+            button?.clicked();
+            return button !== null;
+        }
         function pressEntry(text: string): bool {
             const entry = probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.iconRoom !== undefined);
             entry?.clicked();
