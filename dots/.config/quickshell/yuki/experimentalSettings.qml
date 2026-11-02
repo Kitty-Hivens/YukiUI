@@ -88,15 +88,14 @@ ApplicationWindow {
         }
     }
 
-    // Asked to open again while open: the page wanted, and the window brought
-    // up, which on Hyprland only the compositor can do.
+    // Asked to open again while open: the page wanted. The shell that asked
+    // brings the window up, as it knows whether it is minimised.
     IpcHandler {
         target: "settingsWindow"
 
         function present(page: string): void {
             if (page.length > 0)
                 content.open(page);
-            Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.focus({ window = "title:^(Experimental Settings)$" })']);
         }
     }
 

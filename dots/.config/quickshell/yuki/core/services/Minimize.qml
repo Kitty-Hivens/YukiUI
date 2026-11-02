@@ -139,11 +139,14 @@ Singleton {
         // on reaching it. Focus passes to whichever window of the same workspace
         // had it last, the way closing a window hands it on, and is let go of
         // when there is none. Letting go needs the minimize plugin, and without
-        // it focus stays where Hyprland left it.
+        // it focus stays where Hyprland left it. The window given focus is
+        // raised with it: the one used last is not always the one on top, and
+        // focus alone would leave the keys going to a window behind another.
         const focused = windows.find(win => win.focusHistoryID === 0);
         if (focused) {
             const next = root.lastFocusedOn(focused.workspace.id, windows.map(win => win.address));
-            lua += next ? `hl.dispatch(hl.dsp.focus({ window = "address:${next.address}" }))`
+            const target = next ? `window = "address:${next.address}"` : "";
+            lua += next ? `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.bring_to_top({ ${target} }))`
                 : "if hl.plugin.minimize and hl.plugin.minimize.reset_focus then hl.plugin.minimize.reset_focus() end";
         }
         root.move(windows, lua, "minimize");
