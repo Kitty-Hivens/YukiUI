@@ -1,0 +1,29 @@
+[Unit]
+Description=Gives Bluetooth connections devices open the packet types of those this machine opens
+Documentation=file:///usr/src/yuki-helpers/btlinks/main.c
+After=bluetooth.service
+
+[Service]
+ExecStart=/usr/lib/yuki/yuki-btlinks
+Restart=on-failure
+RestartSec=2
+# Watching the controllers and sending them a command takes CAP_NET_RAW and
+# nothing else, so it runs as a user of its own holding only that.
+DynamicUser=yes
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_BLUETOOTH AF_UNIX
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=bluetooth.target

@@ -1,9 +1,13 @@
 post_install() {
     /usr/lib/yuki-hyprland-plugins/build
+    echo "To give Bluetooth connections devices open the fast packets: systemctl enable --now yuki-btlinks"
 }
 
 post_upgrade() {
-    post_install
+    /usr/lib/yuki-hyprland-plugins/build
+    # A service running the build before goes on to the new one.
+    systemctl try-restart yuki-btlinks.service 2>/dev/null
+    true
 }
 
 # The built files belong to no package, since they are made on this machine.

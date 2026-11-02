@@ -8,10 +8,12 @@
 #
 # The sources are read from hypr-plugins/ at the root of this repository. The
 # helper programs in helpers/ go the same way, built into /usr/lib/yuki: they
-# are C talking to the compositor, and need a compiler on the machine as much.
+# are C talking to the compositor or the session, and need a compiler on the
+# machine as much. One of them, yuki-btlinks, runs as a service of the system,
+# whose unit comes with the package and is left for the owner to enable.
 
 pkgname=yuki-hyprland-plugins
-pkgver=1.21
+pkgver=1.22
 pkgrel=1
 pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
 arch=(any)
@@ -26,12 +28,13 @@ depends=(
   wayland-protocols
 )
 install=yuki-hyprland-plugins.install
-source=(build yuki-hyprland-plugins.hook)
-sha256sums=('SKIP' 'SKIP')
+source=(build yuki-hyprland-plugins.hook yuki-btlinks.service)
+sha256sums=('SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 build -t "$pkgdir/usr/lib/yuki-hyprland-plugins"
   install -Dm644 yuki-hyprland-plugins.hook -t "$pkgdir/usr/share/libalpm/hooks"
+  install -Dm644 yuki-btlinks.service -t "$pkgdir/usr/lib/systemd/system"
 
   local plugins="$startdir/../../../hypr-plugins"
   for dir in "$plugins"/*/; do
