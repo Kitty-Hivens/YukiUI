@@ -349,6 +349,35 @@ Scope {
         return client.size[0] >= area.w - 8 && client.size[1] >= area.h - 8;
     }
 
+    /**
+     * Whether a window just opened takes most of the work area, as GNOME
+     * judges it: four fifths of its area or more. Judged by both sides with a
+     * few pixels to spare, an application sizing itself to the screen a little
+     * short on one side and past it on the other, ten pixels too narrow and
+     * thirty too tall, stood off the screen and under the dock instead.
+     */
+    function mostly(client, area): bool {
+        return client.size[0] * client.size[1] >= 0.8 * area.w * area.h;
+    }
+
+    /**
+     * Lua bringing a window just opened inside the work area, as GNOME keeps a
+     * new window on its screen: moved in, and made smaller on a side it is
+     * longer than the area along. Empty when it is inside already. An X11
+     * application places itself, and one did so past the screen's edge and
+     * under the dock.
+     */
+    function fitInto(client, area, target: string): string {
+        const w = Math.min(client.size[0], area.w);
+        const h = Math.min(client.size[1], area.h);
+        const x = Math.max(area.x, Math.min(client.at[0], area.x + area.w - w));
+        const y = Math.max(area.y, Math.min(client.at[1], area.y + area.h - h));
+        if (w === client.size[0] && h === client.size[1] && x === client.at[0] && y === client.at[1])
+            return "";
+        return (w !== client.size[0] || h !== client.size[1] ? `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${w}, y = ${h} })) ` : "")
+            + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${x}, y = ${y} })) `;
+    }
+
     /** Where a window placed before anything knew where it stood goes back to: a size of its own, centred. */
     function centred(area): var {
         const size = [Math.round(area.w * 0.6), Math.round(area.h * 0.7)];
@@ -467,12 +496,15 @@ Scope {
             return asHyprland + root.answer({ address: client.address, wanted: wanted, before: before, stay: true }, clients, monitors);
         }
 
-        // An application that opens as large as the work area is taken to want
-        // to be maximised, and is, as GNOME does: Steam, say, sizes itself to
-        // the screen without saying it is maximised.
+        // An application that opens taking most of the work area is taken to
+        // want to be maximised, and is, as GNOME does: Steam, say, sizes
+        // itself to the screen without saying it is maximised. One that opens
+        // smaller but past the area's edge is brought inside it.
         if (wanted === "opened") {
-            if (entry || root.decided[client.address] || !root.covers(client, area))
+            if (entry || root.decided[client.address])
                 return "";
+            if (!root.mostly(client, area))
+                return root.fitInto(client, area, target);
             wanted = "maximized";
             before = root.centred(area);
         }

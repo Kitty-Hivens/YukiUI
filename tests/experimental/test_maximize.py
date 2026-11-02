@@ -108,6 +108,28 @@ def test_window_opening_as_large_as_the_work_area_is_maximized_wayland(desk):
     window.wait(lambda c: is_maximized(desk, c), "maximised as it opened")
 
 
+def test_window_opening_over_most_of_the_work_area_is_maximized_x11(desk):
+    # As one application sizes itself: a little short of the screen's width,
+    # past its height and under the dock, set in from the corner. Judged by
+    # both sides with a few pixels to spare it stood off the screen instead.
+    x, y, w, h = area(desk)
+    window = desk.x11(x=x + 48, y=y + 48, width=w - 10, height=h + 30)
+    window.wait(lambda c: is_maximized(desk, c), "maximised as it opened")
+
+
+def test_window_opening_past_the_work_area_is_brought_inside_it(desk):
+    x, y, w, h = area(desk)
+    window = desk.x11(x=x + w - 400, y=y + h - 300, width=900, height=600)
+
+    def inside(c):
+        cx, cy = c["at"]
+        cw, ch = c["size"]
+        return x <= cx and y <= cy and cx + cw <= x + w and cy + ch <= y + h
+    client = window.wait(inside, "brought inside the work area")
+    assert client["size"] == [900, 600], "made smaller although it fitted"
+    assert not client["tags"], "maximised although it is small"
+
+
 def test_window_asking_to_be_maximized_before_it_shows_opens_maximized(desk):
     # As an application that remembers being maximised asks, before its
     # first frame, which Hyprland hears and forgets before the window maps.
