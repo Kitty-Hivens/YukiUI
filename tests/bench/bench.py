@@ -112,6 +112,7 @@ class Bench:
         builds = [["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"] for name in PLUGINS]
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
         builds.append(["make", "-s", "-C", str(REPO / "helpers/clip"), f"OUT={self.clip_tool}"])
+        builds.append(["make", "-s", "-C", str(REPO / "helpers/tray"), f"OUT={self.tray_keeper}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/data_control"), f"OUT={self.data_control_client}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/locked"), f"OUT={self.locked_client}"])
         for command in builds:
@@ -143,6 +144,11 @@ class Bench:
     def clip_tool(self) -> Path:
         """The clipboard helper, built from this repository as the package builds it."""
         return self.build / "yuki-clip"
+
+    @property
+    def tray_keeper(self) -> Path:
+        """The tray's keeper, built from this repository as the package builds it."""
+        return self.build / "yuki-tray"
 
     @property
     def environment_rules(self) -> Path:
@@ -201,6 +207,10 @@ end
             "YUKI_RUNTIME_DIR": str(self.runtime_dir),
             # The clipboard helper as built for this run, not the installed one.
             "YUKI_CLIP": str(self.clip_tool),
+            # And the tray's keeper. It takes a name on the session bus, which
+            # stays the person's, so a test of the tray gives its shell a bus
+            # of its own.
+            "YUKI_TRAY": str(self.tray_keeper),
             # Stand-ins for the tools that drive the backlight, which is the
             # machine's and so the person's: a shell started on the bench set
             # it as it came up, and their screen dimmed.

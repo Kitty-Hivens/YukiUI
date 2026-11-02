@@ -53,6 +53,7 @@ ShellRoot {
         HyprlandConfig.load()
         Minimize.load()
         Battery.load()
+        TrayKeeper.load()
     }
 
 
