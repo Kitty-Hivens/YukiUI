@@ -61,6 +61,16 @@ ShellRoot {
         function renaming(): string {
             return icons.renaming;
         }
+        function templates(): string {
+            return JSON.stringify(icons.templates);
+        }
+        // "New" from the template of that name, right clicked at that point.
+        function createFrom(name: string, x: real, y: real): bool {
+            const template = icons.templates.find(candidate => icons.templateName(candidate) === name);
+            if (template)
+                icons.createFrom(template, Qt.point(x, y));
+            return template !== undefined;
+        }
     }
 }
 """
@@ -77,8 +87,12 @@ def desktop(bench, tmp_path):
     (folder / "box").mkdir(parents=True)
     for name in ("a.txt", "b.txt"):
         (folder / name).write_text(name)
+    # And a templates folder, as Nautilus keeps its templates.
+    templates = tmp_path / "Templates"
+    templates.mkdir()
+    (templates / "Report.md").write_text("# Report\n")
     user_dirs = bench.config_home / "user-dirs.dirs"
-    user_dirs.write_text(f'XDG_DESKTOP_DIR="{folder}"\n')
+    user_dirs.write_text(f'XDG_DESKTOP_DIR="{folder}"\nXDG_TEMPLATES_DIR="{templates}"\n')
     # The cells kept are by name, and an earlier test's are not this one's.
     for kept in bench.state_home.rglob("desktop-icons.json"):
         kept.unlink()
@@ -234,4 +248,15 @@ def test_f2_names_a_file_and_keeps_its_extension_and_escape_keeps_its_name(deskt
     wait_until(lambda: shell.call("desktopProbe", "renaming") == "", what="the change to be left")
     time.sleep(0.5)
     assert (folder / "notes.txt").exists() and not (folder / "other.txt").exists()
+    assert not shell.errors()
+
+
+def test_something_new_is_made_from_a_template_and_named_there(desktop, bench):
+    folder, shell, pointer = desktop
+    x, y = 8 + 2 * 84 + 42, 8 + 48
+    wait_until(lambda: shell.call("desktopProbe", "createFrom", "Report", str(x), str(y)) == "true",
+               what="the template to be listed")
+    wait_until(lambda: (folder / "Report.md").exists(), what="the copy of the template")
+    assert (folder / "Report.md").read_text() == "# Report\n"
+    wait_until(lambda: shell.call("desktopProbe", "renaming") == "Report.md", what="its name to be typed")
     assert not shell.errors()

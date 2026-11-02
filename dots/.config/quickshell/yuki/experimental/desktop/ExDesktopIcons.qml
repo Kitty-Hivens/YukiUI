@@ -90,6 +90,16 @@ Item {
         root.clickedLast = true;
     }
 
+    /**
+     * Lets go of the keys, before something is opened in a window of its own.
+     * Held by the desktop, they kept the window that opened from having them,
+     * so it could not be closed from the keyboard until it was clicked.
+     */
+    function letGoKeys() {
+        root.commitRename();
+        root.clickedLast = false;
+    }
+
     // On the release, not the press: changing how the keys are asked for in
     // the middle of a press makes the compositor call the press off, and a
     // drag with it.
@@ -482,6 +492,7 @@ Item {
     }
 
     function open(path: string) {
+        root.letGoKeys();
         // A launcher allowed to run is run, anything else goes to what opens it.
         // Allowed is asked again at the moment of running: what was known came
         // from when the icon was made, and a launcher written over since under
@@ -551,6 +562,47 @@ Item {
         root.finishRename(true);
     }
 
+    /**
+     * What else can be made, as the file managers offer it: the files in the
+     * templates folder, as Nautilus has them, and the templates Dolphin
+     * lists in the data directories. Each { kind, name, icon, path }.
+     */
+    property var templates: []
+
+    function readTemplates() {
+        if (!templateReader.running)
+            templateReader.running = true;
+    }
+
+    Process {
+        id: templateReader
+
+        command: ["bash", Quickshell.shellPath("scripts/files/templates.sh"), (Translation.languageCode || "").split("_")[0]]
+        stdout: StdioCollector {
+            id: templateList
+            onStreamFinished: {
+                const found = [];
+                for (const line of templateList.text.split("\n")) {
+                    const fields = line.split("\t");
+                    if (fields.length !== 4 || (fields[0] !== "file" && fields[0] !== "link") || fields[1].length === 0 || fields[3].length === 0)
+                        continue;
+                    found.push({ kind: fields[0], name: fields[1], icon: fields[2] === "-" ? "" : fields[2], path: fields[3] });
+                }
+                root.templates = found;
+            }
+        }
+    }
+    Component.onCompleted: root.readTemplates()
+
+    /** The name a template is offered under: its file's without the extension, or the one it gives, without its trailing dots. */
+    function templateName(template): string {
+        if (template.kind === "file") {
+            const dot = template.name.lastIndexOf(".");
+            return dot > 0 ? template.name.slice(0, dot) : template.name;
+        }
+        return template.name.replace(/[\s.\u2026]+$/, "");
+    }
+
     /** A name not yet taken on the desktop: the one asked for, or it numbered. */
     function freeName(base: string, extension: string): string {
         let name = base + extension;
@@ -565,6 +617,26 @@ Item {
      */
     function create(folder: bool, at: point) {
         const name = folder ? root.freeName(Translation.tr("New folder"), "") : root.freeName(Translation.tr("New text document"), ".txt");
+        root.placeNew(name, at);
+        // Never over something already there, should it appear meanwhile.
+        if (folder)
+            root.runFileJob(["mkdir", "--", root.pathOf(name)], Translation.tr("Could not make the folder"));
+        else
+            root.runFileJob(["sh", "-c", 'set -C; : > "$1"', "yuki-desktop-new", root.pathOf(name)], Translation.tr("Could not make the document"));
+    }
+
+    /** A copy of a template, made and named as anything new is. */
+    function createFrom(template, at: point) {
+        const file = template.path.split("/").pop();
+        const dot = file.lastIndexOf(".");
+        const extension = dot > 0 ? file.slice(dot) : "";
+        const name = root.freeName(root.templateName(template), extension);
+        root.placeNew(name, at);
+        root.runFileJob(["cp", "-n", "--", template.path, root.pathOf(name)], Translation.tr("Could not make the document"));
+    }
+
+    /** Gives a name about to be made the free cell nearest a point, and has it named once it is there. */
+    function placeNew(name: string, at: point) {
         const taken = {};
         for (const other of root.names)
             taken[`${root.layout[other][0]},${root.layout[other][1]}`] = true;
@@ -574,11 +646,6 @@ Item {
         next[name] = root.nearestFree(column, row, taken);
         root.places = next;
         root.renameWhenListed = name;
-        // Never over something already there, should it appear meanwhile.
-        if (folder)
-            root.runFileJob(["mkdir", "--", root.pathOf(name)], Translation.tr("Could not make the folder"));
-        else
-            root.runFileJob(["sh", "-c", 'set -C; : > "$1"', "yuki-desktop-new", root.pathOf(name)], Translation.tr("Could not make the document"));
     }
 
     // --- The clipboard ------------------------------------------------------
@@ -892,7 +959,8 @@ Item {
             readonly property rect cellRect: root.cellRectOf(icon.cell)
             x: icon.cellRect.x + (icon.moving ? root.dragDelta.x : 0)
             y: icon.cellRect.y + (icon.moving ? root.dragDelta.y : 0)
-            z: icon.moving ? 2 : 1
+            // A name being typed may run past the cell, over the neighbours.
+            z: icon.moving || icon.renamingThis ? 2 : 1
             opacity: icon.moving ? 0.7 : icon.cut ? 0.5 : 1
             width: icon.cellRect.width
             height: icon.cellRect.height
@@ -1075,7 +1143,10 @@ Item {
                     source: picture.attempt < root.iconThemeRoots.length && !icon.runnable && !root.isPicture(icon.fileName)
                         ? FileUtils.fileUrl(`${root.iconThemeRoots[picture.attempt]}/${picture.themed}`) : ""
                     sourceSize: Qt.size(root.iconSize * 2, root.iconSize * 2)
-                    asynchronous: true
+                    // At once: the folder's rows are made again whenever a file
+                    // comes, goes or is renamed, and the size changes, and read
+                    // in the background every icon went blank for a frame.
+                    asynchronous: false
                     onStatusChanged: {
                         if (status === Image.Error)
                             picture.attempt++;
@@ -1119,27 +1190,39 @@ Item {
             // part before the extension is picked, so typing replaces the name
             // and keeps what kind of file it is. Enter or a click elsewhere
             // keeps it, Escape leaves the name as it was.
+            // As wide as what is typed, from a little wider than the icon to a
+            // little past the cell, then onto further lines, as Windows grows
+            // its own, and drawn as the house's fields are.
             Rectangle {
                 visible: icon.renamingThis
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: picture.y + picture.height + ExLooks.spacing.xs - 3
-                width: parent.width - 4
-                height: renameField.implicitHeight + 6
-                radius: 4
-                color: ExLooks.colors.surface
-                border.width: 1
+                y: picture.y + picture.height + ExLooks.spacing.xs - 4
+                width: Math.min(root.cellWidth + 24, Math.max(root.iconSize + 32, typed.advanceWidth + 24))
+                height: renameField.contentHeight + 10
+
+                TextMetrics {
+                    id: typed
+                    font: renameField.font
+                    text: renameField.text
+                }
+                radius: 6
+                color: ExLooks.colors.surfaceSunken
+                border.width: 2
                 border.color: ExLooks.colors.accent
 
                 TextInput {
                     id: renameField
 
                     anchors.fill: parent
-                    anchors.margins: 3
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    verticalAlignment: TextInput.AlignVCenter
+                    wrapMode: TextInput.WrapAtWordBoundaryOrAnywhere
                     font.family: ExLooks.font.family
-                    font.pixelSize: ExLooks.font.caption
+                    font.pixelSize: ExLooks.font.label
                     color: ExLooks.colors.text
-                    selectionColor: ExLooks.colors.accent
-                    selectedTextColor: ExLooks.colors.accentInk
+                    selectionColor: ExLooks.colors.tonal
+                    selectedTextColor: ExLooks.colors.tonalInk
                     horizontalAlignment: TextInput.AlignHCenter
                     clip: true
                     selectByMouse: true
@@ -1198,6 +1281,8 @@ Item {
             menu.target = target;
             menu.at = Qt.point(x, y);
             menu.page = "";
+            menu.pageArrival = 1;
+            menu.heldHeight = 0;
             menu.shown = true;
         }
 
@@ -1205,10 +1290,49 @@ Item {
             menu.shown = false;
         }
 
-        function run(action) {
+        function run(item) {
             menu.close();
-            action();
+            if (item.away)
+                root.letGoKeys();
+            item.run();
         }
+
+        /**
+         * From shut (0) to open (1), as the other menus come: quickly, a short
+         * way and growing a little. Run from the first frame of the menu's
+         * window, which comes a moment after the window, and back out before
+         * the window goes.
+         */
+        property bool presented: false
+        property real openness: menu.shown && menu.presented ? 1 : 0
+        Behavior on openness {
+            NumberAnimation {
+                duration: menu.shown ? ExLooks.motion.normal : ExLooks.motion.fast
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: menu.shown ? ExLooks.motion.enter : ExLooks.motion.exit
+            }
+        }
+
+        /** A page coming in, from the right going deeper and from the left going back. */
+        property real pageArrival: 1
+        property int pageDirection: 1
+        onPageChanged: {
+            menu.pageDirection = menu.page.length > 0 ? 1 : -1;
+            pageIn.restart();
+        }
+        NumberAnimation {
+            id: pageIn
+            target: menu
+            property: "pageArrival"
+            from: 0
+            to: 1
+            duration: ExLooks.motion.normal
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: ExLooks.motion.decelerate
+        }
+
+        /** The tallest the menu has been since it opened, which its window keeps. */
+        property real heldHeight: 0
 
         /** One of a set of choices, ticked when it is the one in use. */
         function choice(text: string, chosen: bool, run): var {
@@ -1229,6 +1353,26 @@ Item {
                     { separator: true },
                     menu.choice(Translation.tr("Show desktop icons"), options.showIcons, () => options.showIcons = !options.showIcons)
                 ];
+            if (!target && menu.page === "new") {
+                const list = [
+                    { back: true, text: Translation.tr("New"), glyph: "arrow_back" },
+                    { separator: true },
+                    { text: Translation.tr("Folder"), glyph: "create_new_folder", run: () => root.create(true, menu.at) }
+                ];
+                // A text document of its own unless a template already makes one.
+                if (!root.templates.some(template => template.path.toLowerCase().endsWith(".txt")))
+                    list.push({ text: Translation.tr("Text document"), glyph: "note_add", run: () => root.create(false, menu.at) });
+                if (root.templates.length > 0)
+                    list.push({ separator: true });
+                for (const template of root.templates)
+                    list.push({
+                        text: root.templateName(template),
+                        glyph: "description",
+                        iconSource: template.icon.length > 0 ? Quickshell.iconPath(template.icon, true) : "",
+                        run: () => root.createFrom(template, menu.at)
+                    });
+                return list;
+            }
             if (!target && menu.page === "sort")
                 return [
                     { back: true, text: Translation.tr("Sort by"), glyph: "arrow_back" },
@@ -1240,13 +1384,6 @@ Item {
                     { separator: true },
                     { text: Translation.tr("Arrange icons"), glyph: "grid_view", run: () => root.arrange() }
                 ];
-            if (!target && menu.page === "new")
-                return [
-                    { back: true, text: Translation.tr("New"), glyph: "arrow_back" },
-                    { separator: true },
-                    { text: Translation.tr("Folder"), glyph: "create_new_folder", run: () => root.create(true, menu.at) },
-                    { text: Translation.tr("Text document"), glyph: "note_add", run: () => root.create(false, menu.at) }
-                ];
             if (!target)
                 return [
                     { text: Translation.tr("View"), glyph: "visibility", page: "view" },
@@ -1255,12 +1392,12 @@ Item {
                     { text: Translation.tr("Paste"), glyph: "content_paste", shortcut: "Ctrl+V", run: () => root.paste() },
                     { text: Translation.tr("New"), glyph: "add", page: "new" },
                     { separator: true },
-                    { text: Translation.tr("Open in terminal"), glyph: "terminal", run: () => Quickshell.execDetached(["bash", "-c", `cd "$1" && exec ${Config.options.apps.terminal}`, "yuki-desktop-terminal", root.folderPath]) },
-                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) },
+                    { text: Translation.tr("Open in terminal"), glyph: "terminal", away: true, run: () => Quickshell.execDetached(["bash", "-c", `cd "$1" && exec ${Config.options.apps.terminal}`, "yuki-desktop-terminal", root.folderPath]) },
+                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", away: true, run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) },
                     { separator: true },
-                    { text: Translation.tr("Background"), glyph: "wallpaper", run: settings("background") },
-                    { text: Translation.tr("Display settings"), glyph: "desktop_windows", run: settings("display") },
-                    { text: Translation.tr("Desktop settings"), glyph: "settings", run: settings("desktop") }
+                    { text: Translation.tr("Background"), glyph: "wallpaper", away: true, run: settings("background") },
+                    { text: Translation.tr("Display settings"), glyph: "desktop_windows", away: true, run: settings("display") },
+                    { text: Translation.tr("Desktop settings"), glyph: "settings", away: true, run: settings("desktop") }
                 ];
             // The same files the keys would act on: everything picked.
             const paths = root.pickedPaths().length > 0 ? root.pickedPaths() : [target.path];
@@ -1273,7 +1410,7 @@ Item {
             if (paths.length === 1)
                 list.push({ text: Translation.tr("Rename"), glyph: "edit", shortcut: "F2", run: () => root.startRename(paths[0].split("/").pop()) });
             list.push(
-                { text: Translation.tr("Show in folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
+                { text: Translation.tr("Show in folder"), glyph: "folder_open", away: true, run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
                 { separator: true },
                 { text: Translation.tr("Cut"), glyph: "content_cut", shortcut: "Ctrl+X", run: () => root.offer(paths, true) },
                 { text: Translation.tr("Copy"), glyph: "content_copy", shortcut: "Ctrl+C", run: () => root.offer(paths, false) },
@@ -1285,7 +1422,11 @@ Item {
         }
 
         Loader {
-            active: menu.shown
+            active: menu.shown || menu.openness > 0
+            onActiveChanged: {
+                if (!active)
+                    menu.presented = false;
+            }
 
             sourceComponent: PanelWindow {
                 id: menuWindow
@@ -1301,14 +1442,38 @@ Item {
                 }
                 // The window is larger than the menu by room for its shadow.
                 readonly property real shadowRoom: 24
+                // Placed by the tallest the menu has been, so it does not move
+                // as its pages change.
                 margins {
                     left: Math.max(0, Math.min(menu.at.x, root.width - menuPlane.width - ExLooks.spacing.s) - menuWindow.shadowRoom)
-                    top: Math.max(0, Math.min(menu.at.y, root.height - menuPlane.height - ExLooks.spacing.s) - menuWindow.shadowRoom)
+                    top: Math.max(0, Math.min(menu.at.y, root.height - menu.heldHeight - ExLooks.spacing.s) - menuWindow.shadowRoom)
                 }
                 implicitWidth: menuPlane.width + 2 * menuWindow.shadowRoom
-                implicitHeight: menuPlane.height + 2 * menuWindow.shadowRoom
+                // As tall as the menu has been since it opened: a page that is
+                // shorter shrinks inside it rather than the window changing
+                // size under the pointer every frame.
+                implicitHeight: menu.heldHeight + 2 * menuWindow.shadowRoom
+                // Going, it takes no more clicks.
                 mask: Region {
-                    item: menuPlane
+                    item: menu.shown ? menuPlane : nothing
+                }
+                Item {
+                    id: nothing
+                }
+
+                // The frames are the Qt window's, under the layer.
+                Connections {
+                    target: menuPlane.Window.window
+                    enabled: !menu.presented
+                    function onFrameSwapped() {
+                        menu.presented = true;
+                    }
+                }
+                // Never left waiting for a frame that is not reported.
+                Timer {
+                    running: !menu.presented
+                    interval: 300
+                    onTriggered: menu.presented = true
                 }
 
                 // Closed by a press anywhere else, which still reaches what it
@@ -1342,9 +1507,38 @@ Item {
                 ExMenu {
                     id: menuPlane
 
+                    readonly property real wanted: pageItems.implicitHeight + 2 * ExLooks.sizes.menuPadding
+                    onWantedChanged: menu.heldHeight = Math.max(menu.heldHeight, menuPlane.wanted)
+                    Component.onCompleted: menu.heldHeight = Math.max(menu.heldHeight, menuPlane.wanted)
+
                     implicitWidth: 280
+                    height: menuPlane.wanted
+                    Behavior on height {
+                        enabled: menu.presented
+                        NumberAnimation {
+                            duration: ExLooks.motion.normal
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: ExLooks.motion.standard
+                        }
+                    }
                     x: menuWindow.shadowRoom
                     y: menuWindow.shadowRoom
+                    opacity: Math.min(1, menu.openness * 1.8)
+                    scale: 0.94 + 0.06 * menu.openness
+                    transformOrigin: Item.TopLeft
+
+                    // The page, cut to the plane as it grows or shrinks to it.
+                    Item {
+                        width: parent.width
+                        height: menuPlane.height - 2 * ExLooks.sizes.menuPadding
+                        clip: true
+
+                    Column {
+                        id: pageItems
+
+                        width: parent.width
+                        x: (1 - menu.pageArrival) * 24 * menu.pageDirection
+                        opacity: menu.pageArrival
 
                     Repeater {
                         model: menu.items
@@ -1367,18 +1561,24 @@ Item {
                                     glyph: slot.modelData.glyph
                                     shortcut: slot.modelData.shortcut ?? ""
                                     destructive: slot.modelData.destructive ?? false
+                                    iconSource: slot.modelData.iconSource ?? ""
                                     hasSubmenu: (slot.modelData.page ?? "").length > 0
                                     onClicked: {
-                                        if (slot.modelData.page)
+                                        if (slot.modelData.page) {
+                                            if (slot.modelData.page === "new")
+                                                root.readTemplates();
                                             menu.page = slot.modelData.page;
-                                        else if (slot.modelData.back)
+                                        } else if (slot.modelData.back) {
                                             menu.page = "";
-                                        else
-                                            menu.run(slot.modelData.run);
+                                        } else {
+                                            menu.run(slot.modelData);
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
+                    }
                     }
                 }
             }
