@@ -25,6 +25,14 @@ ColumnLayout {
     readonly property var recording: Audio.inputAppNodes
     readonly property var processors: Audio.virtualDevices(true).concat(Audio.virtualDevices(false))
 
+    /**
+     * The devices' volumes and the cards' sockets have been read, so the page
+     * comes in whole rather than with its sliders at nought and its socket
+     * lists missing for a moment.
+     */
+    readonly property bool ready: AudioRouting.loaded
+        && [...root.outputs, ...root.inputs, ...root.playing, ...root.recording].every(node => node.ready)
+
     // Cards, sockets and the names behind streams are only read while shown.
     Component.onCompleted: {
         AudioRouting.subscribers++;

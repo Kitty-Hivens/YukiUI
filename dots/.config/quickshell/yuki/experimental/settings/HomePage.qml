@@ -34,7 +34,9 @@ ColumnLayout {
                 source: Config.options.background.wallpaperPath
                 sourceSize: Qt.size(448, 252)
                 fillMode: Image.PreserveAspectCrop
-                asynchronous: true
+                // Decoded with the page, which is built away from the screen
+                // anyway, so the picture is there when the page is.
+                asynchronous: false
             }
         }
         ColumnLayout {

@@ -29,6 +29,11 @@ Singleton {
     readonly property bool watching: root.subscribers > 0
 
     property var cards: []
+    /**
+     * The cards and ports have been read at least once. A page showing them
+     * waits for it, rather than drawing empty and filling in.
+     */
+    property bool loaded: false
     // Device name -> { activePort, ports }. Kept keyed by name because that is
     // what both pactl and the binding's nodes agree on.
     property var sinkPorts: ({})
@@ -236,6 +241,7 @@ Singleton {
                 }));
                 root.sinkPorts = root.portMap(parsed.sinks);
                 root.sourcePorts = root.portMap(parsed.sources);
+                root.loaded = true;
             }
         }
     }

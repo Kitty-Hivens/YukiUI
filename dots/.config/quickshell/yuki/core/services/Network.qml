@@ -61,6 +61,14 @@ Singleton {
     property string vpnDevice: ""
 
     property bool wifiEnabled: false
+    /**
+     * The radio and the networks around have each been read once. A page
+     * showing them waits for it, rather than drawing the radio off and the
+     * list empty and then filling in.
+     */
+    property bool radioRead: false
+    property bool networksRead: false
+    readonly property bool settled: root.radioRead && root.networksRead
     property bool wifiScanning: false
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
@@ -732,6 +740,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.wifiEnabled = text.trim() === "enabled";
+                root.radioRead = true;
             }
         }
     }
@@ -812,6 +821,7 @@ Singleton {
                         }));
                     }
                 }
+                root.networksRead = true;
             }
         }
     }

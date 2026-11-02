@@ -15,6 +15,9 @@ ColumnLayout {
     property var catalogue
     property var shell
 
+    /** The radio and the networks have been read, so the page comes in whole. */
+    readonly property bool ready: Network.settled
+
     spacing: ExLooks.spacing.s
 
     // A network, and under it the password when it asks for one.

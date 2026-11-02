@@ -29,7 +29,16 @@ ApplicationWindow {
 
     // Deliberately not translated: it is what a window rule would match on.
     title: "Experimental Settings"
-    visible: true
+    // Up once the first page and the settings are in, so it comes up whole
+    // rather than filling in before the eyes, and in any case after a while.
+    visible: (content.ready && Config.ready) || showAnyway.fired
+    Timer {
+        id: showAnyway
+        property bool fired: false
+        running: true
+        interval: 2000
+        onTriggered: showAnyway.fired = true
+    }
     width: 1120
     height: 760
     minimumWidth: 640
@@ -57,6 +66,9 @@ ApplicationWindow {
         id: palette
 
         path: Directories.generatedMaterialThemePath
+        // Read before the first frame, so a light desktop's window is not
+        // drawn dark first and then repainted whole.
+        blockLoading: true
         watchChanges: true
         onFileChanged: palette.reload()
         onLoaded: {

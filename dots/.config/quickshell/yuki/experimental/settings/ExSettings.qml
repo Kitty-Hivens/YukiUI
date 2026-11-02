@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 
 import qs.core.services
 import qs.experimental.input
@@ -28,6 +29,12 @@ Item {
     /** A page within the category, or empty for the category's own page. */
     property string pageKey: ""
     readonly property string query: search.text.trim()
+    /**
+     * Taken from the environment, which has it from the start. Asked of
+     * whoami, it arrived after the window was up, and the name and its letter
+     * changed on screen.
+     */
+    readonly property string username: Quickshell.env("USER") || SystemInfo.username
     readonly property bool searching: root.query.length > 0
 
     /**
@@ -95,12 +102,64 @@ Item {
      * stayed so while that frame was drawn.
      */
     property int warming: -1
+    /**
+     * A built page that says what it shows is still being read, a page of
+     * devices or networks say, is held back until it has it, so it does not
+     * come in empty and fill in. A page that says nothing is taken as whole.
+     */
+    property var waitingItem: null
+    property int waitingWhich: -1
     function pageReady(which: int) {
         if (which === root.front)
             return;
+        const item = (which === 0 ? pageA : pageB).item;
+        if (item && item.ready === false) {
+            root.waitingItem = item;
+            root.waitingWhich = which;
+            dataFallback.restart();
+            return;
+        }
+        root.stage(which);
+    }
+    function dataIn() {
+        const which = root.waitingWhich;
+        root.waitingItem = null;
+        root.waitingWhich = -1;
+        dataFallback.stop();
+        if (which >= 0)
+            root.stage(which);
+    }
+    Connections {
+        target: root.waitingItem
+        ignoreUnknownSignals: true
+        function onReadyChanged() {
+            if (root.waitingItem?.ready)
+                root.dataIn();
+        }
+    }
+    // What never arrives does not keep the page away for good.
+    Timer {
+        id: dataFallback
+        interval: 1500
+        onTriggered: root.dataIn()
+    }
+    function stage(which: int) {
+        if (which === root.front)
+            return;
         root.warming = which;
+        // The first page is shown with the window, which waits for it.
+        if (!root.ready) {
+            root.swapIn();
+            return;
+        }
         warmFallback.restart();
     }
+
+    /**
+     * The first page is in. The window is shown only from here, so it comes
+     * up whole instead of filling in before the eyes.
+     */
+    property bool ready: false
     Connections {
         target: root.Window.window
         enabled: root.warming >= 0
@@ -128,9 +187,12 @@ Item {
         }
         root.front = which;
         leaving.source = "";
-        // A new page starts at its top, and comes in.
+        // A new page starts at its top, and comes in, but for the first,
+        // which comes up with the window.
         scroller.contentY = 0;
-        root.arrive();
+        if (root.ready)
+            root.arrive();
+        root.ready = true;
     }
 
     /**
@@ -242,7 +304,7 @@ Item {
 
                     ExText {
                         anchors.centerIn: parent
-                        text: (SystemInfo.username || "?").charAt(0).toUpperCase()
+                        text: (root.username || "?").charAt(0).toUpperCase()
                         font.pixelSize: 24
                         font.weight: 600
                         color: ExLooks.colors.tonalInk
@@ -254,7 +316,7 @@ Item {
 
                     ExText {
                         Layout.fillWidth: true
-                        text: SystemInfo.username
+                        text: root.username
                         font.weight: ExLooks.font.weightTitle
                     }
                     ExText {
