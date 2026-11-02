@@ -1435,5 +1435,18 @@
   "USB": "USB",
   "HDMI": "HDMI",
   "Drag to reorder": "Перетаскивайте, чтобы поменять порядок",
-  "More tiles": "Другие плитки"
+  "More tiles": "Другие плитки",
+  "View": "Вид",
+  "New": "Создать",
+  "Folder": "Папку",
+  "Text document": "Текстовый документ",
+  "Open in terminal": "Открыть в терминале",
+  "Display settings": "Параметры экрана",
+  "Desktop settings": "Параметры рабочего стола",
+  "Rename": "Переименовать",
+  "New folder": "Новая папка",
+  "New text document": "Новый текстовый документ",
+  "Could not rename": "Не удалось переименовать",
+  "Could not make the folder": "Не удалось создать папку",
+  "Could not make the document": "Не удалось создать документ"
 }

@@ -54,6 +54,13 @@ ShellRoot {
         function ready(): string {
             return "yes";
         }
+        // "New" in the desktop's menu, right clicked at that point.
+        function create(folder: bool, x: real, y: real): void {
+            icons.create(folder, Qt.point(x, y));
+        }
+        function renaming(): string {
+            return icons.renaming;
+        }
     }
 }
 """
@@ -175,4 +182,56 @@ def test_files_cut_elsewhere_are_moved_in(desktop, bench, tmp_path):
     Keyboard(bench).type(*ctrl("v"))
     wait_until(lambda: (folder / "one file.txt").exists() and (folder / "two.txt").exists(), what="the files to be moved in")
     assert list(elsewhere.iterdir()) == []
+    assert not shell.errors()
+
+
+def type_text(keyboard: Keyboard, text: str):
+    steps = []
+    for char in text:
+        steps += Keyboard.tap({" ": "space", ".": "period"}.get(char, char))
+    keyboard.type(*steps)
+
+
+def test_something_new_is_made_where_clicked_and_named_there(desktop, bench):
+    folder, shell, pointer = desktop
+    # Right clicked on the third column, second row, clear of the icons.
+    x, y = 8 + 2 * 84 + 42, 8 + 96 + 48
+    pointer.click(x, y, button="right")
+    shell.call("desktopProbe", "create", "true", str(x), str(y))
+    wait_until(lambda: (folder / "New folder").is_dir(), what="the new folder")
+    wait_until(lambda: shell.call("desktopProbe", "renaming") == "New folder", what="its name to be typed")
+    time.sleep(0.3)
+    keyboard = Keyboard(bench)
+    type_text(keyboard, "projects")
+    keyboard.type(*Keyboard.tap("Return"))
+    wait_until(lambda: (folder / "projects").is_dir(), what="the folder to take the name typed")
+    assert not (folder / "New folder").exists()
+    places = wait_until(lambda: "projects" in kept_cells(bench) and kept_cells(bench), timeout=4, what="its cell to be kept")
+    assert places["projects"] == [2, 1], "not made where the desktop was clicked"
+    assert not shell.errors()
+
+
+def test_f2_names_a_file_and_keeps_its_extension_and_escape_keeps_its_name(desktop, bench):
+    folder, shell, pointer = desktop
+    pointer.click(*cell_centre(1))
+    time.sleep(0.3)
+    keyboard = Keyboard(bench)
+    keyboard.type(*Keyboard.tap("F2"))
+    wait_until(lambda: shell.call("desktopProbe", "renaming") == "a.txt", what="the name to be typed")
+    time.sleep(0.2)
+    # The part before the extension is picked, so typing replaces only it.
+    type_text(keyboard, "notes")
+    keyboard.type(*Keyboard.tap("Return"))
+    wait_until(lambda: (folder / "notes.txt").exists(), what="the file to take the name typed")
+
+    pointer.click(*cell_centre(1))
+    time.sleep(0.3)
+    keyboard.type(*Keyboard.tap("F2"))
+    wait_until(lambda: shell.call("desktopProbe", "renaming") == "notes.txt", what="the name to be typed again")
+    time.sleep(0.2)
+    type_text(keyboard, "other")
+    keyboard.type(*Keyboard.tap("Escape"))
+    wait_until(lambda: shell.call("desktopProbe", "renaming") == "", what="the change to be left")
+    time.sleep(0.5)
+    assert (folder / "notes.txt").exists() and not (folder / "other.txt").exists()
     assert not shell.errors()

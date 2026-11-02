@@ -25,8 +25,10 @@ import qs.experimental.looks
 // everything it crosses. What is picked is dragged together to other cells, or
 // into a folder dropped on. A double click opens, a right click offers what can
 // be done, and once the desktop is clicked the keys work on it: Delete, Enter,
-// Ctrl+A, Escape and the arrows, and Ctrl+C, Ctrl+X and Ctrl+V, which copy, cut
-// and paste files the way the file manager does, to and from it.
+// F2, Ctrl+A, Escape and the arrows, and Ctrl+C, Ctrl+X and Ctrl+V, which copy,
+// cut and paste files the way the file manager does, to and from it. A name is
+// changed in place, under its icon, as Windows does it, and something new is
+// made where the desktop was right clicked and named there at once.
 //
 // Drawn in the background layer's own window, so the icons stay under every
 // window. Their menu is a window of its own over everything.
@@ -64,7 +66,8 @@ Item {
      * pointer goes by.
      */
     property bool clickedLast: false
-    readonly property bool wantsKeys: root.clickedLast
+    // And while a name is being typed, for as long as it is.
+    readonly property bool wantsKeys: root.clickedLast || root.renaming.length > 0
     /**
      * Asking on demand does not take the keyboard until the pointer moves, so
      * a key pressed right after the click reached the window from before, a
@@ -74,8 +77,12 @@ Item {
     property bool seizing: false
     readonly property bool windowActive: root.Window.active
     onWindowActiveChanged: {
-        if (!root.windowActive && !root.seizing)
+        if (!root.windowActive && !root.seizing) {
             root.clickedLast = false;
+            // Another window taken up keeps the name typed, as a click
+            // elsewhere does.
+            root.commitRename();
+        }
     }
 
     function clicked() {
@@ -251,6 +258,15 @@ Item {
             }
             if (root.cursorName === from)
                 root.cursorName = to;
+        }
+        // A name being changed that went away meanwhile is not changed.
+        if (root.renaming.length > 0 && !out.includes(root.renaming))
+            root.renaming = "";
+        // Something just made is named as soon as it is there.
+        if (root.renameWhenListed.length > 0 && out.includes(root.renameWhenListed)) {
+            const made = root.renameWhenListed;
+            root.renameWhenListed = "";
+            Qt.callLater(() => root.startRename(made));
         }
         if (sorted && root.awaitingSort) {
             root.awaitingSort = false;
@@ -496,6 +512,75 @@ Item {
         root.trash(root.pickedPaths());
     }
 
+    // --- Naming -------------------------------------------------------------
+
+    /** The name being changed in place, or empty. */
+    property string renaming: ""
+    /** Something just made, whose name is changed as soon as it is listed. */
+    property string renameWhenListed: ""
+    /** What the field under the icon holds, kept here so it is read whichever way the change ends. */
+    property string renameText: ""
+
+    function startRename(name: string) {
+        if (!root.names.includes(name))
+            return;
+        root.pick([root.pathOf(name)]);
+        root.cursorName = name;
+        root.renameText = name;
+        root.clickedLast = true;
+        // Taken outright, as after a click: the menu it was asked for from
+        // had the pointer, and the keys would otherwise wait for it to move.
+        root.seizeKeys();
+        root.renaming = name;
+    }
+
+    /** Ends the change, giving the file the name typed when `keep`. */
+    function finishRename(keep: bool) {
+        const name = root.renaming;
+        if (name.length === 0)
+            return;
+        const wanted = root.renameText.trim();
+        root.renaming = "";
+        root.forceActiveFocus();
+        if (!keep || wanted.length === 0 || wanted === name)
+            return;
+        root.runFileJob(["gio", "rename", root.pathOf(name), wanted], Translation.tr("Could not rename"));
+    }
+
+    function commitRename() {
+        root.finishRename(true);
+    }
+
+    /** A name not yet taken on the desktop: the one asked for, or it numbered. */
+    function freeName(base: string, extension: string): string {
+        let name = base + extension;
+        for (let n = 2; root.names.includes(name); n++)
+            name = `${base} ${n}${extension}`;
+        return name;
+    }
+
+    /**
+     * Makes something new where the desktop was right clicked, in the free
+     * cell nearest it, and names it there once it is listed.
+     */
+    function create(folder: bool, at: point) {
+        const name = folder ? root.freeName(Translation.tr("New folder"), "") : root.freeName(Translation.tr("New text document"), ".txt");
+        const taken = {};
+        for (const other of root.names)
+            taken[`${root.layout[other][0]},${root.layout[other][1]}`] = true;
+        const column = Math.max(0, Math.min(root.columns - 1, Math.floor((at.x - root.area.x) / root.cellWidth)));
+        const row = Math.max(0, Math.min(root.rows - 1, Math.floor((at.y - root.area.y) / root.cellHeight)));
+        const next = Object.assign({}, root.places);
+        next[name] = root.nearestFree(column, row, taken);
+        root.places = next;
+        root.renameWhenListed = name;
+        // Never over something already there, should it appear meanwhile.
+        if (folder)
+            root.runFileJob(["mkdir", "--", root.pathOf(name)], Translation.tr("Could not make the folder"));
+        else
+            root.runFileJob(["sh", "-c", 'set -C; : > "$1"', "yuki-desktop-new", root.pathOf(name)], Translation.tr("Could not make the document"));
+    }
+
     // --- The clipboard ------------------------------------------------------
 
     /** What was cut and not pasted yet, drawn faded, as Windows draws it. */
@@ -642,6 +727,10 @@ Item {
             root.trashPicked();
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             root.openPicked();
+        } else if (event.key === Qt.Key_F2) {
+            const paths = root.pickedPaths();
+            if (paths.length === 1)
+                root.startRename(paths[0].split("/").pop());
         } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
             root.pick(root.names.map(name => root.pathOf(name)));
         } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ControlModifier)) {
@@ -798,6 +887,7 @@ Item {
                 : icon.runnable ? icon.fileName.slice(0, -".desktop".length)
                 : icon.fileName
 
+            readonly property bool renamingThis: root.renaming === icon.fileName
             readonly property var cell: root.layout[icon.fileName] ?? [0, 0]
             readonly property rect cellRect: root.cellRectOf(icon.cell)
             x: icon.cellRect.x + (icon.moving ? root.dragDelta.x : 0)
@@ -1002,6 +1092,7 @@ Item {
             }
 
             ExText {
+                visible: !icon.renamingThis
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: picture.y + picture.height + ExLooks.spacing.xs
                 width: parent.width - 8
@@ -1021,6 +1112,56 @@ Item {
                     shadowBlur: 0.35
                     shadowVerticalOffset: 1
                     shadowHorizontalOffset: 0
+                }
+            }
+
+            // The name being changed, in a field where the label was. The
+            // part before the extension is picked, so typing replaces the name
+            // and keeps what kind of file it is. Enter or a click elsewhere
+            // keeps it, Escape leaves the name as it was.
+            Rectangle {
+                visible: icon.renamingThis
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: picture.y + picture.height + ExLooks.spacing.xs - 3
+                width: parent.width - 4
+                height: renameField.implicitHeight + 6
+                radius: 4
+                color: ExLooks.colors.surface
+                border.width: 1
+                border.color: ExLooks.colors.accent
+
+                TextInput {
+                    id: renameField
+
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    font.family: ExLooks.font.family
+                    font.pixelSize: ExLooks.font.caption
+                    color: ExLooks.colors.text
+                    selectionColor: ExLooks.colors.accent
+                    selectedTextColor: ExLooks.colors.accentInk
+                    horizontalAlignment: TextInput.AlignHCenter
+                    clip: true
+                    selectByMouse: true
+                    onTextEdited: root.renameText = renameField.text
+                    onAccepted: root.commitRename()
+                    Keys.onEscapePressed: event => {
+                        root.finishRename(false);
+                        event.accepted = true;
+                    }
+                    onActiveFocusChanged: {
+                        if (!renameField.activeFocus && icon.renamingThis)
+                            root.commitRename();
+                    }
+                }
+
+                onVisibleChanged: {
+                    if (!visible)
+                        return;
+                    renameField.text = icon.fileName;
+                    const dot = icon.fileIsDir ? -1 : icon.fileName.lastIndexOf(".");
+                    renameField.select(0, dot > 0 ? dot : icon.fileName.length);
+                    renameField.forceActiveFocus();
                 }
             }
         }
@@ -1046,10 +1187,17 @@ Item {
         property var target: null
         property point at: Qt.point(0, 0)
         property bool shown: false
+        /**
+         * The part of the desktop's menu gone into: "view", "sort" or "new",
+         * opening in place of the menu with a way back at its top, as the
+         * other menus of this desktop go deeper. Empty at the top.
+         */
+        property string page: ""
 
         function showAt(x: real, y: real, target) {
             menu.target = target;
             menu.at = Qt.point(x, y);
+            menu.page = "";
             menu.shown = true;
         }
 
@@ -1062,14 +1210,57 @@ Item {
             action();
         }
 
+        /** One of a set of choices, ticked when it is the one in use. */
+        function choice(text: string, chosen: bool, run): var {
+            return { text: text, glyph: chosen ? "check" : "", run: run };
+        }
+
         readonly property var items: {
             const target = menu.target;
+            const options = root.options;
+            const settings = page => () => Surfaces.open("settings", page);
+            if (!target && menu.page === "view")
+                return [
+                    { back: true, text: Translation.tr("View"), glyph: "arrow_back" },
+                    { separator: true },
+                    menu.choice(Translation.tr("Large icons"), options.iconSize === "large", () => options.iconSize = "large"),
+                    menu.choice(Translation.tr("Medium icons"), options.iconSize === "medium", () => options.iconSize = "medium"),
+                    menu.choice(Translation.tr("Small icons"), options.iconSize === "small", () => options.iconSize = "small"),
+                    { separator: true },
+                    menu.choice(Translation.tr("Show desktop icons"), options.showIcons, () => options.showIcons = !options.showIcons)
+                ];
+            if (!target && menu.page === "sort")
+                return [
+                    { back: true, text: Translation.tr("Sort by"), glyph: "arrow_back" },
+                    { separator: true },
+                    menu.choice(Translation.tr("Name"), options.sortBy === "name", () => options.sortBy = "name"),
+                    menu.choice(Translation.tr("Size"), options.sortBy === "size", () => options.sortBy = "size"),
+                    menu.choice(Translation.tr("Type"), options.sortBy === "type", () => options.sortBy = "type"),
+                    menu.choice(Translation.tr("Date modified"), options.sortBy === "date", () => options.sortBy = "date"),
+                    { separator: true },
+                    { text: Translation.tr("Arrange icons"), glyph: "grid_view", run: () => root.arrange() }
+                ];
+            if (!target && menu.page === "new")
+                return [
+                    { back: true, text: Translation.tr("New"), glyph: "arrow_back" },
+                    { separator: true },
+                    { text: Translation.tr("Folder"), glyph: "create_new_folder", run: () => root.create(true, menu.at) },
+                    { text: Translation.tr("Text document"), glyph: "note_add", run: () => root.create(false, menu.at) }
+                ];
             if (!target)
                 return [
-                    { text: Translation.tr("Paste"), glyph: "content_paste", shortcut: "Ctrl+V", run: () => root.paste() },
+                    { text: Translation.tr("View"), glyph: "visibility", page: "view" },
+                    { text: Translation.tr("Sort by"), glyph: "sort", page: "sort" },
                     { separator: true },
-                    { text: Translation.tr("Arrange icons"), glyph: "grid_view", run: () => root.arrange() },
-                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) }
+                    { text: Translation.tr("Paste"), glyph: "content_paste", shortcut: "Ctrl+V", run: () => root.paste() },
+                    { text: Translation.tr("New"), glyph: "add", page: "new" },
+                    { separator: true },
+                    { text: Translation.tr("Open in terminal"), glyph: "terminal", run: () => Quickshell.execDetached(["bash", "-c", `cd "$1" && exec ${Config.options.apps.terminal}`, "yuki-desktop-terminal", root.folderPath]) },
+                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) },
+                    { separator: true },
+                    { text: Translation.tr("Background"), glyph: "wallpaper", run: settings("background") },
+                    { text: Translation.tr("Display settings"), glyph: "desktop_windows", run: settings("display") },
+                    { text: Translation.tr("Desktop settings"), glyph: "settings", run: settings("desktop") }
                 ];
             // The same files the keys would act on: everything picked.
             const paths = root.pickedPaths().length > 0 ? root.pickedPaths() : [target.path];
@@ -1079,6 +1270,8 @@ Item {
             ];
             if (untrusted.length > 0)
                 list.push({ text: Translation.tr("Allow launching"), glyph: "verified_user", run: () => root.allowLaunching(untrusted) });
+            if (paths.length === 1)
+                list.push({ text: Translation.tr("Rename"), glyph: "edit", shortcut: "F2", run: () => root.startRename(paths[0].split("/").pop()) });
             list.push(
                 { text: Translation.tr("Show in folder"), glyph: "folder_open", run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
                 { separator: true },
@@ -1174,7 +1367,15 @@ Item {
                                     glyph: slot.modelData.glyph
                                     shortcut: slot.modelData.shortcut ?? ""
                                     destructive: slot.modelData.destructive ?? false
-                                    onClicked: menu.run(slot.modelData.run)
+                                    hasSubmenu: (slot.modelData.page ?? "").length > 0
+                                    onClicked: {
+                                        if (slot.modelData.page)
+                                            menu.page = slot.modelData.page;
+                                        else if (slot.modelData.back)
+                                            menu.page = "";
+                                        else
+                                            menu.run(slot.modelData.run);
+                                    }
                                 }
                             }
                         }
