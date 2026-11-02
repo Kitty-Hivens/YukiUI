@@ -1,12 +1,20 @@
 post_install() {
     /usr/lib/yuki-hyprland-plugins/build
-    echo "To give Bluetooth connections devices open the fast packets: systemctl enable --now yuki-btlinks"
+    # On from the start: it is there so that nobody has to know of it.
+    systemctl enable --now yuki-btlinks.service 2>/dev/null
+    true
 }
 
 post_upgrade() {
     /usr/lib/yuki-hyprland-plugins/build
-    # A service running the build before goes on to the new one.
-    systemctl try-restart yuki-btlinks.service 2>/dev/null
+    # Turned on once, by the upgrade that brings it. One turned off since is
+    # left off.
+    if [ "$(vercmp "$2" 1.22)" -lt 0 ]; then
+        systemctl enable --now yuki-btlinks.service 2>/dev/null
+    else
+        # A service running the build before goes on to the new one.
+        systemctl try-restart yuki-btlinks.service 2>/dev/null
+    fi
     true
 }
 

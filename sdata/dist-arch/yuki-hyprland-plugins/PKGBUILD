@@ -10,7 +10,7 @@
 # helper programs in helpers/ go the same way, built into /usr/lib/yuki: they
 # are C talking to the compositor or the session, and need a compiler on the
 # machine as much. One of them, yuki-btlinks, runs as a service of the system,
-# whose unit comes with the package and is left for the owner to enable.
+# whose unit comes with the package and is turned on as it is installed.
 
 pkgname=yuki-hyprland-plugins
 pkgver=1.22
