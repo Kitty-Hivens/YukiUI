@@ -13,6 +13,8 @@ line on stdin with one line of JSON:
                                button does
     minimize                   ask to be minimised
     fullscreen, unfullscreen   ask for fullscreen or to leave it
+    present                    ask to be brought up, as a running application
+                               does when it is started again
     state                      what the window believes of itself
     keys                       the keys it has been given since last asked,
                                with the modifiers held, and forgets them
@@ -109,7 +111,7 @@ def run(name):
         global clicks
         answer({"clicks": clicks})
         clicks = 0
-    elif name in ("maximize", "unmaximize", "minimize", "fullscreen", "unfullscreen"):
+    elif name in ("maximize", "unmaximize", "minimize", "fullscreen", "unfullscreen", "present"):
         getattr(window, name)()
         answer({"ok": name})
     elif name == "close":
