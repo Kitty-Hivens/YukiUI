@@ -33,9 +33,12 @@ def test_the_window_focus_passes_to_comes_up_in_front(desk):
     below = desk.wayland("below")
     over = desk.wayland("over")
     gone = desk.wayland("gone")
+    # Moved once the shell has placed them, which it does a moment after they open.
+    time.sleep(0.5)
     for window, x in ((below, 100), (over, 300), (gone, 900)):
         desk.bench.eval(f'hl.dispatch(hl.dsp.window.float({{ action = "enable", window = "address:{window.address}" }})) '
                         f'hl.dispatch(hl.dsp.window.move({{ window = "address:{window.address}", x = {x}, y = 100 }}))')
+        window.wait(lambda c, x=x: c["at"] == [x, 100], f"to stand at {x}, 100")
     # Below used last but left under over, then the one to minimise in front.
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{below.address}" }}))')
     wait_until(lambda: desk.active() == below.address, what="below to have focus")

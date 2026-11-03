@@ -15,9 +15,16 @@ from bench.bench import wait_until
 def overlapping(desk):
     below = desk.wayland("below")
     over = desk.wayland("over")
+    # The shell places a window that opens a moment later, and placed after
+    # the move here it moved the window away from where the test stood it.
+    time.sleep(0.5)
     for window, x in ((below, 100), (over, 300)):
         desk.bench.eval(f'hl.dispatch(hl.dsp.window.float({{ action = "enable", window = "address:{window.address}" }})) '
                         f'hl.dispatch(hl.dsp.window.move({{ window = "address:{window.address}", x = {x}, y = 100 }}))')
+        window.wait(lambda c, x=x: c["at"] == [x, 100], f"to stand at {x}, 100")
+    # Over in front, as the one opened last.
+    desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{over.address}" }})) '
+                    f'hl.dispatch(hl.dsp.window.bring_to_top({{ window = "address:{over.address}" }}))')
     return below, over
 
 
