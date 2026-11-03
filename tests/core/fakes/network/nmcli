@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""A stand-in for nmcli as the shell's Network service reads it: one wifi
+device and its networks, from a state file a test rewrites.
+
+    FAKE_NM_STATE   {"networks": [{"ssid", "signal", "active", "security"}],
+                     "saved": [ssid, ...]}
+
+`monitor` prints a line each time the state file changes, the way the real
+one reports a change of state. Joining without a password always fails as a
+saved network without its secret does.
+"""
+
+import json
+import os
+import sys
+import time
+
+state_path = os.environ["FAKE_NM_STATE"]
+argv = sys.argv[1:]
+
+
+def state():
+    with open(state_path) as file:
+        return json.load(file)
+
+
+def escaped(text):
+    return text.replace("\\", "\\\\").replace(":", "\\:")
+
+
+if argv == ["monitor"]:
+    seen = os.stat(state_path).st_mtime_ns
+    while True:
+        time.sleep(0.1)
+        now = os.stat(state_path).st_mtime_ns
+        if now != seen:
+            seen = now
+            print("wlan0: state changed", flush=True)
+    sys.exit(0)
+
+s = state()
+active = next((n for n in s["networks"] if n["active"]), None)
+
+if argv == ["-t", "-f", "TYPE,STATE,DEVICE", "d", "status"]:
+    print(f"wifi:{'connected' if active else 'disconnected'}:wlan0")
+elif argv == ["-t", "-f", "CONNECTIVITY", "g"]:
+    print("full" if active else "none")
+elif argv == ["-t", "-f", "NAME,TYPE", "c", "show", "--active"]:
+    if active:
+        print(f"{escaped(active['ssid'])}:802-11-wireless")
+elif argv == ["-g", "IN-USE,SIGNAL", "d", "w"]:
+    for n in s["networks"]:
+        print(f"{'*' if n['active'] else ' '}:{n['signal']}")
+elif argv == ["-t", "-f", "UUID,NAME,TYPE,ACTIVE", "c", "show"]:
+    for i, ssid in enumerate(s["saved"]):
+        on = "yes" if active and active["ssid"] == ssid else "no"
+        print(f"00000000-0000-0000-0000-{i:012d}:{escaped(ssid)}:802-11-wireless:{on}")
+elif argv == ["radio", "wifi"]:
+    print("enabled")
+elif argv == ["-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "d", "w"]:
+    for i, n in enumerate(s["networks"]):
+        bssid = escaped(f"AA:BB:CC:DD:EE:{i:02X}")
+        print(f"{'yes' if n['active'] else 'no'}:{n['signal']}:2437:{escaped(n['ssid'])}:{bssid}:{n['security']}")
+elif argv[:4] == ["dev", "wifi", "list", "--rescan"]:
+    pass
+elif argv[:3] == ["dev", "wifi", "connect"]:
+    print("Error: Connection activation failed: Secrets were required, but not provided.", file=sys.stderr)
+    sys.exit(4)
+else:
+    print(f"Error: the fake nmcli does not know {argv}", file=sys.stderr)
+    sys.exit(2)

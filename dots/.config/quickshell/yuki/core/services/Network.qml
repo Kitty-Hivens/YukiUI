@@ -815,6 +815,15 @@ Singleton {
                     const match = rNetworks.find(n => n.ssid === network.ssid);
                     if (match) {
                         match.lastIpcObject = network;
+                        // Joined, by an attempt of ours or by NetworkManager on its
+                        // own with the secret it holds: whatever an attempt that
+                        // failed before said of it no longer holds, and a joined
+                        // network went on asking for its password.
+                        if (network.active) {
+                            match.askingPassword = false;
+                            match.errorKind = "";
+                            match.errorDetail = "";
+                        }
                     } else {
                         rNetworks.push(apComp.createObject(root, {
                             lastIpcObject: network
