@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import qs.core
 import qs.core.services
 import qs.core.functions
@@ -13,12 +12,8 @@ import qs.ii.systemSettings
 import qs.common
 
 /**
- * Which backend answers each portal request, and how to change it.
- *
- * xdg-desktop-portal resolves an interface by walking a preference list and
- * publishes the answer nowhere -- not on the bus, not in its log. So "who draws
- * my file chooser" can only be answered by redoing the resolution, which is what
- * portals.py does and this page renders.
+ * Which backend answers each portal request, and how to change it, as ii's
+ * settings draw it. What it shows is PortalsModel's.
  *
  * Laid out around the two facts the configuration file cannot show. An interface
  * served through `default` rather than by a rule of its own is the ordinary case
@@ -29,43 +24,16 @@ import qs.common
 Item {
     id: root
 
-    // Asked of the shell rather than resolved against this file: the scanner
-    // serves shell files through a qs:@/ scheme, so a relative URL from here is
-    // not a path anything can execute.
-    readonly property string helper: FileUtils.trimFileProtocol(Quickshell.shellPath("plugins/portals/portals.py"))
-
-    property var report: null
-    property bool restartNeeded: false
-    property string lastError: ""
     /** The one row showing its options, or "" while none is. */
     property string openRow: ""
 
-    readonly property var interfaces: root.report?.interfaces ?? []
-    readonly property var ruled: root.interfaces.filter(row => row.explicit)
-    readonly property var followed: root.interfaces.filter(row => !row.explicit && row.backend.length > 0)
-    readonly property var unserved: root.interfaces.filter(row => row.backend.length === 0 && !row.disabled)
-    readonly property var backends: root.report?.backends ?? []
-    /** Files that exist, are not the one in force, and therefore do nothing. */
-    readonly property var shadowed: (root.report?.config?.candidates ?? []).filter(entry => entry.exists && !entry.active)
-
-    /** The default list, as the file spells it. */
-    readonly property var defaultChain: {
-        const row = root.interfaces.find(entry => !entry.explicit);
-        return row ? row.preference : [];
-    }
-
-    Component.onCompleted: readProcess.running = true
-
-    function reread() {
-        readProcess.running = false;
-        readProcess.running = true;
+    PortalsModel {
+        id: portals
     }
 
     function setPreference(interfaceName, value) {
         root.openRow = "";
-        writeProcess.running = false;
-        writeProcess.command = ["python3", root.helper, "set", interfaceName, value];
-        writeProcess.running = true;
+        portals.setPreference(interfaceName, value);
     }
 
     /** The options one row offers: follow the default, any backend that can serve it, or nothing. */
@@ -80,42 +48,6 @@ Item {
             displayName: Translation.tr("Off"),
             value: "none"
         }]);
-    }
-
-    Process {
-        id: readProcess
-        command: ["python3", root.helper, "report"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    root.report = JSON.parse(text);
-                    root.lastError = "";
-                } catch (error) {
-                    root.lastError = Translation.tr("Could not read the portal configuration");
-                }
-            }
-        }
-        stderr: StdioCollector {
-            onStreamFinished: if (text.trim().length > 0) root.lastError = text.trim()
-        }
-    }
-
-    Process {
-        id: writeProcess
-        onExited: code => {
-            if (code === 0)
-                root.restartNeeded = true;
-            root.reread();
-        }
-    }
-
-    Process {
-        id: restartProcess
-        command: ["systemctl", "--user", "restart", "xdg-desktop-portal.service"]
-        onExited: {
-            root.restartNeeded = false;
-            root.reread();
-        }
     }
 
     /** One interface: what serves it, and its options once asked for. */
@@ -156,8 +88,8 @@ Item {
                     Layout.fillWidth: true
                     visible: text.length > 0
                     text: {
-                        const missing = interfaceRow.row.skipped.filter(name => name.indexOf("(") !== -1);
-                        return missing.length > 0 ? Translation.tr("not installed: %1").arg(missing.map(name => name.split(" ")[0]).join(", ")) : "";
+                        const missing = portals.missingFor(interfaceRow.row);
+                        return missing.length > 0 ? Translation.tr("not installed: %1").arg(missing.join(", ")) : "";
                     }
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.smallie
@@ -189,7 +121,7 @@ Item {
         ConfigSelectionArray {
             visible: root.openRow === interfaceRow.row.interface
             Layout.bottomMargin: visible ? 8 : 0
-            currentValue: interfaceRow.row.explicit ? (interfaceRow.row.disabled ? "none" : interfaceRow.row.backend) : ""
+            currentValue: portals.currentValue(interfaceRow.row)
             onSelected: newValue => root.setPreference(interfaceRow.row.interface, newValue)
             options: root.optionsFor(interfaceRow.row)
         }
@@ -213,11 +145,11 @@ Item {
                 Layout.fillWidth: true
                 icon: "description"
                 title: Translation.tr("Configuration in force")
-                subtitle: root.report?.config?.active ?? ""
+                subtitle: portals.activeConfig
 
                 PageNote {
-                    visible: root.lastError.length > 0
-                    text: root.lastError
+                    visible: portals.lastError.length > 0
+                    text: portals.lastError
                     color: Appearance.m3colors.m3error
                 }
 
@@ -225,20 +157,20 @@ Item {
                 // never read: a packaged kde-portals.conf looks authoritative and
                 // applies only under KDE.
                 PageNote {
-                    visible: root.shadowed.length > 0
-                    text: Translation.tr("Present but not read here: %1").arg(root.shadowed.map(entry => entry.path).join(", "))
+                    visible: portals.shadowed.length > 0
+                    text: Translation.tr("Present but not read here: %1").arg(portals.shadowed.map(entry => entry.path).join(", "))
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.topMargin: 4
                     spacing: 10
-                    visible: root.restartNeeded
+                    visible: portals.restartNeeded
 
                     RippleButtonWithIcon {
                         materialIcon: "restart_alt"
                         mainText: Translation.tr("Restart portal service")
-                        onClicked: restartProcess.running = true
+                        onClicked: portals.restart()
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -251,13 +183,13 @@ Item {
             }
 
             PageHeading {
-                visible: root.unserved.length > 0
+                visible: portals.unserved.length > 0
                 text: Translation.tr("Nothing selected")
             }
 
             SystemCard {
                 Layout.fillWidth: true
-                visible: root.unserved.length > 0
+                visible: portals.unserved.length > 0
 
                 // Stated as a fact rather than as a fault. Several of these are
                 // interfaces a session of this kind never needs -- Clipboard and
@@ -278,7 +210,7 @@ Item {
                 }
 
                 Repeater {
-                    model: root.unserved
+                    model: portals.unserved
                     delegate: InterfaceRow {
                         required property var modelData
                         required property int index
@@ -289,16 +221,16 @@ Item {
             }
 
             PageHeading {
-                visible: root.ruled.length > 0
+                visible: portals.ruled.length > 0
                 text: Translation.tr("Set here")
             }
 
             SystemCard {
                 Layout.fillWidth: true
-                visible: root.ruled.length > 0
+                visible: portals.ruled.length > 0
 
                 Repeater {
-                    model: root.ruled
+                    model: portals.ruled
                     delegate: InterfaceRow {
                         required property var modelData
                         required property int index
@@ -318,13 +250,13 @@ Item {
                 // Said once, above the list, rather than on every row: the rows
                 // below differ only in which of these got there first.
                 PageNote {
-                    text: root.defaultChain.length > 0
-                        ? Translation.tr("Tried in order: %1. The first one that implements the interface answers it.").arg(root.defaultChain.join(" -> "))
+                    text: portals.defaultChain.length > 0
+                        ? Translation.tr("Tried in order: %1. The first one that implements the interface answers it.").arg(portals.defaultChain.join(" -> "))
                         : Translation.tr("No default is set, so an interface without a rule of its own is answered by nobody.")
                 }
 
                 Repeater {
-                    model: root.followed
+                    model: portals.followed
                     delegate: InterfaceRow {
                         required property var modelData
                         required property int index

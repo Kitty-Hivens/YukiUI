@@ -233,7 +233,7 @@ Singleton {
      * that is a second contribution point rather than a field in a JSON file.
      */
     readonly property var groups: {
-        const contributed = Plugins.pageEntries;
+        const contributed = Plugins.pagesFor("ii");
         const known = root.staticGroups.map(group => group.id);
         return root.staticGroups.map(group => {
             const own = group.pages.map(page => Object.assign({}, page, { url: page.component }));

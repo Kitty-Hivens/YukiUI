@@ -172,6 +172,13 @@ Singleton {
      * `key` is checked as strictly as an id: it is what `componentFor` matches on
      * and what goes into YUKIUI_SETTINGS_PAGE when something opens the window at
      * a particular page.
+     *
+     * A page is drawn by a family's own kit, so it is declared per family:
+     * `entries` maps an environment's id to the file drawing the page for it.
+     * `entry` alone is a page for every family, for one written against the
+     * shared widgets only. A family with neither has no page for the plugin,
+     * which is how a plugin offers a page under one desktop without the others
+     * having to carry that one's widgets.
      */
     function readPage(place, declared) {
         if (declared === undefined || declared === null)
@@ -184,8 +191,26 @@ Singleton {
             root.reject(place, `"${declared.key}" cannot be a page key -- letters, digits, dashes and underscores only`);
             return null;
         }
-        if (!root.usableEntry(declared.entry)) {
+        const entries = Object.create(null);
+        if (declared.entries !== undefined) {
+            if (declared.entries === null || typeof declared.entries !== "object" || Array.isArray(declared.entries)) {
+                root.reject(place, "settingsPage.entries has to map environment ids to files");
+                return null;
+            }
+            for (const family of Object.keys(declared.entries)) {
+                if (!root.usableId(family) || !root.usableEntry(declared.entries[family])) {
+                    root.reject(place, `"${family}": "${declared.entries[family]}" cannot be a page -- an environment id and a path inside this directory, with no ".." in it`);
+                    return null;
+                }
+                entries[family] = declared.entries[family];
+            }
+        }
+        if (declared.entry !== undefined && !root.usableEntry(declared.entry)) {
             root.reject(place, `"${declared.entry}" cannot be a page -- a path inside this directory, with no ".." in it`);
+            return null;
+        }
+        if (declared.entry === undefined && Object.keys(entries).length === 0) {
+            root.reject(place, "a settings page needs an entry, or entries by environment");
             return null;
         }
         if (typeof declared.name !== "string" || declared.name.length === 0) {
@@ -200,7 +225,8 @@ Singleton {
             keywords: typeof declared.keywords === "string" ? declared.keywords : "",
             group: typeof declared.group === "string" ? declared.group : "",
             order: typeof declared.order === "number" ? declared.order : 0,
-            entry: declared.entry
+            entry: declared.entry ?? "",
+            entries: entries
         };
     }
 
@@ -581,9 +607,10 @@ Singleton {
      * is the identity, and `url` is what gets loaded.
      *
      * A plugin that is switched off contributes nothing: its page would open on
-     * a service that is not running.
+     * a service that is not running. Nor does one with no page for the family
+     * asking, whose settings would otherwise load another desktop's widgets.
      */
-    readonly property list<var> pageEntries: {
+    function pagesFor(family: string): var {
         const pages = [];
         for (let i = 0; i < (root.slots?.count ?? 0); i++) {
             const slot = root.slots.objectAt(i);
@@ -592,6 +619,9 @@ Singleton {
             if (root.isDisabled(slot.pluginId))
                 continue;
             const page = slot.settingsPage;
+            const file = page.entries[family] ?? page.entry;
+            if (file.length === 0)
+                continue;
             pages.push({
                 key: page.key,
                 name: page.name,
@@ -601,7 +631,7 @@ Singleton {
                 group: page.group,
                 order: page.order,
                 component: `plugin:${slot.pluginId}:${page.key}`,
-                url: `file://${slot.place}/${page.entry}`,
+                url: `file://${slot.place}/${file}`,
                 pluginId: slot.pluginId
             });
         }
