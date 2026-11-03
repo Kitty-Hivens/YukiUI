@@ -39,6 +39,18 @@ class BenchError(RuntimeError):
     pass
 
 
+def ends_with_the_run():
+    """For `preexec_fn`: the process started is sent SIGTERM when the test run ends.
+
+    A run that ends abnormally never reaches the teardowns that stop what it
+    started, and the shell probe outlived its compositor by half an hour.
+    """
+    import ctypes
+
+    PR_SET_PDEATHSIG = 1
+    ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+
+
 def wait_until(check, timeout: float = 5.0, interval: float = 0.05, what: str = "a condition"):
     """Polls `check` until it returns something true, and returns that."""
     deadline = time.monotonic() + timeout
@@ -238,7 +250,7 @@ end
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
         self.process = subprocess.Popen(["Hyprland", "-c", str(config)], env=env,
                                         stdout=open(self.root / "hyprland.out", "w"), stderr=subprocess.STDOUT,
-                                        start_new_session=True)
+                                        start_new_session=True, preexec_fn=ends_with_the_run)
         # A start that fails halfway takes down what it started: a fixture
         # whose setup raises never reaches its own teardown, and the nested
         # compositor, in a session of its own, outlived the run.

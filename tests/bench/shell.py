@@ -14,7 +14,7 @@ import signal
 import subprocess
 from pathlib import Path
 
-from .bench import SHELL, Bench, BenchError, wait_until
+from .bench import SHELL, Bench, BenchError, ends_with_the_run, wait_until
 
 PROBE = SHELL / "benchProbe.qml"
 SOURCE = """import QtQuick
@@ -102,16 +102,19 @@ class Shell:
             address = self.bench.root / f"{self.probe.stem}.bus"
             address.unlink(missing_ok=True)
             # In a process group of its own, so the bus and the shell under it
-            # go together.
+            # go together. The shell ends with the bus, and the bus with the
+            # run: a forked child does not keep its parent's death signal.
             self.process = subprocess.Popen(
-                ["dbus-run-session", "--", "sh", "-c", 'printf %s "$DBUS_SESSION_BUS_ADDRESS" > "$1"; exec qs -p "$2"',
+                ["dbus-run-session", "--", "sh", "-c",
+                 'printf %s "$DBUS_SESSION_BUS_ADDRESS" > "$1"; exec setpriv --pdeathsig TERM qs -p "$2"',
                  "probe", str(address), str(self.probe)],
                 env=self._probe_environment(), stdout=open(self.log, "a"), stderr=subprocess.STDOUT,
-                start_new_session=True)
+                start_new_session=True, preexec_fn=ends_with_the_run)
             self.bus = wait_until(lambda: address.exists() and address.read_text(), timeout=10, what="the probe's bus")
         else:
             self.process = subprocess.Popen(["qs", "-p", str(self.probe)], env=self._probe_environment(),
-                                            stdout=open(self.log, "a"), stderr=subprocess.STDOUT)
+                                            stdout=open(self.log, "a"), stderr=subprocess.STDOUT,
+                                            preexec_fn=ends_with_the_run)
         # Up once it answers on its socket. One that never does is taken down
         # with its probe: a fixture whose setup raises never reaches its
         # teardown, and the probe stayed in the shell's tree.
