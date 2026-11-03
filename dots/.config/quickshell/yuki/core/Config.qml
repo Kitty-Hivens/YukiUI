@@ -15,6 +15,43 @@ Singleton {
     property bool blockWrites: false
     property bool contentsUnreadable: false
 
+    /**
+     * The file as an older shell wrote it, brought up to date, or "" when it
+     * needs nothing. Blueberry was called experimental before, its id and its
+     * options with it, and a file read as it stood came up on the fallback
+     * desktop with every Blueberry option at its default, which the next
+     * write then put over the old ones for good.
+     */
+    function migrated(text: string): string {
+        let parsed;
+        try {
+            parsed = JSON.parse(text);
+        } catch (error) {
+            return "";
+        }
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+            return "";
+        let changed = false;
+        if (parsed.experimental !== undefined) {
+            if (parsed.blueberry === undefined)
+                parsed.blueberry = parsed.experimental;
+            delete parsed.experimental;
+            changed = true;
+        }
+        if (parsed.panelFamily === "experimental") {
+            parsed.panelFamily = "blueberry";
+            changed = true;
+        }
+        if (Array.isArray(parsed.disabledEnvironments) && parsed.disabledEnvironments.includes("experimental")) {
+            parsed.disabledEnvironments = [...new Set(parsed.disabledEnvironments.map(id => id === "experimental" ? "blueberry" : id))];
+            changed = true;
+        }
+        return changed ? JSON.stringify(parsed, null, 4) : "";
+    }
+
+    /** A migrated file is being written, and the options are read from it once it is. */
+    property bool migrating: false
+
     /** Empty counts as usable: that is a first run, and there is nothing to lose. */
     function contentsAreUsable(text) {
         if (!text || text.trim().length === 0)
@@ -123,6 +160,31 @@ Singleton {
             root.contentsUnreadable = !root.contentsAreUsable(configFileView.text());
             if (root.contentsUnreadable)
                 console.error("[Config] the config file is not readable as JSON: running on defaults and refusing to write over it");
+            // Brought up to date before anything reads it: ready only once the
+            // new text is written, which is also when the options take it in.
+            const update = root.contentsUnreadable ? "" : root.migrated(configFileView.text());
+            if (update.length > 0) {
+                console.log("[Config] the config file was written by an older shell, bringing it up to date");
+                root.migrating = true;
+                configFileView.setText(update);
+                return;
+            }
+            root.ready = true;
+        }
+        onSaved: {
+            if (!root.migrating)
+                return;
+            root.migrating = false;
+            root.ready = true;
+        }
+        onSaveFailed: {
+            if (!root.migrating)
+                return;
+            // Left as it was and not written over, as for a file that does
+            // not parse: the old options are lost to this run, not to the file.
+            console.error("[Config] could not bring the config file up to date, leaving it alone");
+            root.migrating = false;
+            root.contentsUnreadable = true;
             root.ready = true;
         }
         onLoadFailed: error => {
@@ -134,7 +196,7 @@ Singleton {
         JsonAdapter {
             id: configOptionsJsonAdapter
 
-            property string panelFamily: "ii" // The environment's id: "ii", "waffle" or "experimental"
+            property string panelFamily: "ii" // The environment's id: "ii", "waffle" or "blueberry"
 
             /**
              * Environments that are installed but not offered.
@@ -146,7 +208,7 @@ Singleton {
              * choice outranks a default, and a desktop should not vanish on an
              * update. It only stops being offered.
              */
-            property list<string> disabledEnvironments: ["waffle", "experimental"]
+            property list<string> disabledEnvironments: ["waffle", "blueberry"]
 
             /**
              * Plugins that are installed but not built.
@@ -810,7 +872,7 @@ Singleton {
                 }
             }
 
-            property JsonObject experimental: JsonObject {
+            property JsonObject blueberry: JsonObject {
                 property JsonObject dock: JsonObject {
                     property string edge: "bottom" // "bottom", "top", "left" or "right"
                     // "attached" runs the whole edge and touches it, "floating" runs the

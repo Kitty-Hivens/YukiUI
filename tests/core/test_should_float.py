@@ -14,7 +14,7 @@ def should_float(bench, window) -> str:
 
 
 def test_it_follows_the_rules_loaded(bench, desk):
-    # The bench runs under the experimental environment's rules, which float
+    # The bench runs under Blueberry's rules, which float
     # every window, and a rule after them tiles these.
     bench.eval('hl.window_rule({ match = { class = "^(bench\\\\.tiled.*)$" }, float = false, tile = true })')
     floating = desk.wayland()

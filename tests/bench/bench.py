@@ -4,7 +4,7 @@ A Hyprland of its own, started for one test run inside the session that runs
 the tests, with one headless screen and nothing of the person's own: its
 config, state and cache directories are temporary ones, its plugins are
 built from this repository into the same place, and the compositor rules are
-the experimental environment's own file, read as the shell writes it for the
+Blueberry's own file, read as the shell writes it for the
 live session.
 
 The screen is 1920 by 1080 with 52 pixels reserved along the bottom, the room
@@ -27,7 +27,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
-RULES = SHELL / "environments/experimental/compositor/rules.lua"
+RULES = SHELL / "environments/blueberry/compositor/rules.lua"
 PLUGINS = ("minimize", "drag-report", "capture-report", "data-control-v1", "border-resize")
 
 OUTPUT = "BENCH"
@@ -103,7 +103,7 @@ class Bench:
     def __init__(self, root: Path, rules: Path = RULES):
         self.root = root
         # The environment whose compositor rules it runs under: the
-        # experimental one unless a test of another brings that one's.
+        # Blueberry's unless a test of another brings that one's.
         self.rules = rules
         self.home = root / "home"
         self.build = root / "build"

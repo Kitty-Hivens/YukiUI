@@ -31,7 +31,7 @@ def test_a_floating_window_that_would_tile_is_tiled_and_a_pinned_one_kept(bench,
 
 
 def test_a_window_the_rules_float_stays_floating(bench, desk):
-    # The bench runs under the experimental environment's rules, which float
+    # The bench runs under Blueberry's rules, which float
     # every window.
     window = desk.wayland()
     time.sleep(0.5)

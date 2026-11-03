@@ -193,7 +193,10 @@ Singleton {
             console.warn(`[Environments] ${id} is not installed, nothing mounted`);
             return;
         }
-        const previous = Persistent.ready ? Persistent.states.environment.mounted : "";
+        const kept = Persistent.ready ? Persistent.states.environment.mounted : "";
+        // Blueberry was called experimental, and coming up again under the
+        // new name is not coming up in another's place.
+        const previous = kept === "experimental" ? "blueberry" : kept;
         root.switched = previous.length > 0 && previous !== id;
         const component = Qt.createComponent(manifest.url, Component.PreferSynchronous);
         if (component.status !== Component.Ready) {

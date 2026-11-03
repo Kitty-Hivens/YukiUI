@@ -23,8 +23,8 @@ screen of 1920 by 1080 and 52 pixels reserved along the bottom where a dock
 would stand. Nothing of the person's own is written: the config, data, state
 and cache directories of the compositor and of everything started on it are
 temporary ones under pytest's temporary directory, its plugins are built there
-from `hypr-plugins/`, and the compositor rules are the experimental
-environment's own file from this repository. The home folder is read, for
+from `hypr-plugins/`, and the compositor rules are Blueberry's own
+file from this repository. The home folder is read, for
 fonts and icons, and the session bus is the person's unless a test brings a
 bus of its own, as the notification tests do. Its window on the session is
 switched off, so nothing appears on the desktop. It is stopped at the end of
@@ -56,7 +56,7 @@ the rules of the environment that is up.
 `ii/` holds Illogical Impulse's, on a compositor of its own that runs under
 its rules: a window that opens goes into the tiling.
 
-`experimental/` holds the experimental environment's: maximising, snapping by
+`blueberry/` holds Blueberry's: maximising, snapping by
 the shell and with the mouse, minimising, the geometry memory, what X11
 applications ask for, and the lock screen. The lock tests run on a compositor
 of their own, since a session they lock cannot be unlocked again. The notification

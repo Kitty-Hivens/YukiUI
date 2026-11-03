@@ -132,7 +132,7 @@ def test_a_window_held_at_its_size_shows_it_nowhere(bench, desk, borders):
 
 
 def test_a_tag_no_environment_named_holds_nothing(bench, desk, borders):
-    # The bench loads the experimental environment's rules, which name
+    # The bench loads Blueberry's rules, which name
     # maximized; held is named by nobody here.
     window = held(bench, desk, named=False)
     pointer = desk.pointer()

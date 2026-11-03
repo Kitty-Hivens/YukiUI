@@ -42,7 +42,7 @@
 //
 // A window an environment holds at a size of its own keeps it. On Windows a
 // maximised window fills its place until it is put back, and its edges cannot
-// be pulled; the experimental environment maximises by giving an ordinary
+// be pulled; Blueberry maximises by giving an ordinary
 // floating window the work area, and Hyprland resized it like any other from
 // its border, from a mouse bind or at the application's request, all of which
 // begin at the drag controller. A resize of a window carrying the tag named by

@@ -22,7 +22,7 @@ import "core/services"
 // the scanner and is then simply absent.
 import "environments/ii"
 import "environments/waffle"
-import "environments/experimental"
+import "environments/blueberry"
 
 import QtQuick
 import QtQuick.Window

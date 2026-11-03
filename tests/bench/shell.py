@@ -1,6 +1,6 @@
 """The part of the shell the window tests need, run on the bench.
 
-Placement, snapping, minimising and Alt+Tab, as the experimental environment
+Placement, snapping, minimising and Alt+Tab, as Blueberry
 builds them, and nothing else: no dock, no panels. Loaded from a probe file written
 into the shell's own directory for the run, since a shell file reaches the
 others by module name only from there. The probe is ignored by git and left
@@ -22,8 +22,8 @@ import Quickshell
 import Quickshell.Io
 import qs.core
 import qs.core.services
-import qs.experimental.switcher
-import qs.experimental.windows
+import qs.blueberry.switcher
+import qs.blueberry.windows
 
 // Written by tests/bench/shell.py for a test run, and removed after it.
 ShellRoot {
@@ -35,8 +35,8 @@ ShellRoot {
         function setDockStyle(style: string): string {
             if (!Config.ready)
                 return "";
-            Config.options.experimental.dock.style = style;
-            return Config.options.experimental.dock.style;
+            Config.options.blueberry.dock.style = style;
+            return Config.options.blueberry.dock.style;
         }
     }
     Binding {

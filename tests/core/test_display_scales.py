@@ -18,7 +18,7 @@ PROBE = SHELL / "benchDisplayPageProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.experimental.settings
+import qs.blueberry.settings
 
 // Written by tests/core/test_display_scales.py for a test run, and removed after it.
 ShellRoot {
