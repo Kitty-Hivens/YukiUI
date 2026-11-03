@@ -70,8 +70,9 @@ WMouseAreaButton {
     onClicked: event => {
         if (event.button === Qt.LeftButton) {
             WStates.overviewOpen = false;
-            Hyprland.dispatch(`hl.dsp.focus({window = "address:${root.hyprlandClient?.address}"})`)
-            WStates.overviewOpen = false;
+            // Raised as well as focused, the way the taskbar brings a window
+            // up: focus alone leaves a floating window behind the ones over it.
+            TaskbarApps.bringUp(root.toplevel);
         } else if (event.button === Qt.MiddleButton) {
             root.closeWindow();
             event.accepted = true;
