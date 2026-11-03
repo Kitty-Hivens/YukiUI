@@ -286,13 +286,17 @@ Scope {
                                     color: ExLooks.colors.surfaceSunken
                                     clip: true
 
-                                    // Live while the panel is up. A minimised window
-                                    // is not drawn at all, so it has its icon instead.
+                                    // The picked window live, the others a picture
+                                    // taken as the panel comes up and kept from where
+                                    // the pick left them. Each live picture has the
+                                    // compositor draw that window again for every
+                                    // frame of the panel. A minimised window is not
+                                    // drawn at all, so it has its icon instead.
                                     ScreencopyView {
                                         anchors.centerIn: parent
                                         visible: !card.modelData.minimized
                                         captureSource: root.shown && !card.modelData.minimized ? card.modelData.toplevel : null
-                                        live: true
+                                        live: card.picked
                                         paintCursor: false
                                         constraintSize: Qt.size(parent.width, parent.height)
                                     }
