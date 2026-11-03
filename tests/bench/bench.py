@@ -88,8 +88,11 @@ class EventLog:
 
 
 class Bench:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, rules: Path = RULES):
         self.root = root
+        # The environment whose compositor rules it runs under: the
+        # experimental one unless a test of another brings that one's.
+        self.rules = rules
         self.home = root / "home"
         self.build = root / "build"
         self.config_home = root / "config"
@@ -172,9 +175,9 @@ hl.monitor({{ output = "{OUTPUT}", mode = "{WIDTH}x{HEIGHT}@60", position = "0x0
 hl.monitor({{ output = "WAYLAND-1", disabled = true }})
 {loads}
 
--- The experimental environment's rules, with their state kept in this run.
+-- The environment's rules, with their state kept in this run.
 HOME = "{self.home}"
-dofile("{RULES}")
+dofile("{self.rules}")
 
 -- Where the shell writes the rules of the environment that is up, read as the
 -- live config reads it: required, so the compositor watches it, and only when

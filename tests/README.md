@@ -53,6 +53,9 @@ shell logged a script error meanwhile.
 `core/` holds what every environment shares: how the shell hands the compositor
 the rules of the environment that is up.
 
+`ii/` holds Illogical Impulse's, on a compositor of its own that runs under
+its rules: a window that opens goes into the tiling.
+
 `experimental/` holds the experimental environment's: maximising, snapping by
 the shell and with the mouse, minimising, the geometry memory, what X11
 applications ask for, and the lock screen. The lock tests run on a compositor

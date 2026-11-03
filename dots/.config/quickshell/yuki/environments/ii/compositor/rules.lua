@@ -20,6 +20,32 @@ for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
     hl.bind("SUPER + " .. arrow, hl.dsp.focus({ direction = arrow:sub(1, 1):lower() }), { description = "Window: Focus " .. arrow })
 end
 
+-- A window that opens goes into the tiling, even one whose application
+-- remembers having been closed maximised and asks for it again a moment after
+-- it opens, as kitty does. Hyprland's maximise is a fullscreen of its own over
+-- the layout, and the window looked like a floating one until it was grabbed.
+-- Only that first request is dropped: a maximise asked for later, from a
+-- title bar or with Super+D, still is one.
+YUKI_JUST_OPENED = {}
+hl.on("window.open", function(w)
+    local address = w.address
+    YUKI_JUST_OPENED[address] = true
+    hl.timer(function()
+        YUKI_JUST_OPENED[address] = nil
+    end, { timeout = 1500, type = "oneshot" })
+end)
+hl.on("window.fullscreen", function(w)
+    if not YUKI_JUST_OPENED[w.address] then
+        return
+    end
+    YUKI_JUST_OPENED[w.address] = nil
+    -- 1 is the maximise. A window asking for real fullscreen, a game or a
+    -- player, is left to it.
+    if w.fullscreen == 1 then
+        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = "address:" .. w.address }))
+    end
+end)
+
 -- Touchpad gestures. Each environment has its own, since a gesture once made
 -- cannot be taken back short of a reload: three fingers move the window under
 -- them and a pinch makes it fullscreen, four switch workspaces sideways and
