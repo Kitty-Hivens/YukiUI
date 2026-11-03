@@ -48,6 +48,14 @@ if [[ -f "$fragment" ]]; then
         kwriteconfig6 --notify --file kdeglobals --group General --key AccentColor --delete
         kwriteconfig6 --notify --file kdeglobals --group Icons --key Theme "$qt_icons"
         kwriteconfig6 --notify --file kdeglobals --group KDE --key widgetStyle Darkly
+        # What Plasma itself announces when the colours and the icons change.
+        # --notify alone reaches neither the palette nor the icon loader of a
+        # running application, so it went on drawing the last wallpaper's
+        # palette and the icons coloured by it, the shell's tray among them,
+        # until it was restarted.
+        dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0
+        dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:4 int32:0
+        dbus-send --session --type=signal /KIconLoader org.kde.KIconLoader.iconChanged int32:0
     else
         echo "[ii/theming] could not merge the colours into kdeglobals, leaving it alone" >&2
     fi
