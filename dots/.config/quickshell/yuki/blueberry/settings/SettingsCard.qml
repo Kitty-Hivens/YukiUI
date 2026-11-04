@@ -41,7 +41,9 @@ AbstractButton {
     onVisibleChanged: root.parent?.placeRows?.()
     readonly property bool plain: root.grouped || root.flat
     /** Where the text starts, for the rule to start there too. */
-    readonly property real textX: root.metrics.rowPadding + (root.showsGlyph ? root.metrics.rowChip + root.metrics.rowPadding : 0)
+    readonly property real textX: root.leftEdge + (root.showsGlyph ? root.metrics.rowChip + root.metrics.rowPadding : 0)
+    /** A row an expander opens onto starts under the text of the row it opens from. */
+    readonly property real leftEdge: root.flat ? 2 * root.metrics.rowPadding + root.metrics.rowChip : root.metrics.rowPadding
 
     implicitHeight: Math.max(root.metrics.rowHeight + (root.description.length > 0 ? 8 : 0), row.implicitHeight + 2 * ExLooks.spacing.m)
     hoverEnabled: root.leads
@@ -81,7 +83,7 @@ AbstractButton {
             id: row
 
             anchors.fill: parent
-            anchors.leftMargin: root.metrics.rowPadding
+            anchors.leftMargin: root.leftEdge
             anchors.rightMargin: root.metrics.rowPadding
             spacing: root.metrics.rowPadding
 

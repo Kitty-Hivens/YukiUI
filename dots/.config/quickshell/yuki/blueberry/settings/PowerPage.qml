@@ -35,29 +35,27 @@ ColumnLayout {
 
     spacing: ExLooks.settings.groupGap
 
-    // The charge, first when there is one.
-    SettingsCard {
-        Layout.fillWidth: true
-        visible: root.hasBattery
-        glyph: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
-        text: `${Math.round(Battery.percentage * 100)}%  ·  ${Battery.isCharging ? Translation.tr("Charging") : Battery.isPluggedIn ? Translation.tr("Plugged in") : Translation.tr("On battery")}`
-        description: {
-            const parts = [];
-            const left = root.duration(Battery.isCharging ? Battery.timeToFull : Battery.timeToEmpty);
-            if (left.length > 0)
-                parts.push(Battery.isCharging ? Translation.tr("%1 until full").arg(left) : Translation.tr("%1 left").arg(left));
-            if (Battery.health > 0)
-                parts.push(Translation.tr("Health %1%").arg(Math.round(Battery.health)));
-            if (Battery.energyRate > 0)
-                parts.push(Translation.tr("%1 W").arg(Battery.energyRate.toFixed(1)));
-            return parts.join("  ·  ");
-        }
-    }
-
     SettingsSection {
         Layout.fillWidth: true
-        title: Translation.tr("Power mode")
 
+        // The charge, first when there is one.
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: root.hasBattery
+            glyph: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
+            text: `${Math.round(Battery.percentage * 100)}%  ·  ${Battery.isCharging ? Translation.tr("Charging") : Battery.isPluggedIn ? Translation.tr("Plugged in") : Translation.tr("On battery")}`
+            description: {
+                const parts = [];
+                const left = root.duration(Battery.isCharging ? Battery.timeToFull : Battery.timeToEmpty);
+                if (left.length > 0)
+                    parts.push(Battery.isCharging ? Translation.tr("%1 until full").arg(left) : Translation.tr("%1 left").arg(left));
+                if (Battery.health > 0)
+                    parts.push(Translation.tr("Health %1%").arg(Math.round(Battery.health)));
+                if (Battery.energyRate > 0)
+                    parts.push(Translation.tr("%1 W").arg(Battery.energyRate.toFixed(1)));
+                return parts.join("  ·  ");
+            }
+        }
         SettingsCard {
             Layout.fillWidth: true
             glyph: "bolt"

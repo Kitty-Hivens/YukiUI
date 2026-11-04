@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
-import Quickshell.Widgets
 
 import qs.core.services
 import qs.blueberry.looks
@@ -141,6 +140,12 @@ ColumnLayout {
 
         Layout.fillWidth: true
         leads: false
+        iconSource: {
+            const own = StreamApps.iconFor(stream.node);
+            if (AppSearch.iconExists(own))
+                return Quickshell.iconPath(own, "image-missing");
+            return Quickshell.iconPath(AppSearch.guessIcon(stream.node?.properties["application.icon-name"] ?? stream.node?.properties["node.name"] ?? ""), "image-missing");
+        }
         text: Audio.appNodeDisplayName(stream.node)
         description: Audio.appNodeContext(stream.node)
 
@@ -154,21 +159,10 @@ ColumnLayout {
         ExButton {
             anchors.verticalCenter: parent.verticalCenter
             kind: "flat"
+            glyph: stream.node?.isSink ?? true ? (stream.muted ? "volume_off" : "volume_up") : (stream.muted ? "mic_off" : "mic")
             onClicked: {
                 if (stream.node?.audio)
                     stream.node.audio.muted = !stream.node.audio.muted;
-            }
-
-            IconImage {
-                anchors.centerIn: parent
-                implicitSize: 20
-                opacity: stream.muted ? 0.35 : 1
-                source: {
-                    const own = StreamApps.iconFor(stream.node);
-                    if (AppSearch.iconExists(own))
-                        return Quickshell.iconPath(own, "image-missing");
-                    return Quickshell.iconPath(AppSearch.guessIcon(stream.node?.properties["application.icon-name"] ?? stream.node?.properties["node.name"] ?? ""), "image-missing");
-                }
             }
         }
         // Above a hundred for an application, not for a device: quiet source
