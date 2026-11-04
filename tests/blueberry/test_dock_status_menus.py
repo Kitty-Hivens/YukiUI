@@ -191,7 +191,8 @@ def test_the_empty_dock_still_has_the_dock_menu(bench, desk, dock):
 def test_the_arrow_after_the_volume_opens_the_sound_page(dock):
     dock.call("dock", "quickSettings")
     wait_until(lambda: dock.call("statusMenuProbe", "open") == "other", what="quick settings to open")
-    assert dock.call("statusMenuProbe", "pressArrow") == "true"
+    # The popup says it is open before its page is built, on a busy machine well before.
+    wait_until(lambda: dock.call("statusMenuProbe", "pressArrow") == "true", what="the arrow after the volume")
     wait_until(lambda: dock.call("statusMenuProbe", "page") == "sound", what="the sound page")
 
 
