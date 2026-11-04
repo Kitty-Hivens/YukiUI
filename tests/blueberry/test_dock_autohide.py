@@ -8,11 +8,13 @@ pointer. A floating dock, as it was seen, with the corner button after the clock
 """
 
 import json
+import subprocess
 import time
 
 import pytest
+from PIL import Image
 
-from bench.bench import HEIGHT, SHELL, WIDTH, wait_until
+from bench.bench import HEIGHT, OUTPUT, SHELL, WIDTH, wait_until
 from bench.shell import Shell
 
 PROBE = SHELL / "benchDockAutoHideProbe.qml"
@@ -129,6 +131,45 @@ def dock_layer(bench) -> tuple[int, int, int, int]:
                 if layer["namespace"] == "quickshell:dock":
                     return layer["x"], layer["y"], layer["w"], layer["h"]
     raise AssertionError("no dock layer")
+
+
+def strip_colour(bench, tmp_path, rect) -> tuple:
+    """The colour a part of the screen averages to, as it is really shown."""
+    shot = tmp_path / "strip.png"
+    subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
+    x, y, w, h = rect
+    return Image.open(shot).convert("RGB").crop((x, y, x + w, y + h)).resize((1, 1)).getpixel((0, 0))
+
+
+def close_to(a, b) -> bool:
+    return all(abs(p - q) <= 6 for p, q in zip(a, b))
+
+
+def test_the_dock_comes_back_after_a_fullscreen_window(bench, desk, dock, tmp_path):
+    # Moved to the layer below by hand as the window took the screen, it stayed
+    # there for good, behind every window: the move back takes a commit, and a
+    # surface under a fullscreen window draws none. Hidden by the compositor
+    # itself it needs no move.
+    dock.call("autoHideProbe", "setAutoHide", "false")
+    wait_until(lambda: dock_level(bench) == "2", what="the dock over the windows")
+    wait_until(lambda: state(dock)["revealed"], what="the dock to be out")
+    time.sleep(0.5)
+    x, y, w, h = dock_layer(bench)
+    rect = (x + 40, y + h - 30, 200, 12)
+    window = desk.wayland()
+    time.sleep(0.5)
+    before = strip_colour(bench, tmp_path, rect)
+
+    window.command("fullscreen")
+    window.wait(lambda c: c["fullscreen"] == 2, "fullscreen")
+    time.sleep(0.8)
+    covered = strip_colour(bench, tmp_path, rect)
+    assert not close_to(covered, before), f"the dock stayed over the fullscreen window: {covered}"
+
+    window.command("unfullscreen")
+    window.wait(lambda c: c["fullscreen"] == 0, "back from fullscreen")
+    wait_until(lambda: dock_level(bench) == "2", what="the dock over the windows again")
+    wait_until(lambda: close_to(strip_colour(bench, tmp_path, rect), before), what="the dock to show again")
 
 
 @pytest.mark.parametrize("spot", ["launcher", "clock"])

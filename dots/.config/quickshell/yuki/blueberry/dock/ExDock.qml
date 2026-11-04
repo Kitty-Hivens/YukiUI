@@ -463,10 +463,11 @@ Scope {
             // standing over the dock fell on it, so the dock was darker with
             // a window there and darker still with that window focused. The
             // menus of a Wayland application are kept off the room it keeps.
-            // Under a fullscreen window it goes under it: a layer above a
-            // fullscreen window keeps the compositor from showing that window
-            // on its own, which direct scanout and variable refresh depend on.
-            WlrLayershell.layer: window.underFullscreen ? WlrLayer.Bottom : WlrLayer.Top
+            // Under a fullscreen window the compositor hides it itself, and it
+            // keeps nothing from showing that window on its own. Moved to the
+            // layer below by hand, it never came back: the move back takes a
+            // commit, and a surface covered by a fullscreen window draws none.
+            WlrLayershell.layer: WlrLayer.Top
             onUnderFullscreenChanged: {
                 if (window.underFullscreen)
                     window.closePopups(null);
