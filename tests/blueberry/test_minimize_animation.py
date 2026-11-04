@@ -99,6 +99,6 @@ def test_the_overlay_goes_once_the_window_has_flown(bench, desk, animated):
     wait_until(lambda: not overlay_up(bench), timeout=3, what="the overlay to go after minimising")
 
     animated.call("minimize", "toggle", window.address)
-    window.wait(lambda c: c["workspace"]["id"] == workspace, "brought back")
+    window.wait(lambda c: c["workspace"].get("id") == workspace, "brought back")
     wait_until(lambda: animated.call("animationProbe", "flights") == "0", timeout=1.8, what="the flight out of the dock to end")
     wait_until(lambda: not overlay_up(bench), timeout=3, what="the overlay to go after restoring")

@@ -207,7 +207,7 @@ Singleton {
             return;
         const target = `window = "address:${address}"`;
         Quickshell.execDetached(["hyprctl", "eval",
-            `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.bring_to_top({ ${target} }))`]);
+            `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", ${target} }))`]);
     }
 
     /** Asks a window to close, through the compositor like focusing it. */

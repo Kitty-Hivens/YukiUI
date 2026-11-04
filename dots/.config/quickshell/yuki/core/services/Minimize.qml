@@ -146,7 +146,7 @@ Singleton {
         if (focused) {
             const next = root.lastFocusedOn(focused.workspace.id, windows.map(win => win.address));
             const target = next ? `window = "address:${next.address}"` : "";
-            lua += next ? `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.bring_to_top({ ${target} }))`
+            lua += next ? `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", ${target} }))`
                 : "if hl.plugin.minimize and hl.plugin.minimize.reset_focus then hl.plugin.minimize.reset_focus() end";
         }
         root.move(windows, lua, "minimize");
@@ -183,7 +183,7 @@ Singleton {
             if (at)
                 lua += `hl.dispatch(hl.dsp.window.move({ window = "address:${win.address}", x = ${at[0]}, y = ${at[1]} })) `;
         }
-        root.move(windows, lua + `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.bring_to_top({ ${target} }))`, "restore");
+        root.move(windows, lua + `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", ${target} }))`, "restore");
         root.forget(windows.map(win => win.address));
     }
 

@@ -25,9 +25,10 @@ Scope {
         if not shouldFloat then
             return
         end
+        -- A special workspace has no id since Hyprland 0.57, a negative one before.
         for _, w in ipairs(hl.get_windows()) do
             local workspace = w.workspace
-            if w.mapped and workspace and workspace.id >= 1 and w.floating and not w.pinned and w.fullscreen == 0
+            if w.mapped and workspace and (workspace.id or 0) >= 1 and w.floating and not w.pinned and w.fullscreen == 0
                     and not shouldFloat(w.address) then
                 hl.dispatch(hl.dsp.window.float({ action = "disable", window = "address:" .. w.address }))
             end

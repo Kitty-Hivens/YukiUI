@@ -445,8 +445,9 @@ Scope {
     function answer(job, clients, monitors): string {
         const client = clients.find(candidate => candidate.address === job.address);
         // A window floated in the same batch, as one taken over is, is still
-        // tiled in the list read before it.
-        if (!client || (!client.floating && !job.floatedNow) || client.workspace.id < 1 || client.fullscreen !== 0)
+        // tiled in the list read before it. A special workspace has no id at
+        // all since Hyprland 0.57, and a negative one before.
+        if (!client || (!client.floating && !job.floatedNow) || !(client.workspace.id >= 1) || client.fullscreen !== 0)
             return "";
         const monitor = monitors.find(candidate => candidate.id === client.monitor);
         if (!monitor)
@@ -658,7 +659,7 @@ Scope {
 
     function step(direction: string) {
         const client = HyprlandData.windowList.find(candidate => candidate.focusHistoryID === 0);
-        if (!client || !client.floating || client.fullscreen !== 0 || client.workspace.id < 1)
+        if (!client || !client.floating || client.fullscreen !== 0 || !(client.workspace.id >= 1))
             return;
         // One maximised before the shell started is told so but not known here.
         const zone = root.zoneOf(client.address) || (root.markedMaximized(client) ? "maximized" : "");

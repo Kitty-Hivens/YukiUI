@@ -24,7 +24,7 @@ def overlapping(desk):
         window.wait(lambda c, x=x: c["at"] == [x, 100], f"to stand at {x}, 100")
     # Over in front, as the one opened last.
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{over.address}" }})) '
-                    f'hl.dispatch(hl.dsp.window.bring_to_top({{ window = "address:{over.address}" }}))')
+                    f'hl.dispatch(hl.dsp.window.alter_zorder({{ mode = "top", window = "address:{over.address}" }}))')
     return below, over
 
 
@@ -42,7 +42,7 @@ def test_alt_tab_brings_the_pick_up_in_front(desk, panel):
     # Below used last, then over in front of it with focus: Alt+Tab picks below.
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{below.address}" }}))')
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{over.address}" }})) '
-                    f'hl.dispatch(hl.dsp.window.bring_to_top({{ window = "address:{over.address}" }}))')
+                    f'hl.dispatch(hl.dsp.window.alter_zorder({{ mode = "top", window = "address:{over.address}" }}))')
     wait_until(lambda: desk.active() == over.address, what="over to have focus")
 
     desk.shell.call("switcher", "next")

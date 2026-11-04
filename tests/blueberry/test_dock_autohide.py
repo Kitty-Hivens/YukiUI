@@ -68,6 +68,11 @@ ShellRoot {
 @pytest.fixture
 def dock(bench):
     bench.forget_notifications()
+    # The probe sets the dock up in the config file every shell on the bench
+    # reads, and the window probe placed windows by a floating dock after it.
+    # Put back as it was found.
+    config = bench.config_home / "illogical-impulse/config.json"
+    before = config.read_bytes() if config.exists() else None
     shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("autoHideProbe", "state"), own_bus=True)
     try:
         shell.start()
@@ -75,6 +80,10 @@ def dock(bench):
     finally:
         shell.stop()
         shell.remove_probe()
+        if before is None:
+            config.unlink(missing_ok=True)
+        else:
+            config.write_bytes(before)
 
 
 def state(shell) -> dict:
@@ -124,12 +133,14 @@ def dock_layer(bench) -> tuple[int, int, int, int]:
 
 @pytest.mark.parametrize("spot", ["launcher", "clock"])
 def test_dock_stays_while_the_pointer_rests_on_it(bench, desk, dock, spot):
+    # The pointer starts where the test before left it, over the dock, which
+    # rightly keeps it out.
+    pointer = desk.pointer()
+    pointer.move(WIDTH // 2, HEIGHT // 2)
     wait_until(lambda: not state(dock)["revealed"], timeout=5, what="the dock to hide first")
     x, y, w, h = dock_layer(bench)
-    pointer = desk.pointer()
     # Down from the middle of the screen to the dock's last row of pixels,
     # which brings it out.
-    pointer.move(WIDTH // 2, HEIGHT // 2)
     pointer.glide(x + w // 2, y + h - 1)
     wait_until(lambda: state(dock)["revealed"], timeout=3, what="the dock to come out")
     time.sleep(0.5)

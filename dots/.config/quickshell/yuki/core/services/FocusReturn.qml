@@ -87,8 +87,10 @@ Singleton {
         // windows is never meant to show, and its window keeps the head of the
         // focus history after focus was let go of, so Hyprland would focus it
         // and bring the hidden workspace up over the screen.
+        // Hyprland 0.57 gives a special workspace no id at all, where it gave
+        // a negative one before.
         const parked = Minimize.originOf(last) > 0;
-        if (!last || (last.workspace.id < 0 && !parked))
+        if (!last || (!(last.workspace.id > 0) && !parked))
             return false;
         if (Hyprland.monitors.values.some(monitor => monitor.activeWorkspace?.id === last.workspace.id))
             return false;

@@ -29,4 +29,5 @@ def test_placed_windows_lose_the_tags(bench, desk):
     snapped.wait(lambda c: not c["tags"], "no tags left")
     time.sleep(0.3)
     assert (*maximized.client()["at"], *maximized.client()["size"]) == rect, "the window was moved"
-    assert bench.lua_value("next(YUKI_PLACED) == nil") == "true"
+    left = bench.lua_value('(function() local t = {} for a, e in pairs(YUKI_PLACED) do t[#t + 1] = a .. "=" .. tostring(e.zone) end return table.concat(t, " ") end)()')
+    assert left == "", f"the compositor still keeps placements: {left}"

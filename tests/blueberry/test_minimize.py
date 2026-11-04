@@ -14,7 +14,7 @@ def test_application_asks_to_be_minimised_and_comes_back_where_it_stood(desk):
     window.wait(lambda c: c["workspace"]["name"] == f"special:min-{workspace}", "minimised")
 
     desk.shell.call("minimize", "toggle", window.address)
-    client = window.wait(lambda c: c["workspace"]["id"] == workspace, "brought back")
+    client = window.wait(lambda c: c["workspace"].get("id") == workspace, "brought back")
     assert (*client["at"], *client["size"]) == before
 
 
@@ -43,7 +43,7 @@ def test_the_window_focus_passes_to_comes_up_in_front(desk):
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{below.address}" }}))')
     wait_until(lambda: desk.active() == below.address, what="below to have focus")
     desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{gone.address}" }})) '
-                    f'hl.dispatch(hl.dsp.window.bring_to_top({{ window = "address:{gone.address}" }}))')
+                    f'hl.dispatch(hl.dsp.window.alter_zorder({{ mode = "top", window = "address:{gone.address}" }}))')
     wait_until(lambda: desk.active() == gone.address, what="gone to have focus")
 
     workspace = gone.client()["workspace"]["id"]
