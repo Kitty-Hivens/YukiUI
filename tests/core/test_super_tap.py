@@ -60,11 +60,12 @@ def tap(bench, desk):
             bench.eval(bind)
         bench.eval('hl.bind("SUPER + J", hl.dsp.exec_cmd("true"))')
         bench.eval('hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })')
+        bench.eval('hl.bind("SUPER + mouse_up", hl.dsp.exec_cmd("true"))')
         yield shell
     finally:
         shell.stop()
         shell.remove_probe()
-        bench.eval('hl.unbind("SUPER + SUPER_L") hl.unbind("SUPER + SUPER_R") hl.unbind("SUPER + J") hl.unbind("SUPER + mouse:272")')
+        bench.eval('hl.unbind("SUPER + SUPER_L") hl.unbind("SUPER + SUPER_R") hl.unbind("SUPER + J") hl.unbind("SUPER + mouse:272") hl.unbind("SUPER + mouse_up")')
 
 
 def released_after(shell, desk, *steps) -> int:
@@ -103,3 +104,16 @@ def test_a_click_while_held_does_not(bench, tap, desk):
     time.sleep(0.35)
     assert int(tap.call("tapProbe", "count")) == before
     assert released_after(tap, desk) == 1, "the tap after a click was lost"
+
+
+def test_a_scroll_while_held_does_not(bench, tap, desk):
+    pointer = desk.pointer()
+    pointer.move(800, 500)
+    before = int(tap.call("tapProbe", "count"))
+    held = subprocess.Popen(["wtype", *HOLD, "-s", "700", *LET_GO], env=bench.environment())
+    time.sleep(0.25)
+    pointer._send("scroll -15")
+    held.wait()
+    time.sleep(0.35)
+    assert int(tap.call("tapProbe", "count")) == before
+    assert released_after(tap, desk) == 1, "the tap after a scroll was lost"
