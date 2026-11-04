@@ -59,6 +59,13 @@ def test_a_running_application_started_again_comes_up_in_front(desk):
     # and the running one asks the compositor to be brought up.
     pointer = desk.pointer()
     below, over = overlapping(desk)
+    # Used before, as a running application has been: Hyprland 0.57 gives a
+    # window a token to bring itself up only against input it has really had.
+    # Its part that the other window leaves in sight.
+    pointer.click(150, 300)
+    wait_until(lambda: desk.active() == below.address, what="the application to have been used")
+    desk.bench.eval(f'hl.dispatch(hl.dsp.focus({{ window = "address:{over.address}" }})) '
+                    f'hl.dispatch(hl.dsp.window.alter_zorder({{ mode = "top", window = "address:{over.address}" }}))')
     assert in_front(desk, pointer) == over.address
     below.command("present")
     wait_until(lambda: desk.active() == below.address, what="the application to have focus")
