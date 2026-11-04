@@ -16,6 +16,14 @@
 // area round a window, and a right press there does nothing, as a right press
 // on the edge of a window does nothing on Windows.
 //
+// The border press has no function of its own: the handler of every press
+// tests for the border after the mouse bindings have had the press, and
+// begins the resize there. So the handler is wrapped to judge the press, and
+// the beginning of a drag is caught: a resize begun by that press outside the
+// mouse bindings is the border's, and is turned into the press it was. A
+// resize begun by a binding, the Super key and the right button say, is left
+// alone wherever the pointer is.
+//
 // A window an environment holds at a size of its own, which the minimize
 // plugin keeps from being resized, carries the tag named by
 // plugin:border_resize:fixed_size_tag, the environment's to name. A press by
@@ -57,9 +65,11 @@
 #include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/desktop/state/ViewState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/devices/IPointer.hpp>
-#include <hyprland/src/managers/KeybindManager.hpp>
+#include <hyprland/src/keybinds/Manager.hpp>
+#include <hyprland/src/layout/LayoutManager.hpp>
+#include <hyprland/src/layout/target/Target.hpp>
 #include <hyprland/src/managers/SeatManager.hpp>
 
 // The C library, under C linkage.
@@ -71,13 +81,22 @@
 
 namespace {
     HANDLE         handle     = nullptr;
-    CFunctionHook* hook       = nullptr;
+    CFunctionHook* pressHook  = nullptr;
+    CFunctionHook* bindsHook  = nullptr;
+    CFunctionHook* dragHook   = nullptr;
     CFunctionHook* cursorHook = nullptr;
 
     SP<Config::Values::CStringValue> fixedSizeTag;
 
-    using ResizeWithBorder      = void (*)(CKeybindManager*, const IPointer::SButtonEvent&);
+    using ProcessMouseDown      = void (*)(CInputManager*, const IPointer::SButtonEvent&, SP<IPointer>);
+    using OnMouseEvent          = bool (*)(Keybinds::CKeybindManager*, const IPointer::SButtonEvent&, SP<IPointer>, bool);
+    using BeginDragTarget       = void (*)(Layout::CLayoutManager*, SP<Layout::ITarget>, eMouseBindMode, std::optional<Layout::eRectCorner>, bool);
     using SetCursorIconOnBorder = void (*)(CInputManager*, PHLWINDOW);
+
+    // The press being handled, while it is, if a resize by the border is not
+    // to come of it.
+    const IPointer::SButtonEvent* refused = nullptr;
+    bool                          inBindings = false;
 
     bool heldAtSize(const PHLWINDOW& window) {
         const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
@@ -92,13 +111,30 @@ namespace {
         return Desktop::viewState()->hitTest().windowAt(g_pInputManager->getMouseCoordsInternal(), RESERVED_EXTENTS | INPUT_EXTENTS | ALLOW_FLOATING);
     }
 
-    void resizeWithBorder(CKeybindManager* manager, const IPointer::SButtonEvent& event) {
-        if (event.button != BTN_LEFT || (g_pInputManager && g_pInputManager->isConstrained()) || heldAtSize(windowUnderCursor())) {
+    void processMouseDown(CInputManager* manager, const IPointer::SButtonEvent& event, SP<IPointer> mouse) {
+        const bool refuse = event.state == WL_POINTER_BUTTON_STATE_PRESSED &&
+            (event.button != BTN_LEFT || manager->isConstrained() || heldAtSize(windowUnderCursor()));
+        const auto outer = refused;
+        refused          = refuse ? &event : nullptr;
+        reinterpret_cast<ProcessMouseDown>(pressHook->m_original)(manager, event, std::move(mouse));
+        refused = outer;
+    }
+
+    bool onMouseEvent(Keybinds::CKeybindManager* manager, const IPointer::SButtonEvent& event, SP<IPointer> pointer, bool captured) {
+        const bool outer = inBindings;
+        inBindings       = true;
+        const bool pass  = reinterpret_cast<OnMouseEvent>(bindsHook->m_original)(manager, event, std::move(pointer), captured);
+        inBindings       = outer;
+        return pass;
+    }
+
+    void beginDragTarget(Layout::CLayoutManager* manager, SP<Layout::ITarget> target, eMouseBindMode mode, std::optional<Layout::eRectCorner> forcedEdge, bool exclusiveDeviceGrab) {
+        if (refused && !inBindings && mode == MBIND_RESIZE && !forcedEdge && !exclusiveDeviceGrab) {
             if (g_pSeatManager)
-                g_pSeatManager->sendPointerButton(event.timeMs, event.button, event.state);
+                g_pSeatManager->sendPointerButton(refused->timeMs, refused->button, refused->state);
             return;
         }
-        reinterpret_cast<ResizeWithBorder>(hook->m_original)(manager, event);
+        reinterpret_cast<BeginDragTarget>(dragHook->m_original)(manager, std::move(target), mode, forcedEdge, exclusiveDeviceGrab);
     }
 
     enum : uint8_t {
@@ -146,13 +182,13 @@ namespace {
     uint8_t pullableSides(const PHLWINDOW& window) {
         if (heldAtSize(window))
             return 0;
-        if (window->m_isFloating)
+        if (window->isFloating())
             return SIDE_ALL;
 
         const auto box   = window->getWindowMainSurfaceBox();
         uint8_t    sides = 0;
         for (const auto& other : Desktop::windowState()->windows()) {
-            if (!other || other == window || !other->m_isMapped || other->isHidden() || other->m_isFloating || other->m_workspace != window->m_workspace)
+            if (!other || other == window || !other->mapped() || other->isHidden() || other->isFloating() || other->m_workspace != window->m_workspace)
                 continue;
             const auto o         = other->getWindowMainSurfaceBox();
             const bool besideY   = o.y < box.y + box.h && o.y + o.h > box.y;
@@ -235,10 +271,23 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         throw std::runtime_error("[border-resize] version mismatch");
     }
 
-    if (void* target = find("resizeWithBorder", "CKeybindManager::resizeWithBorder"))
-        hook = HyprlandAPI::createFunctionHook(handle, target, reinterpret_cast<void*>(&resizeWithBorder));
-    if (!hook || !hook->hook())
+    // All three or none: a drag caught with no press judged refuses nothing,
+    // and a press judged with no drag caught changes nothing either.
+    void* pressTarget = find("processMouseDownNormal", "CInputManager::processMouseDownNormal");
+    void* bindsTarget = find("onMouseEvent", "Keybinds::CKeybindManager::onMouseEvent");
+    void* dragTarget  = find("beginDragTarget", "CLayoutManager::beginDragTarget");
+    if (pressTarget && bindsTarget && dragTarget) {
+        pressHook = HyprlandAPI::createFunctionHook(handle, pressTarget, reinterpret_cast<void*>(&processMouseDown));
+        bindsHook = HyprlandAPI::createFunctionHook(handle, bindsTarget, reinterpret_cast<void*>(&onMouseEvent));
+        dragHook  = HyprlandAPI::createFunctionHook(handle, dragTarget, reinterpret_cast<void*>(&beginDragTarget));
+    }
+    const bool hooked = pressHook && bindsHook && dragHook && bindsHook->hook() && dragHook->hook() && pressHook->hook();
+    if (!hooked) {
+        for (auto* each : {pressHook, bindsHook, dragHook})
+            if (each)
+                each->unhook();
         HyprlandAPI::addNotification(handle, "[border-resize] could not hook the border press, left as it is", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+    }
 
     if (void* target = find("setCursorIconOnBorder", "CInputManager::setCursorIconOnBorder"))
         cursorHook = HyprlandAPI::createFunctionHook(handle, target, reinterpret_cast<void*>(&setCursorIconOnBorder));

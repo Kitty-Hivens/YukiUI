@@ -20,10 +20,12 @@
 //
 // A request made before the window is mapped, as an application that
 // remembers being maximised makes it, is held and announced as the window
-// opens: the shell has nothing to place before then. A Wayland window's
-// request is gone from its surface the moment it has been heard, so the
-// window is listened to from its creation rather than from its mapping, which
-// heard nothing of it.
+// opens: the shell has nothing to place before then. A request is handed on
+// once, as it is made, so the window is listened to from its creation rather
+// than from its mapping, which heard nothing of it. Hyprland drops a Wayland
+// window's request to be maximised made before it maps, so nothing hands that
+// one on: the toplevel's own handlers of it are wrapped from the window's
+// creation to its mapping, to hear it first, and Hyprland goes on dropping it.
 //
 // Letting go of focus. A window moved to a special workspace that is not shown
 // keeps keyboard focus, so typing goes on reaching a window nobody can see, and
@@ -57,18 +59,38 @@
 // rules loaded now. The rules are only read for it: nothing of them is
 // applied to the window asked about.
 
+// The Wayland backend keeps its xdg surface privately, and telling a Wayland
+// window it is tiled needs the surface's toplevel. The X11 backend keeps its
+// X surface privately as well, and the handlers of a toplevel's requests are
+// kept privately by the protocol's own class and reached through a member the
+// toplevel keeps privately. Included before anything else could include them
+// without this, and after the standard headers they pull in, which redefined
+// access breaks.
+#include <any>
+#include <array>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <variant>
+#include <vector>
+#define private public
+#include <hyprland/src/protocols/XDGShell.hpp>
+#include <hyprland/src/desktop/view/window/WaylandBackend.hpp>
+#include <hyprland/src/desktop/view/window/X11Backend.hpp>
+#undef private
+
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/desktop/rule/Engine.hpp>
 #include <hyprland/src/desktop/rule/windowRule/WindowRule.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
-#include <hyprland/src/protocols/XDGShell.hpp>
 #include <hyprland/src/xwayland/XSurface.hpp>
-#include <hyprland/src/managers/EventManager.hpp>
+#include <hyprland/src/ipc/s2/S2.hpp>
 
 // The C library, under C linkage.
 #include <lua.hpp>
@@ -100,12 +122,18 @@ namespace {
         reinterpret_cast<DragBegin>(dragBeginHook->m_original)(controller, std::move(target), mode, edge, exclusiveDeviceGrab);
     }
 
+    using ToplevelRequest = std::function<void(CXdgToplevel*)>;
+
     struct SWatched {
         PHLWINDOWREF        window;
         CHyprSignalListener listener;
         /** Asked for before the window was mapped, to be announced as it opens. */
         bool                minimize = false;
         std::optional<bool> maximize;
+        /** A Wayland window's own handlers of its requests to be maximised or not, while wrapped. */
+        WP<CXdgToplevel>    toplevel;
+        ToplevelRequest     setMaximized;
+        ToplevelRequest     unsetMaximized;
     };
     std::vector<SWatched> watched;
 
@@ -116,18 +144,66 @@ namespace {
         return nullptr;
     }
 
+    SWatched* entryFor(const CXdgToplevel* toplevel) {
+        for (auto& entry : watched)
+            if (entry.toplevel.get() == toplevel)
+                return &entry;
+        return nullptr;
+    }
+
+    // Hears a request to be maximised or not made before the window maps,
+    // then hands it to the handler it wraps, which drops it.
+    void heardEarly(CXdgToplevel* toplevel, bool maximize) {
+        auto* entry = entryFor(toplevel);
+        if (!entry)
+            return;
+        if (const auto window = entry->window.lock(); window && !window->mapped())
+            entry->maximize = maximize;
+        const auto& original = maximize ? entry->setMaximized : entry->unsetMaximized;
+        if (original)
+            original(toplevel);
+    }
+
+    void wrapEarly(SWatched& entry, const PHLWINDOW& window) {
+        auto* wayland = dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend());
+        if (!wayland)
+            return;
+        const auto xdg      = wayland->m_resource.lock();
+        const auto toplevel = xdg ? xdg->m_toplevel.lock() : nullptr;
+        if (!toplevel || !toplevel->m_resource)
+            return;
+        auto& requests       = toplevel->m_resource->requests;
+        entry.toplevel       = toplevel->m_resource;
+        entry.setMaximized   = std::move(requests.setMaximized);
+        entry.unsetMaximized = std::move(requests.unsetMaximized);
+        requests.setMaximized   = [](CXdgToplevel* r) { heardEarly(r, true); };
+        requests.unsetMaximized = [](CXdgToplevel* r) { heardEarly(r, false); };
+    }
+
+    // Hyprland's own handlers back in place: once the window is mapped, and
+    // for every window as the plugin goes, whose code the wrappers are.
+    void unwrapEarly(SWatched& entry) {
+        if (const auto toplevel = entry.toplevel.lock()) {
+            toplevel->requests.setMaximized   = std::move(entry.setMaximized);
+            toplevel->requests.unsetMaximized = std::move(entry.unsetMaximized);
+        }
+        entry.toplevel.reset();
+        entry.setMaximized   = nullptr;
+        entry.unsetMaximized = nullptr;
+    }
+
     void announce(const PHLWINDOWREF& ref) {
         const auto window = ref.lock();
-        if (!window || !g_pEventManager)
+        if (!window || !IPC::Socket2::sock())
             return;
-        g_pEventManager->postEvent({.event = "minimized", .data = std::format("{:x},1", reinterpret_cast<uintptr_t>(window.get()))});
+        IPC::Socket2::sock()->postEvent({.event = "minimized", .data = std::format("{:x},1", reinterpret_cast<uintptr_t>(window.get()))});
     }
 
     void announceMaximize(const PHLWINDOWREF& ref, bool maximize) {
         const auto window = ref.lock();
-        if (!window || !g_pEventManager)
+        if (!window || !IPC::Socket2::sock())
             return;
-        g_pEventManager->postEvent({.event = "maximizerequest", .data = std::format("{:x},{}", reinterpret_cast<uintptr_t>(window.get()), maximize ? 1 : 0)});
+        IPC::Socket2::sock()->postEvent({.event = "maximizerequest", .data = std::format("{:x},{}", reinterpret_cast<uintptr_t>(window.get()), maximize ? 1 : 0)});
     }
 
     // Passed on at once for a mapped window, held for one that is not yet.
@@ -135,7 +211,7 @@ namespace {
         const auto window = ref.lock();
         if (!window)
             return;
-        if (!window->m_isMapped) {
+        if (!window->mapped()) {
             if (auto* entry = entryFor(window)) {
                 entry->minimize = entry->minimize || minimize;
                 if (maximize.has_value())
@@ -149,41 +225,13 @@ namespace {
             announceMaximize(ref, *maximize);
     }
 
+    // A request to be minimised, maximised or put back, as the window's
+    // backend hands it on, Wayland and X11 alike, one request at a time.
     CHyprSignalListener listenTo(const PHLWINDOW& window) {
         const PHLWINDOWREF ref = window;
-
-        // The request is reset once the signal has run its course, so it is
-        // still there for every listener, this one included.
-        if (const auto xdg = window->m_xdgSurface.lock(); xdg && xdg->m_toplevel) {
-            const WP<CXDGToplevelResource> toplevel = xdg->m_toplevel;
-            return toplevel->m_events.stateChanged.listen([ref, toplevel] {
-                const auto current = toplevel.lock();
-                if (!current)
-                    return;
-                heard(ref, current->m_state.requestsMinimize.value_or(false), current->m_state.requestsMaximize);
-            });
-        }
-
-        // Under XWayland a request is not reset: it stays on the surface until
-        // the client asks for the opposite, and every later change of state, a
-        // request for fullscreen say, would announce it again. A window that
-        // had minimised itself once was minimised again each time it went
-        // fullscreen. So a request is spent once it is announced. Hyprland's
-        // own listener was registered as the surface was created, before this
-        // one, and has read it already.
-        if (const auto x11 = window->m_xwaylandSurface.lock()) {
-            const WP<CXWaylandSurface> surface = x11;
-            return x11->m_events.stateChanged.listen([ref, surface] {
-                const auto current = surface.lock();
-                if (!current)
-                    return;
-                heard(ref, current->m_state.requestsMinimize.value_or(false), current->m_state.requestsMaximize);
-                current->m_state.requestsMinimize.reset();
-                current->m_state.requestsMaximize.reset();
-            });
-        }
-
-        return nullptr;
+        return window->backend().m_events.stateRequest.listen([ref](Desktop::View::SBackendStateRequest request) {
+            heard(ref, request.minimized.value_or(false), request.maximized);
+        });
     }
 
     // Whether the rules loaded now float a window, the last of them to say so
@@ -211,7 +259,7 @@ namespace {
         bool              floats  = false;
         for (const auto& window : Desktop::windowState()->windows()) {
             if (window && std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) == address) {
-                floats = window->m_requestsFloat || rulesFloat(window);
+                floats = window->suggestsFloat() || rulesFloat(window);
                 break;
             }
         }
@@ -253,18 +301,22 @@ namespace {
         for (const auto& window : Desktop::windowState()->windows()) {
             if (!window || std::format("0x{:x}", reinterpret_cast<uintptr_t>(window.get())) != address)
                 continue;
-            if (const auto xdg = window->m_xdgSurface.lock(); xdg && xdg->m_toplevel)
-                setXdgState(xdg->m_toplevel.lock(), maximized, tiled);
-            else if (const auto x11 = window->m_xwaylandSurface.lock(); x11 && x11->m_maximized != maximized) {
-                x11->m_maximized = maximized;
-                // Sends the whole state, the maximised part with it, and
-                // leaves fullscreen as it was. The state waits in the X
-                // connection's buffer until something flushes it, which a
-                // configure does, and one to where the window already stands
-                // changes nothing: a window already as large as it is to be
-                // got no configure otherwise, and never heard of its state.
-                x11->setFullscreen(x11->m_fullscreen);
-                x11->configure(x11->m_geometry);
+            if (auto* wayland = dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend())) {
+                if (const auto xdg = wayland->m_resource.lock(); xdg && xdg->m_toplevel)
+                    setXdgState(xdg->m_toplevel.lock(), maximized, tiled);
+            } else if (auto* x11 = dynamic_cast<Desktop::View::CX11Backend*>(&window->backend())) {
+                // X11 has no tiled state. Sending the whole state sends the
+                // maximised part with it and leaves fullscreen as it was. The
+                // state waits in the X connection's buffer until something
+                // flushes it, which a configure does, and one to where the
+                // window already stands changes nothing: a window already as
+                // large as it is to be got no configure otherwise, and never
+                // heard of its state.
+                if (const auto surface = x11->m_xwaylandSurface.lock(); surface && surface->m_maximized != maximized) {
+                    surface->m_maximized = maximized;
+                    surface->setFullscreen(surface->m_fullscreen);
+                    surface->configure(surface->m_geometry);
+                }
             }
             break;
         }
@@ -285,9 +337,12 @@ namespace {
         SWatched entry;
         entry.window = window;
         watched.push_back(std::move(entry));
-        if (auto listener = listenTo(window))
-            entryFor(window)->listener = std::move(listener);
-        else
+        if (auto listener = listenTo(window)) {
+            auto* added     = entryFor(window);
+            added->listener = std::move(listener);
+            if (!window->mapped())
+                wrapEarly(*added, window);
+        } else
             watched.pop_back();
     }
 
@@ -298,14 +353,8 @@ namespace {
         auto* entry = entryFor(window);
         bool  minimize = entry && entry->minimize;
         auto  maximize = entry ? entry->maximize : std::nullopt;
-        if (const auto x11 = window->m_xwaylandSurface.lock()) {
-            minimize = minimize || x11->m_state.requestsMinimize.value_or(false);
-            if (!maximize.has_value())
-                maximize = x11->m_state.requestsMaximize;
-            x11->m_state.requestsMinimize.reset();
-            x11->m_state.requestsMaximize.reset();
-        }
         if (entry) {
+            unwrapEarly(*entry);
             entry->minimize = false;
             entry->maximize.reset();
         }
@@ -346,7 +395,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
 
     // Windows that were already open when the plugin came in.
     for (const auto& window : Desktop::windowState()->windows())
-        if (window && window->m_isMapped)
+        if (window && window->mapped())
             watch(window);
 
     void* target = nullptr;
@@ -367,5 +416,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
 APICALL EXPORT void PLUGIN_EXIT() {
     createListener.reset();
     openListener.reset();
+    for (auto& entry : watched)
+        unwrapEarly(entry);
     watched.clear();
 }

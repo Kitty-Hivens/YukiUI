@@ -13,7 +13,7 @@
 # whose unit comes with the package and is turned on as it is installed.
 
 pkgname=yuki-hyprland-plugins
-pkgver=1.22
+pkgver=1.23
 pkgrel=1
 pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
 arch=(any)

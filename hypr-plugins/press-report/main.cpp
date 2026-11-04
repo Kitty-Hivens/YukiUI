@@ -17,13 +17,13 @@
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/managers/SeatManager.hpp>
-#include <hyprland/src/managers/EventManager.hpp>
+#include <hyprland/src/ipc/s2/S2.hpp>
 #include <hyprland/src/protocols/core/Compositor.hpp>
 #include <hyprland/src/desktop/view/WLSurface.hpp>
 #include <hyprland/src/desktop/view/View.hpp>
 #include <hyprland/src/desktop/view/LayerSurface.hpp>
 #include <hyprland/src/desktop/view/Popup.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
 
 #include <format>
 
@@ -49,11 +49,11 @@ namespace {
     }
 
     void report(const IPointer::SButtonEvent& event) {
-        if (event.state != WL_POINTER_BUTTON_STATE_PRESSED || !g_pSeatManager || !g_pEventManager)
+        if (event.state != WL_POINTER_BUTTON_STATE_PRESSED || !g_pSeatManager || !IPC::Socket2::sock())
             return;
         const auto focus   = g_pSeatManager->m_state.pointerFocus.lock();
         const auto surface = focus ? Desktop::View::CWLSurface::fromResource(focus) : nullptr;
-        g_pEventManager->postEvent({.event = "pointerpress", .data = describe(surface ? surface->view() : nullptr)});
+        IPC::Socket2::sock()->postEvent({.event = "pointerpress", .data = describe(surface ? surface->view() : nullptr)});
     }
 }
 

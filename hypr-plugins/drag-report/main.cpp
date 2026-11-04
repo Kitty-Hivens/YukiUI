@@ -39,13 +39,13 @@
 // starts its drag later still, when the application asks for it.
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
-#include <hyprland/src/managers/EventManager.hpp>
+#include <hyprland/src/ipc/s2/S2.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/managers/eventLoop/EventLoopManager.hpp>
 #include <hyprland/src/layout/LayoutManager.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 
 // The C library, under C linkage.
@@ -75,8 +75,8 @@ namespace {
     std::chrono::steady_clock::time_point lastPosition;
 
     void post(const std::string& data) {
-        if (g_pEventManager)
-            g_pEventManager->postEvent({.event = "windowdrag", .data = data});
+        if (IPC::Socket2::sock())
+            IPC::Socket2::sock()->postEvent({.event = "windowdrag", .data = data});
     }
 
     std::string pointer() {
@@ -149,8 +149,8 @@ namespace {
         pressLater        = 0;
         const auto window = Desktop::focusState()->window();
         pressWindow       = window;
-        if (window && window->m_target)
-            pressBox = window->m_target->position();
+        if (const auto target = window ? window->layoutTarget() : nullptr)
+            pressBox = target->position();
     }
 
     // Once per turn of the loop, however many events arrived in it.

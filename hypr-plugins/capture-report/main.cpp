@@ -16,7 +16,7 @@
 // again as it starts with hl.plugin.capture_report.announce().
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
-#include <hyprland/src/managers/EventManager.hpp>
+#include <hyprland/src/ipc/s2/S2.hpp>
 #include <hyprland/src/managers/eventLoop/EventLoopManager.hpp>
 #include <hyprland/src/managers/eventLoop/EventLoopTimer.hpp>
 #include <hyprland/src/protocols/types/Buffer.hpp>
@@ -97,8 +97,8 @@ namespace {
             return;
         announceLater = g_pEventLoopManager->doLater([] {
             announceLater = 0;
-            if (g_pEventManager)
-                g_pEventManager->postEvent({.event = "capturers", .data = capturers()});
+            if (IPC::Socket2::sock())
+                IPC::Socket2::sock()->postEvent({.event = "capturers", .data = capturers()});
         });
     }
 
