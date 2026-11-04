@@ -139,7 +139,7 @@ ColumnLayout {
                     id: device
 
                     required property var modelData
-                    readonly property bool inUse: device.modelData.id === Audio.defaultSinkEndpoint?.id
+                    readonly property bool inUse: device.modelData?.id === Audio.defaultSinkEndpoint?.id
                     readonly property var described: root.describe(device.modelData)
                     readonly property color ink: device.inUse ? ExLooks.colors.tonalInk : ExLooks.colors.text
 

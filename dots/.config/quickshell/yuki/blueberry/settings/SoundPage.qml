@@ -212,7 +212,7 @@ ColumnLayout {
                 node: modelData
                 // Against the hardware the default reaches, so a processor
                 // holding the default still marks the device it plays out of.
-                isDefault: modelData.id === Audio.defaultSinkEndpoint?.id
+                isDefault: modelData?.id === Audio.defaultSinkEndpoint?.id
                 onChosen: Audio.setDefaultSink(modelData)
             }
         }
@@ -238,7 +238,7 @@ ColumnLayout {
             DeviceCard {
                 required property var modelData
                 node: modelData
-                isDefault: modelData.id === Audio.defaultSourceEndpoint?.id
+                isDefault: modelData?.id === Audio.defaultSourceEndpoint?.id
                 onChosen: Audio.setDefaultSource(modelData)
             }
         }

@@ -33,7 +33,7 @@ Singleton {
      * and falls back to what the stream says about itself.
      */
     function appNodeDisplayName(node) {
-        return (StreamApps.nameFor(node) || node.properties["application.name"] || node.description || node.name)
+        return (StreamApps.nameFor(node) || node?.properties?.["application.name"] || node?.description || node?.name || "")
     }
 
     // Names a stream gives itself when it has nothing to say: repeating them
@@ -164,10 +164,44 @@ Singleton {
     readonly property var defaultSinkEndpoint: root.endpointOf(Pipewire.defaultAudioSink)
     readonly property var defaultSourceEndpoint: root.endpointOf(Pipewire.defaultAudioSource)
 
-    readonly property list<var> outputAppNodes: root.appNodes(true)
-    readonly property list<var> inputAppNodes: root.appNodes(false)
-    readonly property list<var> outputDevices: root.devices(true)
-    readonly property list<var> inputDevices: root.devices(false)
+    /**
+     * The nodes as lists, handed on a turn of the event loop after they change,
+     * and only when they did.
+     *
+     * A node going away changes the lists from inside its own destructor. A
+     * Repeater on one of them was rebuilt right there, with the object still
+     * half gone, and that ended the process: a sound page open during a call,
+     * where streams come and go, or as a card's profile was changed, took its
+     * window down within seconds.
+     */
+    readonly property list<var> liveOutputAppNodes: root.appNodes(true)
+    readonly property list<var> liveInputAppNodes: root.appNodes(false)
+    readonly property list<var> liveOutputDevices: root.devices(true)
+    readonly property list<var> liveInputDevices: root.devices(false)
+    onLiveOutputAppNodesChanged: Qt.callLater(root.publishNodes)
+    onLiveInputAppNodesChanged: Qt.callLater(root.publishNodes)
+    onLiveOutputDevicesChanged: Qt.callLater(root.publishNodes)
+    onLiveInputDevicesChanged: Qt.callLater(root.publishNodes)
+
+    property list<var> outputAppNodes: []
+    property list<var> inputAppNodes: []
+    property list<var> outputDevices: []
+    property list<var> inputDevices: []
+
+    function sameNodes(a, b): bool {
+        return a.length === b.length && a.every((node, index) => node === b[index]);
+    }
+    function publishNodes() {
+        if (!root.sameNodes(root.outputAppNodes, root.liveOutputAppNodes))
+            root.outputAppNodes = root.liveOutputAppNodes;
+        if (!root.sameNodes(root.inputAppNodes, root.liveInputAppNodes))
+            root.inputAppNodes = root.liveInputAppNodes;
+        if (!root.sameNodes(root.outputDevices, root.liveOutputDevices))
+            root.outputDevices = root.liveOutputDevices;
+        if (!root.sameNodes(root.inputDevices, root.liveInputDevices))
+            root.inputDevices = root.liveInputDevices;
+    }
+    Component.onCompleted: root.publishNodes()
 
     // Signals
     signal sinkProtectionTriggered(string reason);
