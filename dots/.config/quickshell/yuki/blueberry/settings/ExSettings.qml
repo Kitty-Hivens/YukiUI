@@ -9,9 +9,9 @@ import qs.core.services
 import qs.blueberry.input
 import qs.blueberry.looks
 
-// The settings window's content, laid out as Windows 11 lays out its own: who
-// is signed in, a search and the categories down the left, and on the right
-// the path to the page, its title and the page itself.
+// The settings window's content: who is signed in, a search and the
+// categories down the left, and beside them the page under its path, its
+// title and a line on how things stand.
 Item {
     id: root
 
@@ -274,141 +274,228 @@ Item {
         watching: root.Window.active
     }
 
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0
+    readonly property var metrics: ExLooks.settings
+    /** Home has no title over it: the machine itself stands at its top. */
+    readonly property bool atHome: root.shownCategory === "home" && !root.shownSearching
+    /** What the page on show says of how things stand, under its title. */
+    readonly property string summary: (root.front === 0 ? pageA : pageB).item?.summary ?? ""
 
-        // Who is signed in, the search, and the categories.
-        ColumnLayout {
-            // Fixed: its rows fill its width, which would otherwise have it
-            // take the window's width from the page.
-            Layout.fillWidth: false
-            Layout.preferredWidth: 300
-            Layout.maximumWidth: 300
-            Layout.fillHeight: true
-            Layout.margins: ExLooks.spacing.m
-            Layout.rightMargin: 0
+    /**
+     * Escape, from the inside out: a search is cleared first, then the
+     * window steps back a page, and only from where it started does it close.
+     * Returns whether it was used here.
+     */
+    function stepOut(): bool {
+        if (root.query.length > 0) {
+            search.text = "";
+            return true;
+        }
+        if (root.historyIndex > 0) {
+            root.back();
+            return true;
+        }
+        return false;
+    }
+
+    Shortcut {
+        sequences: ["Alt+Left", StandardKey.Back]
+        onActivated: root.back()
+    }
+    Shortcut {
+        sequences: ["Alt+Right", StandardKey.Forward]
+        onActivated: root.forward()
+    }
+
+    // What this window is, who is signed in, the search and the sections,
+    // on the window's own tone. Every leading glyph down it stands on one
+    // axis.
+    Item {
+        id: rail
+
+        width: root.metrics.railWidth
+        height: parent.height
+
+        RowLayout {
+            id: appTitle
+
+            x: root.metrics.railAxis - root.metrics.railChip / 2
+            y: root.metrics.contentTop
+            width: parent.width - x - root.metrics.railPadding
             spacing: ExLooks.spacing.m
 
-            RowLayout {
+            SettingsChip {
+                glyph: "settings"
+                size: root.metrics.railChip
+            }
+            ExText {
                 Layout.fillWidth: true
-                Layout.topMargin: ExLooks.spacing.s
-                Layout.leftMargin: ExLooks.spacing.s
-                spacing: ExLooks.spacing.m
+                text: Translation.tr("Settings")
+                font.pixelSize: root.metrics.heading
+                font.weight: ExLooks.font.weightTitle
+            }
+        }
 
-                Rectangle {
-                    implicitWidth: 56
-                    implicitHeight: 56
-                    radius: 28
-                    color: ExLooks.colors.tonal
+        // Who is signed in: said, not a plate to press.
+        RowLayout {
+            id: account
 
-                    ExText {
-                        anchors.centerIn: parent
-                        text: (root.username || "?").charAt(0).toUpperCase()
-                        font.pixelSize: 24
-                        font.weight: 600
-                        color: ExLooks.colors.tonalInk
-                    }
+            x: root.metrics.railAxis - root.metrics.avatar / 2
+            y: appTitle.y + appTitle.height + ExLooks.spacing.xl
+            width: parent.width - x - root.metrics.railPadding
+            spacing: ExLooks.spacing.m
+
+            Rectangle {
+                implicitWidth: root.metrics.avatar
+                implicitHeight: root.metrics.avatar
+                radius: width / 2
+                color: ExLooks.colors.accent
+
+                ExText {
+                    anchors.centerIn: parent
+                    text: (root.username || "?").charAt(0).toUpperCase()
+                    font.pixelSize: root.metrics.body
+                    font.weight: ExLooks.font.weightTitle
+                    color: ExLooks.colors.accentInk
                 }
-                ColumnLayout {
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                ExText {
                     Layout.fillWidth: true
-                    spacing: 0
-
-                    ExText {
-                        Layout.fillWidth: true
-                        text: root.username
-                        font.weight: ExLooks.font.weightTitle
-                    }
-                    ExText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Local account")
-                        role: "caption"
-                        dim: true
-                    }
+                    text: root.username
+                    font.pixelSize: root.metrics.body
+                    font.weight: ExLooks.font.weightTitle
                 }
-            }
-
-            ExTextField {
-                id: search
-
-                Layout.fillWidth: true
-                glyph: "search"
-                placeholder: Translation.tr("Find a setting")
-            }
-
-            ListView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                spacing: 2
-                boundsBehavior: Flickable.StopAtBounds
-                model: catalogue.categories
-
-                delegate: AbstractButton {
-                    id: navItem
-
-                    ExPrimaryOnly {
-                        z: 1
-                    }
-
-                    required property var modelData
-                    readonly property bool here: root.query.length === 0 && navItem.modelData.key === root.categoryKey
-
-                    width: ListView.view.width
-                    implicitHeight: 40
-                    hoverEnabled: true
-                    onClicked: root.open(navItem.modelData.key)
-
-                    background: Rectangle {
-                        radius: ExLooks.radius.menuItem
-                        color: navItem.here ? ExLooks.colors.tonal : "transparent"
-
-                        ExStateLayer {
-                            ink: navItem.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
-                            hovered: navItem.hovered
-                            pressed: navItem.down
-                        }
-                    }
-                    contentItem: RowLayout {
-                        spacing: ExLooks.spacing.m
-
-                        ExGlyph {
-                            Layout.leftMargin: ExLooks.spacing.m
-                            text: navItem.modelData.glyph
-                            size: 20
-                            fill: navItem.here ? 1 : 0
-                            color: navItem.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
-                        }
-                        ExText {
-                            Layout.fillWidth: true
-                            text: navItem.modelData.name
-                            color: navItem.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
-                            font.weight: navItem.here ? ExLooks.font.weightLabel : ExLooks.font.weightBody
-                        }
-                    }
+                ExText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Local account")
+                    font.pixelSize: root.metrics.small
+                    dim: true
                 }
             }
         }
 
-        // The path, the title and the page.
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 0
+        ExTextField {
+            id: search
 
-            // Category, then the page within it, the category going back.
-            // Comes in with the page under it.
-            Row {
+            x: root.metrics.railPadding
+            y: account.y + account.height + ExLooks.spacing.l
+            width: parent.width - 2 * x
+            height: root.metrics.search
+            radius: height / 2
+            color: root.metrics.plate
+            border.width: search.input.activeFocus ? 2 : 0
+            border.color: ExLooks.colors.accent
+            // The glyph on the rail's axis, as every glyph below it.
+            inset: root.metrics.railAxis - 9 - x
+            glyph: "search"
+            placeholder: Translation.tr("Find a setting")
+        }
+
+        ListView {
+            x: root.metrics.railPadding
+            y: search.y + search.height + ExLooks.spacing.l
+            width: parent.width - 2 * x
+            height: parent.height - y - root.metrics.railPadding
+            clip: true
+            spacing: 2
+            boundsBehavior: Flickable.StopAtBounds
+            model: catalogue.categories
+
+            delegate: AbstractButton {
+                id: navItem
+
+                ExPrimaryOnly {
+                    z: 1
+                }
+
+                required property var modelData
+                readonly property bool here: root.query.length === 0 && navItem.modelData.key === root.categoryKey
+
+                width: ListView.view.width
+                implicitHeight: root.metrics.railItem
+                hoverEnabled: true
+                onClicked: root.open(navItem.modelData.key)
+
+                // The section on show is a tinted plate with its disc turned
+                // to its colour, the way a tile in quick settings shows it is
+                // on; the rest answer the pointer.
+                background: Rectangle {
+                    radius: root.metrics.controlRadius
+                    color: navItem.here ? ExLooks.colors.tonal : "transparent"
+
+                    Behavior on color {
+                        ColorAnimation { duration: ExLooks.motion.fast }
+                    }
+
+                    ExStateLayer {
+                        ink: navItem.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
+                        hovered: navItem.hovered
+                        pressed: navItem.down
+                    }
+                }
+                contentItem: RowLayout {
+                    spacing: ExLooks.spacing.m
+
+                    SettingsChip {
+                        Layout.leftMargin: root.metrics.railAxis - root.metrics.railPadding - root.metrics.railChip / 2
+                        glyph: navItem.modelData.glyph
+                        hue: navItem.modelData.hue ?? -1
+                        size: root.metrics.railChip
+                        inverted: navItem.here
+                    }
+                    ExText {
+                        Layout.fillWidth: true
+                        text: navItem.modelData.name
+                        font.pixelSize: root.metrics.body
+                        font.weight: navItem.here ? ExLooks.font.weightTitle : ExLooks.font.weightBody
+                        color: navItem.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
+                    }
+                }
+            }
+        }
+    }
+
+    // The page's own area, a step lighter than the window, with the page's
+    // way back, path and title held at its top.
+    Rectangle {
+        id: pane
+
+        x: rail.width
+        y: ExLooks.spacing.s
+        width: parent.width - x - ExLooks.spacing.s
+        height: parent.height - 2 * ExLooks.spacing.s
+        radius: root.metrics.paneRadius
+        color: root.metrics.pane
+
+        // From the pane's left edge, no wider than reads well.
+        readonly property real columnX: root.metrics.contentMargin
+        readonly property real column: Math.min(root.metrics.contentWidth, pane.width - 2 * root.metrics.contentMargin)
+
+        Item {
+            id: headerBar
+
+            visible: !root.atHome
+            width: parent.width
+            height: root.atHome ? 0 : header.y + header.height + ExLooks.spacing.l
+
+            ColumnLayout {
+                id: header
+
+                x: pane.columnX
+                // In line with the rail's title across the window.
+                y: root.metrics.contentTop - pane.y
+                width: pane.column
+                spacing: 2
                 opacity: root.arrival
                 transform: Translate {
                     x: root.arrivalX
                     y: root.arrivalY
                 }
-                Layout.leftMargin: ExLooks.spacing.xl + ExLooks.spacing.l
-                Layout.topMargin: ExLooks.spacing.xl
-                Layout.bottomMargin: ExLooks.spacing.m
-                spacing: ExLooks.spacing.s
 
+                // The section over a page's title, which goes up to it.
                 AbstractButton {
                     id: crumb
 
@@ -418,79 +505,130 @@ Item {
 
                     readonly property bool leads: root.page !== null && !root.shownSearching
 
-                    anchors.verticalCenter: parent.verticalCenter
-                    enabled: crumb.leads
+                    visible: crumb.leads
                     hoverEnabled: true
                     onClicked: root.open(root.categoryKey)
-
-                    contentItem: ExText {
-                        text: root.shownSearching ? Translation.tr("Search") : (root.category?.name ?? "")
-                        font.pixelSize: 28
-                        font.weight: ExLooks.font.weightTitle
-                        color: crumb.leads && !crumb.hovered ? ExLooks.colors.textDim : ExLooks.colors.text
-                    }
                     background: null
+                    contentItem: ExText {
+                        text: root.category?.name ?? ""
+                        font.pixelSize: root.metrics.small
+                        font.weight: ExLooks.font.weightTitle
+                        font.underline: crumb.hovered
+                        color: ExLooks.colors.accentText
+                    }
                 }
-                ExGlyph {
-                    visible: crumb.leads
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "chevron_right"
-                    size: 24
-                    color: ExLooks.colors.textDim
+                // Back, in front of the title it leaves, as tall as the title.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: ExLooks.spacing.s
+
+                    AbstractButton {
+                        id: backButton
+
+                        ExPrimaryOnly {
+                            z: 1
+                        }
+
+                        visible: root.historyIndex > 0
+                        // Its glyph's edge on the column's edge, under the path.
+                        Layout.leftMargin: -6
+                        implicitWidth: 36
+                        implicitHeight: 36
+                        hoverEnabled: true
+                        onClicked: root.back()
+
+                        background: Rectangle {
+                            radius: root.metrics.controlRadius
+                            color: "transparent"
+
+                            ExStateLayer {
+                                ink: ExLooks.colors.text
+                                hovered: backButton.hovered
+                                pressed: backButton.down
+                            }
+                        }
+                        contentItem: Item {
+                            ExGlyph {
+                                anchors.centerIn: parent
+                                text: "arrow_back"
+                                size: 24
+                            }
+                        }
+                    }
+                    ExText {
+                        Layout.fillWidth: true
+                        text: root.shownSearching ? Translation.tr("Results for \u201c%1\u201d").arg(root.query) : (root.page?.name ?? root.category?.name ?? "")
+                        font.pixelSize: root.metrics.display
+                        font.weight: ExLooks.font.weightTitle
+                    }
                 }
                 ExText {
-                    visible: crumb.leads
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.page?.name ?? ""
-                    font.pixelSize: 28
-                    font.weight: ExLooks.font.weightTitle
+                    Layout.fillWidth: true
+                    visible: root.summary.length > 0
+                    text: root.summary
+                    font.pixelSize: root.metrics.body
+                    dim: true
                 }
             }
 
-            Flickable {
-                id: scroller
+            // Shown once the page runs under the title.
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: root.metrics.rule
+                opacity: scroller.contentY > 1 ? 1 : 0
 
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                contentHeight: pageHolder.implicitHeight + ExLooks.spacing.xl
-                boundsBehavior: Flickable.StopAtBounds
+                Behavior on opacity {
+                    NumberAnimation { duration: ExLooks.motion.fast }
+                }
+            }
+        }
 
-                ScrollBar.vertical: ScrollBar {
-                    policy: ScrollBar.AsNeeded
+        Flickable {
+            id: scroller
+
+            y: headerBar.height
+            width: parent.width
+            height: parent.height - y
+            clip: true
+            contentHeight: pageHolder.y + pageHolder.implicitHeight + root.metrics.groupGap
+            boundsBehavior: Flickable.StopAtBounds
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+
+            Item {
+                id: pageHolder
+
+                x: pane.columnX
+                y: root.atHome ? root.metrics.contentTop - pane.y : ExLooks.spacing.s
+                width: pane.column
+                implicitHeight: (root.front === 0 ? pageA : pageB).item?.implicitHeight ?? 0
+                opacity: root.arrival
+                transform: Translate {
+                    x: root.arrivalX
+                    y: root.arrivalY
                 }
 
-                // No wider than a line can be read at, as on Windows.
-                Item {
-                    id: pageHolder
+                Loader {
+                    id: pageA
 
-                    x: ExLooks.spacing.xl + ExLooks.spacing.l
-                    width: Math.min(1000, scroller.width - 2 * x)
-                    implicitHeight: (root.front === 0 ? pageA : pageB).item?.implicitHeight ?? 0
-                    opacity: root.arrival
-                    transform: Translate {
-                        x: root.arrivalX
-                        y: root.arrivalY
-                    }
+                    width: parent.width
+                    asynchronous: true
+                    visible: root.front === 0 || root.warming === 0
+                    opacity: root.warming === 0 ? 0.01 : 1
+                    onLoaded: root.pageReady(0)
+                }
+                Loader {
+                    id: pageB
 
-                    Loader {
-                        id: pageA
-
-                        width: parent.width
-                        asynchronous: true
-                        visible: root.front === 0 || root.warming === 0
-                        opacity: root.warming === 0 ? 0.01 : 1
-                        onLoaded: root.pageReady(0)
-                    }
-                    Loader {
-                        id: pageB
-
-                        width: parent.width
-                        asynchronous: true
-                        visible: root.front === 1 || root.warming === 1
-                        opacity: root.warming === 1 ? 0.01 : 1
-                        onLoaded: root.pageReady(1)
-                    }
+                    width: parent.width
+                    asynchronous: true
+                    visible: root.front === 1 || root.warming === 1
+                    opacity: root.warming === 1 ? 0.01 : 1
+                    onLoaded: root.pageReady(1)
                 }
             }
         }

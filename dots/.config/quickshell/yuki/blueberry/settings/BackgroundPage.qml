@@ -52,7 +52,7 @@ ColumnLayout {
         Wallpapers.generateThumbnail("large");
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     FileDialog {
         id: picker

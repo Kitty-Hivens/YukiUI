@@ -33,7 +33,7 @@ ColumnLayout {
 
     Component.onCompleted: Hypridle.refresh()
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     // The charge, first when there is one.
     SettingsCard {

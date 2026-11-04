@@ -69,7 +69,7 @@ ColumnLayout {
         onTriggered: root.readTray()
     }
 
-    spacing: 4
+    spacing: ExLooks.settings.groupGap
 
     // The edge is changed by the running shell, which carries the dock there
     // rather than letting it jump.

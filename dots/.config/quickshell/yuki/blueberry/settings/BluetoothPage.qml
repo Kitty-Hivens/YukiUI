@@ -47,7 +47,7 @@ ColumnLayout {
             BluetoothStatus.stopDiscovery();
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     component DeviceCard: SettingsCard {
         id: device
@@ -81,11 +81,9 @@ ColumnLayout {
             return device.connected && device.modelData?.batteryAvailable ? `${base}  ·  ${Math.round(device.modelData.battery * 100)}%` : base;
         }
 
-        ExButton {
+        SettingsForget {
             visible: device.paired
-            kind: "flat"
-            text: Translation.tr("Forget")
-            onClicked: device.modelData?.forget()
+            onConfirmed: device.modelData?.forget()
         }
         ExButton {
             visible: device.failure === "keyMissing"
@@ -96,7 +94,7 @@ ColumnLayout {
         }
         ExButton {
             visible: device.failure !== "keyMissing"
-            kind: device.connected ? "control" : "tonal"
+            kind: "tonal"
             enabled: !device.busy
             text: device.connected ? Translation.tr("Disconnect") : device.paired ? Translation.tr("Connect") : Translation.tr("Pair")
             onClicked: {
@@ -110,30 +108,36 @@ ColumnLayout {
         }
     }
 
-    SettingsCard {
+    SettingsHero {
         Layout.fillWidth: true
+        enabled: BluetoothStatus.available
+        on: BluetoothStatus.enabled
         glyph: BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
-        text: Translation.tr("Bluetooth")
-        description: !BluetoothStatus.available ? Translation.tr("No bluetooth adapter")
-            : !BluetoothStatus.enabled ? Translation.tr("Off")
+        text: !BluetoothStatus.available ? Translation.tr("No bluetooth adapter")
+            : BluetoothStatus.enabled ? Translation.tr("Turned on") : Translation.tr("Turned off")
+        subtitle: !BluetoothStatus.available || !BluetoothStatus.enabled ? ""
             : root.discovering ? Translation.tr("Looking for devices...")
             : BluetoothStatus.activeDeviceCount > 0 ? Translation.tr("%1 connected").arg(BluetoothStatus.activeDeviceCount)
-            : Translation.tr("On, nothing connected")
+            : Translation.tr("Nothing connected")
+        onSwitched: wanted => {
+            if (root.adapter)
+                root.adapter.enabled = wanted;
+        }
+    }
+
+    SettingsCard {
+        Layout.fillWidth: true
+        visible: BluetoothStatus.enabled
+        glyph: "add"
+        text: Translation.tr("Add a device")
+        description: root.discovering ? Translation.tr("Looking nearby. Put the device into pairing mode.")
+            : Translation.tr("Headphones, a phone, a keyboard")
 
         ExButton {
-            visible: BluetoothStatus.enabled
-            kind: "control"
+            kind: "tonal"
             glyph: root.discovering ? "stop" : "search"
-            text: root.discovering ? Translation.tr("Stop") : Translation.tr("Add device")
+            text: root.discovering ? Translation.tr("Stop") : Translation.tr("Search")
             onClicked: root.toggleSearch()
-        }
-        ExSwitch {
-            enabled: BluetoothStatus.available
-            checked: BluetoothStatus.enabled
-            onToggled: {
-                if (root.adapter)
-                    root.adapter.enabled = checked;
-            }
         }
     }
 

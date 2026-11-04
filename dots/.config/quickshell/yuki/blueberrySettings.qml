@@ -43,7 +43,7 @@ ApplicationWindow {
     height: 760
     minimumWidth: 640
     minimumHeight: 440
-    color: ExLooks.colors.background
+    color: ExLooks.settings.window
     onClosing: {
         // The countdown dies with this process, so a layout nobody kept is
         // taken back by a command that outlives it.
@@ -104,6 +104,9 @@ ApplicationWindow {
         anchors.fill: parent
         startPage: Quickshell.env("YUKIUI_SETTINGS_PAGE") ?? ""
         focus: true
-        Keys.onEscapePressed: root.close()
+        Keys.onEscapePressed: event => {
+            if (!content.stepOut())
+                root.close();
+        }
     }
 }

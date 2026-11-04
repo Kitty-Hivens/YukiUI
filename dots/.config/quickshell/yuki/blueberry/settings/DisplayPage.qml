@@ -299,7 +299,7 @@ ColumnLayout {
         onTriggered: root.readShell()
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     DisplayArrangement {
         Layout.fillWidth: true

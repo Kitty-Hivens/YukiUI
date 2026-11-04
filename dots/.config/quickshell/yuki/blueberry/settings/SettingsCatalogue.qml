@@ -7,7 +7,8 @@ import qs.core.services
  * navigation, and in each one the pages it leads to.
  *
  * A category with pages opens on a list of them. A page with a component opens
- * that page. Keywords are what search matches besides the names.
+ * that page. Keywords are what search matches besides the names. A category's
+ * hue colours its glyph wherever the category is shown.
  */
 QtObject {
     id: root
@@ -15,6 +16,7 @@ QtObject {
     readonly property var categories: [
         {
             key: "home",
+            hue: -1,
             name: Translation.tr("Home"),
             glyph: "home",
             component: "HomePage.qml",
@@ -22,6 +24,7 @@ QtObject {
         },
         {
             key: "system",
+            hue: 250,
             name: Translation.tr("System"),
             glyph: "computer",
             pages: [
@@ -34,6 +37,7 @@ QtObject {
         },
         {
             key: "devices",
+            hue: 300,
             name: Translation.tr("Bluetooth and devices"),
             glyph: "bluetooth",
             pages: [
@@ -44,6 +48,7 @@ QtObject {
         },
         {
             key: "network",
+            hue: 195,
             name: Translation.tr("Network and internet"),
             glyph: "wifi",
             pages: [
@@ -53,6 +58,7 @@ QtObject {
         },
         {
             key: "personalization",
+            hue: 350,
             name: Translation.tr("Personalization"),
             glyph: "palette",
             pages: [
@@ -64,6 +70,7 @@ QtObject {
         },
         {
             key: "apps",
+            hue: 145,
             name: Translation.tr("Apps"),
             glyph: "apps",
             pages: [
@@ -73,6 +80,7 @@ QtObject {
         },
         {
             key: "time",
+            hue: 60,
             name: Translation.tr("Time and language"),
             glyph: "schedule",
             pages: [

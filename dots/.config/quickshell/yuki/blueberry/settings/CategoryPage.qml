@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 
-// A category's own page: a card for each page it leads to.
+// A category's own page: a row for each page it leads to, in the category's
+// colour, on one plate.
 ColumnLayout {
     id: root
 
@@ -9,20 +10,22 @@ ColumnLayout {
     property var catalogue
     property var shell
 
-    spacing: 4
+    SettingsSection {
+        Layout.fillWidth: true
 
-    Repeater {
-        model: root.settings?.category?.pages ?? []
+        Repeater {
+            model: root.settings?.category?.pages ?? []
 
-        SettingsCard {
-            required property var modelData
+            SettingsCard {
+                required property var modelData
 
-            Layout.fillWidth: true
-            glyph: modelData.glyph
-            text: modelData.name
-            description: modelData.description
-            leads: true
-            onClicked: root.settings.open(modelData.key)
+                glyph: modelData.glyph
+                hue: root.settings?.category?.hue ?? -1
+                text: modelData.name
+                description: modelData.description
+                leads: true
+                onClicked: root.settings.open(modelData.key)
+            }
         }
     }
 }

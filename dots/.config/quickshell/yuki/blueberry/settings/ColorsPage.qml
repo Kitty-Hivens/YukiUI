@@ -21,7 +21,7 @@ ColumnLayout {
             Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", dark ? "dark" : "light", "--noswitch"]);
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     // The two modes as small pictures of a window, the way Windows offers them.
     RowLayout {

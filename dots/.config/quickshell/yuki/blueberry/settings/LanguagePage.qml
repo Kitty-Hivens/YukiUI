@@ -48,7 +48,7 @@ ColumnLayout {
         zoneList.running = true;
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     SystemClock {
         id: clock

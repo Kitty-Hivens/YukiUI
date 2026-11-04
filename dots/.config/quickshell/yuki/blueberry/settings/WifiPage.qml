@@ -18,10 +18,11 @@ ColumnLayout {
     /** The radio and the networks have been read, so the page comes in whole. */
     readonly property bool ready: Network.settled
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
-    // A network, and under it the password when it asks for one.
-    component NetworkCard: ColumnLayout {
+    // A network. Asking for its password, the field and what answers it take
+    // the place of its buttons, on the same row.
+    component NetworkCard: SettingsCard {
         id: network
 
         required property var modelData
@@ -70,97 +71,77 @@ ColumnLayout {
         }
 
         Layout.fillWidth: true
-        spacing: 4
+        glyph: network.strength > 80 ? "signal_wifi_4_bar" : network.strength > 60 ? "network_wifi_3_bar" : network.strength > 40 ? "network_wifi_2_bar" : network.strength > 20 ? "network_wifi_1_bar" : "signal_wifi_0_bar"
+        hue: network.active ? 195 : -1
+        text: network.modelData?.ssid ?? Translation.tr("Unknown")
+        description: [network.status, network.band, (network.modelData?.isSecure ?? false) && !network.active ? (network.modelData?.security ?? "") : ""].filter(part => part.length > 0).join("  ·  ")
 
-        SettingsCard {
-            Layout.fillWidth: true
-            glyph: network.strength > 80 ? "signal_wifi_4_bar" : network.strength > 60 ? "network_wifi_3_bar" : network.strength > 40 ? "network_wifi_2_bar" : network.strength > 20 ? "network_wifi_1_bar" : "signal_wifi_0_bar"
-            text: network.modelData?.ssid ?? Translation.tr("Unknown")
-            description: [network.status, network.band, (network.modelData?.isSecure ?? false) && !network.active ? (network.modelData?.security ?? "") : ""].filter(part => part.length > 0).join("  ·  ")
+        ExButton {
+            visible: network.needsPortal
+            kind: "control"
+            text: Translation.tr("Open network portal")
+            onClicked: Network.openPublicWifiPortal()
+        }
+        SettingsForget {
+            visible: network.saved && !network.askingPassword
+            onConfirmed: Network.forgetWifiNetwork(network.modelData)
+        }
+        // One radio: while any network is being joined, none of the others can be.
+        ExButton {
+            visible: !network.askingPassword
+            kind: network.active ? "control" : "tonal"
+            enabled: !Network.wifiConnecting
+            text: network.connecting ? Translation.tr("Connecting...") : network.active ? Translation.tr("Disconnect") : Translation.tr("Connect")
+            onClicked: {
+                if (network.active)
+                    Network.disconnectWifiNetwork();
+                else
+                    Network.connectToWifiNetwork(network.modelData);
+            }
+        }
+        ExTextField {
+            id: password
 
-            ExButton {
-                visible: network.needsPortal
-                kind: "flat"
-                text: Translation.tr("Open network portal")
-                onClicked: Network.openPublicWifiPortal()
-            }
-            ExButton {
-                visible: network.saved && !network.askingPassword
-                kind: "flat"
-                text: Translation.tr("Forget")
-                onClicked: Network.forgetWifiNetwork(network.modelData)
-            }
-            // One radio: while any network is being joined, none of the others can be.
-            ExButton {
-                visible: !network.askingPassword
-                kind: network.active ? "control" : "tonal"
-                enabled: !Network.wifiConnecting
-                text: network.connecting ? Translation.tr("Connecting...") : network.active ? Translation.tr("Disconnect") : Translation.tr("Connect")
-                onClicked: {
-                    if (network.active)
-                        Network.disconnectWifiNetwork();
-                    else
-                        Network.connectToWifiNetwork(network.modelData);
+            visible: network.askingPassword
+            width: 220
+            placeholder: Translation.tr("Password")
+            Component.onCompleted: password.input.echoMode = TextInput.Password
+
+            Connections {
+                target: password.input
+                function onAccepted() {
+                    network.submit();
                 }
             }
         }
-        SettingsCard {
-            Layout.fillWidth: true
+        ExButton {
             visible: network.askingPassword
-            glyph: "key"
-            text: Translation.tr("Password")
-
-            ExTextField {
-                id: password
-                width: 260
-                placeholder: Translation.tr("Password")
-                Component.onCompleted: password.input.echoMode = TextInput.Password
-
-                Connections {
-                    target: password.input
-                    function onAccepted() {
-                        network.submit();
-                    }
-                }
+            kind: "control"
+            text: Translation.tr("Cancel")
+            onClicked: {
+                password.text = "";
+                network.modelData.askingPassword = false;
+                network.modelData.errorKind = "";
+                network.modelData.errorDetail = "";
             }
-            ExButton {
-                kind: "control"
-                text: Translation.tr("Cancel")
-                onClicked: {
-                    password.text = "";
-                    network.modelData.askingPassword = false;
-                    network.modelData.errorKind = "";
-                    network.modelData.errorDetail = "";
-                }
-            }
-            ExButton {
-                kind: "accent"
-                text: Translation.tr("Connect")
-                onClicked: network.submit()
-            }
+        }
+        ExButton {
+            visible: network.askingPassword
+            kind: "accent"
+            text: Translation.tr("Connect")
+            onClicked: network.submit()
         }
     }
 
-    SettingsCard {
+    SettingsHero {
         Layout.fillWidth: true
+        on: Network.wifiEnabled
         glyph: Network.wifiEnabled ? "wifi" : "wifi_off"
-        text: Translation.tr("Wi-Fi")
-        description: !Network.wifiEnabled ? Translation.tr("The radio is off")
-            : Network.wifiScanning ? Translation.tr("Looking for networks...")
-            : Translation.tr("%1 in range").arg(Network.friendlyWifiNetworks.length)
-
-        ExButton {
-            visible: Network.wifiEnabled
-            kind: "control"
-            glyph: "refresh"
-            text: Translation.tr("Scan")
-            enabled: !Network.wifiScanning
-            onClicked: Network.rescanWifi()
-        }
-        ExSwitch {
-            checked: Network.wifiEnabled
-            onToggled: Network.enableWifi(checked)
-        }
+        text: Network.wifiEnabled ? Translation.tr("Turned on") : Translation.tr("Turned off")
+        subtitle: !Network.wifiEnabled ? ""
+            : Network.active ? Translation.tr("Connected to %1").arg(Network.active.ssid)
+            : Translation.tr("Not connected")
+        onSwitched: wanted => Network.enableWifi(wanted)
     }
 
     SettingsSection {
@@ -168,15 +149,21 @@ ColumnLayout {
         title: Translation.tr("Networks")
         visible: Network.wifiEnabled
 
+        SettingsCard {
+            glyph: "wifi_find"
+            text: Network.wifiScanning ? Translation.tr("Looking for networks...") : Translation.tr("%1 in range").arg(Network.friendlyWifiNetworks.length)
+
+            ExButton {
+                kind: "control"
+                glyph: "refresh"
+                text: Translation.tr("Scan")
+                enabled: !Network.wifiScanning
+                onClicked: Network.rescanWifi()
+            }
+        }
         Repeater {
             model: Network.wifiEnabled ? Network.friendlyWifiNetworks : []
             NetworkCard {}
-        }
-        ExText {
-            visible: Network.friendlyWifiNetworks.length === 0
-            Layout.leftMargin: ExLooks.spacing.l
-            text: Network.wifiScanning ? Translation.tr("Looking for networks...") : Translation.tr("Nothing in range")
-            dim: true
         }
     }
 }

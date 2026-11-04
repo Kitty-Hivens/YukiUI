@@ -33,6 +33,8 @@ Singleton {
 
         readonly property color accent: root.dark ? "#6179f2" : "#4f6bed"
         readonly property color accentInk: "#ffffff"
+        /** The accent as text or a thin glyph, dark enough to read at small sizes on any surface. */
+        readonly property color accentText: root.dark ? "#8c9cf8" : "#3f5bdc"
         readonly property color tonal: root.dark ? "#2d3456" : "#e7ebfd"
         readonly property color tonalInk: root.dark ? "#c6cffd" : "#2c45b8"
         /** A step darker than tonal, for what sits behind a tonal plate. */
@@ -139,6 +141,91 @@ Singleton {
         readonly property int weightBody: 400
         readonly property int weightLabel: 500
         readonly property int weightTitle: 600
+    }
+
+    /**
+     * The settings window. Three depths set its parts apart by tone alone, a
+     * step of at least four in lightness between each, with no lines: the
+     * window for the rail, a pane for the page, plates on the pane. The
+     * categories carry a colour each so they are known at a glance.
+     */
+    readonly property QtObject settings: QtObject {
+        readonly property color window: root.dark ? "#17181c" : "#e4e7ec"
+        readonly property color pane: root.dark ? "#202127" : "#f4f5f8"
+        readonly property color plate: root.dark ? "#2a2b32" : "#ffffff"
+        /** Sunk into a plate: a track, a disc behind a plain glyph. */
+        readonly property color sunken: root.dark ? "#1f2026" : "#eceef2"
+        readonly property color rule: root.dark ? "#14ffffff" : "#12000000"
+
+        readonly property real railWidth: 288
+        readonly property real railPadding: 12
+        /** Where every leading glyph of the rail is centred. */
+        readonly property real railAxis: 38
+        readonly property real railItem: 44
+        readonly property real railChip: 28
+        readonly property real avatar: 28
+        readonly property real search: 36
+
+        /** The page's column, from the pane's left edge, no wider than reads well. */
+        readonly property real contentWidth: 960
+        readonly property real contentMargin: 40
+        readonly property real contentTop: 20
+
+        readonly property real paneRadius: 24
+        readonly property real plateRadius: 16
+        readonly property real controlRadius: 10
+        readonly property real rowHeight: 56
+        readonly property real rowPadding: 16
+        readonly property real rowChip: 32
+        readonly property real cardChip: 36
+        readonly property real heroChip: 44
+
+        /** The type scale: four steps, each its own role. */
+        readonly property real small: 12
+        readonly property real body: 14
+        readonly property real heading: 16
+        readonly property real display: 28
+        /** Between groups, and between a group's label and its plate. */
+        readonly property real groupGap: 24
+        readonly property real labelGap: 8
+    }
+
+    /**
+     * Converts OKLCH to an sRGB colour. The categories' colours are spaced in
+     * a space where equal lightness looks equal, so every chip's glyph reads
+     * against its disc alike; in HSL one hue's glyph read at 2.8 to 1 and
+     * another's at 7.3.
+     */
+    function oklch(l: real, c: real, h: real): color {
+        const rad = h * Math.PI / 180;
+        const a = c * Math.cos(rad), b = c * Math.sin(rad);
+        const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+        const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+        const s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+        const L = l_ * l_ * l_, M = m_ * m_ * m_, S = s_ * s_ * s_;
+        const lin = [
+            4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S,
+            -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S,
+            -0.0041960863 * L - 0.7034186147 * M + 1.7076147010 * S
+        ];
+        const gamma = x => {
+            x = Math.max(0, Math.min(1, x));
+            return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+        };
+        return Qt.rgba(gamma(lin[0]), gamma(lin[1]), gamma(lin[2]), 1);
+    }
+
+    /**
+     * A category's colour, as a chip's fill and the glyph on it, from one hue
+     * in degrees: soft and light on a light desktop, deep and muted on a dark
+     * one, so no category shouts over the others. A negative hue is the
+     * neutral one, for what is no category.
+     */
+    function hue(degrees: real): var {
+        const chroma = degrees < 0 ? 0 : 1;
+        return root.dark
+            ? { fill: root.oklch(0.34, 0.05 * chroma, degrees), ink: root.oklch(0.86, 0.08 * chroma, degrees) }
+            : { fill: root.oklch(0.94, 0.035 * chroma, degrees), ink: root.oklch(0.50, 0.13 * chroma, degrees) };
     }
 
     readonly property QtObject motion: QtObject {

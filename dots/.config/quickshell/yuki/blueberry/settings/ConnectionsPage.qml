@@ -44,7 +44,7 @@ ColumnLayout {
         return "";
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     // A saved way online that is not Wi-Fi, brought up or taken down.
     component ConnectionCard: SettingsCard {

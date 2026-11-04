@@ -27,7 +27,7 @@ ColumnLayout {
         return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     // One plugin, opening onto what it lets be set.
     component PluginBlock: SettingsExpander {

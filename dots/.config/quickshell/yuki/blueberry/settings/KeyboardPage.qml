@@ -36,7 +36,7 @@ ColumnLayout {
 
     Component.onCompleted: HyprInput.refresh()
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     SettingsSection {
         Layout.fillWidth: true

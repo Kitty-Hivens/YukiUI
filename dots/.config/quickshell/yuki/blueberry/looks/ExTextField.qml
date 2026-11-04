@@ -12,6 +12,8 @@ Rectangle {
     property color glyphColor: ExLooks.colors.textDim
     /** Controls drawn inside the field after the text, such as a button to show a password. */
     property alias trailing: trailingSlot.data
+    /** From the field's edge to its glyph, for a field whose glyph lines up with others beside it. */
+    property real inset: ExLooks.spacing.m
 
     implicitHeight: 40
     radius: ExLooks.radius.control
@@ -21,7 +23,7 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: ExLooks.spacing.m
+        anchors.leftMargin: root.inset
         anchors.rightMargin: ExLooks.spacing.m
         spacing: ExLooks.spacing.s
 

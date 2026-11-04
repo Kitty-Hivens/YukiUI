@@ -14,26 +14,31 @@ ColumnLayout {
 
     readonly property var results: root.catalogue?.search(root.settings?.query ?? "") ?? []
 
-    spacing: 4
+    spacing: ExLooks.settings.groupGap
 
-    Repeater {
-        model: root.results
+    SettingsSection {
+        Layout.fillWidth: true
+        visible: root.results.length > 0
 
-        SettingsCard {
-            required property var modelData
+        Repeater {
+            model: root.results
 
-            Layout.fillWidth: true
-            glyph: modelData.glyph
-            text: modelData.name
-            description: `${root.catalogue.category(modelData.category)?.name ?? ""}  ·  ${modelData.description}`
-            leads: true
-            onClicked: root.settings.open(modelData.key)
+            SettingsCard {
+                required property var modelData
+
+                Layout.fillWidth: true
+                glyph: modelData.glyph
+                text: modelData.name
+                description: `${root.catalogue.category(modelData.category)?.name ?? ""}  ·  ${modelData.description}`
+                leads: true
+                onClicked: root.settings.open(modelData.key)
+            }
         }
     }
 
     ExText {
         visible: root.results.length === 0
-        Layout.topMargin: ExLooks.spacing.l
+        Layout.leftMargin: ExLooks.settings.rowPadding
         text: Translation.tr("Nothing found")
         dim: true
     }

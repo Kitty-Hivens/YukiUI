@@ -21,7 +21,7 @@ ColumnLayout {
 
     Component.onCompleted: DefaultApps.load()
 
-    spacing: 4
+    spacing: ExLooks.settings.groupGap
 
     // A category, with the application that opens it and the list to change it.
     component GroupCard: SettingsCard {
@@ -245,8 +245,13 @@ ColumnLayout {
         dim: true
     }
 
-    Repeater {
-        model: DefaultApps.groups
-        GroupCard {}
+    SettingsSection {
+        Layout.fillWidth: true
+        visible: DefaultApps.groups.length > 0
+
+        Repeater {
+            model: DefaultApps.groups
+            GroupCard {}
+        }
     }
 }

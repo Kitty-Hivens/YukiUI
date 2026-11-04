@@ -48,7 +48,7 @@ ColumnLayout {
         objects: [...root.outputs, ...root.inputs, ...root.playing, ...root.recording]
     }
 
-    spacing: ExLooks.spacing.s
+    spacing: ExLooks.settings.groupGap
 
     // A device: which it is, the socket it uses when it has several, and
     // whether new sound goes to it. A click on it makes it the one.
