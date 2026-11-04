@@ -21,6 +21,12 @@ Variants {
         id: panelRoot
         required property var modelData
 
+        FullscreenMapGuard {
+            id: mapGuard
+            screenName: panelRoot.modelData.name
+        }
+
+        visible: mapGuard.mapped
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom

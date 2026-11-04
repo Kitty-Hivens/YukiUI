@@ -13,6 +13,12 @@ Variants {
         id: window
         required property var modelData
 
+        FullscreenMapGuard {
+            id: mapGuard
+            screenName: window.modelData.name
+        }
+
+        visible: mapGuard.mapped
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
         // The lowest layer, the desktop icons on it with the wallpaper: under

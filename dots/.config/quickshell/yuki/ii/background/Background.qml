@@ -46,7 +46,11 @@ Variants {
         // visible, while building it again means the wallpaper, its blur and every
         // widget on it. See GameMode.standDownOn.
         readonly property bool standDownHere: GameMode.standDownOn(bgRoot.modelData.name)
-        visible: GlobalStates.screenLocked || !standDownHere || !Config?.options.background.hideWhenFullscreen
+        FullscreenMapGuard {
+            id: mapGuard
+            screenName: bgRoot.modelData.name
+        }
+        visible: mapGuard.mapped && (GlobalStates.screenLocked || !standDownHere || !Config?.options.background.hideWhenFullscreen)
 
         // Workspaces
         property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)
