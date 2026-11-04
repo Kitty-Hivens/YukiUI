@@ -1,17 +1,14 @@
-"""The data-control-v1 plugin: a first-version wlr-data-control client keeps
-its clipboard.
+"""A first-version wlr-data-control client keeps its clipboard.
 
-Hyprland 0.56 sends the second version's primary selection event to every
+Hyprland 0.56 sent the second version's primary selection event to every
 client of the protocol, and one of the first version, Wine's Wayland driver
-among them, has no handler for it: libwayland aborts its thread. The bench's
-client is such a client, and must live through clipboard changes with the
-plugin, and die without it, which shows it is a fair stand-in.
+among them, has no handler for it: libwayland aborts its thread. A plugin held
+the event back until Hyprland checked the version itself. The bench's client
+is such a client, and must live through clipboard changes with Hyprland alone.
 """
 
 import subprocess
 import time
-
-from bench.bench import wait_until
 
 
 def start_client(bench):
@@ -32,7 +29,6 @@ def copy_both(bench):
 
 
 def test_a_first_version_client_lives_through_clipboard_changes(bench):
-    assert "data-control-v1" in bench.hyprctl("plugin", "list")
     client = start_client(bench)
     try:
         copy_both(bench)
@@ -40,17 +36,3 @@ def test_a_first_version_client_lives_through_clipboard_changes(bench):
     finally:
         client.kill()
         client.wait()
-
-
-def test_without_the_plugin_it_dies(bench):
-    path = str(bench.build / "data-control-v1.so")
-    bench.hyprctl("plugin", "unload", path)
-    try:
-        wait_until(lambda: "data-control-v1" not in bench.hyprctl("plugin", "list"), what="the plugin to go")
-        copy_both(bench)
-        client = subprocess.Popen([str(bench.data_control_client)], env=bench.environment(), stdout=subprocess.PIPE, text=True)
-        wait_until(lambda: client.poll() is not None, what="the client to die on the event it has no handler for")
-        assert client.returncode != 0
-    finally:
-        bench.hyprctl("plugin", "load", path)
-        wait_until(lambda: "data-control-v1" in bench.hyprctl("plugin", "list"), what="the plugin to come back")
