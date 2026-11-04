@@ -21,7 +21,7 @@ AbstractButton {
     hoverEnabled: true
 
     onClicked: {
-        root.desktopEntry.execute();
+        root.desktopEntry?.execute();
         ExStates.launcherOpen = false;
     }
 
@@ -41,7 +41,7 @@ AbstractButton {
             anchors.horizontalCenter: parent.horizontalCenter
             y: 12
             implicitSize: 40
-            source: Quickshell.iconPath(root.desktopEntry.icon, "application-x-executable")
+            source: Quickshell.iconPath(root.desktopEntry?.icon ?? "", "application-x-executable")
         }
         ExText {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -51,7 +51,7 @@ AbstractButton {
             verticalAlignment: Text.AlignTop
             wrapMode: Text.Wrap
             maximumLineCount: 2
-            text: root.desktopEntry.name
+            text: root.desktopEntry?.name ?? ""
             role: "caption"
         }
     }
