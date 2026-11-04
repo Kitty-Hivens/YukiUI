@@ -6,19 +6,15 @@ import qs.blueberry.looks
 
 // What a right click on the status block offers, for whichever part of it was
 // clicked, as each icon in the Windows corner has its own: the connection its
-// settings, the sound muting, its mixer and its settings, the battery the power settings,
-// the clock do not disturb and the settings of notifications and of the time,
-// the layout the keyboard settings.
+// settings, the sound its settings, the battery the power settings, the clock
+// do not disturb and the settings of notifications and of the time, the layout
+// the keyboard settings. Muting and the mixer are a left click away, in quick
+// settings.
 ExPopup {
     id: root
 
     /** The part clicked: "network", "volume", "battery", "clock" or "layout". */
     property string kind: ""
-
-    /** The sound page of quick settings is asked for. */
-    signal mixerRequested
-
-    readonly property bool muted: Audio.sink?.audio?.muted ?? false
 
     function settings(page: string): var {
         return () => Surfaces.open("settings", page);
@@ -33,17 +29,6 @@ ExPopup {
             ];
         case "volume":
             return [
-                {
-                    key: "mute",
-                    text: root.muted ? Translation.tr("Unmute") : Translation.tr("Mute"),
-                    glyph: root.muted ? "volume_up" : "volume_off",
-                    run: () => {
-                        if (Audio.sink?.audio)
-                            Audio.sink.audio.muted = !Audio.sink.audio.muted;
-                    }
-                },
-                { key: "mixer", text: Translation.tr("Volume mixer"), glyph: "tune", run: () => root.mixerRequested() },
-                { key: "separator", separator: true },
                 { key: "sound", text: Translation.tr("Sound settings"), glyph: "settings", run: root.settings("sound") }
             ];
         case "battery":

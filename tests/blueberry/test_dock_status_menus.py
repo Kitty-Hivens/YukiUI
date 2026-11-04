@@ -5,9 +5,9 @@ through to the dock under them and opened the dock's own menu over the clock.
 Each part now has its own, and each icon of the three in the middle its own,
 as in the Windows corner.
 
-The sound icon's menu also leads to the sound page of quick settings, which
-the arrow at the end of the volume opens as well: the device sound comes out
-of, and how loud each application plays.
+The sound page of quick settings, the device sound comes out of and how loud
+each application plays, opens from the arrow at the end of the volume. The
+sound icon's own menu holds the sound settings and nothing else.
 """
 
 import json
@@ -114,6 +114,9 @@ ShellRoot {
             button?.clicked();
             return button !== null;
         }
+        function hasEntry(text: string): bool {
+            return probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.iconRoom !== undefined) !== null;
+        }
         function pressEntry(text: string): bool {
             const entry = probe.find(ExStates.openPopup?.contentItem, item => item.text === Translation.tr(text) && item.iconRoom !== undefined);
             entry?.clicked();
@@ -192,8 +195,9 @@ def test_the_arrow_after_the_volume_opens_the_sound_page(dock):
     wait_until(lambda: dock.call("statusMenuProbe", "page") == "sound", what="the sound page")
 
 
-def test_the_mixer_in_the_sound_menu_opens_the_sound_page(bench, desk, dock):
+def test_the_sound_menu_holds_only_the_sound_settings(bench, desk, dock):
     right_click(desk, *centre(bench, dock, "volume"))
     wait_until(lambda: dock.call("statusMenuProbe", "open") == "volume", what="the sound menu")
-    assert dock.call("statusMenuProbe", "pressEntry", "Volume mixer") == "true"
-    wait_until(lambda: dock.call("statusMenuProbe", "page") == "sound", what="quick settings on the sound page")
+    wait_until(lambda: dock.call("statusMenuProbe", "hasEntry", "Sound settings") == "true", what="the sound settings in it")
+    assert dock.call("statusMenuProbe", "hasEntry", "Volume mixer") == "false"
+    assert dock.call("statusMenuProbe", "hasEntry", "Mute") == "false"
