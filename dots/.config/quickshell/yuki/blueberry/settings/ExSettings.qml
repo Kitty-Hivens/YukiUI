@@ -470,9 +470,10 @@ Item {
         radius: root.metrics.paneRadius
         color: root.metrics.pane
 
-        // From the pane's left edge, no wider than reads well.
-        readonly property real columnX: root.metrics.contentMargin
-        readonly property real column: Math.min(root.metrics.contentWidth, pane.width - 2 * root.metrics.contentMargin)
+        // As wide as the window gives, and centred past what still reads as one
+        // line from a label to its control.
+        readonly property real column: Math.min(1600, pane.width - 2 * root.metrics.contentMargin)
+        readonly property real columnX: Math.round((pane.width - pane.column) / 2)
 
         Item {
             id: headerBar

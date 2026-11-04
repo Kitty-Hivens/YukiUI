@@ -77,13 +77,14 @@ ColumnLayout {
         id: hero
 
         Layout.fillWidth: true
-        implicitHeight: 168
+        // Grows with the window, so the picture keeps its shape on a wide one.
+        implicitHeight: Math.round(Math.max(168, Math.min(280, hero.width * 0.16)))
         color: root.metrics.sunken
 
         Image {
             anchors.fill: parent
             source: Config.options.background.wallpaperPath
-            sourceSize: Qt.size(1920, 336)
+            sourceSize: Qt.size(2560, 560)
             fillMode: Image.PreserveAspectCrop
             // Decoded with the page, which is built away from the screen
             // anyway, so the picture is there when the page is.
