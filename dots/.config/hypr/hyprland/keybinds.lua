@@ -9,8 +9,11 @@ local hyprScripts = "$HOME/.config/hypr/hyprland/scripts"
 local qsIpcCall = "qs -c $qsConfig ipc call"
 local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 
-hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
-hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"))
+-- On the release, so Hyprland itself leaves it out when another key or button
+-- came while Super was held. A plain bind has its release delivered whatever
+-- happened meanwhile, and every combination with Super opened the menu.
+hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { release = true, description = "Shell: Toggle search" })
+hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"), { release = true })
 hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
 hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
 
@@ -284,14 +287,10 @@ for i = 1, 4 do
     local keycombos = { key[1], key[2], "CTRL + " .. key[1], "CTRL + " .. key[2] }
     local prefix = { "-", "+", "r-", "r+" }
     hl.bind(keycombos[i], hl.dsp.focus({ workspace = prefix[i] .. "1" }))
-    -- A scroll while holding Super does not disarm the tap-to-open overview, so releasing
-    -- Super after scrolling pops it open. Interrupt it like a normal key press would.
-    hl.bind(keycombos[i], hl.dsp.global("quickshell:searchToggleReleaseInterrupt"))
 end
 --## Special
 hl.bind("SUPER + S", hl.dsp.workspace.toggle_special("special"), { description = "Workspace: Toggle scratchpad" })
 hl.bind("SUPER + mouse:275", hl.dsp.workspace.toggle_special("special"))
-hl.bind("SUPER + mouse:275", hl.dsp.global("quickshell:searchToggleReleaseInterrupt"))
 for i = 1, 4 do
     local key = { "BracketLeft", "BracketRight", "Up", "Down" }
     local prefix = { "-1", "+1", "r-5", "r+5" }
