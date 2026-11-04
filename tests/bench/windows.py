@@ -180,6 +180,44 @@ class Pointer:
                 self.process.kill()
 
 
+class RealKeys:
+    """One keyboard with the plain layout and the codes a real one sends, held
+    for a whole test, for what wtype's keymap of its own cannot show: a key held
+    across several steps, and anything that reads the code of a key."""
+
+    CODES = {"alt": 56, "tab": 15, "shift": 42, "super": 125, "j": 36, "y": 21, "a": 30, "escape": 1}
+
+    def __init__(self, bench: Bench):
+        self.process = subprocess.Popen([str(bench.keyboard_tool)], env=bench.environment(),
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        if self.process.stdout.readline().strip() != "ready":
+            raise BenchError("the keyboard did not come up")
+
+    def _send(self, line: str):
+        self.process.stdin.write(line + "\n")
+        self.process.stdin.flush()
+        readable, _, _ = select.select([self.process.stdout], [], [], 5.0)
+        if not readable:
+            raise BenchError(f"the keyboard did not answer {line}")
+        answer = self.process.stdout.readline().strip()
+        if answer != "ok":
+            raise BenchError(f"the keyboard refused {line}: {answer}")
+
+    def press(self, key: str):
+        self._send(f"press {self.CODES[key]}")
+
+    def release(self, key: str):
+        self._send(f"release {self.CODES[key]}")
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.stdin.close()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+
+
 class Keyboard:
     """Typing on the bench, through wtype's virtual keyboard.
 

@@ -58,6 +58,57 @@ def test_held_alt_tab_shows_the_switcher_and_picks_on_letting_go(desk):
     wait_until(lambda: not switcher_up(desk), what="the switcher to go")
 
 
+def test_alt_let_go_of_with_tab_still_down_picks(desk):
+    # As a hand does it. A bind on Alt's release does not fire while Tab is
+    # down, and the switcher stayed up until Alt was next tapped.
+    first = desk.wayland()
+    second = desk.wayland()
+    wait_until(lambda: desk.active() == second.address, what="the second window to have the keyboard")
+    keys = desk.real_keys()
+    keys.press("alt")
+    keys.press("tab")
+    wait_until(lambda: switcher_up(desk), what="the switcher to come up")
+    time.sleep(0.2)
+    keys.release("alt")
+    time.sleep(0.03)
+    keys.release("tab")
+    wait_until(lambda: desk.active() == first.address, what="the picked window to have the keyboard")
+    wait_until(lambda: not switcher_up(desk), what="the switcher to go")
+
+
+def test_quick_alt_let_go_of_with_tab_still_down_picks(desk):
+    first = desk.wayland()
+    second = desk.wayland()
+    wait_until(lambda: desk.active() == second.address, what="the second window to have the keyboard")
+    keys = desk.real_keys()
+    keys.press("alt")
+    keys.press("tab")
+    keys.release("alt")
+    keys.release("tab")
+    wait_until(lambda: desk.active() == first.address, what="the window before to have the keyboard")
+    time.sleep(0.3)
+    assert not switcher_up(desk)
+
+
+def test_tabbing_on_while_alt_is_held_stays_up_until_it_is_let_go_of(desk):
+    first = desk.wayland()
+    desk.wayland()
+    third = desk.wayland()
+    wait_until(lambda: desk.active() == third.address, what="the third window to have the keyboard")
+    keys = desk.real_keys()
+    keys.press("alt")
+    keys.press("tab")
+    wait_until(lambda: switcher_up(desk), what="the switcher to come up")
+    keys.release("tab")
+    time.sleep(0.3)
+    assert switcher_up(desk), "the switcher went with Alt still held"
+    keys.press("tab")
+    keys.release("tab")
+    keys.release("alt")
+    wait_until(lambda: not switcher_up(desk), what="the switcher to go")
+    wait_until(lambda: desk.active() == first.address, what="the second Tab to have moved on to the first window")
+
+
 def test_alt_tab_in_quick_succession_never_hangs(desk):
     desk.wayland()
     desk.wayland()

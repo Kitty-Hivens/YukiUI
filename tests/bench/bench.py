@@ -28,7 +28,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
 RULES = SHELL / "environments/blueberry/compositor/rules.lua"
-PLUGINS = ("minimize", "drag-report", "capture-report", "border-resize")
+PLUGINS = ("minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize")
 
 OUTPUT = "BENCH"
 WIDTH, HEIGHT = 1920, 1080
@@ -126,6 +126,7 @@ class Bench:
         self.build.mkdir(parents=True, exist_ok=True)
         builds = [["make", "-s", "-C", str(REPO / "hypr-plugins" / name), f"OUT={self.build / name}.so"] for name in PLUGINS]
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/pointer"), f"OUT={self.build / 'pointer'}"])
+        builds.append(["make", "-s", "-C", str(REPO / "tests/bench/keyboard"), f"OUT={self.keyboard_tool}"])
         builds.append(["make", "-s", "-C", str(REPO / "helpers/clip"), f"OUT={self.clip_tool}"])
         builds.append(["make", "-s", "-C", str(REPO / "helpers/tray"), f"OUT={self.tray_keeper}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/data_control"), f"OUT={self.data_control_client}"])
@@ -139,6 +140,10 @@ class Bench:
     @property
     def pointer_tool(self) -> Path:
         return self.build / "pointer"
+
+    @property
+    def keyboard_tool(self) -> Path:
+        return self.build / "keyboard"
 
     @property
     def shim_log(self) -> Path:

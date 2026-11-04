@@ -125,6 +125,17 @@ hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrevious"))
 for _, key in ipairs({ "ALT_L", "ALT_R" }) do
     hl.bind(key, hl.dsp.global("quickshell:altTabCommit"), { ignore_mods = true, release = true, non_consuming = true, transparent = true })
 end
+-- A bind on the release of a modifier does not fire while another key is down,
+-- and a hand lets go of Alt with Tab still pressed as often as not: the switcher
+-- then stayed up until Alt was next tapped. The key event comes whatever else is
+-- held. The bind stays for an Alt moved to another key, which the codes of the
+-- two Alt keys here do not know of.
+local ALT_KEYCODES = { [64] = true, [108] = true }
+hl.on("input.keyboard.key", function(keycode, _, state)
+    if state == 0 and ALT_KEYCODES[keycode] then
+        hl.dispatch(hl.dsp.global("quickshell:altTabCommit"))
+    end
+end)
 
 -- Windows come back where they were left.
 --

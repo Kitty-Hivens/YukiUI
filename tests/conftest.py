@@ -8,7 +8,7 @@ import pytest
 
 from bench.bench import Bench
 from bench.shell import Shell
-from bench.windows import Keyboard, Pointer, WaylandWindow, X11Window
+from bench.windows import Keyboard, Pointer, RealKeys, WaylandWindow, X11Window
 
 
 @pytest.fixture(scope="session")
@@ -66,6 +66,11 @@ class Desk:
         pointer = Pointer(self.bench)
         self.pointers.append(pointer)
         return pointer
+
+    def real_keys(self) -> RealKeys:
+        keys = RealKeys(self.bench)
+        self.pointers.append(keys)
+        return keys
 
     def place(self, window, zone: str):
         self.shell.call("placement", "place", window.address, zone)

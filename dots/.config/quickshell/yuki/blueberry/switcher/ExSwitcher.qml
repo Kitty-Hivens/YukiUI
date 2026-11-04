@@ -326,11 +326,14 @@ Scope {
         description: "Switches to the previous window while Alt is held"
         onPressed: root.step(-1)
     }
-    // Every release of Alt, as the compositor hears it. A global bind on a
-    // release is pressed as the key goes down and released as it comes up.
+    // Every release of Alt, as the compositor hears it: released from the bind
+    // on it, and pressed from the key event its rules send, which comes even
+    // with Tab still down. Either may come first, and the second finds nothing
+    // under way.
     GlobalShortcut {
         name: "altTabCommit"
         description: "Alt let go of ends a window switch on the window picked"
+        onPressed: root.commit()
         onReleased: root.commit()
     }
 
