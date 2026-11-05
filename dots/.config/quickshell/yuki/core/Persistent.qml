@@ -223,6 +223,10 @@ Singleton {
                 }
             }
 
+            property JsonObject filePicker: JsonObject {
+                /// Whether Blueberry's file picker keeps a look at the file picked beside the list.
+                property bool preview: true
+            }
             property JsonObject gameBar: JsonObject {
                 /// The widgets that come up with the bar.
                 property list<string> open: ["capture", "audio", "performance"]

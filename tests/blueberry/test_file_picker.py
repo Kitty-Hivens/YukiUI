@@ -7,12 +7,14 @@ moved another file into that row, and Enter answered with that file.
 
 import json
 import os
+import subprocess
 import threading
 import time
 
 import pytest
+from PIL import Image
 
-from bench.bench import SHELL, wait_until
+from bench.bench import OUTPUT, SHELL, wait_until
 from bench.shell import Shell
 from bench.windows import Keyboard
 
@@ -136,4 +138,32 @@ def test_search_answers_a_name_holding_a_newline(bench, picker_shell, tmp_path):
 
     uris = answer.wait().get("uris", [])
     assert [uri.rsplit("/", 2)[-2:] for uri in uris] == [["deep", "needle%0Anote.txt"]]
+    assert not picker_shell.errors()
+
+
+def test_a_picture_picked_is_seen_beside_the_list(bench, picker_shell, tmp_path):
+    colour = (200, 50, 100)
+    folder = tmp_path / "pictures"
+    folder.mkdir()
+    Image.new("RGB", (640, 480), colour).save(folder / "a.png")
+    answer = Answer(tmp_path / "look.fifo")
+    picker = open_picker(bench, picker_shell, folder, tmp_path / "look.fifo")
+    time.sleep(0.5)
+    keyboard = Keyboard(bench)
+    keyboard.type(*keyboard.tap("Down"))
+
+    # Right of the list, in the band the picture is drawn in.
+    x, y = picker["at"]
+    width, _ = picker["size"]
+    spot = (x + width - 140, y + 230)
+
+    def shown():
+        shot = tmp_path / "look.png"
+        subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
+        seen = Image.open(shot).convert("RGB").getpixel(spot)
+        return all(abs(a - b) <= 6 for a, b in zip(seen, colour))
+
+    wait_until(shown, what="the picture beside the list")
+    picker_shell.call("filePicker", "close")
+    answer.wait()
     assert not picker_shell.errors()

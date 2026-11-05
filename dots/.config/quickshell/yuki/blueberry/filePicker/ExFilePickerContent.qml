@@ -67,9 +67,11 @@ FocusScope {
 
     property var bookmarks: []
 
-    readonly property real rowHeight: 40
+    readonly property real rowHeight: 34
     readonly property real sizeColumnWidth: 88
     readonly property real dateColumnWidth: 136
+    /** The look at the file picked, for as long as there is room for it beside the list. */
+    readonly property bool previewShown: Persistent.states.filePicker.preview && !root.directory && root.width >= 780
 
     readonly property string homePath: root.pathOf(Directories.home)
     readonly property string currentPath: root.pathOf(folderModel.folder)
@@ -506,6 +508,9 @@ FocusScope {
 
     readonly property string saveName: nameField.text.trim()
     readonly property bool saveNameUsable: root.saveName.length > 0 && root.saveName !== "." && root.saveName !== ".." && !root.saveName.includes("/")
+
+    /** The one thing selected, for the look at it. */
+    readonly property string singleSelected: root.selectedUrls.length === 1 ? root.selectedUrls[0] : ""
 
     readonly property bool canAccept: root.saving ? root.saveNameUsable
         : root.directory ? true
@@ -968,8 +973,8 @@ FocusScope {
         property bool isDir
         property int attempt: 0
 
-        implicitWidth: 24
-        implicitHeight: 24
+        implicitWidth: 22
+        implicitHeight: 22
 
         Image {
             id: picture
@@ -1078,6 +1083,13 @@ FocusScope {
                         else
                             root.openSearch("");
                     }
+                }
+                ToolButton {
+                    visible: !root.directory
+                    enabled: root.width >= 780
+                    glyph: "side_navigation"
+                    toggled: root.previewShown
+                    onClicked: Persistent.states.filePicker.preview = !Persistent.states.filePicker.preview
                 }
                 ToolButton {
                     id: moreButton
@@ -1324,7 +1336,7 @@ FocusScope {
                         readonly property bool here: !place.isHeader && place.modelData.path === root.currentPath && !root.searching
 
                         width: ListView.view.width
-                        height: place.isHeader ? 34 : 36
+                        height: place.isHeader ? 30 : 32
 
                         ExText {
                             visible: place.isHeader
@@ -1367,7 +1379,7 @@ FocusScope {
                                 ExGlyph {
                                     Layout.leftMargin: ExLooks.spacing.m
                                     text: place.modelData.glyph ?? ""
-                                    size: 20
+                                    size: 18
                                     fill: place.here ? 1 : 0
                                     color: place.here ? ExLooks.colors.tonalInk : ExLooks.colors.text
                                 }
@@ -1397,7 +1409,7 @@ FocusScope {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: ExLooks.spacing.s + ExLooks.spacing.m + 24 + ExLooks.spacing.m
+                    Layout.leftMargin: ExLooks.spacing.s + ExLooks.spacing.m + 22 + ExLooks.spacing.m
                     Layout.rightMargin: ExLooks.spacing.s + ExLooks.spacing.m
                     Layout.topMargin: ExLooks.spacing.xs
                     spacing: ExLooks.spacing.m
@@ -1585,6 +1597,22 @@ FocusScope {
                         dim: true
                     }
                 }
+            }
+
+            Rectangle {
+                visible: root.previewShown
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                color: ExLooks.colors.border
+            }
+            ExFilePreview {
+                visible: root.previewShown
+                Layout.fillHeight: true
+                Layout.preferredWidth: 280
+                picker: root
+                path: root.previewShown && root.singleSelected.length > 0 ? root.pathOf(root.singleSelected) : ""
+                isDir: root.selectedDirs[root.singleSelected] === true
+                selectedCount: root.selectedUrls.length
             }
         }
 

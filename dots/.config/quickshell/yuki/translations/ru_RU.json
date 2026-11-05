@@ -1529,5 +1529,14 @@
   "Change": "Сменить",
   "Lock the screen when the session starts": "Блокировать экран при входе в сессию",
   "Open saved passwords together with the screen": "Открывать сохранённые пароли вместе с экраном",
-  "When the screen locks by itself": "Когда экран блокируется сам"
+  "When the screen locks by itself": "Когда экран блокируется сам",
+  "Picture": "Изображение",
+  "Text": "Текст",
+  "Archive": "Архив",
+  "Document": "Документ",
+  "Program": "Программа",
+  "File": "Файл",
+  "Select a file to see it here": "Выберите файл, чтобы посмотреть его здесь",
+  "Dimensions": "Размеры",
+  "File folder": "Папка с файлами"
 }

@@ -20,8 +20,8 @@ Scope {
         sourceComponent: FloatingWindow {
             title: "File picker"
             color: ExLooks.colors.surface
-            implicitWidth: 900
-            implicitHeight: 600
+            implicitWidth: 1120
+            implicitHeight: 640
             minimumSize: Qt.size(600, 420)
 
             visible: GlobalStates.filePickerOpen
