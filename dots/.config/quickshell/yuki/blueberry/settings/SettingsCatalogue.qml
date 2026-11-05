@@ -78,7 +78,17 @@ QtObject {
             glyph: "apps",
             pages: [
                 { key: "defaults", name: Translation.tr("Default applications"), glyph: "star", description: Translation.tr("What opens links and files"), keywords: "browser mime open with file types", component: "DefaultAppsPage.qml" },
-                { key: "extensions", name: Translation.tr("Extensions"), glyph: "extension", description: Translation.tr("Plugins of the shell"), keywords: "plugins", component: "ExtensionsPage.qml" }
+                { key: "extensions", name: Translation.tr("Extensions"), glyph: "extension", description: Translation.tr("Plugins of the shell"), keywords: "plugins", component: "ExtensionsPage.qml" },
+                // The ones installed plugins bring, each drawn by the plugin itself.
+                ...Plugins.pagesFor("blueberry").map(page => ({
+                    key: page.key,
+                    name: Translation.tr(page.name),
+                    glyph: page.icon,
+                    description: page.description.length > 0 ? Translation.tr(page.description) : "",
+                    keywords: page.keywords,
+                    url: page.url,
+                    pluginId: page.pluginId
+                }))
             ]
         },
         {

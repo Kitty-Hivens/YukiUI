@@ -41,6 +41,8 @@ ColumnLayout {
         // is still kept and handed to the plugin, from the plugin's own file.
         readonly property var keys: plugin.schema ? Object.keys(plugin.schema).filter(key => plugin.schema[key] === null || typeof plugin.schema[key] !== "object") : []
         readonly property var deepKeys: plugin.schema ? Object.keys(plugin.schema).filter(key => plugin.keys.indexOf(key) === -1) : []
+        /** A page of its own, which the plugin draws. */
+        readonly property var page: root.catalogue?.pages.find(entry => entry.pluginId === plugin.modelData.id) ?? null
 
         function put(key: string, value) {
             if (plugin.modelData.settings)
@@ -49,7 +51,7 @@ ColumnLayout {
 
         Layout.fillWidth: true
         glyph: plugin.problem.length > 0 ? "extension_off" : "extension"
-        text: plugin.modelData.name
+        text: Translation.tr(plugin.modelData.name)
         description: plugin.problem.length > 0 ? plugin.problem
             : plugin.modelData.id.length > 0 ? `${plugin.modelData.id}  ·  ${plugin.modelData.directory}`
             : plugin.modelData.directory
@@ -62,6 +64,14 @@ ColumnLayout {
             onToggled: Plugins.setDisabled(plugin.modelData.id, !checked)
         }
 
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: plugin.page !== null
+            flat: true
+            leads: true
+            text: plugin.page?.name ?? ""
+            onClicked: root.settings.open(plugin.page.key)
+        }
         Repeater {
             model: plugin.keys
 
@@ -112,7 +122,7 @@ ColumnLayout {
         }
         SettingsCard {
             Layout.fillWidth: true
-            visible: plugin.keys.length === 0 && plugin.deepKeys.length === 0
+            visible: plugin.keys.length === 0 && plugin.deepKeys.length === 0 && plugin.page === null
             flat: true
             text: Translation.tr("Nothing to configure")
         }

@@ -16,5 +16,10 @@
   "portal, xdg-desktop-portal, backend, file chooser, screenshot, screencast, wallpaper, settings, notification, secret": "портал, бэкенд, выбор файла, снимок экрана, запись экрана, обои, уведомления, пароли",
   "Nothing selected": "Ничего не выбрано",
   "Nothing in the preference list implements these, so an application asking for one gets no answer. Some are only wanted by a remote desktop session and are meant to be empty here.": "Ни один бэкенд из списка предпочтений их не реализует, поэтому приложение, запросившее такой интерфейс, ответа не получит. Часть из них нужна только сессии удалённого рабочего стола и здесь пустует по замыслу.",
-  "A backend offered below only declares the interface. Whether it can serve it here is another matter -- some are written against their own compositor.": "Бэкенд из списка ниже лишь объявляет интерфейс. Сможет ли он обслужить его здесь — вопрос отдельный: некоторые написаны под свой композитор."
+  "A backend offered below only declares the interface. Whether it can serve it here is another matter -- some are written against their own compositor.": "Бэкенд из списка ниже лишь объявляет интерфейс. Сможет ли он обслужить его здесь — вопрос отдельный: некоторые написаны под свой композитор.",
+  "Present but not read here": "Есть, но здесь не читается",
+  "Written, not in force yet": "Записано, но ещё не действует",
+  "Restarting cancels whatever a portal is in the middle of": "Перезапуск прервёт то, что портал сейчас делает",
+  "Restart": "Перезапустить",
+  "Following the default: %1": "По умолчанию: %1"
 }

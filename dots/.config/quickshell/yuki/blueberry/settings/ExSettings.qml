@@ -84,7 +84,7 @@ Item {
         const page = root.pageKey.length > 0 ? catalogue.page(root.pageKey) : null;
         root.pending = { category: root.categoryKey, page: root.pageKey, searching: root.searching };
         const url = Qt.resolvedUrl(root.searching ? "SearchPage.qml"
-            : page ? (page.component ?? "NotYetPage.qml")
+            : page ? (page.url ?? page.component ?? "NotYetPage.qml")
             : (category?.component ?? "CategoryPage.qml"));
         const back = root.front === 0 ? pageB : pageA;
         back.setSource(url, {
@@ -230,9 +230,23 @@ Item {
     readonly property real arrivalX: (1 - root.arrival) * (root.entrance === "in" ? 40 : root.entrance === "out" ? -40 : 0)
     readonly property real arrivalY: (1 - root.arrival) * (root.entrance === "up" ? 24 : 0)
 
+    /**
+     * A page asked for before the plugins' manifests were read, so it may yet
+     * turn out to be one of theirs. Asking for anything else forgets it.
+     */
+    property string awaitedPage: ""
+    Connections {
+        target: catalogue
+        function onPagesChanged() {
+            if (root.awaitedPage.length > 0 && catalogue.page(root.awaitedPage))
+                root.open(root.awaitedPage);
+        }
+    }
+
     function open(key: string) {
         search.text = "";
         const page = catalogue.page(key);
+        root.awaitedPage = key.length > 0 && !page && !catalogue.category(key) ? key : "";
         const place = page ? { category: page.category, page: page.key }
             : catalogue.category(key) ? { category: key, page: "" }
             : { category: "home", page: "" };

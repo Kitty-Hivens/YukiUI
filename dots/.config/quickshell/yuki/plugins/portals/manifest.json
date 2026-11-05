@@ -12,7 +12,8 @@
         "group": "shell",
         "order": 10,
         "entries": {
-            "ii": "SettingsPage.qml"
+            "ii": "SettingsPage.qml",
+            "blueberry": "BlueberryPage.qml"
         }
     }
 }
