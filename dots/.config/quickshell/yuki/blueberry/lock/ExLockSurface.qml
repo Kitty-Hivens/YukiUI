@@ -177,20 +177,11 @@ MouseArea {
             width: parent.width - 2 * ExLooks.spacing.xl
             spacing: ExLooks.spacing.m
 
-            Rectangle {
+            ExAvatar {
                 Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 72
-                implicitHeight: 72
-                radius: 36
-                color: ExLooks.colors.tonal
-
-                ExText {
-                    anchors.centerIn: parent
-                    text: (SystemInfo.username || "?").charAt(0).toUpperCase()
-                    font.pixelSize: 32
-                    font.weight: 600
-                    color: ExLooks.colors.tonalInk
-                }
+                size: 72
+                plate: ExLooks.colors.tonal
+                ink: ExLooks.colors.tonalInk
             }
             ExText {
                 Layout.alignment: Qt.AlignHCenter

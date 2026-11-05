@@ -1,0 +1,9 @@
+#!/bin/sh
+# Stands in for the system bus, so no test touches the real account. Writes down
+# what it was asked and keeps the file a picture was set from, which the caller
+# removes as soon as this returns.
+printf '%s\n' "$*" >> "$FAKE_BUS/calls"
+for last; do :; done
+[ -f "$last" ] && cp "$last" "$FAKE_BUS/picture.png"
+[ -e "$FAKE_BUS/refuse" ] && { echo "Call failed: refused" >&2; exit 1; }
+exit 0

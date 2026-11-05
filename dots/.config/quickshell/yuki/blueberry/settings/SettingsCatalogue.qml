@@ -82,6 +82,15 @@ QtObject {
             ]
         },
         {
+            key: "accounts",
+            hue: 20,
+            name: Translation.tr("Accounts"),
+            glyph: "person",
+            pages: [
+                { key: "account", name: Translation.tr("Your account"), glyph: "account_circle", description: Translation.tr("Name, picture, password, locking"), keywords: "user profile avatar picture password lock keyring sign in login", component: "AccountPage.qml" }
+            ]
+        },
+        {
             key: "time",
             hue: 60,
             name: Translation.tr("Time and language"),

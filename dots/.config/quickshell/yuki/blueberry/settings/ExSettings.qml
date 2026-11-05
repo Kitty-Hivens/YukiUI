@@ -269,6 +269,9 @@ Item {
         id: catalogue
     }
 
+    /** Who is signed in, for the rail and the account page. */
+    readonly property AccountLink account: AccountLink {}
+
     ShellLink {
         id: shellLink
         watching: root.Window.active
@@ -335,44 +338,72 @@ Item {
             }
         }
 
-        // Who is signed in: said, not a plate to press.
-        RowLayout {
-            id: account
+        // Who is signed in, which leads to their account. Its plate shows only
+        // under the pointer, and its avatar keeps to the rail's axis.
+        AbstractButton {
+            id: accountButton
 
-            x: root.metrics.railAxis - root.metrics.avatar / 2
-            y: appTitle.y + appTitle.height + ExLooks.spacing.xl
-            width: parent.width - x - root.metrics.railPadding
-            spacing: ExLooks.spacing.m
+            ExPrimaryOnly {
+                z: 1
+            }
 
-            Rectangle {
-                implicitWidth: root.metrics.avatar
-                implicitHeight: root.metrics.avatar
-                radius: width / 2
-                color: ExLooks.colors.accent
+            readonly property int inset: ExLooks.spacing.xs + 2
 
-                ExText {
-                    anchors.centerIn: parent
-                    text: (root.username || "?").charAt(0).toUpperCase()
-                    font.pixelSize: root.metrics.body
-                    font.weight: ExLooks.font.weightTitle
-                    color: ExLooks.colors.accentInk
+            x: root.metrics.railPadding
+            y: appTitle.y + appTitle.height + ExLooks.spacing.xl - accountButton.inset
+            width: parent.width - 2 * x
+            implicitHeight: accountRow.implicitHeight + 2 * accountButton.inset
+            hoverEnabled: true
+            onClicked: root.open("account")
+
+            ExFocusRing {
+                anchors.margins: 0
+                cornerRadius: root.metrics.controlRadius - 2
+            }
+
+            background: Rectangle {
+                radius: root.metrics.controlRadius
+                color: "transparent"
+
+                ExStateLayer {
+                    ink: ExLooks.colors.text
+                    hovered: accountButton.hovered
+                    pressed: accountButton.down
                 }
             }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
+            contentItem: Item {
+                RowLayout {
+                    id: accountRow
 
-                ExText {
-                    Layout.fillWidth: true
-                    text: root.username
-                    font.pixelSize: root.metrics.body
-                    font.weight: ExLooks.font.weightTitle
-                }
-                ExText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Local account")
-                    font.pixelSize: root.metrics.small
-                    dim: true
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: root.metrics.railAxis - root.metrics.railPadding - root.metrics.avatar / 2
+                    spacing: ExLooks.spacing.m
+
+                    ExAvatar {
+                        size: root.metrics.avatar
+                        name: root.username
+                        revision: root.account.pictureRevision
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        ExText {
+                            Layout.fillWidth: true
+                            text: root.account.realName.length > 0 ? root.account.realName : root.username
+                            font.pixelSize: root.metrics.body
+                            font.weight: ExLooks.font.weightTitle
+                            elide: Text.ElideRight
+                        }
+                        ExText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Local account")
+                            font.pixelSize: root.metrics.small
+                            dim: true
+                        }
+                    }
                 }
             }
         }
@@ -381,7 +412,7 @@ Item {
             id: search
 
             x: root.metrics.railPadding
-            y: account.y + account.height + ExLooks.spacing.l
+            y: accountButton.y + accountButton.height - accountButton.inset + ExLooks.spacing.l
             width: parent.width - 2 * x
             height: root.metrics.search
             radius: height / 2

@@ -1516,5 +1516,18 @@
   "%1h": "%1 ч",
   "%1m": "%1 мин",
   "Documentation of the distribution": "Документация дистрибутива",
-  "Report a bug in the distribution": "Сообщить об ошибке в дистрибутиве"
+  "Report a bug in the distribution": "Сообщить об ошибке в дистрибутиве",
+  "Accounts": "Учётные записи",
+  "Your account": "Ваша учётная запись",
+  "Name, picture, password, locking": "Имя, фото, пароль, блокировка",
+  "Local account  ·  Administrator": "Локальная уч. запись  ·  Администратор",
+  "Change picture": "Сменить фото",
+  "Full name": "Полное имя",
+  "Username": "Имя пользователя",
+  "Signing in": "Вход",
+  "Changed in a terminal": "Меняется в терминале",
+  "Change": "Сменить",
+  "Lock the screen when the session starts": "Блокировать экран при входе в сессию",
+  "Open saved passwords together with the screen": "Открывать сохранённые пароли вместе с экраном",
+  "When the screen locks by itself": "Когда экран блокируется сам"
 }
