@@ -157,6 +157,11 @@ ColumnLayout {
                                         DefaultApps.assign(group.modelData.key, choice.modelData.id);
                                 }
 
+                                ExFocusRing {
+                                    anchors.margins: 0
+                                    cornerRadius: ExLooks.radius.menuItem - 2
+                                }
+
                                 background: Rectangle {
                                     radius: ExLooks.radius.menuItem
                                     color: choice.current ? ExLooks.colors.tonal : "transparent"

@@ -122,8 +122,7 @@ ColumnLayout {
         Layout.fillWidth: true
         glyph: "extension"
         text: root.entries.length > 0 ? Translation.tr("%1 of %2 on").arg(root.onCount).arg(root.entries.length) : Translation.tr("No plugins installed")
-        description: root.entries.length > 0 ? Translation.tr("A plugin switched off is never built, so it cannot start a process or claim a shortcut while it is off")
-            : Translation.tr("Drop a directory with a manifest into the plugins folder and it appears here")
+        description: root.entries.length > 0 ? "" : Translation.tr("Drop a directory with a manifest into the plugins folder and it appears here")
 
         ExButton {
             kind: "control"

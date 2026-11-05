@@ -514,6 +514,11 @@ Item {
                     visible: crumb.leads
                     hoverEnabled: true
                     onClicked: root.open(root.categoryKey)
+
+                    ExFocusRing {
+                        cornerRadius: 2
+                    }
+
                     background: null
                     contentItem: ExText {
                         text: root.category?.name ?? ""

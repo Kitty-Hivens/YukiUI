@@ -86,7 +86,7 @@ ColumnLayout {
         Layout.fillWidth: true
         glyph: Network.materialSymbol
         text: Network.connected ? (Network.networkName.length > 0 ? Network.networkName : root.channelName) : Translation.tr("Not connected")
-        description: Network.connected ? [root.channelName, root.reachText].filter(part => part.length > 0).join("  ·  ") : Translation.tr("Nothing is carrying this machine online")
+        description: Network.connected ? [root.channelName, root.reachText].filter(part => part.length > 0).join("  ·  ") : ""
     }
 
     SettingsSection {
@@ -135,7 +135,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "settings_ethernet"
             text: Translation.tr("Wi-Fi backend")
-            description: `${Network.wifiBackendUnit}  ·  ${Translation.tr("If scanning stops finding anything while the radio is on, restarting it is what fixes it")}`
+            description: `${Network.wifiBackendUnit}  ·  ${Translation.tr("Helps when scanning finds nothing")}`
 
             ExButton {
                 kind: "control"

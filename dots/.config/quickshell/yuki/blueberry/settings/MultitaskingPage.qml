@@ -22,7 +22,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "splitscreen_left"
             text: Translation.tr("Snap windows")
-            description: Translation.tr("A window dragged to a side of the screen takes that half, to a corner that quarter, to the top the whole of it")
+            description: Translation.tr("Drag a window to a side or a corner of the screen")
 
             ExSwitch {
                 checked: Config.options.blueberry.snap.enabled
@@ -34,7 +34,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "tab"
             text: Translation.tr("Alt+Tab shows")
-            description: Translation.tr("The windows of the workspace on screen, or every open window")
 
             SettingsChoice {
                 value: Config.options.blueberry.switcher.windowsFrom

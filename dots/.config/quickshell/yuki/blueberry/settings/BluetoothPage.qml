@@ -67,7 +67,7 @@ ColumnLayout {
                 return device.connected ? Translation.tr("Disconnecting...") : Translation.tr("Connecting...");
             switch (device.failure) {
             case "keyMissing":
-                return Translation.tr("The device no longer knows this computer. The pairing has to be made anew.");
+                return Translation.tr("The device no longer knows this computer");
             case "unreachable":
                 return Translation.tr("Out of range or switched off");
             case "refused":

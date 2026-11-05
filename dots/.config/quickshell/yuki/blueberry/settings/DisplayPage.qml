@@ -409,7 +409,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "nightlight"
             text: Translation.tr("Night light")
-            description: root.shellAnswered ? Translation.tr("Warmer colours, easier on the eyes at night") : Translation.tr("Set by the running shell, which is not answering")
+            description: root.shellAnswered ? "" : Translation.tr("The shell is not answering")
 
             control: ExSwitch {
                 enabled: root.shellAnswered
@@ -505,7 +505,6 @@ ColumnLayout {
             enabled: !root.locked
             glyph: "hdr_on"
             text: Translation.tr("Colour mode")
-            description: Translation.tr("What the display is sent, offered as far as the panel says it can take it")
 
             SettingsChoice {
                 value: root.selected?.cm ?? "srgb"
@@ -573,7 +572,6 @@ ColumnLayout {
             enabled: root.selected?.enabled ?? false
             glyph: "zoom_in"
             text: Translation.tr("Scale")
-            description: Translation.tr("How big text, apps and everything else are")
 
             SettingsDropdown {
                 readonly property var values: {
@@ -652,7 +650,6 @@ ColumnLayout {
             enabled: root.selected?.enabled ?? false
             glyph: "speed"
             text: Translation.tr("Variable refresh rate")
-            description: Translation.tr("Fullscreen keeps it to a fullscreen window, the last narrows that to video and games")
 
             SettingsDropdown {
                 model: root.vrrModes.map(mode => mode.text)
@@ -679,7 +676,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "align_horizontal_left"
             text: Translation.tr("Allow tearing")
-            description: Translation.tr("For every display. A game may present without waiting for the refresh, trading a possible tear for lower latency")
+            description: Translation.tr("For every display. Lower latency in games, tears are possible")
 
             ExSwitch {
                 checked: Displays.tearing

@@ -306,7 +306,6 @@ ColumnLayout {
                 Layout.fillWidth: true
                 glyph: "memory"
                 text: card.modelData.description
-                description: Translation.tr("Which inputs and outputs the card offers")
 
                 SettingsDropdown {
                     anchors.verticalCenter: parent.verticalCenter

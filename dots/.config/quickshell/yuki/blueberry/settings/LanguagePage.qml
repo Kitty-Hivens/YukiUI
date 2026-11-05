@@ -131,7 +131,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "language"
             text: Translation.tr("Interface language")
-            description: Translation.tr("A language with no file of its own falls back to English, one line at a time")
 
             SettingsDropdown {
                 model: root.languages.map(code => root.languageName(code))
@@ -178,7 +177,7 @@ ColumnLayout {
         ExText {
             Layout.fillWidth: true
             Layout.leftMargin: ExLooks.spacing.l
-            text: Translation.tr("Written the way Qt writes dates: dd day, MM month, yyyy year, ddd weekday")
+            text: Translation.tr("dd day, MM month, yyyy year, ddd weekday")
             role: "caption"
             dim: true
             wrapMode: Text.Wrap

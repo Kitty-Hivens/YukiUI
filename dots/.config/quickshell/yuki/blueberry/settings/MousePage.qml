@@ -145,7 +145,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "trending_up"
             text: Translation.tr("Speed up with a faster hand")
-            description: Translation.tr("Off, the pointer moves as far as the hand, however fast")
 
             ExSwitch {
                 checked: HyprInput.mouseAccelProfile !== "flat"
@@ -198,7 +197,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "touch_app"
             text: Translation.tr("Tap to click")
-            description: Translation.tr("A light tap counts as a click, two fingers as a right click")
 
             ExSwitch {
                 checked: HyprInput.touchpadTapToClick
@@ -210,7 +208,6 @@ ColumnLayout {
             enabled: HyprInput.touchpadTapToClick
             glyph: "drag_pan"
             text: Translation.tr("Tap and drag")
-            description: Translation.tr("A tap, then the finger kept down, holds the button while it moves")
 
             ExSwitch {
                 checked: HyprInput.touchpadTapAndDrag
@@ -279,7 +276,7 @@ ColumnLayout {
         ExText {
             Layout.fillWidth: true
             Layout.topMargin: ExLooks.spacing.xs
-            text: Translation.tr("A change here reloads the compositor's settings, which drops what was set since they last loaded, game mode among it.")
+            text: Translation.tr("A change here resets game mode")
             role: "caption"
             dim: true
             wrapMode: Text.Wrap

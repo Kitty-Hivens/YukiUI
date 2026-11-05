@@ -139,7 +139,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "keyboard_double_arrow_right"
             text: Translation.tr("Repeat rate")
-            description: Translation.tr("How often a held key repeats")
 
             SettingsNumber {
                 from: 1
@@ -181,6 +180,6 @@ ColumnLayout {
         visible: HyprInput.ready && !HyprInput.writable
         glyph: "error"
         text: Translation.tr("Applied, but not written")
-        description: Translation.tr("custom/general.lua holds this setting in a shape that cannot be edited a line at a time, so it comes back on the next reload.")
+        description: Translation.tr("Goes back on the next reload: custom/general.lua has to be edited by hand")
     }
 }

@@ -193,6 +193,8 @@ ColumnLayout {
                     hoverEnabled: true
                     onClicked: Wallpapers.select(tile.modelData)
 
+                    ExFocusRing {}
+
                     background: ClippingRectangle {
                         radius: ExLooks.radius.control
                         color: ExLooks.colors.surfaceSunken

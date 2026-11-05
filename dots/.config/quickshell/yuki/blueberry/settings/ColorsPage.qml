@@ -49,6 +49,10 @@ ColumnLayout {
                 hoverEnabled: true
                 onClicked: root.setMode(mode.modelData.dark)
 
+                ExFocusRing {
+                    cornerRadius: ExLooks.radius.tile
+                }
+
                 background: Rectangle {
                     radius: ExLooks.radius.tile
                     color: ExLooks.colors.surface
@@ -134,7 +138,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "colors"
             text: Translation.tr("Accent color")
-            description: Translation.tr("Fixed for this environment, and handed to the applications too")
+            description: Translation.tr("Fixed for this environment")
 
             Rectangle {
                 width: 28

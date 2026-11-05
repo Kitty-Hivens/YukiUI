@@ -80,7 +80,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "dock_to_bottom"
             text: Translation.tr("Edge")
-            description: Translation.tr("Which side of the screen the dock stands on")
 
             SettingsChoice {
                 value: root.dock.edge
@@ -97,7 +96,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "splitscreen_bottom"
             text: Translation.tr("Style")
-            description: Translation.tr("Against the edge, standing off it, or only as long as what it holds")
 
             SettingsChoice {
                 value: root.dock.style
@@ -113,7 +111,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "format_align_center"
             text: Translation.tr("Alignment")
-            description: Translation.tr("Where the applications gather along the dock")
 
             SettingsChoice {
                 value: root.dock.alignment
@@ -134,7 +131,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "opacity"
             text: Translation.tr("Opacity")
-            description: Translation.tr("How much of what is behind the dock it covers")
 
             Row {
                 spacing: ExLooks.spacing.m
@@ -182,7 +178,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "blur_on"
             text: Translation.tr("Blur behind the dock")
-            description: Translation.tr("What shows through is blurred, windows included")
 
             ExSwitch {
                 checked: root.dock.blur
@@ -199,7 +194,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "visibility_off"
             text: Translation.tr("Automatically hide the dock")
-            description: Translation.tr("It comes out when the pointer reaches the edge, and windows get its room")
+            description: Translation.tr("Comes out when the pointer reaches the edge")
 
             ExSwitch {
                 checked: root.dock.autoHide
@@ -211,7 +206,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "label"
             text: Translation.tr("Combine buttons and hide labels")
-            description: Translation.tr("Otherwise each window has a button with its title. Not on a dock at the side, which has no room for them")
+            description: Translation.tr("Not on a dock at the side")
 
             SettingsChoice {
                 value: root.dock.combine
@@ -227,7 +222,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "select_window"
             text: Translation.tr("Windows shown")
-            description: Translation.tr("Those on the workspace on screen, or every open window")
 
             SettingsChoice {
                 value: root.dock.windowsFrom
@@ -259,7 +253,6 @@ ColumnLayout {
             visible: Quickshell.screens.length > 1 && root.dock.screens === "all" && root.dock.windowsFrom === "all"
             glyph: "screenshot_monitor"
             text: Translation.tr("Applications on each dock")
-            description: Translation.tr("Every open window on every dock, or each window on the dock of its own screen")
 
             SettingsChoice {
                 value: root.dock.appsOn
@@ -291,7 +284,6 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "desktop_windows"
             text: Translation.tr("Show the desktop from the far corner")
-            description: Translation.tr("A sliver at the end of the dock that minimises every window, and brings them back")
 
             ExSwitch {
                 checked: root.dock.showDesktop
@@ -302,7 +294,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "counter_1"
             text: Translation.tr("Badges on applications")
-            description: Translation.tr("Unread counts and calls for attention on their buttons")
+            description: Translation.tr("Unread counts and calls for attention")
 
             ExSwitch {
                 checked: root.dock.badges
@@ -329,7 +321,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "calendar_today"
             text: Translation.tr("Show the date")
-            description: Translation.tr("Under the time, on a dock along the top or the bottom")
+            description: Translation.tr("Only on a horizontal dock")
 
             ExSwitch {
                 checked: root.dock.clockDate

@@ -64,7 +64,7 @@ ColumnLayout {
                 ? Translation.tr("Held back: the machine thinks it is on a lap")
                 : PowerProfiles.degradationReason !== PerformanceDegradationReason.None
                 ? Translation.tr("Held back: the machine is too warm")
-                : Translation.tr("How hard the machine may run")
+                : ""
 
             SettingsChoice {
                 value: PowerProfiles.profile
@@ -214,7 +214,7 @@ ColumnLayout {
             Layout.fillWidth: true
             glyph: "charger"
             text: Translation.tr("Count as charged at")
-            description: Config.options.battery.full > 100 ? Translation.tr("Above 100 means never: no battery reports more than a hundred") : ""
+            description: Config.options.battery.full > 100 ? Translation.tr("Above 100 means never") : ""
 
             SettingsNumber {
                 from: 0
