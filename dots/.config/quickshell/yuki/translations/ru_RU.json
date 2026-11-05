@@ -1461,5 +1461,16 @@
   "The shell is not answering": "Оболочка не отвечает",
   "dd day, MM month, yyyy year, ddd weekday": "dd день, MM месяц, yyyy год, ddd день недели",
   "Above 100 means never": "Больше 100 значит никогда",
-  "Fixed for this environment": "Свой у этого окружения"
+  "Fixed for this environment": "Свой у этого окружения",
+  "Cannot check for updates": "Обновления проверить нельзя",
+  "Could not check": "Не удалось проверить",
+  "Checked at %1": "Проверено в %1",
+  "checkupdates is not installed": "checkupdates не установлен",
+  "Check": "Проверить",
+  "What will be updated": "Что будет обновлено",
+  "Check by itself": "Проверять самостоятельно",
+  "Fetches the package lists from the mirrors": "Загружает списки пакетов с зеркал",
+  "How often": "Как часто",
+  "System is up to date, what is waiting": "Что ждёт обновления",
+  "Whether the system is up to date": "Актуальность системы"
 }

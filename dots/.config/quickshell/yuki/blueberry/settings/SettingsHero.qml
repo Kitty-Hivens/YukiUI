@@ -3,10 +3,11 @@ import QtQuick.Layouts
 
 import qs.blueberry.looks
 
-// The one switch a page is about, Bluetooth or Wi-Fi: how it stands, said
-// large, beside its glyph on a disc that is the accent while on, and the
-// switch. Only the switch switches: the plate holds the page's state, and a
-// stray click on it turning the radio off would drop whatever was playing.
+// What a page is about, Bluetooth or the updates say: how it stands, said large,
+// beside its glyph on a disc that is the accent while on, and at the far end the
+// one switch or the buttons that change it. Only those act: the plate holds the
+// page's state, and a stray click on it turning the radio off would drop
+// whatever was playing.
 Rectangle {
     id: root
 
@@ -16,6 +17,10 @@ Rectangle {
     property string subtitle: ""
     /** How it stands, as the system says. */
     property bool on: false
+    /** A switch at the far end, for a page about one thing to turn on and off. */
+    property bool switchable: true
+    /** Buttons at the far end, before the switch if there is one. */
+    default property alias actions: actionRow.data
 
     signal switched(bool wanted)
 
@@ -68,7 +73,12 @@ Rectangle {
                 dim: true
             }
         }
+        Row {
+            id: actionRow
+            spacing: ExLooks.spacing.s
+        }
         ExSystemSwitch {
+            visible: root.switchable
             on: root.on
             enabled: root.enabled
             onSwitched: wanted => root.switched(wanted)

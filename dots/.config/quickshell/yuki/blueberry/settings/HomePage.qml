@@ -368,8 +368,11 @@ ColumnLayout {
         SettingsCard {
             glyph: "system_update_alt"
             text: Translation.tr("Updates")
+            leads: true
+            onClicked: root.settings.open("updates")
             description: Updates.checking ? Translation.tr("Checking...")
-                : !Updates.available ? Translation.tr("Not checked yet")
+                : Updates.failed ? Translation.tr("Could not check")
+                : !Updates.available || Updates.lastChecked === null ? Translation.tr("Not checked yet")
                 : Updates.count > 0 ? Translation.tr("%1 packages can be updated").arg(Updates.count)
                 : Translation.tr("Everything is up to date")
         }

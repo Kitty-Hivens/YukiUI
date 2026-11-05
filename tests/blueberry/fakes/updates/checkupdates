@@ -1,0 +1,6 @@
+#!/bin/sh
+# Answers as the real one does, from what the test left in FAKE_UPDATES: a list of
+# packages ends in 0, an empty file in 2, and no file at all in 1, as with no network.
+[ -f "$FAKE_UPDATES" ] || { echo "==> ERROR: Cannot fetch updates" >&2; exit 1; }
+[ -s "$FAKE_UPDATES" ] || exit 2
+cat "$FAKE_UPDATES"
