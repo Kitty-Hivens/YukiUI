@@ -419,6 +419,11 @@ Item {
                 hoverEnabled: true
                 onClicked: root.open(navItem.modelData.key)
 
+                ExFocusRing {
+                    anchors.margins: 0
+                    cornerRadius: root.metrics.controlRadius - 2
+                }
+
                 // The section on show is a tinted plate with its disc turned
                 // to its colour, the way a tile in quick settings shows it is
                 // on; the rest answer the pointer.
@@ -537,6 +542,11 @@ Item {
                         implicitHeight: 36
                         hoverEnabled: true
                         onClicked: root.back()
+
+                        ExFocusRing {
+                            anchors.margins: 0
+                            cornerRadius: root.metrics.controlRadius - 2
+                        }
 
                         background: Rectangle {
                             radius: root.metrics.controlRadius

@@ -77,6 +77,7 @@ ColumnLayout {
                     else if (key === "NTPSynchronized")
                         root.ntpSynced = value === "yes";
                 }
+                automatic.answered();
             }
         }
     }
@@ -211,15 +212,14 @@ ColumnLayout {
                 : root.ntpSynced ? Translation.tr("On, in step")
                 : Translation.tr("On, not in step yet")
 
-            ExSwitch {
+            // Answered by the reading after the change, so it can wait out a
+            // password prompt, and a refusal puts it back at once.
+            ExSystemSwitch {
+                id: automatic
                 enabled: !change.running
-                checked: root.ntp
-                // Back on what the system says, which the reading after the
-                // change brings: a refused change, the password prompt
-                // cancelled say, left the switch where the finger put it.
-                onToggled: {
-                    const wanted = checked;
-                    checked = Qt.binding(() => root.ntp);
+                on: root.ntp
+                patience: 300000
+                onSwitched: wanted => {
                     change.command = ["timedatectl", "set-ntp", wanted ? "true" : "false"];
                     change.running = true;
                 }

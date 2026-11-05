@@ -50,7 +50,7 @@ Singleton {
         readonly property real pressOpacity: 0.12
         readonly property real disabledOpacity: 0.4
 
-        readonly property color switchTrackOff: root.dark ? "#3c3e47" : "#dcdfe7"
+        readonly property color switchTrackOff: root.dark ? "#74778a" : "#8e919c"
         readonly property color knob: "#ffffff"
         /** A white knob on a light track needs an edge to exist at all. */
         readonly property color knobEdge: root.dark ? "#33000000" : "#1f000000"

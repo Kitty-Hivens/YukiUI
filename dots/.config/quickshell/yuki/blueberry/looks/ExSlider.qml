@@ -40,5 +40,10 @@ Slider {
         color: ExLooks.colors.knob
         border.width: 1
         border.color: ExLooks.colors.knobEdge
+
+        ExFocusRing {
+            shown: root.visualFocus
+            cornerRadius: width / 2
+        }
     }
 }

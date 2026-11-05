@@ -46,6 +46,13 @@ AbstractButton {
     readonly property real leftEdge: root.flat ? 2 * root.metrics.rowPadding + root.metrics.rowChip : root.metrics.rowPadding
 
     implicitHeight: Math.max(root.metrics.rowHeight + (root.description.length > 0 ? 8 : 0), row.implicitHeight + 2 * ExLooks.spacing.m)
+
+    // Inside the row, whose neighbours would cover what stood outside it.
+    ExFocusRing {
+        anchors.margins: 0
+        cornerRadius: 4
+    }
+
     hoverEnabled: root.leads
     focusPolicy: root.leads ? Qt.StrongFocus : Qt.NoFocus
 

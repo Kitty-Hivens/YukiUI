@@ -68,15 +68,10 @@ Rectangle {
                 dim: true
             }
         }
-        ExSwitch {
-            checked: root.on
+        ExSystemSwitch {
+            on: root.on
             enabled: root.enabled
-            onToggled: {
-                const wanted = checked;
-                // Back to showing the system, which moves once it has.
-                checked = Qt.binding(() => root.on);
-                root.switched(wanted);
-            }
+            onSwitched: wanted => root.switched(wanted)
         }
     }
 }

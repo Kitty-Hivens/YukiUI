@@ -211,13 +211,9 @@ ColumnLayout {
                 visible: !Network.active
                 Layout.fillWidth: true
             }
-            ExSwitch {
-                checked: Network.wifiEnabled
-                onToggled: {
-                    const wanted = checked;
-                    checked = Qt.binding(() => Network.wifiEnabled);
-                    Network.enableWifi(wanted);
-                }
+            ExSystemSwitch {
+                on: Network.wifiEnabled
+                onSwitched: wanted => Network.enableWifi(wanted)
             }
         }
         HomeCard {
@@ -242,12 +238,10 @@ ColumnLayout {
                 font.features: { "tnum": 1 }
                 dim: true
             }
-            ExSwitch {
+            ExSystemSwitch {
                 enabled: BluetoothStatus.available
-                checked: BluetoothStatus.enabled
-                onToggled: {
-                    const wanted = checked;
-                    checked = Qt.binding(() => BluetoothStatus.enabled);
+                on: BluetoothStatus.enabled
+                onSwitched: wanted => {
                     if (Bluetooth.defaultAdapter)
                         Bluetooth.defaultAdapter.enabled = wanted;
                 }
@@ -420,6 +414,11 @@ ColumnLayout {
             hoverEnabled: true
             onClicked: root.settings.open(card.page)
 
+            ExFocusRing {
+                anchors.margins: 0
+                cornerRadius: 4
+            }
+
             background: Rectangle {
                 topLeftRadius: root.metrics.plateRadius
                 topRightRadius: root.metrics.plateRadius
@@ -510,6 +509,10 @@ ColumnLayout {
         implicitHeight: 32
         implicitWidth: pillRow.implicitWidth + 2 * ExLooks.spacing.m
 
+        ExFocusRing {
+            cornerRadius: height / 2
+        }
+
         background: Rectangle {
             radius: height / 2
             color: pill.hovered ? "#80000000" : "#59000000"
@@ -579,6 +582,11 @@ ColumnLayout {
                     Layout.preferredWidth: 1
                     hoverEnabled: true
                     onClicked: segments.picked(segment.modelData.value)
+
+                    ExFocusRing {
+                        anchors.margins: 0
+                        cornerRadius: height / 2 - 2
+                    }
 
                     background: Rectangle {
                         radius: height / 2

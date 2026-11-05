@@ -42,6 +42,7 @@ AbstractButton {
         z: 1
         onRightClicked: root.rightClicked()
     }
+    ExFocusRing {}
 
     contentItem: Item {
         Row {

@@ -44,6 +44,11 @@ ColumnLayout {
         hoverEnabled: true
         onClicked: root.expanded = !root.expanded
 
+        ExFocusRing {
+            anchors.margins: 0
+            cornerRadius: 4
+        }
+
         background: Rectangle {
             color: root.grouped ? "transparent" : root.metrics.plate
             topLeftRadius: header.topRadius

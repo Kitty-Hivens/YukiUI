@@ -18,6 +18,10 @@ AbstractButton {
     implicitWidth: ExLooks.sizes.switchWidth
     implicitHeight: ExLooks.sizes.switchHeight
 
+    ExFocusRing {
+        cornerRadius: root.height / 2
+    }
+
     background: Rectangle {
         radius: height / 2
         color: root.checked ? ExLooks.colors.accent : ExLooks.colors.switchTrackOff
