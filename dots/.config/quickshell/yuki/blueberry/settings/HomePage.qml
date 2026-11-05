@@ -6,7 +6,6 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Io
 import Quickshell.Services.UPower
 
 import qs.core
@@ -29,42 +28,8 @@ ColumnLayout {
     readonly property var screenBrightness: Brightness.monitors[0] ?? null
     readonly property bool updatesPending: Updates.available && Updates.count > 0
 
-    /** "12,3 GB", in the units a disk is sold in and the shell's own numbers. */
-    function bytes(value: real): string {
-        const units = [Translation.tr("B"), Translation.tr("KB"), Translation.tr("MB"), Translation.tr("GB"), Translation.tr("TB")];
-        let unit = 0;
-        while (value >= 1000 && unit < units.length - 1) {
-            value /= 1000;
-            unit++;
-        }
-        const digits = value >= 100 || unit === 0 ? 0 : 1;
-        return `${Number(value).toLocaleString(Qt.locale(Translation.languageCode), "f", digits)} ${units[unit]}`;
-    }
-
-    /** The disks the system and the home folder are on, each once: { target, size, used }. */
-    property var disks: []
-    property string kernel: ""
-
-    Process {
-        running: true
-        // Told apart by the device, not by where it is mounted: a home on a
-        // subvolume of the system's disk is the same disk twice.
-        command: ["df", "-B1", "--output=source,size,used,target", "/", Directories.home.replace("file://", "")]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const seen = new Set();
-                root.disks = text.trim().split("\n").slice(1).map(line => line.trim().split(/\s+/))
-                    .filter(fields => fields.length >= 4 && !seen.has(fields[0]) && seen.add(fields[0]))
-                    .map(fields => ({ size: Number(fields[1]), used: Number(fields[2]), target: fields.slice(3).join(" ") }));
-            }
-        }
-    }
-    Process {
-        running: true
-        command: ["uname", "-r"]
-        stdout: StdioCollector {
-            onStreamFinished: root.kernel = text.trim()
-        }
+    DiskUsage {
+        id: usage
     }
 
     spacing: root.metrics.groupGap
@@ -193,7 +158,7 @@ ColumnLayout {
             subtitle: ExQuickTiles.info("wifi").subtitle
             page: "wifi"
 
-            Meter {
+            SettingsMeter {
                 Layout.fillWidth: true
                 visible: !!Network.active
                 value: (Network.active?.strength ?? 0) / 100
@@ -346,22 +311,21 @@ ColumnLayout {
         title: Translation.tr("This computer")
 
         Repeater {
-            model: root.disks
+            model: usage.disks
 
             SettingsCard {
                 id: disk
 
                 required property var modelData
-                readonly property real share: disk.modelData.size > 0 ? disk.modelData.used / disk.modelData.size : 0
 
                 glyph: "hard_drive"
                 text: disk.modelData.target === "/" ? Translation.tr("System disk") : disk.modelData.target
-                description: Translation.tr("%1 of %2 used").arg(root.bytes(disk.modelData.used)).arg(root.bytes(disk.modelData.size))
+                description: Translation.tr("%1 of %2 used").arg(usage.bytes(disk.modelData.used)).arg(usage.bytes(disk.modelData.size))
 
-                Meter {
+                SettingsMeter {
                     width: 140
-                    value: disk.share
-                    warn: disk.share > 0.9
+                    value: disk.modelData.share
+                    warn: disk.modelData.share > 0.9
                 }
             }
         }
@@ -377,9 +341,11 @@ ColumnLayout {
                 : Translation.tr("Everything is up to date")
         }
         SettingsCard {
-            glyph: "memory"
-            text: Translation.tr("Kernel")
-            description: root.kernel
+            glyph: "info"
+            text: Translation.tr("About this computer")
+            description: SystemInfo.kernel
+            leads: true
+            onClicked: root.settings.open("about")
         }
     }
 
@@ -474,25 +440,6 @@ ColumnLayout {
             width: parent.width - 2 * x
             height: 28
             spacing: ExLooks.spacing.s
-        }
-    }
-
-    // How full something is, read only: thin and without a knob, so it is
-    // not taken for a slider.
-    component Meter: Rectangle {
-        property real value: 0
-        property bool warn: false
-
-        implicitWidth: 120
-        implicitHeight: 4
-        radius: 2
-        color: root.metrics.sunken
-
-        Rectangle {
-            width: parent.width * Math.max(0, Math.min(1, parent.value))
-            height: parent.height
-            radius: parent.radius
-            color: parent.warn ? ExLooks.colors.warning : ExLooks.colors.textDim
         }
     }
 

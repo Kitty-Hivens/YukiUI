@@ -48,13 +48,13 @@ Singleton {
             // days is not telling anyone anything with its minutes.
             const parts = [];
             if (days > 0)
-                parts.push(`${days}d`);
+                parts.push(Translation.tr("%1d").arg(days));
             if (hours > 0)
-                parts.push(`${hours}h`);
+                parts.push(Translation.tr("%1h").arg(hours));
             if (minutes > 0)
-                parts.push(`${minutes}m`);
+                parts.push(Translation.tr("%1m").arg(minutes));
             if (parts.length === 0)
-                parts.push("0m");
+                parts.push(Translation.tr("%1m").arg(0));
             uptime = parts.slice(0, 2).join(", ");
             // Settles at a minute, which is the finest this string distinguishes.
             // At the resource poll it re-read /proc and rebuilt the same text
