@@ -33,6 +33,7 @@ QtObject {
                 { key: "notifications", name: Translation.tr("Notifications"), glyph: "notifications", description: Translation.tr("Do not disturb, what is kept"), keywords: "alerts do not disturb", component: "NotificationsPage.qml" },
                 { key: "power", name: Translation.tr("Power"), glyph: "bolt", description: Translation.tr("Power mode, battery, keeping awake"), keywords: "battery sleep power profile idle lock suspend", component: "PowerPage.qml" },
                 { key: "multitasking", name: Translation.tr("Multitasking"), glyph: "select_window", description: Translation.tr("Snap, switching between windows"), keywords: "alt tab switch windows snap maximize", component: "MultitaskingPage.qml" },
+                { key: "gamemode", name: Translation.tr("Game mode"), glyph: "stadia_controller", description: Translation.tr("Turn on when a game needs the machine"), keywords: "gaming fullscreen performance governor feral guard memory oom", component: "GameModePage.qml" },
                 { key: "updates", name: Translation.tr("Updates"), glyph: "system_update_alt", description: Translation.tr("Whether the system is up to date"), keywords: "upgrade packages pacman mirrors", component: "UpdatesPage.qml" }
             ]
         },
