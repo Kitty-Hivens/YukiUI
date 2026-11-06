@@ -8,99 +8,25 @@ import Quickshell.Services.Pipewire
 import qs.core.services
 
 /**
- * The status glyphs: the connection, the sound and the battery, in every
- * state they have.
- *
- * Drawn from Material Design Icons, which the Nerd Font the interface already
- * depends on carries. Material Symbols, which draws the rest of this desktop,
- * has a speaker with two loudnesses and nothing for a wired or tethered
- * connection without internet. Named here by their icon names, which the font
- * does not know: it has no ligatures, only code points.
+ * The status glyphs: the connection, the sound and the battery, in every state
+ * they have, by their names in Material Symbols, which draws the rest of this
+ * desktop. A state the font has no glyph of its own for is a glyph with a mark in
+ * its corner: Wi-Fi of so many bars with no internet, a cable with none, a
+ * Bluetooth device.
  */
 Singleton {
     id: root
 
-    readonly property string family: "JetBrainsMono Nerd Font Propo"
-
-    readonly property var codes: ({
-        "volume_off": 0xF0581,
-        "volume_low": 0xF057F,
-        "volume_medium": 0xF0580,
-        "volume_high": 0xF057E,
-        "headphones": 0xF02CB,
-        "headphones_bluetooth": 0xF0970,
-        "headphones_off": 0xF07CE,
-        "speaker_bluetooth": 0xF09A2,
-        "speaker_off": 0xF04C4,
-        "monitor_speaker": 0xF0F5F,
-        "monitor_speaker_off": 0xF0F60,
-        "wifi_strength_outline": 0xF092F,
-        "wifi_strength_1": 0xF091F,
-        "wifi_strength_2": 0xF0922,
-        "wifi_strength_3": 0xF0925,
-        "wifi_strength_4": 0xF0928,
-        "wifi_strength_alert_outline": 0xF092B,
-        "wifi_strength_1_alert": 0xF0920,
-        "wifi_strength_2_alert": 0xF0923,
-        "wifi_strength_3_alert": 0xF0926,
-        "wifi_strength_4_alert": 0xF0929,
-        "wifi_strength_off_outline": 0xF092E,
-        "ethernet": 0xF0200,
-        "lan_disconnect": 0xF0319,
-        "web_off": 0xF0A8E,
-        "cellphone_wireless": 0xF0815,
-        "network_strength_4": 0xF08FA,
-        "network_strength_4_alert": 0xF08FB,
-        "shield_lock": 0xF099D,
-        "alert_circle": 0xF0028,
-        "battery_outline": 0xF008E,
-        "battery_10": 0xF007A,
-        "battery_20": 0xF007B,
-        "battery_30": 0xF007C,
-        "battery_40": 0xF007D,
-        "battery_50": 0xF007E,
-        "battery_60": 0xF007F,
-        "battery_70": 0xF0080,
-        "battery_80": 0xF0081,
-        "battery_90": 0xF0082,
-        "battery": 0xF0079,
-        "battery_charging_outline": 0xF089F,
-        "battery_charging_10": 0xF089C,
-        "battery_charging_20": 0xF0086,
-        "battery_charging_30": 0xF0087,
-        "battery_charging_40": 0xF0088,
-        "battery_charging_50": 0xF089D,
-        "battery_charging_60": 0xF0089,
-        "battery_charging_70": 0xF089E,
-        "battery_charging_80": 0xF008A,
-        "battery_charging_90": 0xF008B,
-        "battery_charging_100": 0xF0085,
-        "battery_alert_variant_outline": 0xF10CD,
-        "record_circle": 0xF0EC2,
-        "monitor_share": 0xF1483,
-        "video": 0xF0567,
-        "microphone": 0xF036C,
-        "waveform": 0xF147D
-    })
+    readonly property var wifiBars: ["signal_wifi_0_bar", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar", "signal_wifi_4_bar"]
 
     // Every glyph each status can show, for a place that keeps it as wide as
     // the widest of them. The battery's by whether it is charging: the bolt
     // makes it nearly twice as wide, and kept that wide for good it left an
     // empty stretch beside the battery whenever it was not charging.
-    readonly property var volumeGlyphs: Object.keys(root.codes).filter(name => /^(volume|headphones|speaker|monitor_speaker)/.test(name))
-    readonly property var chargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery_charging"))
-    readonly property var dischargingGlyphs: Object.keys(root.codes).filter(name => name.startsWith("battery") && !name.startsWith("battery_charging"))
-    readonly property var networkGlyphs: ["wifi_strength_outline", "wifi_strength_1", "wifi_strength_2", "wifi_strength_3", "wifi_strength_4",
-        "wifi_strength_alert_outline", "wifi_strength_1_alert", "wifi_strength_2_alert", "wifi_strength_3_alert", "wifi_strength_4_alert",
-        "wifi_strength_off_outline", "ethernet", "lan_disconnect", "web_off", "cellphone_wireless", "network_strength_4", "network_strength_4_alert"]
-    /** The marks of who is capturing, drawn in the same font as the icons beside them. */
-    readonly property var captureGlyphs: ["record_circle", "monitor_share", "video", "microphone", "waveform"]
-
-    /** The character that draws a glyph, or nothing for a name not listed. */
-    function text(name: string): string {
-        const code = root.codes[name];
-        return code ? String.fromCodePoint(code) : "";
-    }
+    readonly property var chargingGlyphs: ["battery_charging_20", "battery_charging_30", "battery_charging_50", "battery_charging_60", "battery_charging_80", "battery_charging_90", "battery_charging_full"]
+    readonly property var batteryBars: ["battery_0_bar", "battery_1_bar", "battery_2_bar", "battery_3_bar", "battery_4_bar", "battery_5_bar", "battery_6_bar", "battery_full"]
+    readonly property var dischargingGlyphs: [...root.batteryBars, "battery_alert"]
+    readonly property var networkGlyphs: [...root.wifiBars, "signal_wifi_off", "lan", "public_off", "mobile_share", "signal_cellular_4_bar", "signal_cellular_connected_no_internet_4_bar"]
 
     // -- Sound ------------------------------------------------------------------
 
@@ -143,15 +69,14 @@ Singleton {
     readonly property var volumeVariants: {
         switch (root.outputKind) {
         case "headphones":
-            return ["headphones", "headphones_off"];
         case "bluetoothHeadphones":
-            return ["headphones_bluetooth", "headphones_off"];
+            return ["headphones", "headset_off"];
         case "bluetoothSpeaker":
-            return ["speaker_bluetooth", "speaker_off"];
+            return ["speaker", "volume_off"];
         case "display":
-            return ["monitor_speaker", "monitor_speaker_off"];
+            return ["tv", "tv_off"];
         }
-        return ["volume_off", "volume_low", "volume_medium", "volume_high"];
+        return ["volume_off", "volume_mute", "volume_down", "volume_up"];
     }
 
     readonly property bool muted: Audio.sink?.audio?.muted ?? false
@@ -168,22 +93,27 @@ Singleton {
         const muted = root.muted;
         switch (root.outputKind) {
         case "headphones":
-            return muted ? "headphones_off" : "headphones";
         case "bluetoothHeadphones":
-            return muted ? "headphones_off" : "headphones_bluetooth";
+            return muted ? "headset_off" : "headphones";
         case "bluetoothSpeaker":
-            return muted ? "speaker_off" : "speaker_bluetooth";
+            return muted ? "volume_off" : "speaker";
         case "display":
-            return muted ? "monitor_speaker_off" : "monitor_speaker";
+            return muted ? "tv_off" : "tv";
         }
         if (muted)
             return "volume_off";
         if (root.volume < 0.005)
-            return "volume_low";
+            return "volume_mute";
         if (root.volume <= 0.5)
-            return "volume_medium";
-        return "volume_high";
+            return "volume_down";
+        return "volume_up";
     }
+
+    /** The mark on the sound: the font has no Bluetooth headphones or speaker of their own. */
+    readonly property string volumeBadge: root.outputKind === "bluetoothHeadphones" || root.outputKind === "bluetoothSpeaker" ? "bluetooth" : ""
+
+    /** The loudness not reached, stood faintly behind the speaker. */
+    readonly property string volumeGhost: root.volumeGlyph === "volume_mute" || root.volumeGlyph === "volume_down" ? "volume_up" : ""
 
     // -- Connection -------------------------------------------------------------
 
@@ -234,53 +164,44 @@ Singleton {
     readonly property string networkGlyph: {
         const type = Network.connectionType;
         if (type === "ethernet")
-            return root.noInternet ? "lan_disconnect" : "ethernet";
-        if (type === "wifi") {
-            const bars = root.bars(Network.active?.strength ?? Network.networkStrength);
-            if (root.noInternet)
-                return bars === 0 ? "wifi_strength_alert_outline" : `wifi_strength_${bars}_alert`;
-            return bars === 0 ? "wifi_strength_outline" : `wifi_strength_${bars}`;
-        }
+            return "lan";
+        if (type === "wifi")
+            return root.wifiBars[root.bars(Network.active?.strength ?? Network.networkStrength)];
         // NetworkManager does not say how strong a modem's signal is.
         if (type === "cellular")
-            return root.noInternet ? "network_strength_4_alert" : "network_strength_4";
-        if (type === "bluetooth")
-            return "cellphone_wireless";
-        if (root.connecting === "bluetooth")
-            return "cellphone_wireless";
+            return root.noInternet ? "signal_cellular_connected_no_internet_4_bar" : "signal_cellular_4_bar";
+        if (type === "bluetooth" || root.connecting === "bluetooth")
+            return "mobile_share";
         if (root.connecting === "wifi")
-            return `wifi_strength_${root.frame + 1}`;
+            return root.wifiBars[root.frame + 1];
         if (!Network.wifiEnabled)
-            return "wifi_strength_off_outline";
-        return "web_off";
+            return "signal_wifi_off";
+        return "public_off";
     }
 
     /**
-     * The mark in the corner of the connection: no internet, for a tethered
-     * phone, whose glyph has no way to say it, and otherwise a tunnel, while
-     * one carries the traffic.
+     * The mark in the corner of the connection: no internet, where the glyph has
+     * no way to say it, and otherwise a tunnel, while one carries the traffic.
      */
     readonly property string networkBadge: {
         if (!Network.connected)
             return "";
-        if (root.noInternet && Network.connectionType === "bluetooth")
-            return "alert_circle";
+        if (root.noInternet && Network.connectionType !== "cellular")
+            return "priority_high";
         return Network.vpnActive ? "shield_lock" : "";
     }
 
     // -- Battery ----------------------------------------------------------------
 
-    /** The battery in tenths, charging or not, and running low. Empty without one. */
+    /** The battery by as many steps as the font has, charging or not, and running low. Empty without one. */
     readonly property string batteryGlyph: {
         if (!Battery.available)
             return "";
-        const tenths = Math.max(0, Math.min(10, Math.round(Battery.percentage * 10)));
+        const level = Math.max(0, Math.min(1, Battery.percentage));
         if (Battery.isCharging)
-            return tenths === 0 ? "battery_charging_outline" : `battery_charging_${tenths * 10}`;
+            return root.chargingGlyphs[[0.25, 0.4, 0.55, 0.7, 0.85, 0.95, 2].findIndex(step => level < step)];
         if (Battery.isLow)
-            return "battery_alert_variant_outline";
-        if (tenths === 10)
-            return "battery";
-        return tenths === 0 ? "battery_outline" : `battery_${tenths * 10}`;
+            return "battery_alert";
+        return root.batteryBars[Math.round(level * 7)];
     }
 }

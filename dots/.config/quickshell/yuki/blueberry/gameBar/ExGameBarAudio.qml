@@ -39,7 +39,7 @@ ColumnLayout {
         property real maximum: 1
         property bool device: true
         property string glyph: ""
-        /** A status glyph, by its name in ExStatusGlyphs, in place of the glyph. */
+        /** A status glyph, by its name in Material Symbols, in place of the glyph. */
         property string status: ""
         property string icon: ""
 
@@ -59,6 +59,9 @@ ColumnLayout {
                 visible: level.status.length > 0
                 anchors.centerIn: parent
                 name: level.status
+                variants: ExStatusGlyphs.volumeVariants
+                badge: ExStatusGlyphs.volumeBadge
+                hollow: level.muted
                 size: 18
                 color: level.muted ? ExLooks.colors.textDim : ExLooks.colors.accent
             }

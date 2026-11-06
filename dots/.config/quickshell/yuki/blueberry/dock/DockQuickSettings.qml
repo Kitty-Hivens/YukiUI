@@ -642,6 +642,9 @@ ExPopup {
                     ExStatusGlyph {
                         anchors.centerIn: parent
                         name: ExStatusGlyphs.volumeGlyph
+                        variants: ExStatusGlyphs.volumeVariants
+                        badge: ExStatusGlyphs.volumeBadge
+                        hollow: ExStatusGlyphs.muted
                         color: ExLooks.colors.accent
                         size: 18
                     }
@@ -694,6 +697,7 @@ ExPopup {
                 ExStatusGlyph {
                     visible: Battery.available
                     name: ExStatusGlyphs.batteryGlyph
+                    variants: Battery.isCharging ? ExStatusGlyphs.chargingGlyphs : ExStatusGlyphs.dischargingGlyphs
                     color: Battery.isLowAndNotCharging ? ExLooks.colors.destructive : ExLooks.colors.text
                     size: 18
                 }

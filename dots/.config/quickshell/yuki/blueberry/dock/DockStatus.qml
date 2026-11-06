@@ -252,38 +252,38 @@ Item {
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: CaptureWatch.recording
-                    name: "record_circle"
+                    name: "fiber_manual_record"
                     variants: [name]
-                    size: 16
+                    size: 18
                     color: ExLooks.colors.destructive
                 }
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("screen")
-                    name: "monitor_share"
+                    name: "screen_share"
                     variants: [name]
-                    size: 18
+                    size: 20
                 }
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("camera")
-                    name: "video"
+                    name: "videocam"
                     variants: [name]
-                    size: 18
+                    size: 20
                 }
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("microphone")
-                    name: "microphone"
+                    name: "mic"
                     variants: [name]
-                    size: 18
+                    size: 20
                 }
                 ExStatusGlyph {
                     Layout.alignment: Qt.AlignCenter
                     visible: captureZone.kinds.includes("sound")
-                    name: "waveform"
+                    name: "graphic_eq"
                     variants: [name]
-                    size: 18
+                    size: 20
                 }
             }
         }
@@ -322,8 +322,9 @@ Item {
                     variants: ExStatusGlyphs.networkGlyphs
                     badge: ExStatusGlyphs.networkBadge
                     pulse: ExStatusGlyphs.connecting === "bluetooth"
+                    hollow: ExStatusGlyphs.connecting.length > 0
                     plate: ExLooks.colors.dockPlate
-                    size: 18
+                    size: 20
                 }
                 ExStatusGlyph {
                     id: volumeIcon
@@ -331,8 +332,11 @@ Item {
                     Layout.alignment: Qt.AlignCenter
                     name: ExStatusGlyphs.volumeGlyph
                     variants: ExStatusGlyphs.volumeVariants
-                    ghost: name === "volume_low" || name === "volume_medium" ? "volume_high" : ""
-                    size: 18
+                    ghost: ExStatusGlyphs.volumeGhost
+                    badge: ExStatusGlyphs.volumeBadge
+                    hollow: ExStatusGlyphs.muted
+                    plate: ExLooks.colors.dockPlate
+                    size: 20
                 }
                 ExStatusGlyph {
                     id: batteryIcon
@@ -342,7 +346,7 @@ Item {
                     name: ExStatusGlyphs.batteryGlyph
                     variants: Battery.isCharging ? ExStatusGlyphs.chargingGlyphs : ExStatusGlyphs.dischargingGlyphs
                     color: Battery.isLowAndNotCharging ? ExLooks.colors.destructive : ExLooks.colors.text
-                    size: 18
+                    size: 20
                 }
             }
         }

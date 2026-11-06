@@ -110,6 +110,9 @@ Scope {
                     ExStatusGlyph {
                         visible: root.kind === "volume"
                         name: ExStatusGlyphs.volumeGlyph
+                        variants: ExStatusGlyphs.volumeVariants
+                        badge: ExStatusGlyphs.volumeBadge
+                        hollow: ExStatusGlyphs.muted
                         color: root.muted ? ExLooks.colors.textDim : ExLooks.colors.text
                     }
                     Rectangle {
