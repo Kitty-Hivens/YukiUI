@@ -217,24 +217,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         messageListView.positionViewAtEnd();
     }
 
-    Process {
-        id: decodeImageAndAttachProc
-        property string imageDecodePath: Directories.cliphistDecode
-        property string imageDecodeFileName: "image"
-        property string imageDecodeFilePath: `${imageDecodePath}/${imageDecodeFileName}`
-        function handleEntry(entry: string) {
-            imageDecodeFileName = parseInt(entry.match(/^(\d+)\t/)[1]);
-            decodeImageAndAttachProc.exec(["bash", "-c", `[ -f ${imageDecodeFilePath} ] || echo '${StringUtils.shellSingleQuoteEscape(entry)}' | ${Cliphist.cliphistBinary} decode > '${imageDecodeFilePath}'`]);
-        }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
-                Ai.attachFile(imageDecodeFilePath);
-            } else {
-                console.error("[AiChat] Failed to decode image in clipboard content");
-            }
-        }
-    }
-
     component StatusItem: MouseArea {
         id: statusItem
         property string icon
@@ -668,17 +650,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                     return;
                                 }
                                 // Try image paste first
-                                const currentClipboardEntry = Cliphist.entries[0];
-                                const cleanCliphistEntry = StringUtils.cleanCliphistEntry(currentClipboardEntry);
-                                if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(currentClipboardEntry)) {
-                                    // First entry = currently copied entry = image?
-                                    decodeImageAndAttachProc.handleEntry(currentClipboardEntry);
-                                    event.accepted = true;
-                                    return;
-                                } else if (cleanCliphistEntry.startsWith("file://")) {
-                                    // First entry = currently copied entry = image?
-                                    const fileName = decodeURIComponent(cleanCliphistEntry);
-                                    Ai.attachFile(fileName);
+                                // First entry = currently copied entry
+                                const copied = ClipboardHistory.entries[0];
+                                const attached = copied?.kind === "image" ? copied.image : (copied?.paths?.[0] ?? "");
+                                if (attached.length > 0) {
+                                    Ai.attachFile(attached);
                                     event.accepted = true;
                                     return;
                                 }

@@ -32,10 +32,9 @@ MouseArea {
     }
 
     function handleFilePasting(event) {
-        const currentClipboardEntry = Cliphist.entries[0];
-        if (/^\d+\tfile:\/\/\S+/.test(currentClipboardEntry)) {
-            const url = StringUtils.cleanCliphistEntry(currentClipboardEntry);
-            Wallpapers.setDirectory(FileUtils.trimFileProtocol(decodeURIComponent(url)));
+        const path = ClipboardHistory.entries[0]?.paths?.[0] ?? "";
+        if (path.length > 0) {
+            Wallpapers.setDirectory(path);
             event.accepted = true;
         } else {
             event.accepted = false; // No image, let text pasting proceed

@@ -7,29 +7,22 @@ import Quickshell.Hyprland
 import Quickshell.Io
 
 import qs
-import qs.core
-import qs.core.functions
+import qs.core.services
 
 /**
- * The clipboard history behind Win+V: what was copied lately, newest first,
- * and putting an entry back and pasting it where the person was. Drawn by the
- * dock, as DockClipboard.
- *
- * Every form an entry was copied in is kept, and goes back on with it, so
- * files copied in the file manager paste as files again. scripts/clipboard/
- * history.py keeps them, as they are copied, and leaves out anything a
- * password manager marks as secret.
+ * The clipboard history as Win+V offers it here: opening it, and putting an entry
+ * back and pasting it where the person was. Drawn by the dock, as DockClipboard.
+ * What it holds is the shared ClipboardHistory.
  */
 Singleton {
     id: root
 
     /** Called by the environment as it comes up, so copies are kept from then on, opened or not. */
-    function load() {}
+    function load() {
+        ClipboardHistory.load();
+    }
 
-    readonly property string script: FileUtils.trimFileProtocol(`${Directories.scriptPath}/clipboard/history.py`)
-    readonly property string indexFile: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/yuki/clipboard/index.json`
-
-    property var entries: []
+    readonly property var entries: ClipboardHistory.entries
     /** The history is up on a dock, as the dock says. */
     property bool open: false
 
@@ -75,13 +68,18 @@ Singleton {
     /** Puts an entry back on the clipboard, and pastes it where the person was. */
     function choose(id: string) {
         root.closeRequested();
-        offer.command = ["python3", root.script, "offer", id];
-        offer.running = true;
+        root.choosing = id;
+        ClipboardHistory.copy(id);
     }
-    Process {
-        id: offer
-        onExited: exitCode => {
-            if (exitCode === 0 && root.target.length > 0)
+    /** The entry going back on the clipboard to be pasted, or empty. */
+    property string choosing: ""
+    Connections {
+        target: ClipboardHistory
+        function onOffered(id: string, done: bool) {
+            if (id !== root.choosing)
+                return;
+            root.choosing = "";
+            if (done && root.target.length > 0)
                 pasteLater.restart();
         }
     }
@@ -95,52 +93,9 @@ Singleton {
         }
     }
 
-    /** Pins, deletes or clears, and reads the history again once done. */
+    /** Pins, deletes or clears. */
     function run(...words) {
-        action.createObject(root, { command: ["python3", root.script, ...words] }).running = true;
-    }
-    Component {
-        id: action
-        Process {
-            id: job
-            onExited: {
-                index.reload();
-                job.destroy();
-            }
-        }
-    }
-
-    // What is copied is kept as it is copied, while this desktop is up. Each
-    // copy kept says so with a line, and the history is read again: a file
-    // that was not there as the shell started is not watched for changes.
-    //
-    // Ended by the kernel as the shell ends. wl-paste reads nothing from the
-    // shell and never noticed it gone, so every start of the shell left one
-    // more behind, and each of them asked the program copied from for what it
-    // copied, twice: a Qt program encodes a picture anew for every such
-    // request, on its own main thread.
-    Process {
-        running: true
-        command: ["setpriv", "--pdeathsig", "TERM", "--", "wl-paste", "--watch", "sh", "-c", 'python3 "$1" store; echo kept', "clipboard-history", root.script]
-        stdout: SplitParser {
-            onRead: index.reload()
-        }
-    }
-
-    FileView {
-        id: index
-        path: root.indexFile
-        watchChanges: true
-        printErrors: false
-        onFileChanged: index.reload()
-        onLoaded: {
-            try {
-                root.entries = JSON.parse(index.text());
-            } catch (error) {
-                root.entries = [];
-            }
-        }
-        onLoadFailed: root.entries = []
+        ClipboardHistory.run(...words);
     }
 
     Connections {

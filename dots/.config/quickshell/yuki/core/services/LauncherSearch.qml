@@ -97,7 +97,7 @@ Singleton {
                 const syntaxMatch = /^(?:(\d+)(i)?)/.exec(args.trim());
                 const count = syntaxMatch[1] ? parseInt(syntaxMatch[1]) : 1;
                 const isImage = !!syntaxMatch[2];
-                Cliphist.superpaste(count, isImage);
+                ClipboardHistory.superpaste(count, isImage);
             }
         },
         {
@@ -115,7 +115,7 @@ Singleton {
         {
             action: "wipeclipboard",
             execute: () => {
-                Cliphist.wipe();
+                ClipboardHistory.wipe();
             }
         },
     ]
@@ -151,7 +151,7 @@ Singleton {
         if (entry == undefined)
             return false;
         const unsafeKeywords = Config.options.workSafety.triggerCondition.linkKeywords;
-        return StringUtils.stringListContainsSubstring(entry.toLowerCase(), unsafeKeywords);
+        return StringUtils.stringListContainsSubstring((entry.preview ?? "").toLowerCase(), unsafeKeywords);
     }
 
     /**
@@ -163,7 +163,7 @@ Singleton {
      * say as soon as anything was typed.
      */
     function hasUnsafeNeighbour(entry) {
-        const history = Cliphist.entries;
+        const history = ClipboardHistory.entries;
         const index = history.indexOf(entry);
         if (index === -1)
             return false;
@@ -207,32 +207,34 @@ Singleton {
         if (root.query.startsWith(Config.options.search.prefix.clipboard)) {
             // Clipboard
             const searchString = StringUtils.cleanPrefix(root.query, Config.options.search.prefix.clipboard);
-            return Cliphist.fuzzyQuery(searchString).map(entry => {
-                const shouldBlurImage = Cliphist.entryIsImage(entry)
+            return ClipboardHistory.fuzzyQuery(searchString).map(entry => {
+                const isImage = entry.kind === "image";
+                const shouldBlurImage = isImage
                     && root.clipboardWorkSafetyActive
                     && root.hasUnsafeNeighbour(entry);
-                const type = `#${entry.match(/^\s*(\S+)/)?.[1] || ""}`;
+                const type = isImage ? Translation.tr("Picture") : entry.kind === "files" ? Translation.tr("Files") : Translation.tr("Text");
                 return resultComp.createObject(null, {
-                    rawValue: entry,
-                    name: StringUtils.cleanCliphistEntry(entry),
+                    rawValue: entry.id,
+                    clipboardImage: isImage ? entry.image : "",
+                    name: isImage ? "" : entry.preview.replace(/\n/g, entry.kind === "files" ? ", " : " "),
                     verb: "",
                     type: type,
                     execute: () => {
-                        Cliphist.copy(entry);
+                        ClipboardHistory.copy(entry.id);
                     },
                     actions: [resultComp.createObject(null, {
                             name: Translation.tr("Copy"),
                             iconName: "content_copy",
                             iconType: LauncherSearchResult.IconType.Material,
                             execute: () => {
-                                Cliphist.copy(entry);
+                                ClipboardHistory.copy(entry.id);
                             }
                         }), resultComp.createObject(null, {
                             name: Translation.tr("Delete"),
                             iconName: "delete",
                             iconType: LauncherSearchResult.IconType.Material,
                             execute: () => {
-                                Cliphist.deleteEntry(entry);
+                                ClipboardHistory.deleteEntry(entry.id);
                             }
                         })],
                     blurImage: shouldBlurImage

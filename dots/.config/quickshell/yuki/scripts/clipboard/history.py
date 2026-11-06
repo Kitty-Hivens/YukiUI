@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""The clipboard history, as Windows keeps it on Win+V, with every form kept.
+"""The clipboard history every environment reads, with every form kept.
 
     history.py store          what was just copied, run by wl-paste --watch
     history.py offer ID       an entry back on the clipboard, every form of it
     history.py pin ID 0|1     kept past the limit and through clearing, or not
     history.py delete ID
     history.py clear          everything not pinned
+    history.py list           id and a line of each entry, for a menu outside the shell
 
 Each entry keeps the forms it was copied in: the picture, the files, the text,
 and the same text marked up. Pasted from the history it goes back on in all of
@@ -13,12 +14,12 @@ them, so files copied in the file manager paste as files again and not as
 their names. cliphist keeps one form, and its files came back as text.
 
 A copy a password manager marks as secret is never kept. Nor is anything past
-the size below, or anything but the forms named here. The newest 25 entries
-are kept and the pinned ones, as on Windows.
+the size below, or anything but the forms named here. The pinned entries are
+kept, and the newest of the rest, as many as fit both limits below.
 
 Kept in the state folder, readable by the person alone. index.json lists the
 entries newest first, for the shell to show: id, when, kind, a preview, pinned
-and the forms.
+and the forms, and the paths of what files it holds.
 """
 
 import fcntl
@@ -34,7 +35,8 @@ from urllib.parse import unquote
 STATE = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
 FOLDER = os.path.join(STATE, "yuki", "clipboard")
 INDEX = os.path.join(FOLDER, "index.json")
-LIMIT = 25
+LIMIT = 750
+ALL_TOGETHER = 1024 * 1024 * 1024
 MOST = 32 * 1024 * 1024
 # Offered back with an entry, so the copy it makes is known for that entry
 # coming back rather than for a new one.
@@ -73,16 +75,56 @@ def entry_folder(entry_id):
     return os.path.join(FOLDER, str(entry_id))
 
 
+def size_of(entry):
+    """What an entry takes on disk. Told by the entry, or found for one older than that."""
+    if "size" in entry:
+        return entry["size"]
+    total = 0
+    for form in entry.get("forms", []):
+        try:
+            total += os.path.getsize(form["file"])
+        except OSError:
+            pass
+    return total
+
+
 def prune(entries):
-    kept, unpinned = [], 0
+    kept, unpinned, together = [], 0, 0
     for entry in entries:
         if not entry.get("pinned"):
             unpinned += 1
-            if unpinned > LIMIT:
+            together += size_of(entry)
+            if unpinned > LIMIT or together > ALL_TOGETHER:
                 shutil.rmtree(entry_folder(entry["id"]), ignore_errors=True)
                 continue
         kept.append(entry)
     return kept
+
+
+def paths_of(forms):
+    """The local paths in a copy of files, for what goes by the path alone."""
+    links = forms.get("text/uri-list") or b""
+    found = []
+    for line in links.decode("utf-8", "replace").splitlines():
+        line = line.strip()
+        if line.startswith("file://"):
+            found.append(unquote(line[len("file://"):]))
+    return found
+
+
+def image_form(data):
+    """The form a picture is in, by how it starts, or None for anything else."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"GIF8"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data.startswith(b"BM"):
+        return "image/bmp"
+    return None
 
 
 def preview_of(kind, forms):
@@ -100,7 +142,7 @@ def preview_of(kind, forms):
     return ""
 
 
-def store():
+def store(handed=b""):
     state = os.environ.get("CLIPBOARD_STATE", "data")
     if state != "data":
         return
@@ -129,7 +171,10 @@ def store():
         wanted = ([image] if image else []) + [t for t in FILES + TEXTS + MARKUP if t in offered]
         total = 0
         for kind in wanted:
-            data = paste(kind)
+            # A picture wl-paste has handed over already is not asked for again:
+            # a Qt program encodes it anew for every request, on its main thread,
+            # and copying a photo froze it for as long as that took.
+            data = handed if kind == image and image_form(handed) == kind else paste(kind)
             if not data or total + len(data) > MOST:
                 continue
             forms[kind] = data
@@ -170,6 +215,8 @@ def store():
             "image": listed[0]["file"] if kind == "image" else "",
             "pinned": False,
             "digest": digest,
+            "size": total,
+            "paths": paths_of(forms),
             "forms": listed,
         })
         write_index(prune(entries))
@@ -211,6 +258,12 @@ def delete(entry_id):
         write_index(entries)
 
 
+def listing():
+    for entry in read_index():
+        line = " ".join(entry.get("preview", "").split()) or f"[{entry.get('kind', '')}]"
+        print(f"{entry['id']}\t{line}")
+
+
 def clear():
     with lock():
         entries = read_index()
@@ -238,15 +291,12 @@ class lock:
 def main():
     command = sys.argv[1:] or [""]
     if command[0] == "store":
-        # What wl-paste hands over on standard input is read here form by
-        # form instead, but it is read to the end first, not let go of. A Qt
-        # program writes what was copied on its own main thread and does
-        # nothing else until it is all taken: with standard input closed it
-        # stood still, and so never answered the forms asked for below, until
-        # each request ran out of time. Telegram froze on every photo copied.
-        while sys.stdin.buffer.read(1 << 16):
-            pass
-        store()
+        # Read to the end before anything else is asked. A Qt program writes what
+        # was copied on its own main thread and does nothing else until it is all
+        # taken: with standard input left unread it stood still, and so never
+        # answered the forms asked for afterwards, until each request ran out of
+        # time. Telegram froze on every photo copied.
+        store(sys.stdin.buffer.read())
     elif command[0] == "offer" and len(command) == 2:
         offer(command[1])
     elif command[0] == "pin" and len(command) == 3:
@@ -255,6 +305,8 @@ def main():
         delete(command[1])
     elif command[0] == "clear":
         clear()
+    elif command[0] == "list":
+        listing()
     else:
         sys.exit(__doc__)
 

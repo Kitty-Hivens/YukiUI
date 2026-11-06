@@ -10,6 +10,8 @@ QtObject {
     property var fontType: LauncherSearchResult.FontType.Normal
     property string name: ""
     property string rawValue: ""
+    /** The picture a clipboard entry holds, by its path, or empty. */
+    property string clipboardImage: ""
     property string iconName: ""
     property var iconType: LauncherSearchResult.IconType.None
     property string verb: ""

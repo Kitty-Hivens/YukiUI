@@ -239,10 +239,6 @@ Singleton {
      * @param { string } str
      * @returns { string }
      */
-    function cleanCliphistEntry(str: string): string {
-        return str.replace(/^\d+\t/, "");
-    }
-
     /**
      * Checks if any substring in the list is contained in the string.
      * @param { string } str
