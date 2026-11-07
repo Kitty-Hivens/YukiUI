@@ -108,7 +108,7 @@ Rectangle {
 
                 ExGlyph { text: "wifi"; size: 18 }
                 ExGlyph { text: "volume_up"; size: 18 }
-                ExGlyph { text: "battery_5_bar"; size: 18 }
+                ExGlyph { text: "battery_android_frame_5"; size: 18 }
             }
         }
     }

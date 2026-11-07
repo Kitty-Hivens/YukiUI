@@ -1538,5 +1538,17 @@
   "File": "Файл",
   "Select a file to see it here": "Выберите файл, чтобы посмотреть его здесь",
   "Dimensions": "Размеры",
-  "File folder": "Папка с файлами"
+  "File folder": "Папка с файлами",
+  "Link": "Ссылка",
+  "Picture %1 × %2": "Изображение %1 × %2",
+  "%1 and %2 more": "%1 и ещё %2",
+  "now": "сейчас",
+  "%1 h": "%1 ч",
+  "yesterday": "вчера",
+  "Search the clipboard": "Искать в буфере",
+  "Clear": "Очистить",
+  "Copied from": "Откуда",
+  "Pin entry": "Закрепить",
+  "Unpin entry": "Открепить",
+  "%1 items": "Объектов: %1"
 }

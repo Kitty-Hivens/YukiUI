@@ -19,7 +19,8 @@ kept, and the newest of the rest, as many as fit both limits below.
 
 Kept in the state folder, readable by the person alone. index.json lists the
 entries newest first, for the shell to show: id, when, kind, a preview, pinned
-and the forms, and the paths of what files it holds.
+and the forms, the paths of what files it holds, the window it was copied from
+and how large a picture is.
 """
 
 import fcntl
@@ -27,6 +28,7 @@ import hashlib
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -110,6 +112,41 @@ def paths_of(forms):
         if line.startswith("file://"):
             found.append(unquote(line[len("file://"):]))
     return found
+
+
+def dimensions(data):
+    """A picture's width and height, read off its header, or None for one not read here."""
+    try:
+        if data.startswith(b"\x89PNG\r\n\x1a\n"):
+            return struct.unpack(">II", data[16:24])
+        if data.startswith(b"GIF8"):
+            return struct.unpack("<HH", data[6:10])
+        if data.startswith(b"BM"):
+            width, height = struct.unpack("<ii", data[18:26])
+            return width, abs(height)
+        if data.startswith(b"\xff\xd8"):
+            at = 2
+            while at + 9 < len(data):
+                if data[at] != 0xFF:
+                    return None
+                marker = data[at + 1]
+                length = struct.unpack(">H", data[at + 2:at + 4])[0]
+                if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+                    height, width = struct.unpack(">HH", data[at + 5:at + 9])
+                    return width, height
+                at += 2 + length
+    except struct.error:
+        return None
+    return None
+
+
+def copied_from():
+    """The class of the window in use as the copy was made, which is what it was copied from, or empty."""
+    try:
+        result = subprocess.run(["hyprctl", "-j", "activewindow"], capture_output=True, text=True, timeout=2)
+        return json.loads(result.stdout).get("class", "") if result.returncode == 0 else ""
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return ""
 
 
 def image_form(data):
@@ -198,6 +235,7 @@ def store(handed=b""):
                 write_index(entries)
                 return
 
+        size = dimensions(forms[image]) if kind == "image" else None
         entry_id = str(time.time_ns())
         folder = entry_folder(entry_id)
         os.makedirs(folder, mode=0o700)
@@ -217,6 +255,9 @@ def store(handed=b""):
             "digest": digest,
             "size": total,
             "paths": paths_of(forms),
+            "app": copied_from(),
+            "width": size[0] if size else 0,
+            "height": size[1] if size else 0,
             "forms": listed,
         })
         write_index(prune(entries))

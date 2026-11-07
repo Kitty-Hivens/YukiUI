@@ -266,7 +266,7 @@ ColumnLayout {
             }
         }
         HomeCard {
-            glyph: !Battery.available ? "power" : Battery.isCharging ? "battery_charging_full" : "battery_full"
+            glyph: !Battery.available ? "power" : Battery.isCharging ? "battery_android_frame_bolt" : "battery_android_frame_full"
             hue: 145
             title: Translation.tr("Power")
             subtitle: !Battery.available ? ExQuickTiles.powerProfileName

@@ -20,12 +20,12 @@ Singleton {
     readonly property var wifiBars: ["signal_wifi_0_bar", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar", "signal_wifi_4_bar"]
 
     // Every glyph each status can show, for a place that keeps it as wide as
-    // the widest of them. The battery's by whether it is charging: the bolt
-    // makes it nearly twice as wide, and kept that wide for good it left an
-    // empty stretch beside the battery whenever it was not charging.
-    readonly property var chargingGlyphs: ["battery_charging_20", "battery_charging_30", "battery_charging_50", "battery_charging_60", "battery_charging_80", "battery_charging_90", "battery_charging_full"]
-    readonly property var batteryBars: ["battery_0_bar", "battery_1_bar", "battery_2_bar", "battery_3_bar", "battery_4_bar", "battery_5_bar", "battery_6_bar", "battery_full"]
-    readonly property var dischargingGlyphs: [...root.batteryBars, "battery_alert"]
+    // the widest of them. The battery lies on its side, as on a laptop's own
+    // screen: standing up, with its nub on top, it read as something else. The
+    // font has one glyph for charging, the bolt, whatever the level.
+    readonly property var chargingGlyphs: ["battery_android_frame_bolt"]
+    readonly property var batteryBars: ["battery_android_frame_1", "battery_android_frame_2", "battery_android_frame_3", "battery_android_frame_4", "battery_android_frame_5", "battery_android_frame_6", "battery_android_frame_full"]
+    readonly property var dischargingGlyphs: [...root.batteryBars, "battery_android_frame_alert"]
     readonly property var networkGlyphs: [...root.wifiBars, "signal_wifi_off", "lan", "public_off", "mobile_share", "signal_cellular_4_bar", "signal_cellular_connected_no_internet_4_bar"]
 
     // -- Sound ------------------------------------------------------------------
@@ -197,11 +197,11 @@ Singleton {
     readonly property string batteryGlyph: {
         if (!Battery.available)
             return "";
-        const level = Math.max(0, Math.min(1, Battery.percentage));
         if (Battery.isCharging)
-            return root.chargingGlyphs[[0.25, 0.4, 0.55, 0.7, 0.85, 0.95, 2].findIndex(step => level < step)];
+            return "battery_android_frame_bolt";
         if (Battery.isLow)
-            return "battery_alert";
-        return root.batteryBars[Math.round(level * 7)];
+            return "battery_android_frame_alert";
+        const steps = root.batteryBars.length;
+        return root.batteryBars[Math.max(0, Math.min(steps - 1, Math.round(Battery.percentage * steps) - 1))];
     }
 }

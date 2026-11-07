@@ -185,7 +185,8 @@ class RealKeys:
     for a whole test, for what wtype's keymap of its own cannot show: a key held
     across several steps, and anything that reads the code of a key."""
 
-    CODES = {"alt": 56, "tab": 15, "shift": 42, "super": 125, "j": 36, "y": 21, "a": 30, "escape": 1}
+    CODES = {"alt": 56, "tab": 15, "shift": 42, "super": 125, "j": 36, "y": 21, "a": 30, "escape": 1, "up": 103, "down": 108,
+             "enter": 28, "delete": 111}
 
     def __init__(self, bench: Bench):
         self.process = subprocess.Popen([str(bench.keyboard_tool)], env=bench.environment(),

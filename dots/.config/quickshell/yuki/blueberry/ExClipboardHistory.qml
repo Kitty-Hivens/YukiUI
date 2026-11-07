@@ -11,8 +11,8 @@ import qs.core.services
 
 /**
  * The clipboard history as Win+V offers it here: opening it, and putting an entry
- * back and pasting it where the person was. Drawn by the dock, as DockClipboard.
- * What it holds is the shared ClipboardHistory.
+ * back on the clipboard, to be pasted wherever the person goes next. Drawn by the
+ * dock, as DockClipboard. What it holds is the shared ClipboardHistory.
  */
 Singleton {
     id: root
@@ -25,72 +25,26 @@ Singleton {
     readonly property var entries: ClipboardHistory.entries
     /** The history is up on a dock, as the dock says. */
     property bool open: false
-
-    /** The window to paste into, and what it is, as they were when the history was asked for. */
-    property string target: ""
-    property string targetClass: ""
+    /** The entry picked in it, by id, as the dock says. */
+    property string picked: ""
 
     /** Asks the dock of the focused screen to show the history, or to put it away. */
     signal toggleRequested
     signal closeRequested
-
-    /** Terminals take a paste on Ctrl+Shift+V, Ctrl+V being a key of their own. */
-    readonly property var terminals: ["kitty", "foot", "footclient", "Alacritty", "org.wezfurlong.wezterm", "com.mitchellh.ghostty",
-        "org.gnome.Ptyxis", "org.gnome.Console", "org.kde.konsole", "xterm"]
 
     function toggle() {
         if (root.open) {
             root.closeRequested();
             return;
         }
-        if (GlobalStates.screenLocked)
-            return;
-        // The window in use, before anything takes the keyboard from it.
-        active.running = true;
-    }
-    Process {
-        id: active
-        command: ["hyprctl", "-j", "activewindow"]
-        stdout: StdioCollector {
-            id: activeOut
-            onStreamFinished: {
-                let window = {};
-                try {
-                    window = JSON.parse(activeOut.text);
-                } catch (error) {}
-                root.target = window?.address ?? "";
-                root.targetClass = window?.class ?? "";
-                root.toggleRequested();
-            }
-        }
+        if (!GlobalStates.screenLocked)
+            root.toggleRequested();
     }
 
-    /** Puts an entry back on the clipboard, and pastes it where the person was. */
+    /** Puts an entry back on the clipboard, and puts the history away. */
     function choose(id: string) {
         root.closeRequested();
-        root.choosing = id;
         ClipboardHistory.copy(id);
-    }
-    /** The entry going back on the clipboard to be pasted, or empty. */
-    property string choosing: ""
-    Connections {
-        target: ClipboardHistory
-        function onOffered(id: string, done: bool) {
-            if (id !== root.choosing)
-                return;
-            root.choosing = "";
-            if (done && root.target.length > 0)
-                pasteLater.restart();
-        }
-    }
-    // Once the window has the keyboard back from the dock.
-    Timer {
-        id: pasteLater
-        interval: 250
-        onTriggered: {
-            const mods = root.terminals.includes(root.targetClass) ? "CTRL SHIFT" : "CTRL";
-            Hyprland.dispatch(`hl.dsp.send_shortcut({ mods = "${mods}", key = "V", window = "address:${root.target}" })`);
-        }
     }
 
     /** Pins, deletes or clears. */
@@ -127,6 +81,9 @@ Singleton {
         }
         function isOpen(): bool {
             return root.open;
+        }
+        function picked(): string {
+            return root.picked;
         }
         function entries(): string {
             return JSON.stringify(root.entries.map(entry => ({ id: entry.id, kind: entry.kind, preview: entry.preview, pinned: entry.pinned,

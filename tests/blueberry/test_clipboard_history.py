@@ -102,7 +102,9 @@ def test_a_secret_is_never_kept(bench, history):
     assert not any((bench.state_home / "yuki/clipboard").glob("*/form-*"))
 
 
-def test_a_file_chosen_goes_back_as_a_file_and_is_pasted(bench, desk, history, tmp_path):
+def test_a_file_chosen_goes_back_as_a_file_and_nothing_is_pressed(bench, desk, history, tmp_path):
+    # Chosen, an entry goes back on the clipboard and is pasted by hand, as in
+    # ii. It used to be pasted into the window in use as well.
     env = bench.environment()
     (tmp_path / "doc.txt").write_text("doc")
     subprocess.run(["bash", str(OFFER), str(tmp_path / "doc.txt")], env=env, check=True)
@@ -118,8 +120,9 @@ def test_a_file_chosen_goes_back_as_a_file_and_is_pasted(bench, desk, history, t
     history.call("clipboardHistory", "choose", "1")
     # Back on in every form it was copied in, the files as files.
     wait_until(lambda: "x-special/gnome-copied-files" in types(bench), what="the files back on the clipboard")
-    pressed = wait_until(lambda: window.command("keys")["keys"], what="the paste to reach the window")
-    assert pressed[0] == ["pressed", "v", ["control"]]
+    wait_until(lambda: history.call("clipboardHistory", "isOpen") == "false", what="the history to go")
+    time.sleep(0.6)
+    assert not [key for key in window.command("keys")["keys"] if key[0] == "pressed" and key[1] == "v"], "it pasted"
     # And to the top of the history, not in it twice.
     newest = wait_until(lambda: (lambda e: e if e[0]["kind"] == "files" else None)(entries(history)), what="the file to come to the top")
     assert len(newest) == 2
@@ -135,3 +138,29 @@ def test_pinned_entries_outlive_clearing(bench, history):
     subprocess.run(["python3", str(HISTORY), "clear"], env=env, check=True)
     left = wait_until(lambda: (lambda e: e if len(e) == 1 else None)(entries(history)), what="only the pinned one left")
     assert left[0]["preview"] == "one" and left[0]["pinned"]
+
+
+def test_the_wheel_picks_without_copying(bench, desk, history):
+    env = bench.environment()
+    for count, text in enumerate(("one", "two", "three"), start=1):
+        subprocess.run(["wl-copy", text], env=env, check=True)
+        kept(history, count)
+    ids = [entry["id"] for entry in entries(history)]
+    history.call("clipboardHistory", "open")
+    wait_until(lambda: history.call("clipboardHistory", "isOpen") == "true", what="the history to open")
+    time.sleep(0.5)
+    assert history.call("clipboardHistory", "picked") == ids[0]
+    # Over the list, which stands at the left of the panel over the dock's middle.
+    layer = next(layer for monitor in bench.json("layers").values() for layers in monitor["levels"].values()
+                 for layer in layers if layer["namespace"] == "quickshell:dock")
+    pointer = desk.pointer()
+    pointer.move(1920 // 2 - 250, layer["y"] - 300)
+    time.sleep(0.2)
+    pointer._send("scroll 15")
+    wait_until(lambda: history.call("clipboardHistory", "picked") == ids[1], what="the wheel to pick the next entry")
+    pointer._send("scroll 15")
+    wait_until(lambda: history.call("clipboardHistory", "picked") == ids[2], what="and the one after")
+    pointer._send("scroll -15")
+    wait_until(lambda: history.call("clipboardHistory", "picked") == ids[1], what="and back")
+    # Picked is not copied.
+    assert subprocess.run(["wl-paste", "--no-newline"], env=env, capture_output=True).stdout == b"three"

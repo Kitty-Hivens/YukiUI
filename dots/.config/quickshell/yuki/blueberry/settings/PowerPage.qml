@@ -42,7 +42,7 @@ ColumnLayout {
         SettingsCard {
             Layout.fillWidth: true
             visible: root.hasBattery
-            glyph: Battery.isCharging ? "battery_charging_full" : "battery_5_bar"
+            glyph: Battery.isCharging ? "battery_android_frame_bolt" : "battery_android_frame_5"
             text: `${Math.round(Battery.percentage * 100)}%  ·  ${Battery.isCharging ? Translation.tr("Charging") : Battery.isPluggedIn ? Translation.tr("Plugged in") : Translation.tr("On battery")}`
             description: {
                 const parts = [];
@@ -164,7 +164,7 @@ ColumnLayout {
 
         SettingsCard {
             Layout.fillWidth: true
-            glyph: "battery_2_bar"
+            glyph: "battery_android_frame_2"
             text: Translation.tr("Warn at")
 
             SettingsNumber {
@@ -178,7 +178,7 @@ ColumnLayout {
         }
         SettingsCard {
             Layout.fillWidth: true
-            glyph: "battery_alert"
+            glyph: "battery_android_frame_alert"
             text: Translation.tr("Warn urgently at")
 
             SettingsNumber {
