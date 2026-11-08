@@ -1510,6 +1510,17 @@ Item {
                     readonly property real wanted: pageItems.implicitHeight + 2 * ExLooks.sizes.menuPadding
                     onWantedChanged: menu.heldHeight = Math.max(menu.heldHeight, menuPlane.wanted)
                     Component.onCompleted: menu.heldHeight = Math.max(menu.heldHeight, menuPlane.wanted)
+                    // Opened again while open, at another point, the height kept
+                    // is let go of while the menu stays the same, which is no
+                    // change to answer: the window kept the shadow's height
+                    // alone and showed a sliver of the first entry.
+                    Connections {
+                        target: menu
+                        function onHeldHeightChanged() {
+                            if (menu.heldHeight < menuPlane.wanted)
+                                menu.heldHeight = menuPlane.wanted;
+                        }
+                    }
 
                     implicitWidth: 280
                     height: menuPlane.wanted

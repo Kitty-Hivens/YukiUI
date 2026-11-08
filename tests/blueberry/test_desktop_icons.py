@@ -260,3 +260,25 @@ def test_something_new_is_made_from_a_template_and_named_there(desktop, bench):
     assert (folder / "Report.md").read_text() == "# Report\n"
     wait_until(lambda: shell.call("desktopProbe", "renaming") == "Report.md", what="its name to be typed")
     assert not shell.errors()
+
+
+def menu_height(bench) -> int:
+    for monitor in json.loads(bench.hyprctl("layers", "-j")).values():
+        for layers in monitor["levels"].values():
+            for layer in layers:
+                if layer["namespace"] == "quickshell:desktopMenu":
+                    return layer["h"]
+    return 0
+
+
+def test_the_menu_opened_again_elsewhere_is_whole(desktop, bench):
+    # A right click on the desktop with its menu open opened it again there,
+    # as a sliver of its first entry.
+    _, shell, pointer = desktop
+    pointer.click(600, 400, button="right")
+    whole = wait_until(lambda: (lambda h: h if h > 200 else None)(menu_height(bench)), what="the menu to open whole")
+    time.sleep(0.5)
+    pointer.click(900, 500, button="right")
+    time.sleep(0.8)
+    assert menu_height(bench) == whole, f"opened again as {menu_height(bench)} tall, {whole} before"
+    assert not shell.errors()
