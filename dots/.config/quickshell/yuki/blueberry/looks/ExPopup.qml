@@ -59,11 +59,102 @@ PopupWindow {
         }
         root.opener = item;
         root.anchor.updateAnchor();
+        // Decided here as well: the anchor is worked out again only as the
+        // window shows, after the panel has set off.
+        root.entry = root.entryAt(root.placement());
         root.open = true;
     }
 
+    /**
+     * Where the plane's middle stands along the dock, and half its length
+     * that way, in the dock window's terms.
+     *
+     * Along the dock the plane does not reach past the dock's ends. One
+     * opened from the far end, like quick settings, sits in the corner, as
+     * far from the screen edge as it is from the dock. A dock that stands off
+     * the edge already keeps that distance, so there the plane lines up with
+     * the dock's end.
+     */
+    function placement(): var {
+        const button = root.opener.mapToItem(null, root.opener.width / 2, root.opener.height / 2);
+        const dock = root.dockSurface.mapToItem(null, 0, 0);
+        const margin = root.dockWindow.detached ? 0 : root.gap;
+        const half = (root.vertical ? surface.height : surface.width) / 2;
+        let start = (root.vertical ? dock.y : dock.x) + margin + half;
+        let end = (root.vertical ? dock.y + root.dockSurface.height : dock.x + root.dockSurface.width) - margin - half;
+        // Longer than the dock, an island's say, it is kept on the screen
+        // instead, which the dock's window spans.
+        if (end < start) {
+            const total = root.vertical ? root.dockWindow.height : root.dockWindow.width;
+            start = root.gap + half;
+            end = Math.max(start, total - root.gap - half);
+        }
+        return {
+            button: button,
+            dock: dock,
+            half: half,
+            along: Math.max(start, Math.min(end, root.vertical ? button.y : button.x))
+        };
+    }
+
+    /**
+     * The screen edge a panel comes in from and goes out through: the one
+     * along the dock it stands against, a corner panel's. Its window then
+     * reaches past that edge, by the room kept for the shadow, so the screen's
+     * own edge hides it on the way. Elsewhere it rises from the dock.
+     */
+    function entryAt(place: var): string {
+        if (root.motion !== "panel")
+            return "";
+        const total = root.vertical ? root.dockWindow.height : root.dockWindow.width;
+        if (total - place.along - place.half < root.shadowRoom)
+            return root.vertical ? "bottom" : "right";
+        if (place.along - place.half < root.shadowRoom)
+            return root.vertical ? "top" : "left";
+        return "";
+    }
+    property string entry: ""
+
     color: "transparent"
-    visible: root.open || surface.progress > 0
+    visible: root.open || surface.progress > 0 || root.emptying
+
+    // Kept up past the end of the way out until frames with nothing on them
+    // have been handed to the compositor. Hyprland keeps the last frame a
+    // popup gave it as the popup hides and fades that out by itself, over most
+    // of a second here. Hidden the moment the panel was done, the window went
+    // before the drawing thread had handed over its last frames, and the panel
+    // was left behind, see-through, where it had been a moment before. Two,
+    // since a frame already on its way when the panel went still shows it.
+    // Held from the moment it is shut, so the window is never let go of for
+    // a frame between the panel going and the hold beginning.
+    property bool emptying: false
+    property int emptyFrames: 0
+    readonly property bool drawn: surface.progress > 0
+    onDrawnChanged: {
+        if (!root.drawn && root.emptying)
+            root.countEmptyFrames();
+    }
+    function countEmptyFrames() {
+        root.emptyFrames = 0;
+        emptyingLimit.restart();
+        surface.Window.window?.update();
+    }
+    Connections {
+        target: root.emptying && !root.drawn ? surface.Window.window : null
+        function onFrameSwapped() {
+            root.emptyFrames += 1;
+            if (root.emptyFrames >= 2)
+                root.emptying = false;
+            else
+                surface.Window.window.update();
+        }
+    }
+    // A window that draws nothing more does not hold the popup up for good.
+    Timer {
+        id: emptyingLimit
+        interval: 250
+        onTriggered: root.emptying = false
+    }
 
     /** The plane's height, following its content as that animates. */
     readonly property real planeHeight: holder.height + 2 * root.padding
@@ -137,33 +228,20 @@ PopupWindow {
             : (root.edge === "left" ? Edges.Right : Edges.Left) | (root.growsUp ? Edges.Top : Edges.Bottom)
         gravity: root.edge === "bottom" ? Edges.Top : root.edge === "top" ? Edges.Bottom
             : (root.edge === "left" ? Edges.Right : Edges.Left) | (root.growsUp ? Edges.Top : Edges.Bottom)
-        // A point, not a box: along the dock it is the middle of the button,
-        // across it the dock's inner edge, where the window begins.
-        //
-        // Along the dock the plane does not reach past the dock's ends. One
-        // opened from the far end, like quick settings, sits in the corner,
-        // as far from the screen edge as it is from the dock. A dock that
-        // stands off the edge already keeps that distance, so there the plane
-        // lines up with the dock's end.
+        // A point, not a box: along the dock it is the middle of the plane,
+        // see placement(), across it the dock's inner edge, where the window
+        // begins.
         onAnchoring: {
             if (!root.opener)
                 return;
-            const button = root.opener.mapToItem(null, root.opener.width / 2, root.opener.height / 2);
-            const dock = root.dockSurface.mapToItem(null, 0, 0);
+            const place = root.placement();
+            const button = place.button;
+            const dock = place.dock;
+            const half = place.half;
+            const along = place.along;
+            const vertical = root.vertical;
             const inset = root.nearRoom - root.gap;
-            const margin = root.dockWindow.detached ? 0 : root.gap;
-            const vertical = root.edge === "left" || root.edge === "right";
-            const half = (vertical ? surface.height : surface.width) / 2;
-            let start = (vertical ? dock.y : dock.x) + margin + half;
-            let end = (vertical ? dock.y + root.dockSurface.height : dock.x + root.dockSurface.width) - margin - half;
-            // Longer than the dock, an island's say, it is kept on the screen
-            // instead, which the dock's window spans.
-            if (end < start) {
-                const total = vertical ? root.dockWindow.height : root.dockWindow.width;
-                start = root.gap + half;
-                end = Math.max(start, total - root.gap - half);
-            }
-            const along = Math.max(start, Math.min(end, vertical ? button.y : button.x));
+            root.entry = root.entryAt(place);
             let x = vertical ? button.x : along;
             let y = vertical ? along : button.y;
             // Beside a side dock: towards the longer stretch of the dock, and
@@ -253,6 +331,9 @@ PopupWindow {
     // One flyout at a time across every dock. A dock shuts its own others
     // when one opens, and this does it for the docks of the other screens.
     onOpenChanged: {
+        root.emptying = !root.open;
+        if (!root.open && !root.drawn)
+            root.countEmptyFrames();
         if (root.open)
             ExStates.openPopup = root;
         else if (ExStates.openPopup === root)
@@ -279,15 +360,15 @@ PopupWindow {
         onCleared: root.dismissRequested()
     }
 
-    // A panel on its way in or out is cut off at the dock's edge, so it comes
-    // out from behind the dock instead of sliding over it. At rest nothing is
-    // cut and the shadow falls whole.
+    // Nothing is cut here. Cut off at the dock's edge, a panel was meant to come
+    // out from behind the dock, but a dock that lets the screen show through
+    // shows no panel behind it, only a panel sliced along a ruler, and past
+    // the dock's rounded corner the slice stood over bare desktop.
     Item {
         readonly property real planeWidth: holder.width + 2 * root.padding
         readonly property real planeHeight: holder.height + 2 * root.padding
         readonly property real reach: root.nearRoom - root.gap
 
-        clip: root.motion === "panel" && surface.progress < 1
         x: root.edge === "left" ? reach : 0
         y: root.edge === "top" ? reach : 0
         // Against a dock at the bottom the plane hangs from the window's
@@ -309,6 +390,11 @@ PopupWindow {
             open: root.open && root.warmed
             edge: root.edge
             motion: root.motion
+            // No further towards the dock than the gap: the window ends at
+            // the dock's edge and cuts off whatever goes past it.
+            travel: root.gap
+            entry: root.entry
+            entryTravel: (root.vertical ? height : width) + 2 * root.shadowRoom
             radius: root.surfaceRadius
             restX: (root.edge === "left" ? root.nearRoom : root.shadowRoom) - parent.x
             restY: root.edge === "bottom" || root.growsUp ? root.shadowRoom : (root.edge === "top" ? root.nearRoom : root.shadowRoom) - parent.y

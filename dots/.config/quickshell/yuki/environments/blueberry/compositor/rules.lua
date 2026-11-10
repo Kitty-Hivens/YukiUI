@@ -81,6 +81,11 @@ function YUKI_SET_DOCK_BLUR(enabled, ignoreAlpha)
         YUKI_DOCK_BLUR_RULE = hl.layer_rule({ match = { namespace = "^(quickshell:dock)$" }, blur = true, ignore_alpha = ignoreAlpha, xray = false })
     end
 end
+-- Nothing is blurred behind the flyouts that open from the dock, quick
+-- settings, notifications and menus among them. The shared rules blur the
+-- popups of every shell layer. These flyouts are opaque, so that blur only
+-- showed while one faded in or out, as a smeared wash through the panel.
+hl.layer_rule({ match = { namespace = "^(quickshell:dock)$" }, blur_popups = false })
 
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
