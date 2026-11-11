@@ -58,26 +58,61 @@
 // opened, a dialog, a window with a parent, one of a fixed size, or with the
 // rules loaded now. The rules are only read for it: nothing of them is
 // applied to the window asked about.
+//
+// Telling X11 applications what may be done with their windows, as EWMH has a
+// window manager do in _NET_WM_ALLOWED_ACTIONS. An application that draws its
+// own title bar reads it to know which of its buttons will be honoured, and
+// Hyprland publishes nothing of it. What is honoured depends on the
+// environment and on how the window stands, so the environment says it, in
+// its compositor rules, with hl.plugin.minimize.allowed_actions({ tiled = {...},
+// floating = {...}, held = {...} }), naming move, resize, minimize, maximize,
+// fullscreen and close. Held is a window in fullscreen or Hyprland's maximise,
+// or one carrying the fixed size tag. Only while an environment has said it
+// does the root window list _NET_WM_ALLOWED_ACTIONS as supported: declared
+// without the list on each window, an application takes everything for
+// allowed. A reload of the rules that no longer says it takes it back.
+//
+// While it is said, a window Hyprland maximises is told so in its
+// _NET_WM_STATE as well, and told again when it is put back. Left out, an
+// application's maximise button went on offering to maximise a window that
+// already was.
+//
+// The work area in _NET_WORKAREA, which an X11 application sizes its first
+// window by, is kept current: Hyprland writes it only as the monitors are
+// arranged, not as a dock takes its room or gives it back, nor when the X
+// server starts later. The value is Hyprland's own reckoning, written again
+// whenever the layers on a monitor are arranged.
+//
+// What an X11 window says of itself before it is shown is honoured as it
+// opens: maximised or fullscreen in its own _NET_WM_STATE is asked for the
+// same way as a shown window asks, which Hyprland otherwise ignores, and a
+// window asking to bypass the compositor, a game, is tagged "bypass" for the
+// environment to leave at the size it asked for.
 
 // The Wayland backend keeps its xdg surface privately, and telling a Wayland
 // window it is tiled needs the surface's toplevel. The X11 backend keeps its
 // X surface privately as well, and the handlers of a toplevel's requests are
 // kept privately by the protocol's own class and reached through a member the
-// toplevel keeps privately. Included before anything else could include them
+// toplevel keeps privately. The X window manager keeps its connection to the
+// X server and its screen privately too. Included before anything else could include them
 // without this, and after the standard headers they pull in, which redefined
 // access breaks.
 #include <any>
 #include <array>
+#include <bit>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 #define private public
 #include <hyprland/src/protocols/XDGShell.hpp>
 #include <hyprland/src/desktop/view/window/WaylandBackend.hpp>
 #include <hyprland/src/desktop/view/window/X11Backend.hpp>
+#include <hyprland/src/xwayland/XWayland.hpp>
 #undef private
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
@@ -85,18 +120,24 @@
 #include <hyprland/src/desktop/rule/Engine.hpp>
 #include <hyprland/src/desktop/rule/windowRule/WindowRule.hpp>
 #include <hyprland/src/desktop/view/window/Window.hpp>
+#include <hyprland/src/desktop/view/window/WindowPresentation.hpp>
+#include <hyprland/src/desktop/rule/Rule.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/xwayland/XSurface.hpp>
+#include <hyprland/src/managers/fullscreen/FullscreenController.hpp>
+#include <hyprland/src/state/MonitorLayoutController.hpp>
 #include <hyprland/src/ipc/s2/S2.hpp>
 
 // The C library, under C linkage.
 #include <lua.hpp>
 
 #include <algorithm>
+#include <cstring>
 #include <format>
+#include <string_view>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -294,6 +335,327 @@ namespace {
         toplevel->setMaximized(maximized);
     }
 
+    struct SActionPolicy {
+        std::vector<std::string> tiled, floating, held;
+    };
+    std::optional<SActionPolicy> policy;
+    /** Said again by the rules being read now, during a reload. */
+    bool                         saidThisReload = false;
+    CHyprSignalListener          floatingListener, fullscreenListener, rulesListener, preReloadListener, reloadedListener;
+    CFunctionHook*               xwaylandReadyHook = nullptr;
+    CFunctionHook*               arrangeLayersHook = nullptr;
+    /** Windows told they are maximised because Hyprland maximised them, to be told otherwise when it no longer does. */
+    std::vector<PHLWINDOWREF>    maximizedByHyprland;
+
+    const std::array<std::pair<const char*, std::array<const char*, 2>>, 6> ACTIONS = {{
+        {"move", {"_NET_WM_ACTION_MOVE", nullptr}},
+        {"resize", {"_NET_WM_ACTION_RESIZE", nullptr}},
+        {"minimize", {"_NET_WM_ACTION_MINIMIZE", nullptr}},
+        {"maximize", {"_NET_WM_ACTION_MAXIMIZE_HORZ", "_NET_WM_ACTION_MAXIMIZE_VERT"}},
+        {"fullscreen", {"_NET_WM_ACTION_FULLSCREEN", nullptr}},
+        {"close", {"_NET_WM_ACTION_CLOSE", nullptr}},
+    }};
+
+    xcb_connection_t* xConnection() {
+        if (!g_pXWayland || !g_pXWayland->m_wm)
+            return nullptr;
+        return g_pXWayland->m_wm->getConnection();
+    }
+
+    // Interned once per X server: a new server, after Xwayland is started
+    // again, numbers its atoms anew.
+    xcb_atom_t atom(const char* name) {
+        static xcb_connection_t*                           internedOn = nullptr;
+        static std::unordered_map<std::string, xcb_atom_t> interned;
+        auto*                                              connection = xConnection();
+        if (!connection)
+            return XCB_ATOM_NONE;
+        if (connection != internedOn) {
+            interned.clear();
+            internedOn = connection;
+        }
+        if (const auto found = interned.find(name); found != interned.end())
+            return found->second;
+        const auto cookie = xcb_intern_atom(connection, 0, std::strlen(name), name);
+        auto*      reply  = xcb_intern_atom_reply(connection, cookie, nullptr);
+        if (!reply)
+            return XCB_ATOM_NONE;
+        const xcb_atom_t value = reply->atom;
+        free(reply);
+        interned.emplace(name, value);
+        return value;
+    }
+
+    // Puts _NET_WM_ALLOWED_ACTIONS in the root's _NET_SUPPORTED, or takes it
+    // out, leaving everything Hyprland listed there as it was.
+    void declareSupport() {
+        auto* connection = xConnection();
+        if (!connection || !g_pXWayland->m_wm->m_screen)
+            return;
+        const auto root      = g_pXWayland->m_wm->m_screen->root;
+        const auto supported = atom("_NET_SUPPORTED");
+        const auto allowed   = atom("_NET_WM_ALLOWED_ACTIONS");
+        if (supported == XCB_ATOM_NONE || allowed == XCB_ATOM_NONE)
+            return;
+        const auto cookie = xcb_get_property(connection, 0, root, supported, XCB_ATOM_ATOM, 0, 4096);
+        auto*      reply  = xcb_get_property_reply(connection, cookie, nullptr);
+        if (!reply)
+            return;
+        const auto*             first = static_cast<const xcb_atom_t*>(xcb_get_property_value(reply));
+        std::vector<xcb_atom_t> atoms(first, first + xcb_get_property_value_length(reply) / sizeof(xcb_atom_t));
+        free(reply);
+        const bool listed = std::ranges::find(atoms, allowed) != atoms.end();
+        if (policy.has_value() == listed)
+            return;
+        // Every action named before it is declared. An application that finds
+        // the declaration may look its action atoms up without making them,
+        // and one made only as the first window is told came too late: it had
+        // taken them for unknown and read every list as allowing nothing.
+        if (policy)
+            for (const auto& [action, atomNames] : ACTIONS)
+                for (const auto* atomName : atomNames)
+                    if (atomName)
+                        atom(atomName);
+        if (policy)
+            atoms.push_back(allowed);
+        else
+            std::erase(atoms, allowed);
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, root, supported, XCB_ATOM_ATOM, 32, atoms.size(), atoms.data());
+        xcb_flush(connection);
+    }
+
+    SP<CXWaylandSurface> managedXSurface(const PHLWINDOW& window) {
+        auto* x11 = window ? dynamic_cast<Desktop::View::CX11Backend*>(&window->backend()) : nullptr;
+        if (!x11)
+            return nullptr;
+        const auto surface = x11->m_xwaylandSurface.lock();
+        return surface && surface->m_xID && !surface->m_overrideRedirect ? surface : nullptr;
+    }
+
+    bool held(const PHLWINDOW& window) {
+        if (Fullscreen::controller()->isFullscreen(window))
+            return true;
+        const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
+        return !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
+    }
+
+    void sendMaximized(const SP<CXWaylandSurface>& surface, bool maximized) {
+        // Sending the whole state sends the maximised part with it. It waits
+        // in the X connection's buffer until a configure flushes it, and one
+        // to where the window already stands changes nothing.
+        surface->m_maximized = maximized;
+        surface->setFullscreen(surface->m_fullscreen);
+        surface->configure(surface->m_geometry);
+    }
+
+    // Tells an X11 window it is maximised while Hyprland has it maximised,
+    // and not once Hyprland puts it back. A window maximised otherwise, as a
+    // shell does through set_window_state, is left as the shell told it.
+    void followMaximize(const PHLWINDOW& window) {
+        const auto surface = managedXSurface(window);
+        if (!surface)
+            return;
+        std::erase_if(maximizedByHyprland, [](const auto& ref) { return ref.expired(); });
+        const bool told      = std::ranges::find_if(maximizedByHyprland, [&](const auto& ref) { return ref.lock() == window; }) != maximizedByHyprland.end();
+        const bool maximized = policy && Fullscreen::controller()->isFullscreen(window, Fullscreen::FSMODE_MAXIMIZED);
+        if (maximized && !told && !surface->m_maximized) {
+            maximizedByHyprland.emplace_back(window);
+            sendMaximized(surface, true);
+        } else if (!maximized && told) {
+            std::erase_if(maximizedByHyprland, [&](const auto& ref) { return ref.lock() == window; });
+            if (surface->m_maximized)
+                sendMaximized(surface, false);
+        }
+    }
+
+    // A property of a window, as the values of format 32 it holds, empty when unset.
+    std::vector<uint32_t> property(xcb_window_t window, xcb_atom_t name) {
+        auto* connection = xConnection();
+        if (!connection || name == XCB_ATOM_NONE)
+            return {};
+        const auto cookie = xcb_get_property(connection, 0, window, name, XCB_ATOM_ANY, 0, 64);
+        auto*      reply  = xcb_get_property_reply(connection, cookie, nullptr);
+        if (!reply)
+            return {};
+        std::vector<uint32_t> values;
+        if (reply->format == 32) {
+            const auto* first = static_cast<const uint32_t*>(xcb_get_property_value(reply));
+            values.assign(first, first + xcb_get_property_value_length(reply) / sizeof(uint32_t));
+        }
+        free(reply);
+        return values;
+    }
+
+    // Each X11 window's own _NET_WM_STATE as it asked to be shown, by window.
+    // Read then because Hyprland writes the property over with its own idea of
+    // the window's state as the window is mapped, before it opens.
+    std::unordered_map<xcb_window_t, std::vector<uint32_t>> ownStates;
+    CFunctionHook*                                          mapRequestHook = nullptr;
+
+    using MapRequest = void (*)(void*, xcb_map_request_event_t*);
+
+    void mapRequest(void* wm, xcb_map_request_event_t* event) {
+        std::erase_if(ownStates, [](const auto& entry) { return !g_pXWayland || !g_pXWayland->m_wm || !g_pXWayland->m_wm->windowForXID(entry.first); });
+        if (event)
+            ownStates[event->window] = property(event->window, HYPRATOMS["_NET_WM_STATE"]);
+        reinterpret_cast<MapRequest>(mapRequestHook->m_original)(wm, event);
+    }
+
+    // What an X11 window says of itself before it is shown, taken as it would
+    // be if it asked once shown. Hyprland reads only whether it is modal from
+    // the window's own _NET_WM_STATE, so one opening maximised or fullscreen,
+    // as an application that remembers how it stood does, opened as neither.
+    // Asked through the same request as a shown window's, so each environment
+    // answers it its own way. A window asking to bypass the compositor, as a
+    // game does, is tagged so for the environment to leave it as it asked.
+    void honourOwnState(const PHLWINDOW& window) {
+        const auto surface = managedXSurface(window);
+        if (!surface)
+            return;
+        const auto bypass = property(surface->m_xID, atom("_NET_WM_BYPASS_COMPOSITOR"));
+        if (!bypass.empty() && bypass.front() == 1 && window->m_ruleApplicator->m_tagKeeper.applyTag("+bypass")) {
+            window->m_ruleApplicator->propertiesChanged(Desktop::Rule::RULE_PROP_TAG);
+            window->presentation().refreshValues();
+        }
+        const auto said = ownStates.find(surface->m_xID);
+        if (said == ownStates.end())
+            return;
+        const auto states = std::move(said->second);
+        ownStates.erase(said);
+        const auto has = [&](const char* name) { return std::ranges::find(states, HYPRATOMS[name]) != states.end(); };
+        bool       asked  = false;
+        if (has("_NET_WM_STATE_MAXIMIZED_VERT") && has("_NET_WM_STATE_MAXIMIZED_HORZ") && !surface->m_maximized) {
+            surface->m_state.requestsMaximize = true;
+            asked                             = true;
+        }
+        if (has("_NET_WM_STATE_FULLSCREEN") && !surface->m_fullscreen) {
+            surface->m_state.requestsFullscreen = true;
+            asked                               = true;
+        }
+        if (asked)
+            surface->m_events.stateChanged.emit();
+    }
+
+    // Writes a window's _NET_WM_ALLOWED_ACTIONS as the environment has it for
+    // how the window stands now, or takes it away when nothing is said.
+    void publish(const PHLWINDOW& window) {
+        const auto surface    = managedXSurface(window);
+        auto*      connection = xConnection();
+        if (!surface || !connection)
+            return;
+        const auto property = atom("_NET_WM_ALLOWED_ACTIONS");
+        if (property == XCB_ATOM_NONE)
+            return;
+        if (!policy) {
+            xcb_delete_property(connection, surface->m_xID, property);
+            xcb_flush(connection);
+            return;
+        }
+        const auto&             names = held(window) ? policy->held : window->isFloating() ? policy->floating : policy->tiled;
+        std::vector<xcb_atom_t> atoms;
+        for (const auto& name : names)
+            for (const auto& [action, atomNames] : ACTIONS)
+                if (name == action)
+                    for (const auto* atomName : atomNames)
+                        if (atomName)
+                            atoms.push_back(atom(atomName));
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, surface->m_xID, property, XCB_ATOM_ATOM, 32, atoms.size(), atoms.data());
+        xcb_flush(connection);
+    }
+
+    void refresh(const PHLWINDOW& window) {
+        if (!window || !window->mapped())
+            return;
+        followMaximize(window);
+        publish(window);
+    }
+
+    void refreshAll() {
+        declareSupport();
+        for (const auto& window : Desktop::windowState()->windows())
+            refresh(window);
+    }
+
+    std::vector<std::string> actionList(lua_State* state, int table, const char* key) {
+        std::vector<std::string> names;
+        lua_getfield(state, table, key);
+        if (lua_istable(state, -1)) {
+            const auto count = lua_rawlen(state, -1);
+            for (lua_Integer i = 1; i <= static_cast<lua_Integer>(count); ++i) {
+                lua_rawgeti(state, -1, i);
+                const char* name = lua_tostring(state, -1);
+                if (!name || std::ranges::none_of(ACTIONS, [&](const auto& action) { return std::string_view{action.first} == name; }))
+                    luaL_error(state, "allowed_actions: %s lists %s, which is none of move, resize, minimize, maximize, fullscreen, close", key, name ? name : "something that is not a name");
+                names.emplace_back(name);
+                lua_pop(state, 1);
+            }
+        } else if (!lua_isnil(state, -1))
+            luaL_error(state, "allowed_actions: %s is not a list", key);
+        lua_pop(state, 1);
+        return names;
+    }
+
+    int allowedActions(lua_State* state) {
+        if (lua_isnoneornil(state, 1))
+            policy.reset();
+        else {
+            luaL_checktype(state, 1, LUA_TTABLE);
+            policy = SActionPolicy{
+                .tiled    = actionList(state, 1, "tiled"),
+                .floating = actionList(state, 1, "floating"),
+                .held     = actionList(state, 1, "held"),
+            };
+        }
+        saidThisReload = true;
+        refreshAll();
+        return 0;
+    }
+
+    // The work area as X11 applications read it, in _NET_WORKAREA, kept to
+    // what Hyprland would say there now. Hyprland works it out only as the
+    // monitors are arranged, so a dock that came up or went away afterwards,
+    // or an X server started later, left it saying the whole screen or
+    // nothing. An application sizing its first window by it opened under the
+    // dock, and Hyprland then pushed it up past the top of the screen. Same
+    // reckoning as Hyprland's, one monitor or none, written only when it
+    // changes.
+    void writeWorkArea() {
+        if (!g_pXWayland || !g_pXWayland->m_wm || !g_pXWayland->m_wm->getConnection())
+            return;
+        static xcb_connection_t*   writtenOn = nullptr;
+        static std::optional<CBox> written;
+        const auto                 area = State::monitorLayoutController()->calculateUnifiedX11WorkArea();
+        if (writtenOn == g_pXWayland->m_wm->getConnection() && written == area)
+            return;
+        writtenOn = g_pXWayland->m_wm->getConnection();
+        written   = area;
+        if (area)
+            g_pXWayland->m_wm->updateWorkArea(area->x, area->y, area->w, area->h);
+        else
+            g_pXWayland->m_wm->updateWorkArea(0, 0, 0, 0);
+    }
+
+    using XwaylandReady = int (*)(void*, int, uint32_t);
+
+    // The X window manager is made once Xwayland is ready, and writes the
+    // root's _NET_SUPPORTED as it starts, but no work area. Both said after
+    // it, before an application that asked for Xwayland reads them.
+    int xwaylandReady(void* server, int fd, uint32_t mask) {
+        const int result = reinterpret_cast<XwaylandReady>(xwaylandReadyHook->m_original)(server, fd, mask);
+        declareSupport();
+        writeWorkArea();
+        return result;
+    }
+
+    using ArrangeLayers = void (*)(void*, const MONITORID&);
+
+    // Where the room the layers take on a monitor is reckoned, a dock's
+    // included, and the only place it changes but for the monitors' own.
+    void arrangeLayers(void* renderer, const MONITORID& monitor) {
+        reinterpret_cast<ArrangeLayers>(arrangeLayersHook->m_original)(renderer, monitor);
+        writeWorkArea();
+    }
+
     int setWindowState(lua_State* state) {
         const std::string address   = luaL_checkstring(state, 1);
         const bool        maximized = lua_toboolean(state, 2);
@@ -312,11 +674,9 @@ namespace {
                 // window already stands changes nothing: a window already as
                 // large as it is to be got no configure otherwise, and never
                 // heard of its state.
-                if (const auto surface = x11->m_xwaylandSurface.lock(); surface && surface->m_maximized != maximized) {
-                    surface->m_maximized = maximized;
-                    surface->setFullscreen(surface->m_fullscreen);
-                    surface->configure(surface->m_geometry);
-                }
+                if (const auto surface = x11->m_xwaylandSurface.lock(); surface && surface->m_maximized != maximized)
+                    sendMaximized(surface, maximized);
+                publish(window);
             }
             break;
         }
@@ -383,11 +743,25 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     openListener   = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) {
         watch(window);
         announceInitial(window);
+        honourOwnState(window);
+        refresh(window);
+    });
+    floatingListener   = Event::bus()->m_events.window.floating.listen([](const PHLWINDOW& window) { refresh(window); });
+    fullscreenListener = Event::bus()->m_events.window.fullscreen.listen([](const PHLWINDOW& window) { refresh(window); });
+    // A tag given or taken, the fixed size tag among them.
+    rulesListener     = Event::bus()->m_events.window.updateRules.listen([](const PHLWINDOW& window) { refresh(window); });
+    preReloadListener = Event::bus()->m_events.config.preReload.listen([] { saidThisReload = false; });
+    reloadedListener  = Event::bus()->m_events.config.reloaded.listen([] {
+        if (!saidThisReload && policy) {
+            policy.reset();
+            refreshAll();
+        }
     });
 
     HyprlandAPI::addLuaFunction(handle, "minimize", "reset_focus", resetFocus);
     HyprlandAPI::addLuaFunction(handle, "minimize", "set_window_state", setWindowState);
     HyprlandAPI::addLuaFunction(handle, "minimize", "should_float", shouldFloat);
+    HyprlandAPI::addLuaFunction(handle, "minimize", "allowed_actions", allowedActions);
 
     fixedSizeTag = makeShared<Config::Values::CStringValue>("plugin:minimize:fixed_size_tag", "Windows with this tag are not resized", "");
     if (!HyprlandAPI::addConfigValueV2(handle, fixedSizeTag))
@@ -410,12 +784,61 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     if (!dragBeginHook || !dragBeginHook->hook())
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the drag controller, maximised windows stay resizable", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled, and lets go of focus for the shell's minimising", "yuki", "1.8"};
+    void* ready = nullptr;
+    for (const auto& match : HyprlandAPI::findFunctionsByName(handle, "ready")) {
+        if (match.demangled.find("CXWaylandServer::ready") != std::string::npos) {
+            ready = match.address;
+            break;
+        }
+    }
+    if (ready)
+        xwaylandReadyHook = HyprlandAPI::createFunctionHook(handle, ready, reinterpret_cast<void*>(&xwaylandReady));
+    if (!xwaylandReadyHook || !xwaylandReadyHook->hook())
+        HyprlandAPI::addNotification(handle, "[minimize] could not hook Xwayland starting, X11 applications started first may not see the allowed actions", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+
+    void* mapRequestAt = nullptr;
+    for (const auto& match : HyprlandAPI::findFunctionsByName(handle, "handleMapRequest")) {
+        if (match.demangled.find("CXWM::handleMapRequest") != std::string::npos) {
+            mapRequestAt = match.address;
+            break;
+        }
+    }
+    if (mapRequestAt)
+        mapRequestHook = HyprlandAPI::createFunctionHook(handle, mapRequestAt, reinterpret_cast<void*>(&mapRequest));
+    if (!mapRequestHook || !mapRequestHook->hook())
+        HyprlandAPI::addNotification(handle, "[minimize] could not hook X11 windows being shown, a window opening maximised or fullscreen opens as neither", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+
+    void* arrange = nullptr;
+    for (const auto& match : HyprlandAPI::findFunctionsByName(handle, "arrangeLayersForMonitor")) {
+        if (match.demangled.find("IHyprRenderer::arrangeLayersForMonitor") != std::string::npos) {
+            arrange = match.address;
+            break;
+        }
+    }
+    if (arrange)
+        arrangeLayersHook = HyprlandAPI::createFunctionHook(handle, arrange, reinterpret_cast<void*>(&arrangeLayers));
+    if (!arrangeLayersHook || !arrangeLayersHook->hook())
+        HyprlandAPI::addNotification(handle, "[minimize] could not hook the layer arrangement, X11 applications may see a stale work area", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
+    writeWorkArea();
+
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.9"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
     createListener.reset();
     openListener.reset();
+    floatingListener.reset();
+    fullscreenListener.reset();
+    rulesListener.reset();
+    preReloadListener.reset();
+    reloadedListener.reset();
+    // What was said is taken back, so nothing is promised once nothing keeps
+    // it. A window told it is maximised stays told: it still is.
+    policy.reset();
+    maximizedByHyprland.clear();
+    declareSupport();
+    for (const auto& window : Desktop::windowState()->windows())
+        publish(window);
     for (auto& entry : watched)
         unwrapEarly(entry);
     watched.clear();

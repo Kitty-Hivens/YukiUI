@@ -361,19 +361,27 @@ Scope {
     }
 
     /**
-     * Whether an X11 window is exactly the size of its whole screen, dock included.
-     * An application sizing itself to the room it has stops short of the dock or
-     * runs past it, by a few pixels. This is a game, or the like, which opens the
-     * size of the screen and goes fullscreen a moment later, or stays so without
-     * a border. It draws by the size it believes it has: fitted to the work area
-     * on the way and told it was maximised, its picture no longer met its window.
+     * Whether a window asked to bypass the compositor, as a game does, which
+     * the minimize plugin tags. It draws by the size it asked for and goes
+     * fullscreen by itself: fitted to the work area and told it was maximised,
+     * its picture no longer met its window.
      */
-    function fillsScreen(client, monitor): bool {
-        const scale = monitor.scale || 1;
-        const transformed = monitor.transform % 2 === 1;
-        return client.xwayland
-            && client.size[0] === Math.round((transformed ? monitor.height : monitor.width) / scale)
-            && client.size[1] === Math.round((transformed ? monitor.width : monitor.height) / scale);
+    function bypasses(client): bool {
+        return (client.tags ?? []).includes("bypass");
+    }
+
+    /**
+     * Lua bringing the top of a window back onto its screen, its size left as
+     * it is. Hyprland keeps a new floating window off the room the dock
+     * reserves, and pushed one as tall as the screen up past its top. Empty
+     * when the top is on the screen already.
+     */
+    function topOnScreen(client, monitor, target: string): string {
+        const x = Math.max(monitor.x, client.at[0]);
+        const y = Math.max(monitor.y, client.at[1]);
+        if (x === client.at[0] && y === client.at[1])
+            return "";
+        return `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${x}, y = ${y} })) `;
     }
 
     /**
@@ -505,7 +513,7 @@ Scope {
                 wanted = kept.zone;
                 before = kept.before;
             } else {
-                wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || (root.covers(client, area) && !root.fillsScreen(client, monitor)) ? "maximized" : root.zoneUnder(client, room);
+                wanted = client.fullscreenClient === 1 || root.markedMaximized(client) || (root.covers(client, area) && !root.bypasses(client)) ? "maximized" : root.zoneUnder(client, room);
                 before = root.centred(area);
             }
             if (!wanted)
@@ -518,8 +526,10 @@ Scope {
         // itself to the screen without saying it is maximised. One that opens
         // smaller but past the area's edge is brought inside it.
         if (wanted === "opened") {
-            if (entry || root.decided[client.address] || root.fillsScreen(client, monitor))
+            if (entry || root.decided[client.address])
                 return "";
+            if (root.bypasses(client))
+                return root.topOnScreen(client, monitor, target);
             if (!root.mostly(client, area))
                 return root.fitInto(client, area, target);
             wanted = "maximized";

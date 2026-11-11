@@ -29,6 +29,18 @@ for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
     hl.bind("SUPER + " .. arrow, hl.dsp.focus({ direction = arrow:sub(1, 1):lower() }), { description = "Window: Focus " .. arrow })
 end
 
+-- What an X11 application may do with its window from a title bar of its own,
+-- told to it as it is honoured here. A tiled window is placed by the layout,
+-- which takes no move or resize from the application. Minimising is the
+-- shell's, maximising Hyprland's own, and the window is told when it is.
+if hl.plugin.minimize and hl.plugin.minimize.allowed_actions then
+    hl.plugin.minimize.allowed_actions({
+        tiled = { "minimize", "maximize", "fullscreen", "close" },
+        floating = { "move", "resize", "minimize", "maximize", "fullscreen", "close" },
+        held = { "minimize", "maximize", "fullscreen", "close" },
+    })
+end
+
 -- Touchpad gestures. Each environment has its own, since a gesture once made
 -- cannot be taken back short of a reload: three fingers move the window under
 -- them and a pinch makes it fullscreen, four switch workspaces sideways and

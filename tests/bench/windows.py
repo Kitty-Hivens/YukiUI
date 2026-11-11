@@ -118,9 +118,11 @@ class X11Window(Window):
     kind = "x11"
 
     def __init__(self, bench: Bench, wm_class: str, x: int = 300, y: int = 200, width: int = 700, height: int = 450,
-                 title: str = ""):
+                 title: str = "", own: tuple[str, ...] = ()):
+        # `own`: what the window says of itself before it is shown, any of
+        # "maximized", "fullscreen" and "bypass".
         super().__init__(bench, wm_class, [sys.executable, str(CLIENTS / "x11_window.py"), wm_class, title or wm_class,
-                                           str(x), str(y), str(width), str(height)])
+                                           str(x), str(y), str(width), str(height), *own])
 
 
 class Pointer:

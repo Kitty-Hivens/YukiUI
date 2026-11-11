@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """An X11 window the tests drive, through python-xlib, under XWayland.
 
-    x11_window.py CLASS TITLE X Y WIDTH HEIGHT
+    x11_window.py CLASS TITLE X Y WIDTH HEIGHT [maximized] [fullscreen] [bypass]
+
+The words after the geometry are what the window says of itself before it is
+shown: its _NET_WM_STATE, as an application that remembers how it stood sets it,
+and _NET_WM_BYPASS_COMPOSITOR, as a game sets it.
 
 Prints {"ready": true} once the window is mapped, then answers one command a
 line on stdin with one line of JSON:
@@ -13,6 +17,9 @@ line on stdin with one line of JSON:
                                sends it, or the request to be shown again
     configure X Y WIDTH HEIGHT the application placing and sizing itself
     state                      its _NET_WM_STATE and its geometry
+    allowed                    its _NET_WM_ALLOWED_ACTIONS, null when it has none
+    supported                  the root window's _NET_SUPPORTED
+    workarea                   the root window's _NET_WORKAREA, null when it has none
     close                      unmap and end
 
 An X11 application can place and size its own window, unlike a Wayland one,
@@ -29,11 +36,17 @@ from Xlib import X, display, protocol
 
 wm_class, title = sys.argv[1], sys.argv[2]
 x, y, width, height = (int(value) for value in sys.argv[3:7])
+own = set(sys.argv[7:])
 
 # python-xlib writes its warning about a missing Xauthority to stdout, which is
 # where the answers go.
 with contextlib.redirect_stdout(sys.stderr):
     connection = display.Display()
+STATES = {
+    "maximized": ["_NET_WM_STATE_MAXIMIZED_VERT", "_NET_WM_STATE_MAXIMIZED_HORZ"],
+    "fullscreen": ["_NET_WM_STATE_FULLSCREEN"],
+    "hidden": ["_NET_WM_STATE_HIDDEN"],
+}
 screen = connection.screen()
 root = screen.root
 window = root.create_window(x, y, width, height, 0, screen.root_depth, X.InputOutput, X.CopyFromParent,
@@ -43,14 +56,14 @@ window.set_wm_class(wm_class, wm_class)
 window.change_property(connection.intern_atom("_NET_WM_PID"), connection.intern_atom("CARDINAL"), 32, [os.getpid()])
 # Where it asks to be, as an application that remembers its own place does.
 window.set_wm_normal_hints(flags=1 | 4, x=x, y=y, width=width, height=height)
+initial = [connection.intern_atom(atom) for word in ("maximized", "fullscreen") if word in own for atom in STATES[word]]
+if initial:
+    window.change_property(connection.intern_atom("_NET_WM_STATE"), connection.intern_atom("ATOM"), 32, initial)
+if "bypass" in own:
+    window.change_property(connection.intern_atom("_NET_WM_BYPASS_COMPOSITOR"), connection.intern_atom("CARDINAL"), 32, [1])
 window.map()
 connection.sync()
 
-STATES = {
-    "maximized": ["_NET_WM_STATE_MAXIMIZED_VERT", "_NET_WM_STATE_MAXIMIZED_HORZ"],
-    "fullscreen": ["_NET_WM_STATE_FULLSCREEN"],
-    "hidden": ["_NET_WM_STATE_HIDDEN"],
-}
 ACTIONS = {"remove": 0, "add": 1, "toggle": 2}
 
 
@@ -66,11 +79,14 @@ def send(atom, data):
     connection.sync()
 
 
+def atom_names(owner, property_name):
+    """The atoms a property lists, by name, or None when it is not set."""
+    prop = owner.get_full_property(connection.intern_atom(property_name), X.AnyPropertyType)
+    return [connection.get_atom_name(atom) for atom in prop.value] if prop else None
+
+
 def state():
-    names = []
-    prop = window.get_full_property(connection.intern_atom("_NET_WM_STATE"), X.AnyPropertyType)
-    for atom in (prop.value if prop else []):
-        names.append(connection.get_atom_name(atom))
+    names = atom_names(window, "_NET_WM_STATE") or []
     geometry = window.get_geometry()
     origin = window.translate_coords(root, 0, 0)
     return {"net_wm_state": names, "geometry": [-origin.x, -origin.y, geometry.width, geometry.height]}
@@ -98,6 +114,13 @@ def command(line):
         answer({"ok": name})
     elif name == "state":
         answer(state())
+    elif name == "allowed":
+        answer({"allowed": atom_names(window, "_NET_WM_ALLOWED_ACTIONS")})
+    elif name == "supported":
+        answer({"supported": atom_names(root, "_NET_SUPPORTED") or []})
+    elif name == "workarea":
+        prop = root.get_full_property(connection.intern_atom("_NET_WORKAREA"), X.AnyPropertyType)
+        answer({"workarea": list(prop.value) if prop else None})
     elif name == "close":
         window.unmap()
         connection.sync()

@@ -87,6 +87,19 @@ end
 -- showed while one faded in or out, as a smeared wash through the panel.
 hl.layer_rule({ match = { namespace = "^(quickshell:dock)$" }, blur_popups = false })
 
+-- What an X11 application may do with its window from a title bar of its own,
+-- told to it as it is honoured here. Minimising and maximising are the
+-- shell's. A maximised window carries the tag that holds its size, and one
+-- pulled away is put back by the shell, so it is neither moved nor resized.
+-- Nothing tiles here, and a window that did would be the layout's to place.
+if hl.plugin.minimize and hl.plugin.minimize.allowed_actions then
+    hl.plugin.minimize.allowed_actions({
+        tiled = { "minimize", "maximize", "fullscreen", "close" },
+        floating = { "move", "resize", "minimize", "maximize", "fullscreen", "close" },
+        held = { "minimize", "maximize", "fullscreen", "close" },
+    })
+end
+
 -- With nothing tiled, the key that switches a window between floating and
 -- tiled maximises it instead and puts it back where it was, the way a double
 -- click on a title bar does on Windows.

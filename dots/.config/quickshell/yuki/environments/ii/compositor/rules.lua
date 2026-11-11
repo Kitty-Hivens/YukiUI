@@ -46,6 +46,19 @@ hl.on("window.fullscreen", function(w)
     end
 end)
 
+-- What an X11 application may do with its window from a title bar of its own,
+-- told to it as it is honoured here. A tiled window is placed by the layout,
+-- which takes no move or resize from the application. Minimising is nobody's
+-- here: the request reaches the shell, and this environment does not act on
+-- it. Maximising is Hyprland's own, and the window is told when it is.
+if hl.plugin.minimize and hl.plugin.minimize.allowed_actions then
+    hl.plugin.minimize.allowed_actions({
+        tiled = { "maximize", "fullscreen", "close" },
+        floating = { "move", "resize", "maximize", "fullscreen", "close" },
+        held = { "maximize", "fullscreen", "close" },
+    })
+end
+
 -- Touchpad gestures. Each environment has its own, since a gesture once made
 -- cannot be taken back short of a reload: three fingers move the window under
 -- them and a pinch makes it fullscreen, four switch workspaces sideways and
