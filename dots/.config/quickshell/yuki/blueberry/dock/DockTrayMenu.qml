@@ -45,6 +45,7 @@ ExPopup {
 
     padding: ExLooks.sizes.menuPadding
     surfaceRadius: ExLooks.radius.menu
+    menuKeys: keys
 
     onDismissRequested: root.open = false
 
@@ -69,6 +70,8 @@ ExPopup {
     }
 
     Column {
+        id: menuColumn
+
         width: Math.max(180, Math.min(360, Math.ceil(root.widest)))
 
         ExMenuItem {
@@ -129,5 +132,12 @@ ExPopup {
                 }
             }
         }
+    }
+
+    ExMenuKeys {
+        id: keys
+        menu: menuColumn
+        back: root.trail.length > 0 ? () => { root.trail = root.trail.slice(0, -1); } : null
+        onCloseRequested: root.open = false
     }
 }

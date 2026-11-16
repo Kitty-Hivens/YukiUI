@@ -31,6 +31,8 @@ PopupWindow {
     property real surfaceRadius: ExLooks.radius.panel
     /** How it moves: "menu" or "panel", as ExFlyoutSurface takes it. */
     property string motion: "menu"
+    /** The keys of a menu, which the dock hands its keyboard to while it is open. Null for a flyout that is no menu. */
+    property Item menuKeys: null
 
     default property alias content: holder.data
 
@@ -331,6 +333,9 @@ PopupWindow {
     // One flyout at a time across every dock. A dock shuts its own others
     // when one opens, and this does it for the docks of the other screens.
     onOpenChanged: {
+        // Opened anew, nothing is picked until a key is pressed.
+        if (root.open && root.menuKeys)
+            root.menuKeys.current = null;
         root.emptying = !root.open;
         if (!root.open && !root.drawn)
             root.countEmptyFrames();

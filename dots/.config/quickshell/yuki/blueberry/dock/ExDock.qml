@@ -529,8 +529,10 @@ Scope {
                 }
             }
 
-            // The keyboard, while quick settings has a password field up, and
-            // while the clipboard history is open.
+            // The keyboard, while quick settings has a password field up, while
+            // the clipboard history is open, and while a menu is open, for its
+            // arrows, Enter and Escape: opened with the mouse as much as with a
+            // key, as menus everywhere take the keys.
             //
             // A popup that takes no grab gets no keys of its own, and taking a
             // grab would let the compositor shut it on the first click outside.
@@ -541,7 +543,8 @@ Scope {
             // reported as one on the dock and the flyout never closed. What
             // arrives at the dock is handed to the field. A click into the
             // field gives the flyout's own window the keys directly.
-            readonly property Item keyTarget: quickSettings.keyTarget ?? clipboard.keyTarget
+            readonly property Item openMenuKeys: [dockMenu, statusMenu, quickLinks, appMenu, trayMenu, layoutMenu].find(menu => menu.open)?.menuKeys ?? null
+            readonly property Item keyTarget: quickSettings.keyTarget ?? clipboard.keyTarget ?? window.openMenuKeys
             property bool holdingKeys: false
             property bool seizingKeys: false
             WlrLayershell.keyboardFocus: !window.holdingKeys ? WlrKeyboardFocus.None

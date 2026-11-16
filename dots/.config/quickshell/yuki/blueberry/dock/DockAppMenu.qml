@@ -62,10 +62,13 @@ ExPopup {
 
     padding: ExLooks.sizes.menuPadding
     surfaceRadius: ExLooks.radius.menu
+    menuKeys: keys
 
     onDismissRequested: root.open = false
 
     Column {
+        id: menuColumn
+
         width: ExLooks.sizes.menuWidth
 
         // Kept by key, so the items stay as they are while the windows
@@ -103,5 +106,11 @@ ExPopup {
                 }
             }
         }
+    }
+
+    ExMenuKeys {
+        id: keys
+        menu: menuColumn
+        onCloseRequested: root.open = false
     }
 }

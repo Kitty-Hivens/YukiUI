@@ -69,10 +69,13 @@ ExPopup {
 
     padding: ExLooks.sizes.menuPadding
     surfaceRadius: ExLooks.radius.menu
+    menuKeys: keys
 
     onDismissRequested: root.open = false
 
     Column {
+        id: menuColumn
+
         width: ExLooks.sizes.menuWidth
 
         Repeater {
@@ -107,5 +110,11 @@ ExPopup {
                 }
             }
         }
+    }
+
+    ExMenuKeys {
+        id: keys
+        menu: menuColumn
+        onCloseRequested: root.open = false
     }
 }

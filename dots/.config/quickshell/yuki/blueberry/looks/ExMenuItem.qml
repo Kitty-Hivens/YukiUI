@@ -22,6 +22,22 @@ AbstractButton {
 
     readonly property color ink: destructive ? ExLooks.colors.destructive : ExLooks.colors.text
 
+    /**
+     * The keys of the menu it is in, once they are used, see ExMenuKeys. From
+     * then on it lights up as the entry picked, which the pointer picks too,
+     * rather than under the pointer alone: lit both ways, a menu showed two.
+     */
+    property var navigator: null
+    readonly property bool highlighted: root.navigator !== null && root.navigator.current === root
+    onHoveredChanged: {
+        if (!root.navigator)
+            return;
+        if (root.hovered)
+            root.navigator.current = root;
+        else if (root.navigator.current === root)
+            root.navigator.current = null;
+    }
+
     hoverEnabled: true
     width: parent?.width ?? implicitWidth
     implicitHeight: ExLooks.sizes.menuItem
@@ -34,7 +50,7 @@ AbstractButton {
 
         ExStateLayer {
             ink: root.ink
-            hovered: root.hovered
+            hovered: root.navigator ? root.highlighted : root.hovered
             pressed: root.down
             previewState: root.previewState
         }

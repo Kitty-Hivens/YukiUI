@@ -14,10 +14,13 @@ ExPopup {
 
     padding: ExLooks.sizes.menuPadding
     surfaceRadius: ExLooks.radius.menu
+    menuKeys: keys
 
     onDismissRequested: root.open = false
 
     Column {
+        id: menuColumn
+
         width: ExLooks.sizes.menuWidth
 
         ExMenuItem {
@@ -41,5 +44,11 @@ ExPopup {
                 Surfaces.open("settings", "dock");
             }
         }
+    }
+
+    ExMenuKeys {
+        id: keys
+        menu: menuColumn
+        onCloseRequested: root.open = false
     }
 }
