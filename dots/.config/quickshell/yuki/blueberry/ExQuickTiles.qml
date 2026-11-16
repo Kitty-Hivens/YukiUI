@@ -83,8 +83,10 @@ Singleton {
 
     /**
      * What a tile shows, read live from the system: glyph, text, subtitle,
-     * whether it is on, whether a page stands behind it, and whether a click
-     * closes quick settings first, for a tile that acts on the screen.
+     * whether it is on, whether a page stands behind it, whether a click
+     * closes quick settings first, for a tile that acts on the screen, and
+     * the page of the settings a right click on it opens, for a tile whose
+     * switch is only part of what can be set.
      */
     function info(key: string): var {
         if (key === "wifi") {
@@ -129,7 +131,7 @@ Singleton {
         if (key === "keepAwake")
             return { glyph: "coffee", text: Translation.tr("Keep awake"), subtitle: root.onOff(Idle.inhibit), checked: Idle.inhibit };
         if (key === "gameMode")
-            return { glyph: "sports_esports", text: root.gameModeModel.name, subtitle: root.gameModeModel.statusText, checked: root.gameModeModel.toggled };
+            return { glyph: "sports_esports", text: root.gameModeModel.name, subtitle: root.gameModeModel.statusText, checked: root.gameModeModel.toggled, settings: "gamemode" };
         if (key === "easyEffects")
             return { glyph: "graphic_eq", text: root.easyEffectsModel.name, subtitle: root.onOff(root.easyEffectsModel.toggled), checked: root.easyEffectsModel.toggled };
         if (key === "mic")

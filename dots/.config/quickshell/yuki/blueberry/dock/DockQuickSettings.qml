@@ -300,6 +300,10 @@ ExPopup {
                                     hasMenu: info.hasPage ?? false
                                     onClicked: root.runTile(modelData)
                                     onMenuRequested: root.openPage(modelData)
+                                    onRightClicked: {
+                                        if (info.settings)
+                                            root.openSettings(info.settings);
+                                    }
                                 }
                             }
                         }

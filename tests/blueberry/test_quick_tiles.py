@@ -1,4 +1,5 @@
-"""Arranging the tiles of quick settings: dragged into order, unpinned and added.
+"""Arranging the tiles of quick settings: dragged into order, unpinned and added,
+and a right click on a tile taking to its settings.
 
 The tiles are placed by hand while they are arranged: a layout fed a new order
 made every tile anew as the drag went, the dragged one and its drag with it.
@@ -20,6 +21,7 @@ SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
+import qs.core.services
 import qs.blueberry
 import qs.blueberry.dock
 import qs.blueberry.looks
@@ -40,8 +42,47 @@ ShellRoot {
             Config.options.blueberry.dock.edge = "bottom";
     }
     ExDock {}
+    // What was asked to open, as "surface page".
+    property string opened: ""
+    Connections {
+        target: Surfaces
+        function onRequested(surface, page) {
+            probe.opened = `${surface} ${page}`;
+        }
+    }
+    id: probe
     IpcHandler {
         target: "tilesProbe"
+        function opened(): string {
+            return probe.opened;
+        }
+        function putFirst(key: string): void {
+            ExQuickTiles.setPinned([key, ...ExQuickTiles.pinned.filter(other => other !== key)]);
+        }
+        // The middle of a tile, from the top left corner of the panel's plane.
+        function tileCentre(text: string): string {
+            const find = (item, has) => {
+                if (!item)
+                    return null;
+                if (has(item))
+                    return item;
+                for (const child of item.children ?? []) {
+                    const found = find(child, has);
+                    if (found)
+                        return found;
+                }
+                return null;
+            };
+            const plane = find(ExStates.openPopup?.contentItem, item => item.entryTravel !== undefined);
+            const tile = find(plane, item => item.menuRequested !== undefined && item.rightClicked !== undefined && item.text === text);
+            if (!plane || !tile)
+                return "";
+            const at = tile.mapToItem(plane, tile.width / 2, tile.height / 2);
+            return JSON.stringify({ x: at.x, y: at.y });
+        }
+        function gameModeName(): string {
+            return ExQuickTiles.info("gameMode").text;
+        }
         function edit(): void {
             ExStates.openPopup.startEditing();
         }
@@ -217,4 +258,22 @@ def test_tiles_are_dragged_in_from_the_rest_and_out_to_it(bench, desk, dock, tmp
     time.sleep(1)
     wait_until(lambda: coming not in json_call(dock, "pinned"), what=f"{coming} to be taken out")
     assert json_call(dock, "pinned") == before
+    assert not dock.errors()
+
+
+def test_a_right_click_on_the_game_mode_tile_opens_its_settings(bench, desk, dock, tmp_path):
+    # Its switch is a small part of what game mode can be set to do, and
+    # quick settings had no way to the rest.
+    dock.call("tilesProbe", "putFirst", "gameMode")
+    dock.call("dock", "quickSettings")
+    time.sleep(1.5)
+    shot = tmp_path / "open.png"
+    subprocess.run(["grim", "-o", OUTPUT, str(shot)], env=bench.environment(), check=True)
+    left, top = panel_corner(shot)
+    name = dock.call("tilesProbe", "gameModeName")
+    centre = wait_until(lambda: dock.call("tilesProbe", "tileCentre", name), what="the game mode tile")
+    centre = json.loads(centre)
+    pointer = desk.pointer()
+    pointer.click(round(left + centre["x"]), round(top + centre["y"]), button="right")
+    wait_until(lambda: dock.call("tilesProbe", "opened") == "settings gamemode", what="its settings page to be asked for")
     assert not dock.errors()

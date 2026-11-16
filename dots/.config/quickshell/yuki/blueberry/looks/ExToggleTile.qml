@@ -13,6 +13,7 @@ AbstractButton {
 
     ExPrimaryOnly {
         z: 1
+        onRightClicked: root.rightClicked()
     }
 
     property string glyph: ""
@@ -23,6 +24,8 @@ AbstractButton {
     property color restFill: ExLooks.colors.control
 
     signal menuRequested
+    /** A right click on the switching part, which a tile may answer with its settings. */
+    signal rightClicked
 
     readonly property color fill: checked ? ExLooks.colors.accent : root.restFill
     readonly property color ink: checked ? ExLooks.colors.accentInk : ExLooks.colors.controlInk
