@@ -69,7 +69,7 @@ PanelWindow {
     readonly property real falsePositivePreventionRatio: 0.5
 
     // Screen & interaction vars
-    readonly property HyprlandMonitor hyprlandMonitor: Hyprland.monitorFor(screen)
+    readonly property HyprlandMonitor hyprlandMonitor: HyprlandData.monitorFor(screen)
     readonly property real monitorScale: hyprlandMonitor.scale
     readonly property real monitorOffsetX: hyprlandMonitor.x
     readonly property real monitorOffsetY: hyprlandMonitor.y

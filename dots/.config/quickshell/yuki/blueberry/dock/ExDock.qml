@@ -400,8 +400,8 @@ Scope {
             // towards the middle of the screen.
             readonly property real shadowRoom: detached ? 16 : 0
             readonly property real thickness: ExLooks.dock.thickness + gap + shadowRoom
-            readonly property int workspaceId: Hyprland.monitorFor(window.screen)?.activeWorkspace?.id ?? -1
-            readonly property int monitorId: Hyprland.monitorFor(window.screen)?.id ?? -1
+            readonly property int workspaceId: HyprlandData.monitorFor(window.screen)?.activeWorkspace?.id ?? -1
+            readonly property int monitorId: HyprlandData.monitorFor(window.screen)?.id ?? -1
 
             /**
              * Whether a window has a button on this dock: one on the workspace

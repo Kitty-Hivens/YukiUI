@@ -44,6 +44,21 @@ Singleton {
         return root.windowByAddress[address];
     }
 
+    /**
+     * The Hyprland monitor of a screen, or null while Quickshell has none for it.
+     *
+     * Hyprland.monitorFor() is a call, not a property, so a binding made of it
+     * is evaluated again only when the screen changes. A window made for a
+     * screen that has just appeared asks before Quickshell has its monitor,
+     * gets null, and keeps it: after a monitor blinked off and on, the dock on
+     * it showed no applications at all. Looked up in the list, the binding is
+     * evaluated again whenever a monitor comes or goes.
+     */
+    function monitorFor(screen) {
+        const name = screen?.name ?? "";
+        return Hyprland.monitors.values.find(monitor => monitor.name === name) ?? null;
+    }
+
     // Internals
 
     function updateWindowList() {

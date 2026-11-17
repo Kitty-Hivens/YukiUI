@@ -11,7 +11,7 @@ MouseArea {
 
     required property var barScreen
     // Windows shows the windows of the desktop in use, and so does this.
-    readonly property int workspaceId: Hyprland.monitorFor(root.barScreen)?.activeWorkspace?.id ?? -1
+    readonly property int workspaceId: HyprlandData.monitorFor(root.barScreen)?.activeWorkspace?.id ?? -1
 
     Layout.fillHeight: true
     implicitHeight: appRow.implicitHeight

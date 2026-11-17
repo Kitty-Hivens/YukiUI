@@ -35,7 +35,7 @@ Scope {
             sourceComponent: PanelWindow {
                 id: root
                 property string searchingText: ""
-                readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.screen)
+                readonly property HyprlandMonitor monitor: HyprlandData.monitorFor(root.screen)
                 property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
                 screen: panelLoader.modelData
 

@@ -16,7 +16,7 @@ import Quickshell.Hyprland
 Item {
     id: root
     required property var screen
-    readonly property HyprlandMonitor monitor: Hyprland.monitorFor(screen)
+    readonly property HyprlandMonitor monitor: HyprlandData.monitorFor(screen)
     readonly property var toplevels: ToplevelManager.toplevels
     // Clamp to avoid lock-screen temp workspace (2147483647 - N) leaking into UI
     readonly property int effectiveActiveWorkspaceId: Math.max(1, Math.min(100, monitor?.activeWorkspace?.id ?? 1))

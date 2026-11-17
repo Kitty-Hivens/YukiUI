@@ -21,7 +21,7 @@ PanelWindow {
     /** The tool, whose state every screen shares. */
     required property var snip
 
-    readonly property HyprlandMonitor monitor: Hyprland.monitorFor(window.modelData)
+    readonly property HyprlandMonitor monitor: HyprlandData.monitorFor(window.modelData)
     readonly property real monitorScale: window.monitor?.scale ?? 1
     /** Where this screen starts in the layout, which windows are placed in. */
     readonly property int originX: window.monitor?.x ?? 0

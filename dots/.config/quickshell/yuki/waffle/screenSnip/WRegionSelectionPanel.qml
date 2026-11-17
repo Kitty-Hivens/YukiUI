@@ -63,7 +63,7 @@ PanelWindow {
     }
 
     // Hyprland stuff
-    readonly property HyprlandMonitor hyprlandMonitor: Hyprland.monitorFor(screen)
+    readonly property HyprlandMonitor hyprlandMonitor: HyprlandData.monitorFor(screen)
     readonly property real monitorScale: hyprlandMonitor.scale
     /// Where this screen starts in the layout, which is what separates the
     /// coordinates Hyprland reports from the ones this panel works in.
