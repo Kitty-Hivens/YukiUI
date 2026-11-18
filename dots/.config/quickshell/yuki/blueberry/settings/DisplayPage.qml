@@ -48,35 +48,25 @@ ColumnLayout {
     property bool nightLight: false
     property bool shellAnswered: false
 
-    readonly property var scales: [1, 1.25, 1.5, 1.75, 2]
-
     /**
-     * The scale Hyprland runs a mode at when asked for one: the scale itself
-     * when it leaves the screen a whole number of points across and down, and
-     * otherwise the nearest that does, looked for as Hyprland looks, in steps
-     * of 1/120, above first. Offered as asked, 175% on a 1080p screen was run
-     * at another scale without a word, and the layout worked out from the one
-     * asked for no longer met its neighbours.
+     * The scales a mode can run at, from 100% to 200%: those that leave the
+     * screen a whole number of points across and down, in the steps of 1/120
+     * Hyprland works in. It runs no other, and asked for one it takes another
+     * without a word. A fixed list of 100, 125, 150, 175 and 200 was shown
+     * mended to the nearest that fit, so 1440p offered 160% and 167% where
+     * 150% and 175% had been asked for, and not 133%, the one nearest 150%.
      */
-    function cleanScale(width: int, height: int, scale: real): real {
-        const fits = candidate => {
-            const across = width / candidate;
-            const down = height / candidate;
-            return across === Math.round(across) && down === Math.round(down);
-        };
-        if (width <= 0 || height <= 0 || fits(scale))
-            return scale;
-        const steps = Math.round(scale * 120);
-        if (fits(steps / 120))
-            return steps / 120;
-        for (let i = 1; i < 90; i++) {
-            if (fits((steps + i) / 120))
-                return (steps + i) / 120;
-            if (fits((steps - i) / 120))
-                return (steps - i) / 120;
+    function cleanScales(width: int, height: int): var {
+        if (width <= 0 || height <= 0)
+            return [1];
+        const found = [];
+        for (let step = 120; step <= 240; step++) {
+            const across = width * 120 / step;
+            const down = height * 120 / step;
+            if (Math.abs(across - Math.round(across)) < 1e-6 && Math.abs(down - Math.round(down)) < 1e-6)
+                found.push(step / 120);
         }
-        // Hyprland gives up and uses its own default then. Nothing better to offer.
-        return scale;
+        return found;
     }
     readonly property var orientations: [
         { value: 0, text: Translation.tr("Landscape") },
@@ -311,39 +301,25 @@ ColumnLayout {
         onMoved: (name, x, y) => root.patch(name, { x: x, y: y })
     }
 
-    // Arranging and tuning HDR content wait here to be applied as a whole.
-    RowLayout {
-        Layout.fillWidth: true
-        visible: root.dirty || root.problem.length > 0
-        spacing: ExLooks.spacing.s
+    // Arranging and tuning HDR content wait to be applied as a whole, on a bar
+    // over the foot of the page.
+    SettingsCommitBar {
+        id: commitBar
 
-        ExGlyph {
-            visible: root.problem.length > 0
-            text: "error"
-            size: 18
-            color: ExLooks.colors.destructive
-        }
-        ExText {
-            Layout.fillWidth: true
-            text: root.problem.length > 0 ? root.problem : Translation.tr("Unapplied changes")
-            color: root.problem.length > 0 ? ExLooks.colors.destructive : ExLooks.colors.textDim
-            wrapMode: Text.Wrap
-        }
-        ExButton {
-            visible: root.dirty
-            kind: "control"
-            text: Translation.tr("Discard")
-            onClicked: {
-                Displays.discardSdrPreview();
-                root.resetDraft();
-            }
-        }
-        ExButton {
-            visible: root.dirty
-            kind: "accent"
-            enabled: root.problem.length === 0 && !root.locked
-            text: Displays.busy ? Translation.tr("Applying") : Translation.tr("Apply")
-            onClicked: Displays.apply(root.draft)
+        parent: root.settings?.pageOverlay ?? root
+        shown: root.dirty || root.problem.length > 0
+        text: Translation.tr("Unapplied changes")
+        problem: root.problem
+        pending: root.dirty
+        canApply: !Displays.awaitingConfirmation && Displays.state !== Displays.stateReverting
+        busy: Displays.busy
+        applyText: Translation.tr("Apply")
+        busyText: Translation.tr("Applying")
+        discardText: Translation.tr("Discard")
+        onApplied: Displays.apply(root.draft)
+        onDiscarded: {
+            Displays.discardSdrPreview();
+            root.resetDraft();
         }
     }
 
@@ -520,12 +496,17 @@ ColumnLayout {
             visible: (root.selected?.cm ?? "srgb") !== "srgb"
             glyph: "exposure"
             text: Translation.tr("White level of ordinary content")
-            description: `${Math.round(root.selected?.sdrMaxLuminance ?? 80)} nit`
+            description: Translation.tr("%1 nit").arg(Math.round(root.selected?.sdrMaxLuminance ?? 80))
 
             ExSlider {
                 implicitWidth: 240
                 from: 50
-                to: Math.max(200, Displays.peakLuminance(root.selectedName))
+                // The panel's peak is read from its EDID after the page is up.
+                // A slider clamps a value outside its range and keeps the
+                // clamped one, so 445 nit shown against the 200 standing in
+                // until then stayed at 200 once the range had grown, and the
+                // knob sat far left of the value written beside it.
+                to: Math.max(200, Displays.peakLuminance(root.selectedName), root.selected?.sdrMaxLuminance ?? 0)
                 stepSize: 5
                 value: root.selected?.sdrMaxLuminance ?? 80
                 onMoved: root.tuneSdr({ sdrMaxLuminance: Math.round(value) })
@@ -572,17 +553,18 @@ ColumnLayout {
             enabled: root.selected?.enabled ?? false
             glyph: "zoom_in"
             text: Translation.tr("Scale")
+            description: Translation.tr("Only scales that divide the screen into whole points")
 
             SettingsDropdown {
+                // The compositor reports a scale rounded, 1.33333 for 4/3, so
+                // the one in use is matched near enough rather than exactly.
+                readonly property real current: root.selected?.scale ?? 1
                 readonly property var values: {
-                    const width = root.selected?.width ?? 0;
-                    const height = root.selected?.height ?? 0;
-                    const offered = [...new Set(root.scales.map(scale => root.cleanScale(width, height, scale)))];
-                    const current = root.selected?.scale ?? 1;
-                    return offered.includes(current) ? offered : [...offered, current].sort((a, b) => a - b);
+                    const offered = root.cleanScales(root.selected?.width ?? 0, root.selected?.height ?? 0);
+                    return offered.some(scale => Math.abs(scale - current) < 0.001) ? offered : [...offered, current].sort((a, b) => a - b);
                 }
                 model: values.map(scale => `${Math.round(scale * 100)}%`)
-                currentIndex: values.indexOf(root.selected?.scale ?? 1)
+                currentIndex: values.findIndex(scale => Math.abs(scale - current) < 0.001)
                 onActivated: index => root.change({ scale: values[index] })
             }
         }
@@ -690,6 +672,13 @@ ColumnLayout {
             text: Translation.tr("Display information")
             description: `${root.selectedName}  ·  ${root.selectedOutput?.description ?? ""}`
         }
+    }
+
+    // Room at the foot for the bar over it, kept whether the bar is up or
+    // not: made only while it is, the page grew and shrank under the reader.
+    Item {
+        Layout.fillWidth: true
+        Layout.preferredHeight: commitBar.footprint - ExLooks.settings.groupGap
     }
 
     // Asked over the whole window, and answered with Escape as a refusal:

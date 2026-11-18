@@ -546,33 +546,8 @@ Item {
                     y: root.arrivalY
                 }
 
-                // The section over a page's title, which goes up to it.
-                AbstractButton {
-                    id: crumb
-
-                    ExPrimaryOnly {
-                        z: 1
-                    }
-
-                    readonly property bool leads: root.page !== null && !root.shownSearching
-
-                    visible: crumb.leads
-                    hoverEnabled: true
-                    onClicked: root.open(root.categoryKey)
-
-                    ExFocusRing {
-                        cornerRadius: 2
-                    }
-
-                    background: null
-                    contentItem: ExText {
-                        text: root.category?.name ?? ""
-                        font.pixelSize: root.metrics.small
-                        font.weight: ExLooks.font.weightTitle
-                        font.underline: crumb.hovered
-                        color: ExLooks.colors.accentText
-                    }
-                }
+                // No path over the title: the section is marked on the rail
+                // already, and back leads up to it.
                 // Back, in front of the title it leaves, as tall as the title.
                 RowLayout {
                     Layout.fillWidth: true
@@ -586,7 +561,7 @@ Item {
                         }
 
                         visible: root.historyIndex > 0
-                        // Its glyph's edge on the column's edge, under the path.
+                        // Its glyph's edge on the column's edge.
                         Layout.leftMargin: -6
                         implicitWidth: 36
                         implicitHeight: 36
@@ -693,7 +668,22 @@ Item {
                 }
             }
         }
+
+        // What a page keeps over itself rather than in its flow, a bar of
+        // changes waiting to be applied say: the page's column, over the
+        // part of the pane that scrolls.
+        Item {
+            id: overlayLayer
+
+            x: pane.columnX
+            y: scroller.y
+            width: pane.column
+            height: scroller.height
+        }
     }
+
+    /** Where a page puts what stands over it, see overlayLayer. */
+    readonly property Item pageOverlay: overlayLayer
 
     ExNavigationButtons {
         z: 1

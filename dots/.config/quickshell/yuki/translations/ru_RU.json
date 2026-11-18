@@ -822,6 +822,8 @@
   "Backlight": "Подсветка",
   "Mapping of ordinary content": "Отображение обычного контента",
   "White level": "Уровень белого",
+  "%1 nit": "%1 нит",
+  "Only scales that divide the screen into whole points": "Только масштабы, при которых экран делится на целые точки",
   "Monitor": "Монитор",
   "Read from the monitor itself. These are its hardware controls, applied over DDC and confirmed by reading them back.": "Считано с самого монитора. Это его аппаратные регуляторы, применяются по DDC и подтверждаются обратным чтением.",
   "Contrast": "Контраст",

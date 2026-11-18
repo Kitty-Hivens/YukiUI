@@ -2,11 +2,13 @@
 
 Hyprland runs a scale only when it leaves the screen a whole number of points
 across and down, and otherwise picks the nearest one that does, without a
-word. The page offered 175% on a 1080p screen, which ran at another scale.
-It now works out what Hyprland will pick, and this checks it against
-Hyprland itself, mode by mode.
+word. The page offered 175% on a 1080p screen, which ran at another scale, and
+later offered a fixed list mended to fit, which on 1440p showed 160% and 167%
+and left out 133%, the one nearest the 150% that cannot be had there. It now
+offers the scales that fit, and this checks each against Hyprland itself.
 """
 
+import json
 import time
 
 import pytest
@@ -31,8 +33,8 @@ ShellRoot {
     }
     IpcHandler {
         target: "displayPageProbe"
-        function cleanScale(width: int, height: int, scale: real): string {
-            return String(page.cleanScale(width, height, scale));
+        function cleanScales(width: int, height: int): string {
+            return JSON.stringify(page.cleanScales(width, height));
         }
     }
 }
@@ -41,7 +43,7 @@ ShellRoot {
 
 @pytest.fixture
 def page(bench):
-    shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("displayPageProbe", "cleanScale", "1920", "1080", "1"))
+    shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("displayPageProbe", "cleanScales", "1920", "1080"))
     try:
         shell.start()
         yield shell
@@ -67,10 +69,26 @@ def settled_scale(bench, width) -> float:
     return readings[-1][1]
 
 
+def offered(page, width, height) -> list[float]:
+    return json.loads(page.call("displayPageProbe", "cleanScales", str(width), str(height)))
+
+
+def near(scales, wanted) -> bool:
+    return any(abs(scale - wanted) < 1e-6 for scale in scales)
+
+
+def test_1440p_offers_133_rather_than_150(page):
+    scales = offered(page, 2560, 1440)
+    assert near(scales, 4 / 3) and not near(scales, 1.5), scales
+    assert near(offered(page, 1920, 1080), 1.5)
+
+
 @pytest.mark.parametrize("width, height", [(1920, 1080), (2560, 1440)])
 def test_offered_scales_are_the_ones_hyprland_runs(bench, page, width, height):
-    for scale in (1.25, 1.5, 1.75, 2):
-        bench.eval(f'hl.monitor({{ output = "{OUTPUT}", mode = "{width}x{height}@60", position = "0x0", scale = {scale} }})')
+    scales = offered(page, width, height)
+    assert scales[0] == 1 and scales[-1] == 2, scales
+    for scale in scales:
+        bench.eval(f'hl.monitor({{ output = "{OUTPUT}", mode = "{width}x{height}@60", position = "0x0", scale = {scale!r} }})')
         ran = settled_scale(bench, width)
-        offered = float(page.call("displayPageProbe", "cleanScale", str(width), str(height), str(scale)))
-        assert abs(offered - ran) < 1e-6, f"{width}x{height} at {scale}: offered {offered}, Hyprland runs {ran}"
+        # Hyprland reports a scale to five places.
+        assert abs(scale - ran) < 1e-4, f"{width}x{height}: offered {scale}, Hyprland runs {ran}"
