@@ -83,6 +83,11 @@
 // server starts later. The value is Hyprland's own reckoning, written again
 // whenever the layers on a monitor are arranged.
 //
+// A fullscreen window focused again has the windows of its workspace that
+// were let over it, by being focused while it was fullscreen, put back under
+// it. Hyprland lets such a window over for good, so a fullscreen terminal
+// could not be brought back over a browser, Alt+Tab included.
+//
 // What an X11 window says of itself before it is shown is honoured as it
 // opens: maximised or fullscreen in its own _NET_WM_STATE is asked for the
 // same way as a shown window asks, which Hyprland otherwise ignores, and a
@@ -121,6 +126,8 @@
 #include <hyprland/src/desktop/rule/windowRule/WindowRule.hpp>
 #include <hyprland/src/desktop/view/window/Window.hpp>
 #include <hyprland/src/desktop/view/window/WindowPresentation.hpp>
+#include <hyprland/src/desktop/view/window/WindowFullscreenPolicy.hpp>
+#include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/desktop/rule/Rule.hpp>
 #include <hyprland/src/layout/supplementary/DragController.hpp>
 #include <hyprland/src/layout/target/Target.hpp>
@@ -341,7 +348,7 @@ namespace {
     std::optional<SActionPolicy> policy;
     /** Said again by the rules being read now, during a reload. */
     bool                         saidThisReload = false;
-    CHyprSignalListener          floatingListener, fullscreenListener, rulesListener, preReloadListener, reloadedListener;
+    CHyprSignalListener          floatingListener, fullscreenListener, rulesListener, preReloadListener, reloadedListener, activeListener;
     CFunctionHook*               xwaylandReadyHook = nullptr;
     CFunctionHook*               arrangeLayersHook = nullptr;
     /** Windows told they are maximised because Hyprland maximised them, to be told otherwise when it no longer does. */
@@ -656,6 +663,30 @@ namespace {
         writeWorkArea();
     }
 
+    // A window focused over a fullscreen one on its workspace is let draw over
+    // it, and stays so: Hyprland takes that back only as a window is made
+    // fullscreen again, not as the fullscreen window is focused again. Once a
+    // browser had been brought up over a fullscreen terminal, nothing brought
+    // the terminal back over the browser, Alt+Tab included. Focused again, the
+    // fullscreen window has the others put back under it, as they were when
+    // it went fullscreen, pinned ones excepted, their order left as it was.
+    void coverWithFullscreen(const PHLWINDOW& window) {
+        if (!window || !window->m_workspace)
+            return;
+        const auto fullscreen = Fullscreen::controller()->getFullscreenWindow(window->m_workspace);
+        if (fullscreen != window || Fullscreen::controller()->layoutManagedFS(fullscreen))
+            return;
+        for (const auto& other : Desktop::windowState()->windows()) {
+            if (!other || other == window || other->m_workspace != window->m_workspace || (other->m_state & Desktop::View::WINDOW_STATE_PINNED) ||
+                !other->fullscreenPolicy().allowedOverFullscreen())
+                continue;
+            other->fullscreenPolicy().setAllowedOverFullscreen(false);
+            other->updateFullscreenInputState();
+            *other->presentation().alpha(Desktop::View::WINDOW_ALPHA_FULLSCREEN) = 0.F;
+            g_pHyprRenderer->damageWindow(other);
+        }
+    }
+
     int setWindowState(lua_State* state) {
         const std::string address   = luaL_checkstring(state, 1);
         const bool        maximized = lua_toboolean(state, 2);
@@ -746,6 +777,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         honourOwnState(window);
         refresh(window);
     });
+    activeListener     = Event::bus()->m_events.window.active.listen([](const PHLWINDOW& window, Desktop::eFocusReason) { coverWithFullscreen(window); });
     floatingListener   = Event::bus()->m_events.window.floating.listen([](const PHLWINDOW& window) { refresh(window); });
     fullscreenListener = Event::bus()->m_events.window.fullscreen.listen([](const PHLWINDOW& window) { refresh(window); });
     // A tag given or taken, the fixed size tag among them.
@@ -821,7 +853,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the layer arrangement, X11 applications may see a stale work area", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
     writeWorkArea();
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.9"};
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.10"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
@@ -829,6 +861,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     openListener.reset();
     floatingListener.reset();
     fullscreenListener.reset();
+    activeListener.reset();
     rulesListener.reset();
     preReloadListener.reset();
     reloadedListener.reset();
