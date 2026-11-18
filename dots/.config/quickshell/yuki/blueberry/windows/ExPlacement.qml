@@ -468,10 +468,18 @@ Scope {
 
     function answer(job, clients, monitors): string {
         const client = clients.find(candidate => candidate.address === job.address);
+        if (!client)
+            return "";
+        // A minimised window waits on a special workspace of its own. It is
+        // learnt there as the shell starts, left where it stands, and fitted
+        // again as it comes back. Passed over, it was lost to the shell and
+        // the compositor alike, and stayed the size of a screen it was
+        // maximised on before.
+        const parked = (client.workspace.name ?? "").startsWith(Minimize.prefix) && (job.wanted === "adopt" || job.stay === true);
         // A window floated in the same batch, as one taken over is, is still
         // tiled in the list read before it. A special workspace has no id at
         // all since Hyprland 0.57, and a negative one before.
-        if (!client || (!client.floating && !job.floatedNow) || !(client.workspace.id >= 1) || client.fullscreen !== 0)
+        if ((!client.floating && !job.floatedNow) || !(client.workspace.id >= 1 || parked) || client.fullscreen !== 0)
             return "";
         const monitor = monitors.find(candidate => candidate.id === client.monitor);
         if (!monitor)
@@ -584,6 +592,13 @@ Scope {
                 delete next[`0x${event.data}`];
                 root.placed = next;
                 delete root.decided[`0x${event.data}`];
+            } else if (event.name === "movewindowv2") {
+                // Back from being minimised, or moved to another workspace: it
+                // is fitted to where it is now, in case the screen changed
+                // meanwhile. One that fits is not touched.
+                const [address, workspace] = event.data.split(",");
+                if (Number(workspace) >= 1 && root.placed[`0x${address}`])
+                    root.request(`0x${address}`, "refit");
             } else if (event.name === "monitoradded" || event.name === "monitorremoved" || event.name === "configreloaded") {
                 refitLater.restart();
             } else if (event.name === "openlayer" || event.name === "closelayer") {
@@ -650,6 +665,22 @@ Scope {
     Timer {
         id: refitLater
         interval: 600
+        onTriggered: root.refit()
+    }
+
+    /**
+     * Where each screen stands and how large it is. A mode or a scale changed
+     * on a screen that stays connected, from the display settings say, is told
+     * on Hyprland's event socket by nothing at all, measured on the bench, so
+     * the windows were fitted again only once the settings were kept and the
+     * config reloaded, and stayed as large as the old mode until then. The
+     * screen itself says it has changed, and by then the compositor has.
+     */
+    readonly property string screensLaidOut: Quickshell.screens.map(screen => `${screen.name}:${screen.x},${screen.y},${screen.width}x${screen.height}`).join(" ")
+    onScreensLaidOutChanged: screensLater.restart()
+    Timer {
+        id: screensLater
+        interval: 100
         onTriggered: root.refit()
     }
     Timer {
