@@ -24,8 +24,8 @@ Syntax:
   $0 <subcommand> [OPTIONS]...
 
 Subcommands:
-  install        (Re)Install/Update YukiUI.
-                 Note: To update to the latest, manually run \"git stash && git pull\" first.
+  install        (Re)Install YukiUI.
+  update         Update YukiUI and the system: pull, upgrade, rebuild, copy.
   install-deps   Run the install step \"1. Install dependencies\"
   install-setups Run the install step \"2. Setup for permissions/services etc\"
   install-files  Run the install step \"3. Copying config files\"
@@ -50,7 +50,7 @@ case $1 in
   # Global help
   ""|help|--help|-h)showhelp_global;exit;;
   # Correct subcommand
-  install|uninstall|exp-update|exp-merge|resetfirstrun|checkdeps|virtmon)
+  install|update|uninstall|exp-update|exp-merge|resetfirstrun|checkdeps|virtmon)
     SUBCMD_NAME=$1
     SUBCMD_DIR=./sdata/subcmd-$1
     shift;;

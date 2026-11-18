@@ -26,7 +26,8 @@ ColumnLayout {
     readonly property var metrics: ExLooks.settings
     readonly property int columns: root.width >= 720 ? 3 : 2
     readonly property var screenBrightness: Brightness.monitors[0] ?? null
-    readonly property bool updatesPending: Updates.available && Updates.count > 0
+    readonly property bool packagesPending: Updates.available && Updates.count > 0
+    readonly property bool updatesPending: root.packagesPending || Updates.shellPending
 
     DiskUsage {
         id: usage
@@ -105,8 +106,10 @@ ColumnLayout {
             GlassPill {
                 visible: root.updatesPending
                 glyph: "system_update_alt"
-                text: Translation.tr("%1 updates").arg(Updates.count)
-                onClicked: Quickshell.execDetached(["bash", "-c", Config.options.apps.update])
+                text: Updates.shellPending && !root.packagesPending ? Translation.tr("YukiUI update")
+                    : Translation.tr("%1 updates").arg(Updates.count + (Updates.shellPending ? 1 : 0))
+                leads: true
+                onClicked: root.settings.open("updates")
             }
             GlassPill {
                 glyph: "wallpaper"
@@ -334,7 +337,9 @@ ColumnLayout {
             text: Translation.tr("Updates")
             leads: true
             onClicked: root.settings.open("updates")
-            description: Updates.checking ? Translation.tr("Checking...")
+            description: Updates.checking || Updates.shellChecking ? Translation.tr("Checking...")
+                : Updates.shellPending && root.packagesPending ? Translation.tr("YukiUI and %1 packages can be updated").arg(Updates.count)
+                : Updates.shellPending ? Translation.tr("A new version of YukiUI is out")
                 : Updates.failed ? Translation.tr("Could not check")
                 : !Updates.available || Updates.lastChecked === null ? Translation.tr("Not checked yet")
                 : Updates.count > 0 ? Translation.tr("%1 packages can be updated").arg(Updates.count)

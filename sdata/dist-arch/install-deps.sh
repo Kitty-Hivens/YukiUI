@@ -69,36 +69,9 @@ fi
 showfun implicitize_old_dependencies
 v implicitize_old_dependencies
 
-# https://github.com/end-4/dots-hyprland/issues/581
-# yay -Bi is kinda hit or miss, instead cd into the relevant directory and manually source and install deps
-install-local-pkgbuild() {
-  local location=$1
-  local installflags=$2
-
-  x pushd $location
-
-  source ./PKGBUILD
-  x yay -S --sudoloop $installflags --asdeps "${depends[@]}"
-  # man makepkg:
-  # -A, --ignorearch: Ignore a missing or incomplete arch field in the build script.
-  # -s, --syncdeps: Install missing dependencies using pacman. When build-time or run-time dependencies are not found, pacman will try to resolve them.
-  # -f, --force: build a package even if it already exists in the PKGDEST
-  # -i, --install: Install or upgrade the package after a successful build using pacman(8).
-  # In https://github.com/end-4/dots-hyprland/issues/823#issuecomment-3394774645 it's suggested to use `sudo pacman -U --noconfirm *.pkg.tar.zst` instead of `makepkg -i`, however it's possible that multiple *.pkg.tar.zst exist, which makes this command not reliable.
-  x makepkg -Afsi --noconfirm
-  x popd
-}
-
 # Install core dependencies from the meta-packages
-metapkgs=(./sdata/dist-arch/illogical-impulse-{audio,backlight,basic,fonts-themes,gtk,portal,python,screencapture,toolkit,widgets})
-metapkgs+=(./sdata/dist-arch/illogical-impulse-hyprland)
-metapkgs+=(./sdata/dist-arch/illogical-impulse-microtex-git)
-metapkgs+=(./sdata/dist-arch/illogical-impulse-quickshell)
-metapkgs+=(./sdata/dist-arch/illogical-impulse-bibata-modern-classic-bin)
-metapkgs+=(./sdata/dist-arch/illogical-impulse-material-originals-icons)
-metapkgs+=(./sdata/dist-arch/yuki-hyprland-plugins)
-
-for i in "${metapkgs[@]}"; do
+source ./sdata/dist-arch/local-packages.sh
+for i in "${LOCAL_PKGBUILDS[@]}"; do
   metainstallflags="--needed"
   $ask && showfun install-local-pkgbuild || metainstallflags="$metainstallflags --noconfirm"
   v install-local-pkgbuild "$i" "$metainstallflags"

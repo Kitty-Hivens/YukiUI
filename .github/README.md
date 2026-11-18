@@ -80,6 +80,16 @@ Useful flags:
 | `--via-nix`              | Pull dependencies through Nix and home-manager (work in progress)   |
 | `--fontset <set>`        | Pick a predefined font set, see `dots-extra/fontsets`               |
 
+### Updating
+
+```sh
+./setup update
+```
+
+It pulls this repository, upgrades the system's packages with yay (the AUR included), rebuilds the packages built from this repository whose version has moved on, and copies the files again, keeping the desktops you have. The Update button in Blueberry's settings runs the same thing in a terminal. A repository with changes that are not committed is left alone rather than stashed. `--no-system` leaves the system's packages out.
+
+The installer writes down where the repository is, and the shell asks its remote for new commits on the same schedule as the package check. Both checks have their own switch on the Updates page.
+
 `./setup --help` lists every subcommand and flag. To remove it again, `./setup uninstall`.
 
 Dependencies are listed in [deps-info.md](https://github.com/Kitty-Hivens/YukiUI/blob/main/sdata/deps-info.md).

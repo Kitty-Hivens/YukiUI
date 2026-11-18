@@ -67,3 +67,27 @@ def test_an_experimental_config_is_carried_over(bench, config_file):
     assert "experimental" not in written
     assert written["blueberry"]["dock"]["style"] == "island"
     assert written["panelFamily"] == "blueberry"
+
+
+UPDATE_SOURCE = SOURCE.replace("tiles: Config.options.blueberry.quickSettings.tiles",
+                               "tiles: Config.options.blueberry.quickSettings.tiles,\n                update: Config.options.apps.update")
+
+
+@pytest.mark.parametrize("written, expected", [
+    # The command every config was written with before the shell had its own
+    # updater, which upgraded the system's packages alone.
+    ("kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'", ""),
+    # One somebody wrote stays theirs.
+    ("foot -e paru", "foot -e paru"),
+])
+def test_the_old_update_command_gives_way_to_the_updater(bench, config_file, written, expected):
+    config_file.write_text(json.dumps({"panelFamily": "blueberry", "apps": {"update": written, "terminal": "kitty -1"}}))
+    shell = Shell(bench, probe=PROBE, source=UPDATE_SOURCE, ready=("configProbe", "read"))
+    try:
+        shell.start()
+        seen = json.loads(wait_until(lambda: shell.call("configProbe", "read"), what="the config to be read"))
+    finally:
+        shell.stop()
+        shell.remove_probe()
+    assert seen["update"] == expected
+    assert json.loads(config_file.read_text())["apps"]["update"] == expected

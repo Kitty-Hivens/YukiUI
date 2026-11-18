@@ -46,6 +46,13 @@ Singleton {
             parsed.disabledEnvironments = [...new Set(parsed.disabledEnvironments.map(id => id === "experimental" ? "blueberry" : id))];
             changed = true;
         }
+        // The update command every config was written with before the shell had
+        // an updater of its own. Left as it was, it went on upgrading pacman's
+        // packages alone and never YukiUI. One somebody wrote themselves stays.
+        if (parsed.apps?.update === "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'") {
+            parsed.apps.update = "";
+            changed = true;
+        }
         return changed ? JSON.stringify(parsed, null, 4) : "";
     }
 
@@ -308,7 +315,10 @@ Singleton {
                 property string networkEthernet: ""
                 property string taskManager: "resources"
                 property string terminal: "kitty -1" // This is only for shell actions
-                property string update: "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'"
+                // Empty means the shell's own updater, which brings YukiUI up to
+                // date with the system when it knows where its repository is, and
+                // the system alone otherwise. A command named here still wins.
+                property string update: ""
                 // Empty means the shell's own sound settings. It is not spelled
                 // out as a command because a default is written into the user's
                 // config file the first time anything is saved, and this one
@@ -852,6 +862,10 @@ Singleton {
 
             property JsonObject updates: JsonObject {
                 property bool enableCheck: true
+                // Whether YukiUI's own repository is asked for new commits as
+                // well, on the same schedule. That fetch goes to the repository's
+                // remote, GitHub for a clone of it.
+                property bool checkShell: true
                 property int checkInterval: 120 // minutes
                 property int adviseUpdateThreshold: 75 // packages
                 property int stronglyAdviseUpdateThreshold: 200 // packages

@@ -366,6 +366,15 @@ function install_shell_completions(){
     printf "${STY_BLUE}  fpath=(${XDG_DATA_HOME}/zsh/site-functions \$fpath)${STY_RST}\n"
   fi
 }
+function record_repository(){
+  # Where this repository is, for the shell: it checks for new commits here and
+  # starts `setup update` from here. Rewritten on every install, so a clone
+  # moved and installed from again is followed.
+  local target="${DOTS_CORE_CONFDIR}/repository"
+  x mkdir -p "${DOTS_CORE_CONFDIR}"
+  printf '%s\n' "$REPO_ROOT" > "$target"
+  realpath -se "$target" >> "${INSTALLED_LISTFILE}"
+}
 function install_google_sans_flex(){
   local font_name="Google Sans Flex"
   local src_name="google-sans-flex"
@@ -446,6 +455,9 @@ v install_shell_cli
 showfun install_shell_completions
 v install_shell_completions
 
+showfun record_repository
+v record_repository
+
 if [[ ! "$OS_GROUP_ID" == "fedora" ]]; then
   showfun install_google_sans_flex
   v install_google_sans_flex
@@ -477,6 +489,8 @@ printf "\n"
 printf "${STY_CYAN}Desktops installed: $(families_describe). Others can be added by running this again${STY_RST}\n"
 printf "${STY_CYAN}with ${STY_INVERT} --families $(IFS=,; printf '%s' "${FAMILIES_SELECTED[*]}"),<id> ${STY_RST}${STY_CYAN}, and switched between with ${STY_INVERT} yukictl env use <id> ${STY_RST}\n"
 printf "${STY_CYAN}Possible ids: $(families_available | paste -sd ' ')${STY_RST}\n"
+printf "\n"
+printf "${STY_CYAN}To update later, use the Update button in the settings, or run ${STY_INVERT} ./setup update ${STY_RST}\n"
 printf "\n"
 printf "${STY_CYAN}For suggestions/hints after installation:${STY_RST}\n"
 printf "${STY_CYAN}${STY_UNDERLINE} https://github.com/Kitty-Hivens/YukiUI#configuration ${STY_RST}\n"

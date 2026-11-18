@@ -1,0 +1,45 @@
+# Handle args for subcmd: update
+# shellcheck shell=bash
+
+showhelp(){
+echo -e "Syntax: $0 update [OPTIONS]...
+
+Brings YukiUI and the system up to date: pulls this repository, upgrades the
+system's packages, rebuilds the packages built from this repository that have
+moved on, and copies the files again with the desktops already installed.
+
+Options:
+  -h, --help        Show this help message
+      --check       Say whether YukiUI can be updated, and change nothing.
+                    Fetches from the remote, which is the one part that goes
+                    over the network.
+      --no-system   Leave the system's packages alone
+      --files       Copy the files again even when nothing was pulled
+"
+}
+
+UPDATE_CHECK=false
+UPDATE_SYSTEM=true
+UPDATE_FILES=false
+# Set by the run itself after a pull, which starts the new version of this
+# script on what was there before it. Not for typing by hand.
+UPDATE_CONTINUE_FROM=""
+
+# `man getopt` to see more
+para=$(getopt \
+  -o h \
+  -l help,check,no-system,files,continue-from: \
+  -n "$0" -- "$@")
+[ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
+eval set -- "$para"
+while true ; do
+  case "$1" in
+    -h|--help) showhelp;exit;;
+    --check) UPDATE_CHECK=true;shift;;
+    --no-system) UPDATE_SYSTEM=false;shift;;
+    --files) UPDATE_FILES=true;shift;;
+    --continue-from) UPDATE_CONTINUE_FROM="$2";shift 2;;
+    --) shift;break ;;
+    *) echo -e "$0: Wrong parameters.";exit 1;;
+  esac
+done
