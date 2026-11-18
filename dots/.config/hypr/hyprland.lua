@@ -47,6 +47,13 @@ end
 if is_file_exists(HOME .. "/.config/hypr/custom/general.lua") then
     require("custom.general")
 end
+-- Input settings the settings app writes, after general.lua so they win. Read
+-- with dofile, which the compositor does not watch: the app applies a change
+-- live as well, and read with require every change reloaded the whole config,
+-- rebuilding every rule and dropping the ones the shell sets while it runs.
+if is_file_exists(HOME .. "/.config/hypr/custom/input.lua") then
+    dofile(HOME .. "/.config/hypr/custom/input.lua")
+end
 if is_file_exists(HOME .. "/.config/hypr/custom/rules.lua") then
     require("custom.rules")
 end

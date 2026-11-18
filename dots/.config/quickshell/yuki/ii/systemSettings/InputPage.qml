@@ -419,7 +419,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Applied, but not written: custom/general.lua holds this setting in a shape that cannot be edited a line at a time, so it comes back on the next reload.")
+                    text: Translation.tr("Applied, but not written: custom/input.lua holds this setting in a shape that cannot be edited a line at a time, so it comes back on the next reload.")
                     wrapMode: Text.WordWrap
                     font.pixelSize: Appearance.font.pixelSize.smallie
                     color: Appearance.colors.colError
@@ -428,7 +428,7 @@ Item {
 
             PageNote {
                 Layout.topMargin: 8
-                text: Translation.tr("Applied at once and written into hypr/custom/general.lua, which is sourced after what the shell writes for itself, so what is set here is what wins.")
+                text: Translation.tr("Applied at once and written into hypr/custom/input.lua, which is read after custom/general.lua, so what is set here is what wins.")
             }
         }
     }

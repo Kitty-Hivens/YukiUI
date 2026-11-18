@@ -6,7 +6,7 @@ import qs.core.services
 import qs.blueberry.looks
 
 // The pointer and the touchpad. Compositor settings, applied at once and
-// written into hypr/custom/general.lua by HyprInput.
+// written into hypr/custom/input.lua by HyprInput.
 ColumnLayout {
     id: root
 

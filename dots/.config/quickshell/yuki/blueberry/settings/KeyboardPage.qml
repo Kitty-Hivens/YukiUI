@@ -7,7 +7,7 @@ import qs.core.services
 import qs.blueberry.looks
 
 // The layouts and what the keys do. Compositor settings, applied at once and
-// written into hypr/custom/general.lua by HyprInput.
+// written into hypr/custom/input.lua by HyprInput.
 ColumnLayout {
     id: root
 
@@ -180,6 +180,6 @@ ColumnLayout {
         visible: HyprInput.ready && !HyprInput.writable
         glyph: "error"
         text: Translation.tr("Applied, but not written")
-        description: Translation.tr("Goes back on the next reload: custom/general.lua has to be edited by hand")
+        description: Translation.tr("Goes back on the next reload: custom/input.lua has to be edited by hand")
     }
 }

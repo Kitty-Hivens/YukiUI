@@ -9,26 +9,36 @@ import qs.core
 import qs.core.functions
 
 /**
- * Keyboard and pointer settings, read from the compositor and written back into
- * the one file that is meant to hold a person's own.
+ * Keyboard, pointer and tablet settings, read from the compositor and written
+ * back into a file of their own.
  *
  * Two steps, because the compositor keeps them apart: a change is applied at
  * once through the lua dispatcher, and separately written into
- * `custom/general.lua` so it survives the next reload. Applied and not written,
+ * `custom/input.lua` so it survives the next reload. Applied and not written,
  * it lasts until the config is reloaded. Written and not applied, it would need
  * a reload to be felt.
  *
- * That file is chosen over the shell's own override slot because it is sourced
- * after it -- what is written to the override slot is beaten by whatever the
- * person has already put here, which on a machine that sets a layout there is
- * every time. It is hand-written and carries reasoning in comments, so a change
- * rewrites one value on one line and leaves every other byte where it was, and
- * refuses rather than guesses when the file is not written a line at a time.
+ * The config reads that file with dofile, which the compositor does not watch,
+ * and after `custom/general.lua`, so what is set here wins over what was
+ * written there by hand. Written into a file read with require, as
+ * general.lua is, every change reloaded the whole config: the change itself
+ * was already in force, and the reload only rebuilt every rule, dropping the
+ * ones the shell sets while it runs, the blur behind the dock among them.
+ *
+ * A change rewrites one value on one line and leaves every other byte where
+ * it was, and refuses rather than guesses when the file is not written a line
+ * at a time, should someone have edited it by hand.
  */
 Singleton {
     id: root
 
-    readonly property string path: FileUtils.trimFileProtocol(`${Directories.config}/hypr/custom/general.lua`)
+    readonly property string path: FileUtils.trimFileProtocol(`${Directories.config}/hypr/custom/input.lua`)
+    readonly property var header: [
+        "-- Input settings from the settings app, which writes this file and keeps it.",
+        "-- Read by hyprland.lua with dofile, after custom/general.lua, so what is set",
+        "-- here wins. A change here takes effect at the next reload.",
+        ""
+    ]
 
     /** Layout codes in the order the compositor cycles them. */
     property list<string> layouts: []
@@ -446,7 +456,7 @@ Singleton {
 
     function persist(entries) {
         const text = configFile.text();
-        let lines = text.length > 0 ? text.split("\n") : [];
+        let lines = text.length > 0 ? text.split("\n") : root.header.slice();
         let changed = false;
         for (const entry of entries) {
             const next = root.applyValue(lines, entry.path, entry.key, entry.value);
