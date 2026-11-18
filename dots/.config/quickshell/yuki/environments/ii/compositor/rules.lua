@@ -46,6 +46,9 @@ hl.on("window.fullscreen", function(w)
     end
 end)
 
+-- The welcome window is this environment's, and is not installed with the others.
+hl.bind("SHIFT + SUPER + ALT + Slash", hl.dsp.exec_cmd("qs -p $HOME/.config/quickshell/$qsConfig/welcome.qml"))
+
 -- What an X11 application may do with its window from a title bar of its own,
 -- told to it as it is honoured here. A tiled window is placed by the layout,
 -- which takes no move or resize from the application. Minimising is nobody's

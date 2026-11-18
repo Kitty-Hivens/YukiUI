@@ -23,6 +23,7 @@ when one is missing, and where its state belongs.
     common/     what both looks draw with: the appearance singleton and widgets
     ii/         the Illogical Impulse environment
     waffle/     the Waffle environment
+    blueberry/  the Blueberry environment
     environments/   one directory per environment: manifest plus entry
     plugins/        one directory per plugin: manifest plus entry
 
@@ -48,8 +49,9 @@ Three consequences run through everything below.
 
 **The shell root is the entry file's directory.** There is no way to import
 upward past it. This is why `welcome.qml`, `appearanceSettings.qml`,
-`systemSettings.qml` and `killDialog.qml` sit at the root: each is launched as
-its own entry with `qs -p`, and a file one level down could not reach `core/`.
+`systemSettings.qml`, `blueberrySettings.qml` and `killDialog.qml` sit at the
+root: each is launched as its own entry with `qs -p`, and a file one level down
+could not reach `core/`.
 
 **A directory nobody imports has no qmldir**, so its types are "not installed"
 however they are loaded later. `shell.qml` therefore imports each environment
@@ -72,8 +74,17 @@ runtime mounting possible at all.
         "id": "ii",
         "name": "Illogical Impulse",
         "apiVersion": 1,
-        "entry": "IiEnvironment.qml"
+        "entry": "IiEnvironment.qml",
+        "compositor": "compositor/rules.lua",
+        "welcome": "welcome.qml",
+        "files": ["ii", "systemSettings.qml", "appearanceSettings.qml", "welcome.qml"]
     }
+
+`compositor` is the rule file the shell hands Hyprland while this environment
+is up. `welcome` is the window opened on the first run, a file in the shell
+root named without a path; an environment that names none is not greeted with
+another's. `files` is read by the installer only: what of the shell's tree
+belongs to this environment outside its own directory here.
 
 The entry is a `Scope` holding one `PanelLoader` per panel. `Environments`
 enumerates the manifests, builds exactly one entry, and destroys it when the
@@ -96,6 +107,25 @@ panels themselves under a directory of their own, and **an import line in
 none of their types exist. A third-party environment dropped in without touching
 `shell.qml` only works if it ships a hand-written `qmldir` in each of its
 directories.
+
+### Installed apart
+
+The installer puts only the environments asked for on a machine
+(`./setup install --families <ids>`), Blueberry alone by default, and an
+install that holds some already keeps them. One not selected is left out
+whole: its directory under `environments/` and every path its manifest lists
+in `files`, and the copy takes them off a machine that had them
+(`sdata/lib/families.sh`).
+
+So shared code may not reach into an environment, not by import and not by
+path. `core/`, `common/`, `plugins/` and `scripts/` have to stand on a tree
+where any environment but the one up is missing. The one exception is a page a
+plugin contributes to an environment's own settings, such as
+`plugins/portals/SettingsPage.qml`: only that environment's settings window
+loads it, so it is never reached without the environment. A file of an
+environment's own that sits outside its directory has to be in its `files`, or
+it goes to every install. `tests/core/test_install_families.py` builds
+Blueberry from a tree copied that way.
 
 ## Plugins
 

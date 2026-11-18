@@ -3,5 +3,6 @@
     "name": "Waffle",
     "apiVersion": 1,
     "entry": "WaffleEnvironment.qml",
-    "compositor": "compositor/rules.lua"
+    "compositor": "compositor/rules.lua",
+    "files": ["waffle"]
 }

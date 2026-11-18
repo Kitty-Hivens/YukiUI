@@ -53,6 +53,9 @@ HOME_UPDATE_IGNORE_FILE="${HOME}/.updateignore" # Legacy support
 declare -a IGNORE_PATTERNS=()
 declare -a IGNORE_SUBSTRING_PATTERNS=()
 
+# What belongs to the desktops this machine does not have, set at step 3.
+declare -a FAMILY_SKIPPED_PATHS=()
+
 # Track created directories to avoid redundant mkdir calls
 declare -A CREATED_DIRS
 
@@ -257,6 +260,19 @@ should_ignore() {
     fi
   done
 
+  return 1
+}
+
+# Whether a file belongs to a desktop this machine does not have. Copying only
+# what changed, an update would otherwise bring a desktop left out of the
+# install back one changed file at a time.
+family_path_skipped() {
+  local file="$1" prefix
+  for prefix in "${FAMILY_SKIPPED_PATHS[@]}"; do
+    if [[ "$file" == "$prefix" || "$file" == "$prefix"/* ]]; then
+      return 0
+    fi
+  done
   return 1
 }
 
@@ -1058,6 +1074,16 @@ else
 fi
 
 if [[ "$process_files" == true ]]; then
+  # Worked out after the pull, which may have changed what a desktop lists.
+  families_select "" false
+  family_skipped_text="$(families_excluded_paths)" || log_die "Could not work out which files belong to which desktop."
+  while IFS= read -r family_path; do
+    if [[ -n "$family_path" ]]; then
+      FAMILY_SKIPPED_PATHS+=("$(families_target_root)/${family_path}")
+    fi
+  done <<< "$family_skipped_text"
+  log_info "Desktops kept up to date: $(families_describe)"
+
   files_processed=0
   files_updated=0
   files_created=0
@@ -1105,6 +1131,9 @@ if [[ "$process_files" == true ]]; then
         if [[ "$VERBOSE" == true ]]; then
           log_info "Ignored: $rel_path (matches ignore pattern)"
         fi
+        continue
+      fi
+      if family_path_skipped "$home_file"; then
         continue
       fi
 

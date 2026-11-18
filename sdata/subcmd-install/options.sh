@@ -28,6 +28,11 @@ Options for install:
       --core                Alias of --skip-{plasmaintg,fish,miscconf,fontconfig}
       --fontset <set>       Use a set of pre-defined font and config (currently only fontconfig).
                             Possible values of <set>: $(ls -A ${REPO_ROOT}/dots-extra/fontsets)
+      --families <ids>      Which desktops to install, separated by commas, or \"all\".
+                            Possible values: $(families_available | paste -sd ' ')
+                            Without it, a fresh install gets ${FAMILIES_DEFAULT} alone and an
+                            existing one keeps the desktops it has. A desktop installed
+                            before and not named here is removed.
 ${STY_CYAN}
 New features (experimental):
       --exp-files             Use yaml-based config for the third step copying files.
@@ -47,7 +52,7 @@ cleancache(){
 # `man getopt` to see more
 para=$(getopt \
   -o hfFk:cs \
-  -l help,force,firstrun,fontset:,clean,skip-allgreeting,skip-alldeps,skip-allsetups,skip-allfiles,ignore-outdate,skip-sysupdate,skip-plasmaintg,skip-backup,skip-quickshell,skip-fish,skip-hyprland,skip-hyprland-entry,skip-fontconfig,skip-miscconf,core,exp-files,via-nix \
+  -l help,force,firstrun,fontset:,families:,clean,skip-allgreeting,skip-alldeps,skip-allsetups,skip-allfiles,ignore-outdate,skip-sysupdate,skip-plasmaintg,skip-backup,skip-quickshell,skip-fish,skip-hyprland,skip-hyprland-entry,skip-fontconfig,skip-miscconf,core,exp-files,via-nix \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 #####################################################################################
@@ -97,9 +102,14 @@ while true ; do
       then echo "Using fontset \"$2\".";FONTSET_DIR_NAME="$2";shift 2
       else echo "Wrong argument for $1.";exit 1
     fi;;
+    --families) INSTALL_FAMILIES="$2";INSTALL_FAMILIES_GIVEN=true;shift 2;;
 
     ## Ending
     --) shift;break ;;
     *) echo -e "$0: Wrong parameters.";exit 1;;
   esac
 done
+
+# Settled here rather than when the files are copied, so a misspelt name stops
+# the run before the dependencies take their twenty minutes.
+families_select "${INSTALL_FAMILIES:-}" "${INSTALL_FAMILIES_GIVEN:-false}" || exit 1

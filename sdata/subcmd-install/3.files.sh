@@ -107,6 +107,24 @@ rsync_dir__sync_exclude(){
   x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
   rsync -a --delete "${excludes[@]}" --out-format='%i %n' "$src"/ "$dest_dir"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
 }
+rsync_dir__sync_drop(){
+  # NOTE: This function is only for using in other functions
+  # Same as rsync_dir__sync_exclude, but what is excluded is also taken off the
+  # destination, where rsync otherwise keeps it: a desktop left out of the
+  # install is removed from a machine that had it.
+  # Usage: rsync_dir__sync_drop <src> <dest> <exclude_pattern1> [<exclude_pattern2> ...]
+  local src="$1"
+  local dest_dir="$2"
+  shift 2
+  local excludes=()
+  for pattern in "$@"; do
+    excludes+=(--exclude "$pattern")
+  done
+  x mkdir -p "$dest_dir"
+  local dest="$(realpath -se $dest_dir)"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  rsync -a --delete --delete-excluded "${excludes[@]}" --out-format='%i %n' "$src"/ "$dest_dir"/ | awk -v d="$dest" '$1 ~ /^>/{ sub(/^[^ ]+ /,""); printf "%s/%s\n", d, $0 }' >> "${INSTALLED_LISTFILE}"
+}
 function install_file(){
   # NOTE: Do not add prefix `v` or `x` when using this function
   local s=$1
@@ -186,6 +204,30 @@ function install_dir__sync_exclude(){
     warning_overwrite
   fi
   v rsync_dir__sync_exclude $s $t "$@"
+}
+function install_dir__sync_drop(){
+  # NOTE: Do not add prefix `v` or `x` when using this function
+  # Usage: install_dir__sync_drop <src> <dest> <exclude_pattern1> [<exclude_pattern2> ...]
+  local s=$1
+  local t=$2
+  shift 2
+  if [ -d $t ];then
+    warning_overwrite
+  fi
+  v rsync_dir__sync_drop $s $t "$@"
+}
+function report_families(){
+  local id
+  case "${FAMILIES_SELECTED_HOW}" in
+    asked) printf "${STY_BLUE}[$0]: Installing the desktops asked for: $(families_describe)${STY_RST}\n" ;;
+    kept) printf "${STY_BLUE}[$0]: Keeping the desktops already installed: $(families_describe)${STY_RST}\n" ;;
+    *) printf "${STY_BLUE}[$0]: Installing the default desktop: $(families_describe)${STY_RST}\n" ;;
+  esac
+  for id in $(families_installed); do
+    if ! families_is_selected "$id"; then
+      printf "${STY_YELLOW}[$0]: $(families_name_of "$id") is installed and was not asked for, so it is removed.${STY_RST}\n"
+    fi
+  done
 }
 function move_user_extensions(){
   # Plugins and desktops somebody added used to sit inside the shell's own tree,
@@ -379,6 +421,8 @@ if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 showfun move_user_extensions
 v move_user_extensions
 
+if [[ ! "${SKIP_QUICKSHELL}" == true ]]; then report_families; fi
+
 case "${EXPERIMENTAL_FILES_SCRIPT}" in
   true)source sdata/subcmd-install/3.files-exp.sh;;
   *)source sdata/subcmd-install/3.files-legacy.sh;;
@@ -429,6 +473,10 @@ printf "\n"
 printf "${STY_CYAN}If you are already running Hyprland,${STY_RST}\n"
 printf "${STY_CYAN}Press ${STY_INVERT} Ctrl+Super+T ${STY_RST}${STY_CYAN} to select a wallpaper${STY_RST}\n"
 printf "${STY_CYAN}Press ${STY_INVERT} Super+/ ${STY_RST}${STY_CYAN} for a list of keybinds${STY_RST}\n"
+printf "\n"
+printf "${STY_CYAN}Desktops installed: $(families_describe). Others can be added by running this again${STY_RST}\n"
+printf "${STY_CYAN}with ${STY_INVERT} --families $(IFS=,; printf '%s' "${FAMILIES_SELECTED[*]}"),<id> ${STY_RST}${STY_CYAN}, and switched between with ${STY_INVERT} yukictl env use <id> ${STY_RST}\n"
+printf "${STY_CYAN}Possible ids: $(families_available | paste -sd ' ')${STY_RST}\n"
 printf "\n"
 printf "${STY_CYAN}For suggestions/hints after installation:${STY_RST}\n"
 printf "${STY_CYAN}${STY_UNDERLINE} https://github.com/Kitty-Hivens/YukiUI#configuration ${STY_RST}\n"

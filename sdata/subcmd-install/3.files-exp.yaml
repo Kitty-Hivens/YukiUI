@@ -24,12 +24,13 @@ patterns:
   # Those files have a root of their own now, $XDG_CONFIG_HOME/yuki, which this
   # never touches. So the shell tree can be kept in step the way every other
   # directory here is.
+  #
+  # What it leaves out is worked out by 3.files-exp.sh rather than listed here:
+  # what tests/ writes into the tree for a run, and every desktop not selected
+  # with --families (sdata/lib/families.sh), which is also removed.
   - from: "dots/.config/quickshell/yuki"
     to: "$XDG_CONFIG_HOME/quickshell/yuki"
     mode: "sync"
-    # What tests/ writes into the shell tree for a run, should a run end
-    # without taking it away again.
-    excludes: ["bench*Probe.qml"]
   # Conditionally install these files
   - from: "dots/.config/fish"
     to: "$XDG_CONFIG_HOME/fish"

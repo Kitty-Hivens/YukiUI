@@ -27,7 +27,9 @@ case "${SKIP_QUICKSHELL}" in
   true) true;;
   *)
      # Should overwriting the whole directory not only ~/.config/quickshell/yuki/ cuz https://github.com/end-4/dots-hyprland/issues/2294#issuecomment-3448671064
-    install_dir__sync dots/.config/quickshell "$XDG_CONFIG_HOME"/quickshell
+    shell_excludes_text="$(families_rsync_excludes /yuki)" || log_die "Could not work out which files belong to which desktop."
+    readarray -t shell_excludes <<< "$shell_excludes_text"
+    install_dir__sync_drop dots/.config/quickshell "$XDG_CONFIG_HOME"/quickshell "${shell_excludes[@]}"
     ;;
 esac
 

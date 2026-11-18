@@ -1,5 +1,6 @@
 pragma Singleton
 
+import QtQml
 import qs.core
 import qs.core.functions
 import Quickshell
@@ -12,7 +13,21 @@ Singleton {
     property string firstRunNotifSummary: "Welcome!"
     property string firstRunNotifBody: "Hit Super+/ for a list of keybinds"
     property string defaultWallpaperPath: FileUtils.trimFileProtocol(`${Directories.assetsPath}/images/default_wallpaper.png`)
-    property string welcomeQmlPath: FileUtils.trimFileProtocol(Quickshell.shellPath("welcome.qml"))
+
+    /**
+     * The welcome window of the environment that is up, or empty.
+     *
+     * Each environment names its own in its manifest, and one that names none
+     * is not greeted with somebody else's: the welcome that used to open for
+     * everybody was Illogical Impulse's, and a desktop installed without it
+     * would have opened a window that is not on the disk.
+     */
+    readonly property string welcomeQmlPath: {
+        const welcome = Environments.manifests[Environments.activeId]?.welcome ?? "";
+        return welcome.length > 0 ? FileUtils.trimFileProtocol(Quickshell.shellPath(welcome)) : "";
+    }
+    /** A first run waiting for the environment to come up, to know whose welcome to open. */
+    property bool greetingPending: false
 
     function load() {
         firstRunFileView.reload()
@@ -27,7 +42,23 @@ Singleton {
 
     function handleFirstRun() {
         Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, root.defaultWallpaperPath])
-        Quickshell.execDetached(["qs", "-p", root.welcomeQmlPath])
+        root.greetingPending = true;
+        root.greet();
+    }
+
+    function greet() {
+        if (!root.greetingPending || Environments.activeId.length === 0)
+            return;
+        root.greetingPending = false;
+        if (root.welcomeQmlPath.length > 0)
+            Quickshell.execDetached(["qs", "-p", root.welcomeQmlPath]);
+    }
+
+    Connections {
+        target: Environments
+        function onActiveIdChanged() {
+            root.greet();
+        }
     }
 
     FileView {

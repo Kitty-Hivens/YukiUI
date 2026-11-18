@@ -202,6 +202,18 @@ for pattern in "${patterns[@]}"; do
     done < <(echo "$pattern" | yq -r '.excludes[]')
   fi
 
+  # The shell's tree holds every desktop, and only the ones selected go. What
+  # is left out is also taken off the destination, so a desktop installed
+  # before and not asked for this time is removed rather than left behind.
+  delete_excluded=()
+  if [[ "$from" == "dots/.config/quickshell/yuki" ]]; then
+    family_excludes_text="$(families_rsync_excludes "")" || log_die "Could not work out which files belong to which desktop."
+    while IFS= read -r exclude; do
+      if [[ -n "$exclude" ]]; then excludes+=(--exclude "$exclude"); fi
+    done <<< "$family_excludes_text"
+    delete_excluded=(--delete-excluded)
+  fi
+
   # Check if source exists
   if [[ ! -e "$from" ]]; then
     echo "Warning: Source does not exist: $from (skipping)"
@@ -218,7 +230,7 @@ for pattern in "${patterns[@]}"; do
     "sync")
       if [[ -d "$from" ]]; then
         warning_overwrite
-        v rsync -av --delete "${excludes[@]}" "$from/" "$to/"
+        v rsync -av --delete "${delete_excluded[@]}" "${excludes[@]}" "$from/" "$to/"
       else
         warning_overwrite
         # For files, don't use trailing slash and don't use --delete

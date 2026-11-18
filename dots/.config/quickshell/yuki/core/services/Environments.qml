@@ -45,7 +45,7 @@ Singleton {
     readonly property string systemRoot: FileUtils.trimFileProtocol(Quickshell.shellPath("environments"))
     readonly property string homeRoot: Directories.userEnvironments
 
-    /** id -> { id, name, url, compositor, home }. Replaced rather than mutated, so bindings hear it. */
+    /** id -> { id, name, url, compositor, welcome, home }. Replaced rather than mutated, so bindings hear it. */
     property var manifests: Object.create(null)
 
     readonly property list<string> ids: Object.keys(root.manifests).sort()
@@ -457,6 +457,12 @@ Singleton {
                 root.reject(slot.place, `it wants API ${manifest.apiVersion}, this host speaks ${root.apiVersion}`);
                 return;
             }
+            // A window of its own, started with `qs -p`, so it sits in the shell's
+            // root beside shell.qml, where `qs.*` resolves: a file name and no path.
+            if (manifest.welcome !== undefined && !/^[A-Za-z0-9_.-]+\.qml$/.test(manifest.welcome)) {
+                root.reject(slot.place, `"${manifest.welcome}" cannot be a welcome window: it has to be a .qml file in the shell's root, named without a path`);
+                return;
+            }
             slot.environmentId = manifest.id;
             slot.entryUrl = `file://${slot.place}/${manifest.entry}`;
             const taken = root.register({
@@ -464,6 +470,7 @@ Singleton {
                 name: manifest.name ?? manifest.id,
                 url: slot.entryUrl,
                 compositor: manifest.compositor !== undefined ? `${slot.place}/${manifest.compositor}` : "",
+                welcome: manifest.welcome ?? "",
                 home: slot.fromHome
             });
             if (!taken) {

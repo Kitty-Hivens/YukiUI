@@ -196,7 +196,9 @@ Singleton {
         JsonAdapter {
             id: configOptionsJsonAdapter
 
-            property string panelFamily: "ii" // The environment's id: "ii", "waffle" or "blueberry"
+            // The environment's id: "ii", "waffle" or "blueberry". Blueberry is
+            // the one installed by default, and the others only when asked for.
+            property string panelFamily: "blueberry"
 
             /**
              * Environments that are installed but not offered.
@@ -207,8 +209,12 @@ Singleton {
              * Naming the one already in use does not take it down: an explicit
              * choice outranks a default, and a desktop should not vanish on an
              * update. It only stops being offered.
+             *
+             * Empty by default, as for plugins below: a desktop is installed only
+             * when asked for now, so the install is the consent, and one asked
+             * for at install time should not come up switched off.
              */
-            property list<string> disabledEnvironments: ["waffle", "blueberry"]
+            property list<string> disabledEnvironments: []
 
             /**
              * Plugins that are installed but not built.

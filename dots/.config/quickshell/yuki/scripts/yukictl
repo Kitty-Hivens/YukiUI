@@ -27,6 +27,9 @@ usage: yukictl <command>
 
 An environment is a part of the shell and exactly one is up. A plugin adds to
 whatever is already there and every one enabled is built.
+
+Only the environments installed can be switched to. Others are added from the
+repository with: ./setup install --families <ids, separated by commas>
 EOF
 }
 

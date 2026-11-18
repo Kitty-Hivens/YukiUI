@@ -51,14 +51,34 @@ Every command is printed before it runs, and you can skip individual ones. Confl
 
 The session runs under uwsm: `hyprland/execs.lua` calls `uwsm finalize` and starts the shell as a `uwsm app` unit. Pick the uwsm session in your display manager, or launch it that way from a tty -- a plain Hyprland session comes up without the shell.
 
+### Desktops
+
+The shell comes with three desktops, and exactly one of them is up at a time:
+
+| Id          | Desktop           | What it is                                                              |
+|-------------|-------------------|-------------------------------------------------------------------------|
+| `blueberry` | Blueberry         | Floating windows with a dock on any edge, in a light GNOME/Material look |
+| `ii`        | Illogical Impulse | The tiling desktop this is forked from: bar, sidebars, overview         |
+| `waffle`    | Waffle            | A Windows 11 style taskbar and start menu over tiling                   |
+
+A fresh install gets Blueberry alone. Others are installed with `--families`, and running the installer again without it keeps whatever is already installed:
+
+```sh
+./setup install --families blueberry,ii
+./setup install --families all
+```
+
+A desktop installed before and left out of `--families` is removed. Switch between the installed ones with `yukictl env use <id>`, or cycle through them with `Ctrl`+`Super`+`P`.
+
 Useful flags:
 
-| Flag | Effect |
-| ---- | ------ |
-| `--core` | Shell and compositor only, no fish/fontconfig/misc configs |
-| `-s`, `--skip-sysupdate` | Don't run the system package upgrade |
-| `--via-nix` | Pull dependencies through Nix and home-manager (work in progress) |
-| `--fontset <set>` | Pick a predefined font set, see `dots-extra/fontsets` |
+| Flag                     | Effect                                                              |
+|--------------------------|---------------------------------------------------------------------|
+| `--families <ids>`       | Which desktops to install, separated by commas, or `all`            |
+| `--core`                 | Shell and compositor only, no fish/fontconfig/misc configs          |
+| `-s`, `--skip-sysupdate` | Don't run the system package upgrade                                |
+| `--via-nix`              | Pull dependencies through Nix and home-manager (work in progress)   |
+| `--fontset <set>`        | Pick a predefined font set, see `dots-extra/fontsets`               |
 
 `./setup --help` lists every subcommand and flag. To remove it again, `./setup uninstall`.
 
@@ -66,7 +86,7 @@ Dependencies are listed in [deps-info.md](https://github.com/Kitty-Hivens/YukiUI
 
 ## Configuration
 
-Settings live in two apps, both reachable from the right sidebar (`Super`+`N`):
+Each desktop has its own settings, opened with `Super`+`I`. Illogical Impulse splits them into two apps, both reachable from its right sidebar (`Super`+`N`):
 
 - **Appearance** — everything about the shell itself: bar, background, interface, services
 - **System** — distro info and links
@@ -77,15 +97,15 @@ Keybinds should feel familiar if you've used Windows or GNOME. The important one
 
 - `Super`+`/` — full keybind list
 - `Super`+`Enter` — terminal
-- `Super`+`N` — right sidebar
+- `Super`+`N` — right sidebar (Illogical Impulse)
 
 ## Software overview
 
-| Software | Purpose |
-| ------------- | ------------- |
-| [Hyprland](https://github.com/hyprwm/hyprland) | The compositor (manages and renders windows) |
-| [Quickshell](https://quickshell.outfoxxed.me/) | A QtQuick-based widget system, used for the status bar, sidebars, etc. |
-| Others | See [deps-info.md](https://github.com/Kitty-Hivens/YukiUI/blob/main/sdata/deps-info.md) |
+| Software                                       | Purpose                                                                                 |
+|------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [Hyprland](https://github.com/hyprwm/hyprland) | The compositor (manages and renders windows)                                            |
+| [Quickshell](https://quickshell.outfoxxed.me/) | A QtQuick-based widget system, used for the status bar, sidebars, etc.                  |
+| Others                                         | See [deps-info.md](https://github.com/Kitty-Hivens/YukiUI/blob/main/sdata/deps-info.md) |
 
 <div align="center">
     <h2>• screenshots •</h2>
