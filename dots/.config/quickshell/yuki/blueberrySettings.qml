@@ -5,6 +5,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 
@@ -39,8 +40,12 @@ ApplicationWindow {
         interval: 2000
         onTriggered: showAnyway.fired = true
     }
-    width: 1120
-    height: 760
+    // A share of the screen it opens on within bounds, never past it: a size
+    // fixed for 1080p was small on a larger screen and ran past the edges of
+    // a small one. A size the person gave it is remembered by the compositor
+    // and wins over this.
+    width: Math.round(Math.min(Math.max(Screen.width * 0.58, 900), 1600, Screen.width * 0.94))
+    height: Math.round(Math.min(Math.max(Screen.height * 0.7, 640), 1100, Screen.height * 0.9))
     minimumWidth: 640
     minimumHeight: 440
     color: ExLooks.settings.window

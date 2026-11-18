@@ -36,6 +36,8 @@ Item {
 
     implicitWidth: 560
     implicitHeight: Math.round(root.width * 9 / 16)
+    // A rectangle clip, which needs no shader, for the attached dock's overhang below.
+    clip: true
 
     Rectangle {
         anchors.fill: parent
@@ -96,9 +98,16 @@ Item {
             ? ((root.horizontal ? root.width : root.height) - dockItem.length) / 2
             : root.gap
 
+        /**
+         * An attached dock stands a pixel past the edge, cut off by the clip:
+         * at a fractional scale its outer edge and the miniature's fell on
+         * different device pixels, and the wallpaper showed in a line between.
+         */
+        readonly property real overhang: root.dock.style === "attached" ? 1 : 0
+
         visible: !root.dock.autoHide
-        x: root.horizontal ? dockItem.start : (root.dock.edge === "left" ? root.gap : root.width - root.thickness - root.gap)
-        y: !root.horizontal ? dockItem.start : (root.dock.edge === "top" ? root.gap : root.height - root.thickness - root.gap)
+        x: root.horizontal ? dockItem.start : (root.dock.edge === "left" ? root.gap - dockItem.overhang : root.width - root.thickness - root.gap + dockItem.overhang)
+        y: !root.horizontal ? dockItem.start : (root.dock.edge === "top" ? root.gap - dockItem.overhang : root.height - root.thickness - root.gap + dockItem.overhang)
         width: root.horizontal ? dockItem.length : root.thickness
         height: root.horizontal ? root.thickness : dockItem.length
 
