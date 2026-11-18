@@ -170,7 +170,8 @@ def test_a_desktop_left_out_is_removed_and_the_rest_stays(blueberry_alone):
                  "systemSettings.qml", "appearanceSettings.qml", "welcome.qml", "benchSplitLeftoverProbe.qml"):
         assert not (tree / gone).exists(), f"{gone} is still there"
     for kept in ("shell.qml", "core", "common", "plugins", "scripts/yukictl",
-                 "blueberry", "environments/blueberry/manifest.json", "blueberrySettings.qml", "blueberryGallery.qml"):
+                 "blueberry", "environments/blueberry/manifest.json", "blueberrySettings.qml", "blueberryGallery.qml",
+                 "blueberryWelcome.qml"):
         assert (tree / kept).exists(), f"{kept} went missing"
 
 
@@ -230,6 +231,7 @@ def test_blueberry_builds_from_a_tree_without_the_others(bench, blueberry_alone)
 @pytest.mark.parametrize("root, title", [
     ("blueberrySettings.qml", "Blueberry Settings"),
     ("blueberryGallery.qml", "Blueberry Gallery"),
+    ("blueberryWelcome.qml", "Blueberry Welcome"),
 ])
 def test_blueberry_windows_open_from_a_tree_without_the_others(bench, blueberry_alone, tmp_path, root, title):
     # Each is a root of its own, started with `qs -p` as the shell and the

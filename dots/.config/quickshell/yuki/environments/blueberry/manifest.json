@@ -4,7 +4,8 @@
     "apiVersion": 1,
     "entry": "BlueberryEnvironment.qml",
     "compositor": "compositor/rules.lua",
-    "files": ["blueberry", "blueberrySettings.qml", "blueberryGallery.qml"],
+    "welcome": "blueberryWelcome.qml",
+    "files": ["blueberry", "blueberrySettings.qml", "blueberryGallery.qml", "blueberryWelcome.qml"],
     "theming": {
         "matugen": "theming/matugen.toml",
         "apply": "theming/apply.sh"

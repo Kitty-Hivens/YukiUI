@@ -113,6 +113,9 @@ for _, arrow in ipairs({ "Left", "Right", "Up", "Down" }) do
 end
 hl.bind("SUPER + D", hl.dsp.global("quickshell:showDesktop"), { description = "Window: Show desktop" })
 
+-- The welcome, opened by the shell on the first start, again by hand.
+hl.bind("SHIFT + SUPER + ALT + Slash", hl.dsp.exec_cmd("qs -p $HOME/.config/quickshell/$qsConfig/blueberryWelcome.qml"))
+
 -- Print Screen opens the snipping tool, as on Windows 11, rather than putting
 -- the whole screen on the clipboard. Win+Shift+S and Win+Shift+R open it too,
 -- for a picture and for a video, through the shell's shortcuts the shared
