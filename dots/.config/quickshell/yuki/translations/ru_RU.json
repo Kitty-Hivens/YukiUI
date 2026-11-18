@@ -823,6 +823,7 @@
   "Mapping of ordinary content": "Отображение обычного контента",
   "White level": "Уровень белого",
   "%1 nit": "%1 нит",
+  "At %1 of %2 MHz": "Частота %1 из %2 МГц",
   "Only scales that divide the screen into whole points": "Только масштабы, при которых экран делится на целые точки",
   "Applied, but not written: custom/input.lua holds this setting in a shape that cannot be edited a line at a time, so it comes back on the next reload.": "Применено, но не записано: в custom/input.lua эта настройка лежит в виде, который нельзя править построчно, поэтому после перезагрузки конфига она вернётся.",
   "Applied at once and written into hypr/custom/input.lua, which is read after custom/general.lua, so what is set here is what wins.": "Применяется сразу и пишется в hypr/custom/input.lua: он читается после custom/general.lua, поэтому заданное здесь и побеждает.",

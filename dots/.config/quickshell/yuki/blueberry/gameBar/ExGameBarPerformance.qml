@@ -13,9 +13,10 @@ import qs.blueberry.looks
 // a card, as quick settings sets off what is playing. A reading running high
 // turns from the accent to amber and then to red, on the tiles and the graph.
 //
-// The graphics card is shown by how busy it is where the driver says so, and
-// otherwise by its clock against the fastest it goes, which is what Intel's
-// drivers give. A card that says neither is left out. How many frames a game
+// The graphics card is shown by how busy it is: where the driver says so, and
+// for Intel's, which do not, by the kernel's accounts of each program's time on
+// its engines, with the clock beside it. A card that says neither is left out.
+// How many frames a game
 // draws is the game's to say, through an overlay inside it, and the shell
 // cannot see it.
 ColumnLayout {
@@ -67,23 +68,16 @@ ColumnLayout {
             history: ResourceUsage.cpuUsageHistory,
             interval: root.slowInterval
         }];
-        if (ResourceUsage.gpuKind === "busy")
+        if (ResourceUsage.gpuKind.length > 0)
             list.push({
                 key: "gpu",
                 name: Translation.tr("GPU"),
                 value: ResourceUsage.gpuUsageHistory.length > 0 ? root.percent(ResourceUsage.gpuUsage) : "--",
                 load: ResourceUsage.gpuUsage,
-                detail: "",
-                history: ResourceUsage.gpuUsageHistory,
-                interval: 1000
-            });
-        else if (ResourceUsage.gpuKind === "clock")
-            list.push({
-                key: "gpu",
-                name: Translation.tr("GPU"),
-                value: ResourceUsage.gpuUsageHistory.length > 0 ? `${Math.round(ResourceUsage.gpuClock)} MHz` : "--",
-                load: ResourceUsage.gpuUsage,
-                detail: Translation.tr("Clock, of %1 MHz").arg(Math.round(ResourceUsage.gpuMaxClock)),
+                // Its clock beside it where that is all the driver says of
+                // the card itself.
+                detail: ResourceUsage.gpuKind === "engines" && ResourceUsage.gpuClock > 0
+                    ? Translation.tr("At %1 of %2 MHz").arg(Math.round(ResourceUsage.gpuClock)).arg(Math.round(ResourceUsage.gpuMaxClock)) : "",
                 history: ResourceUsage.gpuUsageHistory,
                 interval: 1000
             });

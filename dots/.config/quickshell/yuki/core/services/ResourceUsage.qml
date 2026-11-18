@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.core
+import qs.core.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -43,18 +44,21 @@ Singleton {
 
     // The graphics card, read only while someone is looking: a card that has
     // gone to sleep is woken by being asked. A card that says how busy it is
-    // gives that. One that only says how fast it runs gives its clock against
-    // the fastest it can go, which is how hard it is being pushed, since such
-    // a card slows down when there is little to draw. One that says neither
-    // is not shown at all.
+    // gives that. Intel's say only how fast they run, and run at their
+    // fastest under almost any load, so a clock read against its top showed a
+    // card a fifth busy as full and red. For those the kernel's accounts of
+    // each program's time on each engine are added up instead, as
+    // intel_gpu_top and gputop do, and the clock is kept beside it. A card
+    // that says neither is not shown at all.
     property int gpuWatchers: 0
-    /** "busy", "clock", or empty for a card that says neither. */
+    /** "busy", "engines", or empty for a card that says neither. */
     property string gpuKind: ""
-    /** How busy the card is, or its clock against its fastest, from 0 to 1. */
+    /** How busy the card is, from 0 to 1. */
     property real gpuUsage: 0
-    /** Its clock in MHz, for a card read by its clock. */
+    /** Its clock in MHz, and its fastest, for a card read by its engines. */
     property real gpuClock: 0
     property real gpuMaxClock: 0
+    property string gpuClockPath: ""
     property list<real> gpuUsageHistory: []
     property string gpuReadingPath: ""
     // Unread for a while is not a flat line, so the history starts over.
@@ -195,10 +199,10 @@ Singleton {
 
     // Which file says it, found once: busy per cent where the driver keeps
     // one, as amdgpu does, and the actual clock where it keeps only that, as
-    // xe and i915 do.
+    // xe and i915 do, which are then read by their engines.
     Process {
         id: findGpuProc
-        running: root.gpuWatchers > 0 && root.gpuReadingPath.length === 0
+        running: root.gpuWatchers > 0 && root.gpuKind.length === 0
         command: ["sh", "-c", 'for card in /sys/class/drm/card[0-9] /sys/class/drm/card[0-9][0-9]; do '
             + 'd="$card/device"; '
             + 'if [ -r "$d/gpu_busy_percent" ]; then echo "busy $d/gpu_busy_percent"; exit; fi; '
@@ -213,9 +217,9 @@ Singleton {
                     root.gpuKind = "busy";
                     root.gpuReadingPath = fields[1];
                 } else if (fields[0] === "clock" && fields[1] && Number(fields[2]) > 0) {
-                    root.gpuKind = "clock";
+                    root.gpuKind = "engines";
                     root.gpuMaxClock = Number(fields[2]);
-                    root.gpuReadingPath = fields[1];
+                    root.gpuClockPath = fields[1];
                 }
             }
         }
@@ -229,19 +233,42 @@ Singleton {
         interval: 1000
         repeat: true
         triggeredOnStart: true
-        running: root.gpuWatchers > 0 && root.gpuReadingPath.length > 0
+        running: root.gpuWatchers > 0 && root.gpuKind === "busy"
         onTriggered: {
             gpuReading.reload();
             const value = Number(gpuReading.text().trim());
             if (isNaN(value))
                 return;
-            if (root.gpuKind === "busy") {
-                root.gpuUsage = Math.max(0, Math.min(1, value / 100));
-            } else {
-                root.gpuClock = value;
-                root.gpuUsage = Math.max(0, Math.min(1, value / root.gpuMaxClock));
-            }
+            root.gpuUsage = Math.max(0, Math.min(1, value / 100));
             root.gpuUsageHistory = [...root.gpuUsageHistory, root.gpuUsage].slice(-root.historyLength);
+        }
+    }
+
+    // The engines, added up by a helper that keeps the previous accounts and
+    // says one share a second for as long as it runs.
+    FileView {
+        id: gpuClockReading
+        path: root.gpuClockPath
+        blockLoading: true
+    }
+    Process {
+        id: gpuEngines
+        running: root.gpuWatchers > 0 && root.gpuKind === "engines"
+        command: ["python3", "-I", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/system/gpu_busy.py"))]
+        stdout: SplitParser {
+            onRead: line => {
+                const share = Number(line.trim().split(/\s+/)[0]);
+                // "none" while no program's accounts can be read: nothing to
+                // draw, rather than a card shown idle.
+                if (isNaN(share))
+                    return;
+                gpuClockReading.reload();
+                const clock = Number(gpuClockReading.text().trim());
+                if (!isNaN(clock))
+                    root.gpuClock = clock;
+                root.gpuUsage = Math.max(0, Math.min(1, share));
+                root.gpuUsageHistory = [...root.gpuUsageHistory, root.gpuUsage].slice(-root.historyLength);
+            }
         }
     }
 
