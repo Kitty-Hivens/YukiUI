@@ -52,7 +52,7 @@ Button {
                 id: appIcon
                 Layout.leftMargin: Looks.radius.large - root.padding + 2
                 Layout.alignment: Qt.AlignVCenter
-                iconName: AppSearch.guessIcon(root.toplevel?.appId ?? "")
+                iconName: AppSearch.iconNameFor(root.toplevel?.appId ?? "")
                 implicitSize: 16
                 tryCustomIcon: false
             }

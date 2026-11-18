@@ -28,7 +28,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SHELL = REPO / "dots/.config/quickshell/yuki"
 RULES = SHELL / "environments/blueberry/compositor/rules.lua"
-PLUGINS = ("minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize")
+PLUGINS = ("minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons")
 
 OUTPUT = "BENCH"
 WIDTH, HEIGHT = 1920, 1080
@@ -131,6 +131,7 @@ class Bench:
         builds.append(["make", "-s", "-C", str(REPO / "helpers/tray"), f"OUT={self.tray_keeper}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/data_control"), f"OUT={self.data_control_client}"])
         builds.append(["make", "-s", "-C", str(REPO / "tests/bench/locked"), f"OUT={self.locked_client}"])
+        builds.append(["make", "-s", "-C", str(REPO / "tests/bench/icon_window"), f"OUT={self.icon_window_client}"])
         for command in builds:
             result = subprocess.run(command, capture_output=True, text=True)
             # What the compiler said, which an exit status alone does not.
@@ -154,6 +155,16 @@ class Bench:
     def locked_client(self) -> Path:
         """A fullscreen window that locks the pointer, as a game with raw input does."""
         return self.build / "locked"
+
+    @property
+    def icon_window_client(self) -> Path:
+        """A Wayland window that gives its own icon through xdg-toplevel-icon."""
+        return self.build / "icon-window"
+
+    @property
+    def window_icons(self) -> Path:
+        """Where the window-icons plugin writes the icons windows give themselves."""
+        return self.runtime_dir / "yuki-window-icons"
 
     @property
     def data_control_client(self) -> Path:
@@ -249,9 +260,10 @@ end
         self._build()
         config = self._config()
         # The compositor keeps its own data, state and cache in the run's
-        # folders, not the person's: it writes some of each as it starts.
+        # folders, not the person's: it writes some of each as it starts. Its
+        # plugins write for the shell in the shell's runtime folder.
         env = dict(os.environ, XDG_DATA_HOME=str(self.data_home), XDG_STATE_HOME=str(self.state_home),
-                   XDG_CACHE_HOME=str(self.cache_home))
+                   XDG_CACHE_HOME=str(self.cache_home), YUKI_RUNTIME_DIR=str(self.runtime_dir))
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
         self.process = subprocess.Popen(["Hyprland", "-c", str(config)], env=env,
                                         stdout=open(self.root / "hyprland.out", "w"), stderr=subprocess.STDOUT,

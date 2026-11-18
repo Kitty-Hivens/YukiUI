@@ -64,9 +64,11 @@ Singleton {
     // the set of installed applications does.
     property var iconGuessCache: ({})
     property var entryLookupCache: ({})
+    property var heuristicLookupCache: ({})
     onListChanged: {
         root.iconGuessCache = ({});
         root.entryLookupCache = ({});
+        root.heuristicLookupCache = ({});
     }
 
     function fuzzyQuery(search: string): var { // Idk why list<DesktopEntry> doesn't work
@@ -114,8 +116,38 @@ Singleton {
         return Quickshell.iconPath(name, "image-missing");
     }
 
+    /**
+     * The icon to show for a window class, best first: the theme's icon for a
+     * desktop entry of that name, the icon Steam installed for the game a
+     * window belongs to, the icon a window gave itself, a name from the theme
+     * or a picture, and then the guesses. A window's own icon comes after an
+     * entry's, so applications with one look alike in the theme, and before
+     * the guesses, which named Minecraft after an icon no theme here has.
+     */
     function iconFor(appClass) {
-        return root.iconPathCached(root.guessIcon(appClass));
+        const icon = root.iconNameFor(appClass);
+        return icon.startsWith("file://") ? icon : root.iconPathCached(icon);
+    }
+
+    /**
+     * The same choice as `iconFor`, given as the name of an icon in the theme,
+     * or for a picture a window gave itself as its file's url: for widgets that
+     * take an icon by name and a picture by its url, Kirigami's among them.
+     */
+    function iconNameFor(appClass) {
+        const entry = DesktopEntries.byId(appClass);
+        if (entry)
+            return entry.icon;
+        const steam = WindowIcons.steamAppOf(appClass);
+        if (steam && root.iconExists(`steam_icon_${steam}`))
+            return `steam_icon_${steam}`;
+        const own = WindowIcons.nameOf(appClass);
+        if (own && root.iconExists(own))
+            return own;
+        const picture = WindowIcons.pictureOf(appClass);
+        if (picture)
+            return picture;
+        return root.guessIcon(appClass);
     }
 
     /**
@@ -129,11 +161,20 @@ Singleton {
      */
     function entryFor(appClass) {
         if (!appClass || appClass.length == 0) return null;
-        if (appClass in root.entryLookupCache) return root.entryLookupCache[appClass];
+        if (!(appClass in root.entryLookupCache))
+            root.entryLookupCache[appClass] = root.lookUpEntry(appClass);
+        const named = root.entryLookupCache[appClass];
+        if (named) return named;
 
-        const entry = root.lookUpEntry(appClass);
-        root.entryLookupCache[appClass] = entry;
-        return entry;
+        // A game Steam started, whose entry Steam names after the game. Asked
+        // after the cache, since which game a window is comes a moment later.
+        const steam = WindowIcons.steamAppOf(appClass);
+        const fromSteam = steam ? root.steamEntry(steam) : null;
+        if (fromSteam) return fromSteam;
+
+        if (!(appClass in root.heuristicLookupCache))
+            root.heuristicLookupCache[appClass] = DesktopEntries.heuristicLookup(appClass);
+        return root.heuristicLookupCache[appClass];
     }
 
     function lookUpEntry(appClass) {
@@ -147,8 +188,12 @@ Singleton {
             const entry = DesktopEntries.byId(guess);
             if (entry) return entry;
         }
+        return null;
+    }
 
-        return DesktopEntries.heuristicLookup(appClass);
+    /** The desktop entry Steam installed for a game: its icon is named for the game's id, and it starts the game by it. */
+    function steamEntry(appId) {
+        return root.list.find(entry => entry.icon === `steam_icon_${appId}` || (entry.execString ?? "").includes(`rungameid/${appId}`)) ?? null;
     }
 
     function guessIcon(str) {
@@ -165,18 +210,19 @@ Singleton {
         const entry = DesktopEntries.byId(str);
         if (entry) return entry.icon;
 
-        // Normal substitutions
-        if (substitutions[str]) return substitutions[str];
-        if (substitutions[str.toLowerCase()]) return substitutions[str.toLowerCase()];
+        // Normal substitutions, and the regex ones, each only for an icon the
+        // theme has: Minecraft was named after one no theme here carries, and
+        // showed as missing rather than as anything found further on.
+        if (substitutions[str] && iconExists(substitutions[str])) return substitutions[str];
+        if (substitutions[str.toLowerCase()] && iconExists(substitutions[str.toLowerCase()])) return substitutions[str.toLowerCase()];
 
-        // Regex substitutions
         for (let i = 0; i < regexSubstitutions.length; i++) {
             const substitution = regexSubstitutions[i];
             const replacedName = str.replace(
                 substitution.regex,
                 substitution.replace,
             );
-            if (replacedName != str) return replacedName;
+            if (replacedName != str && iconExists(replacedName)) return replacedName;
         }
 
         // Icon exists -> return as is

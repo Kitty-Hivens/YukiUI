@@ -15,8 +15,12 @@ Kirigami.Icon {
 
     animated: true
     roundToIconSize: false
-    fallback: root.iconName
-    source: tryCustomIcon ? `${Looks.iconsPath}/${root.iconName}${!root.separateLightDark ? "" : Looks.dark ? "-dark" : "-light"}.svg` : fallback
+    // A picture a window gave itself comes as its file's url, which the
+    // fallback, a name looked up in the theme, would not find.
+    readonly property bool picture: root.iconName.startsWith("file://")
+    fallback: root.picture ? "" : root.iconName
+    source: root.picture ? root.iconName
+        : tryCustomIcon ? `${Looks.iconsPath}/${root.iconName}${!root.separateLightDark ? "" : Looks.dark ? "-dark" : "-light"}.svg` : fallback
 
     color: Looks.colors.fg
 }

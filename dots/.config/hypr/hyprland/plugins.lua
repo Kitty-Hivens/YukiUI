@@ -19,7 +19,9 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- border-resize: a window is resized by its border with the left button only,
 -- and not while the focused window holds the pointer, as a game does, and the
 -- resize cursor shows only on the sides that can be pulled.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize" }
+-- window-icons: the icon a window gives itself, through xdg-toplevel-icon or
+-- _NET_WM_ICON, for the dock to show an application it has no entry for.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"

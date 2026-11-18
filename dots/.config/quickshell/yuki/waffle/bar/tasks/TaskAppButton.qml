@@ -41,7 +41,7 @@ AppButton {
 
     multiple: root.windows.length > 1
     checked: active
-    iconName: AppSearch.guessIcon(appEntry.appId)
+    iconName: AppSearch.iconNameFor(appEntry.appId)
     tryCustomIcon: false
     
     onHoverTimedOut: {

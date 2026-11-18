@@ -72,8 +72,11 @@ class Shell:
     looks at what the card alone draws, a blur say, asks for it."""
 
     def __init__(self, bench: Bench, probe: Path = PROBE, source: str = SOURCE,
-                 ready: tuple[str, ...] = ("placement", "list"), own_bus: bool = False, gpu: bool = False):
+                 ready: tuple[str, ...] = ("placement", "list"), own_bus: bool = False, gpu: bool = False,
+                 env: dict[str, str] | None = None):
         self.bench = bench
+        # Added to the bench's own for the shell alone, data folders of a test's own say.
+        self.extra_env = env or {}
         self.probe = probe
         self.source = source
         self.ready = ready
@@ -92,6 +95,7 @@ class Shell:
 
     def _probe_environment(self) -> dict[str, str]:
         env = self.bench.environment()
+        env.update(self.extra_env)
         if not self.gpu:
             env["QT_QUICK_BACKEND"] = "software"
         return env

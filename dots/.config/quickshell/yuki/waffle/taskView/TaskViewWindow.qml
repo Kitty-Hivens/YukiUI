@@ -24,7 +24,7 @@ WMouseAreaButton {
     property var hyprlandClient: HyprlandData.clientForToplevel(root.toplevel)
     property string address: hyprlandClient?.address
 
-    property string iconName: AppSearch.guessIcon(hyprlandClient?.class)
+    property string iconName: AppSearch.iconNameFor(hyprlandClient?.class ?? "")
 
     color: root.Drag.active ? ColorUtils.transparentize(Looks.colors.bg1Base) : (containsMouse ? Looks.colors.bg1Base : Looks.colors.bgPanelFooterBackground)
     borderColor: ColorUtils.transparentize(Looks.colors.bg2Border, root.Drag.active ? 1 : 0)

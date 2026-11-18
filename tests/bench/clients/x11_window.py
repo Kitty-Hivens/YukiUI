@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """An X11 window the tests drive, through python-xlib, under XWayland.
 
-    x11_window.py CLASS TITLE X Y WIDTH HEIGHT [maximized] [fullscreen] [bypass]
+    x11_window.py CLASS TITLE X Y WIDTH HEIGHT [maximized] [fullscreen] [bypass] [icon]
 
 The words after the geometry are what the window says of itself before it is
 shown: its _NET_WM_STATE, as an application that remembers how it stood sets it,
-and _NET_WM_BYPASS_COMPOSITOR, as a game sets it.
+_NET_WM_BYPASS_COMPOSITOR, as a game sets it, and a red icon in _NET_WM_ICON,
+16 and 32 pixels square.
 
 Prints {"ready": true} once the window is mapped, then answers one command a
 line on stdin with one line of JSON:
@@ -20,6 +21,8 @@ line on stdin with one line of JSON:
     allowed                    its _NET_WM_ALLOWED_ACTIONS, null when it has none
     supported                  the root window's _NET_SUPPORTED
     workarea                   the root window's _NET_WORKAREA, null when it has none
+    icon RRGGBB SIZE           gives itself a square icon of that colour, as an
+                               application changing its icon once shown does
     close                      unmap and end
 
 An X11 application can place and size its own window, unlike a Wayland one,
@@ -59,6 +62,18 @@ window.set_wm_normal_hints(flags=1 | 4, x=x, y=y, width=width, height=height)
 initial = [connection.intern_atom(atom) for word in ("maximized", "fullscreen") if word in own for atom in STATES[word]]
 if initial:
     window.change_property(connection.intern_atom("_NET_WM_STATE"), connection.intern_atom("ATOM"), 32, initial)
+
+
+def set_icon(colour, *sizes):
+    """_NET_WM_ICON: for each size a width, a height and that many ARGB pixels."""
+    values = []
+    for size in sizes:
+        values += [size, size] + [0xff000000 | colour] * (size * size)
+    window.change_property(connection.intern_atom("_NET_WM_ICON"), connection.intern_atom("CARDINAL"), 32, values)
+
+
+if "icon" in own:
+    set_icon(0xff0000, 16, 32)
 if "bypass" in own:
     window.change_property(connection.intern_atom("_NET_WM_BYPASS_COMPOSITOR"), connection.intern_atom("CARDINAL"), 32, [1])
 window.map()
@@ -118,6 +133,10 @@ def command(line):
         answer({"allowed": atom_names(window, "_NET_WM_ALLOWED_ACTIONS")})
     elif name == "supported":
         answer({"supported": atom_names(root, "_NET_SUPPORTED") or []})
+    elif name == "icon" and len(words) == 3:
+        set_icon(int(words[1], 16), int(words[2]))
+        connection.sync()
+        answer({"ok": name})
     elif name == "workarea":
         prop = root.get_full_property(connection.intern_atom("_NET_WORKAREA"), X.AnyPropertyType)
         answer({"workarea": list(prop.value) if prop else None})

@@ -19,10 +19,10 @@ class Window:
 
     kind = ""
 
-    def __init__(self, bench: Bench, wm_class: str, argv: list[str]):
+    def __init__(self, bench: Bench, wm_class: str, argv: list[str], env: dict[str, str] | None = None):
         self.bench = bench
         self.wm_class = wm_class
-        self.process = subprocess.Popen(argv, env=bench.environment(), stdin=subprocess.PIPE,
+        self.process = subprocess.Popen(argv, env={**bench.environment(), **(env or {})}, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
         ready = self._read()
         if not ready.get("ready"):
@@ -118,11 +118,38 @@ class X11Window(Window):
     kind = "x11"
 
     def __init__(self, bench: Bench, wm_class: str, x: int = 300, y: int = 200, width: int = 700, height: int = 450,
-                 title: str = "", own: tuple[str, ...] = ()):
+                 title: str = "", own: tuple[str, ...] = (), env: dict[str, str] | None = None):
         # `own`: what the window says of itself before it is shown, any of
-        # "maximized", "fullscreen" and "bypass".
+        # "maximized", "fullscreen", "bypass" and "icon". `env`: added to the
+        # bench's environment for its process, as Steam gives a game its id.
         super().__init__(bench, wm_class, [sys.executable, str(CLIENTS / "x11_window.py"), wm_class, title or wm_class,
-                                           str(x), str(y), str(width), str(height), *own])
+                                           str(x), str(y), str(width), str(height), *own], env=env)
+
+
+class IconWindow(Window):
+    """A Wayland window giving its own icon: a name, a picture of one colour, or both."""
+
+    kind = "wayland"
+
+    def __init__(self, bench: Bench, wm_class: str, name: str = "", colour: str = "", size: int = 48, early: bool = False):
+        argv = [str(bench.icon_window_client), wm_class]
+        if name:
+            argv.append(f"name={name}")
+        if colour:
+            argv += [f"colour={colour}", f"size={size}"]
+        if early:
+            argv.append("early")
+        super().__init__(bench, wm_class, argv)
+
+    def close(self):
+        if self.process.poll() is not None:
+            return
+        try:
+            self.process.stdin.write("quit\n")
+            self.process.stdin.flush()
+            self.process.wait(timeout=5)
+        except (BrokenPipeError, ValueError, subprocess.TimeoutExpired):
+            self.process.kill()
 
 
 class Pointer:
