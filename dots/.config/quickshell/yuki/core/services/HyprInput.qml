@@ -53,6 +53,12 @@ Singleton {
     property bool leftHanded: false
     property real mouseScrollFactor: 1.0
 
+    /** The screen a pen tablet works on: a name, "current" for the focused one, or empty for all. */
+    property string tabletOutput: ""
+    property bool tabletLeftHanded: false
+    /** Pen tablets the compositor sees, by name. */
+    property list<string> tabletDevices: []
+
     /** The keyboard the compositor treats as the one being typed on. */
     property string mainKeyboard: ""
     /** Named rather than counted: a machine reports every device that can send a key as a keyboard. */
@@ -101,7 +107,8 @@ Singleton {
         "input:touchpad:natural_scroll", "input:touchpad:disable_while_typing",
         "input:touchpad:clickfinger_behavior", "input:touchpad:scroll_factor",
         "input:touchpad:tap-to-click", "input:touchpad:tap-and-drag",
-        "input:sensitivity", "input:accel_profile", "input:natural_scroll", "input:left_handed", "input:scroll_factor"
+        "input:sensitivity", "input:accel_profile", "input:natural_scroll", "input:left_handed", "input:scroll_factor",
+        "input:tablet:output", "input:tablet:left_handed"
     ]
 
     /**
@@ -175,6 +182,8 @@ Singleton {
         root.mouseNaturalScroll = root.flag(seen["input:natural_scroll"], false);
         root.leftHanded = root.flag(seen["input:left_handed"], false);
         root.mouseScrollFactor = seen["input:scroll_factor"]?.float ?? root.mouseScrollFactor;
+        root.tabletOutput = root.optionString(seen["input:tablet:output"] ?? ({}));
+        root.tabletLeftHanded = root.flag(seen["input:tablet:left_handed"], false);
         root.ready = true;
     }
 
@@ -186,6 +195,7 @@ Singleton {
         // A touchpad is reported among the mice and says so only in its name;
         // there is no field that separates the two.
         root.touchpadDevice = (parsed.mice ?? []).map(mouse => mouse.name).find(name => name.includes("touchpad")) ?? "";
+        root.tabletDevices = (parsed.tablets ?? []).map(tablet => tablet.name);
     }
 
     Process {

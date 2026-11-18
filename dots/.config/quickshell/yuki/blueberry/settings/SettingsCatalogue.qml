@@ -46,7 +46,8 @@ QtObject {
             pages: [
                 { key: "bluetooth", name: Translation.tr("Bluetooth"), glyph: "bluetooth", description: Translation.tr("Pair and connect devices"), keywords: "pair headphones", component: "BluetoothPage.qml" },
                 { key: "keyboard", name: Translation.tr("Keyboard"), glyph: "keyboard", description: Translation.tr("Layouts and typing"), keywords: "layout language input caps repeat", component: "KeyboardPage.qml" },
-                { key: "mouse", name: Translation.tr("Mouse and touchpad"), glyph: "mouse", description: Translation.tr("Pointer speed, scrolling"), keywords: "pointer touchpad scroll speed", component: "MousePage.qml" }
+                { key: "mouse", name: Translation.tr("Mouse and touchpad"), glyph: "mouse", description: Translation.tr("Pointer speed, scrolling"), keywords: "pointer touchpad scroll speed", component: "MousePage.qml" },
+                { key: "pen", name: Translation.tr("Pen and tablet"), glyph: "stylus", description: Translation.tr("Screen, area, pressure"), keywords: "pen tablet stylus drawing opentabletdriver otd pressure area", component: "TabletPage.qml" }
             ]
         },
         {
