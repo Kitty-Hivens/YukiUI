@@ -40,11 +40,14 @@ Scope {
 
     // Blur behind the dock, which the compositor draws by a rule this
     // environment keeps. Asked for as the shell starts, when the settings
-    // change, and after every reload of the compositor, which drops it. A
-    // pixel no more opaque than the threshold is left unblurred: the shadow
-    // round a floating dock stays clear, and the plate is always above it.
+    // change, and after every reload of the compositor. A pixel no more
+    // opaque than the threshold is left unblurred: the shadow round a
+    // floating dock stays clear, and the plate is always above it. Written
+    // down as well, for the rules to build it themselves as they load, so a
+    // reload does not leave the dock unblurred until it is asked for again.
     readonly property bool blurWanted: Config.options.blueberry.dock.blur
     readonly property real plateAlpha: ExLooks.colors.dockPlate.a
+    readonly property string blurStatePath: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/yuki/dock-blur`
     onBlurWantedChanged: blurApply.restart()
     onPlateAlphaChanged: blurApply.restart()
     Component.onCompleted: blurApply.restart()
@@ -54,7 +57,13 @@ Scope {
         onTriggered: {
             const threshold = Math.min(0.3, root.plateAlpha * 0.6).toFixed(3);
             Quickshell.execDetached(["hyprctl", "eval", `if YUKI_SET_DOCK_BLUR then YUKI_SET_DOCK_BLUR(${root.blurWanted}, ${threshold}) end`]);
+            blurState.command = ["sh", "-c", "mkdir -p \"$(dirname \"$2\")\" && printf '%s\\n' \"$1\" > \"$2.tmp\" && mv \"$2.tmp\" \"$2\"",
+                "dock-blur", `${root.blurWanted ? 1 : 0}\t${threshold}`, root.blurStatePath];
+            blurState.running = true;
         }
+    }
+    Process {
+        id: blurState
     }
     Connections {
         target: Hyprland

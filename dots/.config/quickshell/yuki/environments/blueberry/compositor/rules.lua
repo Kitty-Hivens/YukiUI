@@ -468,3 +468,18 @@ for _, g in ipairs(readGestures()) do
         hl.gesture({ fingers = g[1], direction = g[2], action = action })
     end
 end
+
+-- The blur behind the dock as the shell last asked for it, built as the rules
+-- load. Left to the shell alone, a reload left the dock unblurred until the
+-- shell heard of it and asked again, and the blur blinked on every reload.
+-- One line: 1 or 0, a tab, the opacity at or below which nothing is blurred.
+do
+    local file = io.open(stateHome .. "/yuki/dock-blur", "r")
+    if file then
+        local enabled, threshold = (file:read("*l") or ""):match("^([01])\t([%d.]+)$")
+        file:close()
+        if enabled then
+            YUKI_SET_DOCK_BLUR(enabled == "1", tonumber(threshold))
+        end
+    end
+end
