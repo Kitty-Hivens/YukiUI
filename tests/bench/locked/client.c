@@ -3,9 +3,10 @@
 // Asks for fullscreen, draws itself grey, and locks the pointer for as long
 // as it lives once the pointer is over it. Prints one line for each thing
 // that happens to it: "ready" once shown, "locked" and "unlocked", "button
-// <code> <pressed|released>" for every press that reaches it, and "keyboard
-// in" and "keyboard out" as it gains and loses the keyboard. It ends when its
-// standard input closes or the compositor closes it.
+// <code> <pressed|released>" for every press that reaches it, "relative <dx>
+// <dy>" for every relative motion, the only motion a locked pointer brings,
+// and "keyboard in" and "keyboard out" as it gains and loses the keyboard. It
+// ends when its standard input closes or the compositor closes it.
 
 #define _GNU_SOURCE
 
@@ -20,6 +21,7 @@
 #include <wayland-client.h>
 
 #include "pointer-constraints-unstable-v1-client-protocol.h"
+#include "relative-pointer-unstable-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 static struct wl_compositor *compositor;
@@ -27,6 +29,7 @@ static struct wl_shm *shm;
 static struct wl_seat *seat;
 static struct xdg_wm_base *wmBase;
 static struct zwp_pointer_constraints_v1 *constraints;
+static struct zwp_relative_pointer_manager_v1 *relativeManager;
 
 static struct wl_surface *surface;
 static struct xdg_surface *xdgSurface;
@@ -55,6 +58,12 @@ static void draw(void) {
     wl_shm_pool_destroy(pool);
     close(fd);
     wl_surface_attach(surface, buffer, 0, 0);
+    // Opaque, as a game is: a compositor gives the screen to a window alone
+    // only when nothing shows through it.
+    struct wl_region *opaque = wl_compositor_create_region(compositor);
+    wl_region_add(opaque, 0, 0, width, height);
+    wl_surface_set_opaque_region(surface, opaque);
+    wl_region_destroy(opaque);
     wl_surface_damage_buffer(surface, 0, 0, width, height);
     wl_surface_commit(surface);
 }
@@ -99,6 +108,14 @@ static void unlocked(void *data, struct zwp_locked_pointer_v1 *lock) {
     say("unlocked");
 }
 static const struct zwp_locked_pointer_v1_listener lockListener = {.locked = locked, .unlocked = unlocked};
+
+static void relativeMotion(void *data, struct zwp_relative_pointer_v1 *relative, uint32_t timeHigh, uint32_t timeLow,
+                           wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t dxUnaccel, wl_fixed_t dyUnaccel) {
+    char line[64];
+    snprintf(line, sizeof line, "relative %.2f %.2f", wl_fixed_to_double(dx), wl_fixed_to_double(dy));
+    say(line);
+}
+static const struct zwp_relative_pointer_v1_listener relativeListener = {.relative_motion = relativeMotion};
 
 static void pointerEnter(void *data, struct wl_pointer *pointer, uint32_t serial, struct wl_surface *s, wl_fixed_t x, wl_fixed_t y) {}
 static void pointerLeave(void *data, struct wl_pointer *pointer, uint32_t serial, struct wl_surface *s) {}
@@ -157,6 +174,8 @@ static void registryGlobal(void *data, struct wl_registry *registry, uint32_t na
         wmBase = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
     else if (strcmp(interface, zwp_pointer_constraints_v1_interface.name) == 0)
         constraints = wl_registry_bind(registry, name, &zwp_pointer_constraints_v1_interface, 1);
+    else if (strcmp(interface, zwp_relative_pointer_manager_v1_interface.name) == 0)
+        relativeManager = wl_registry_bind(registry, name, &zwp_relative_pointer_manager_v1_interface, 1);
 }
 static void registryGlobalRemove(void *data, struct wl_registry *registry, uint32_t name) {}
 static const struct wl_registry_listener registryListener = {.global = registryGlobal, .global_remove = registryGlobalRemove};
@@ -175,6 +194,10 @@ int main(int argc, char **argv) {
 
     struct wl_pointer *pointer = wl_seat_get_pointer(seat);
     wl_pointer_add_listener(pointer, &pointerListener, NULL);
+    if (relativeManager) {
+        struct zwp_relative_pointer_v1 *relative = zwp_relative_pointer_manager_v1_get_relative_pointer(relativeManager, pointer);
+        zwp_relative_pointer_v1_add_listener(relative, &relativeListener, NULL);
+    }
     struct wl_keyboard *keyboard = wl_seat_get_keyboard(seat);
     wl_keyboard_add_listener(keyboard, &keyboardListener, NULL);
 

@@ -21,7 +21,9 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- resize cursor shows only on the sides that can be pulled.
 -- window-icons: the icon a window gives itself, through xdg-toplevel-icon or
 -- _NET_WM_ICON, for the dock to show an application it has no entry for.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons" }
+-- pen-lock: a pen tablet moves the cursor of a game holding the pointer
+-- locked, which a game under Wine does whenever it is fullscreen.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons", "pen-lock" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"
