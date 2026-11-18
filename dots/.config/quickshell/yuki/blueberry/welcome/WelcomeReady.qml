@@ -35,8 +35,8 @@ WelcomeStep {
 
     // The desktop as it now stands, every choice above in one picture.
     WelcomeDesktop {
-        Layout.preferredWidth: 400
-        Layout.preferredHeight: Math.round(400 * 9 / 16)
+        Layout.preferredWidth: Math.round(Math.min(560, Math.max(400, root.width * 0.5)))
+        Layout.preferredHeight: Math.round(width * 9 / 16)
         Layout.alignment: Qt.AlignHCenter
     }
 

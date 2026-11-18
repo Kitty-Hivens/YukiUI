@@ -24,8 +24,8 @@ WelcomeStep {
         spacing: ExLooks.settings.groupGap
 
         WelcomeDesktop {
-            Layout.preferredWidth: 300
-            Layout.preferredHeight: Math.round(300 * 9 / 16)
+            Layout.preferredWidth: Math.round(Math.min(480, Math.max(300, root.width * 0.45)))
+            Layout.preferredHeight: Math.round(width * 9 / 16)
             Layout.alignment: Qt.AlignTop
             backdrop: ExLooks.settings.pane
         }
@@ -122,7 +122,7 @@ WelcomeStep {
 
         Layout.fillWidth: true
         Layout.preferredWidth: 1
-        implicitHeight: 112
+        implicitHeight: choice.contentItem.implicitHeight
         hoverEnabled: true
         onClicked: Config.options.blueberry.dock.style = choice.modelData.value
 
@@ -145,10 +145,11 @@ WelcomeStep {
         contentItem: ColumnLayout {
             spacing: 2
 
-            // The bottom of a screen, and the dock along it.
+            // The bottom of a screen, and the dock along it, as tall as the
+            // card's width gives it, so a wide window does not draw strips.
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 50
+                Layout.preferredHeight: Math.round(Math.min(110, Math.max(50, choice.width * 0.3)))
                 Layout.margins: ExLooks.spacing.m
                 Layout.bottomMargin: ExLooks.spacing.xs
 

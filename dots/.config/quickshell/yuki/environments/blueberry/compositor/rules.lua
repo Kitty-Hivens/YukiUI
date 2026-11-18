@@ -184,6 +184,11 @@ local geometryPath = stateDir .. "/window-geometry"
 -- another had been closed.
 local SHARED_CLASSES = { ["org.quickshell"] = true }
 
+-- Windows that open as they ask, never where they last stood: the welcome
+-- sizes itself to the screen it opens on, and a size remembered from a screen
+-- in another mode kept it a third of a larger one. By key, as below.
+local NOT_REMEMBERED = { ["org.quickshell\tBlueberry Welcome"] = true }
+
 -- key -> { class, title, monitor, x, y, w, h }, positions relative to the monitor.
 -- Read afresh from the file on every load: the table outlives a reload, and
 -- one left by an older version of this file is in a shape this one does not
@@ -226,7 +231,7 @@ local function readGeometry()
         end
         -- One remembered by class alone for a shared class cannot be told
         -- apart from the others and is dropped.
-        if class and not (SHARED_CLASSES[class] and title == "") then
+        if class and not (SHARED_CLASSES[class] and title == "") and not NOT_REMEMBERED[keyOf(class, title)] then
             YUKI_GEOMETRY[keyOf(class, title)] = { class = class, title = title, monitor = monitor, x = tonumber(x), y = tonumber(y), w = tonumber(w), h = tonumber(h) }
         end
     end
@@ -307,6 +312,7 @@ end
 
 local function usableWindow(w)
     return usable(w.initial_class) and (not SHARED_CLASSES[w.initial_class] or usable(w.initial_title))
+        and not NOT_REMEMBERED[windowKey(w)]
 end
 
 readGeometry()

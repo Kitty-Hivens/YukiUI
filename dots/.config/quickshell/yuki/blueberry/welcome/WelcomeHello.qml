@@ -25,7 +25,9 @@ WelcomeStep {
 
     WelcomeDesktop {
         Layout.fillWidth: true
-        Layout.maximumWidth: 600
+        // As large as the window's height leaves room for, the language
+        // under it still in sight without scrolling.
+        Layout.maximumWidth: Math.round(Math.max(560, Math.min(820, (Window.height - 330) * 16 / 9)))
         Layout.alignment: Qt.AlignHCenter
         Layout.preferredHeight: Math.round(width * 9 / 16)
     }

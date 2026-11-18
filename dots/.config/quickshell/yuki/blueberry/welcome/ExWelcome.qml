@@ -216,7 +216,7 @@ Item {
         radius: root.metrics.paneRadius
         color: root.metrics.pane
 
-        readonly property real column: Math.min(820, pane.width - 2 * root.metrics.contentMargin)
+        readonly property real column: Math.min(1000, pane.width - 2 * root.metrics.contentMargin)
         readonly property real columnX: Math.round((pane.width - pane.column) / 2)
 
         Flickable {

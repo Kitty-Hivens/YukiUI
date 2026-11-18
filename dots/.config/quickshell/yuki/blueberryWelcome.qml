@@ -5,6 +5,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 
@@ -22,8 +23,11 @@ ApplicationWindow {
     // Deliberately not translated: it is what a window rule would match on.
     title: "Blueberry Welcome"
     visible: true
-    width: 960
-    height: 660
+    // A share of the screen it opens on, within bounds: a size fixed for a
+    // 1080p screen came up as a third of a 1440p one, the miniatures in it
+    // the size of a stamp. Never past the screen, on a small one.
+    width: Math.round(Math.min(Math.max(Screen.width * 0.52, 960), 1360, Screen.width * 0.94))
+    height: Math.round(Math.min(Math.max(Screen.height * 0.64, 660), 920, Screen.height * 0.9))
     minimumWidth: 820
     minimumHeight: 560
     color: ExLooks.settings.window

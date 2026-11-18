@@ -61,3 +61,29 @@ def test_x11_window_is_not_remembered_and_an_old_entry_goes(desk):
     wait_until(lambda: name not in desk.bench.remembered(), what="the old entry to go")
     window.close()
     assert name not in desk.bench.remembered()
+
+
+def test_the_welcome_opens_at_its_own_size_and_is_not_remembered(desk):
+    # It sizes itself to the screen it opens on. What an older version
+    # remembered for it, from a screen in another mode, kept it a third of a
+    # larger one.
+    desk.bench.geometry_file.parent.mkdir(parents=True, exist_ok=True)
+    desk.bench.geometry_file.write_text("org.quickshell\tBlueberry Welcome\tBENCH\t800\t360\t500\t300\n")
+    desk.bench.reload()
+
+    window = desk.wayland(wm_class="org.quickshell", title="Blueberry Welcome", width=900, height=600)
+    window.wait(lambda c: tuple(c["size"]) == (900, 600), "at the size it asked for")
+    move(desk, window, 120, 80, 700, 500)
+    window.close()
+
+    again = desk.wayland(wm_class="org.quickshell", title="Blueberry Welcome", width=900, height=600)
+    again.wait(lambda c: tuple(c["size"]) == (900, 600), "at the size it asked for again, not where it was closed")
+
+
+def test_another_shell_window_is_still_remembered(desk):
+    window = desk.wayland(wm_class="org.quickshell", title="Blueberry Settings", width=900, height=600)
+    move(desk, window, 120, 80, 700, 500)
+    window.close()
+    wait_until(lambda: desk.bench.geometry_file.exists() and any(line.startswith("org.quickshell\tBlueberry Settings\t")
+                                                                   for line in desk.bench.geometry_file.read_text().splitlines()),
+               what="the settings window to be remembered")
