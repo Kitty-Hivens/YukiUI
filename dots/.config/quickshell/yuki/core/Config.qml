@@ -554,6 +554,10 @@ Singleton {
                     property bool enable: false
                     property bool killOnMemory: true
                     property bool freezeOnCpu: true
+                    /// On a processor with performance and efficiency cores,
+                    /// whether everything that is not the game or the session
+                    /// runs on the efficiency cores while the mode is on.
+                    property bool pinBackground: true
                     /// Whether to tell the kernel's own killer the same order of
                     /// preference. Everything under the user manager starts on
                     /// one adjustment, which leaves the choice to resident size

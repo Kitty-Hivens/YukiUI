@@ -27,6 +27,15 @@ ColumnLayout {
     property bool gamemodeInstalled: true
     /** The unit that does the guarding: "active", "inactive" or "missing". */
     property string guardUnit: "active"
+    /** A processor with performance and efficiency cores, which the kernel lists as two kinds. */
+    readonly property bool hybrid: atomCores.text().trim().length > 0
+
+    FileView {
+        id: atomCores
+        path: "/sys/devices/cpu_atom/cpus"
+        blockLoading: true
+        printErrors: false
+    }
 
     function readGuardUnit() {
         guardReader.running = true;
@@ -177,6 +186,19 @@ ColumnLayout {
             ExSwitch {
                 checked: root.guard.freezeOnCpu
                 onToggled: Config.options.gameMode.guard.freezeOnCpu = checked
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: root.hybrid
+            enabled: root.guard.enable
+            glyph: "memory_alt"
+            text: Translation.tr("Other programs on the efficiency cores")
+            description: Translation.tr("The performance cores are left to the game and the screen")
+
+            ExSwitch {
+                checked: root.guard.pinBackground
+                onToggled: Config.options.gameMode.guard.pinBackground = checked
             }
         }
         SettingsCard {

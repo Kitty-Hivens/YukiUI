@@ -9,6 +9,14 @@ watches what the rest of the machine does to it, and steps in twice:
   * the game is not getting the processor, so the greediest thing that is not
     the game is frozen until the game is over
 
+and on a processor with performance and efficiency cores, keeps everything
+that is not the game or the session itself on the efficiency cores for as long
+as the game runs. A laptop chip of this kind may have two performance cores
+beside eight efficient ones, the scheduler hands the busiest threads to the
+fast ones, and a chat client, a browser and the game then queued for the same
+two cores while eight others sat idle. The efficient cores here run at three
+gigahertz and more, so what is moved onto them loses little.
+
 Killing and freezing are not the same measure and are not interchangeable.
 Memory that is gone is gone: nothing short of a process ending gives it back,
 and by the time the machine is swapping the game has already stuttered. A
@@ -42,6 +50,11 @@ STATE_PATH = os.path.join(RUNTIME_DIR, "game-guard.json")
 # start it again. Read back at startup, and by the --thaw the unit runs after
 # the process is gone however it went.
 FROZEN_PATH = os.path.join(RUNTIME_DIR, "game-guard.frozen.json")
+# What has been moved onto the efficiency cores, and where it was allowed to
+# run before, kept on disk for the same reason.
+PINNED_PATH = os.path.join(RUNTIME_DIR, "game-guard.pinned.json")
+# How long a process has to have run before it is moved, in seconds.
+PIN_AFTER = 3.0
 
 CLOCK_TICK = os.sysconf("SC_CLK_TCK")
 PAGE_KB = os.sysconf("SC_PAGE_SIZE") // 1024
@@ -77,6 +90,9 @@ PROTECTED_NAMES = frozenset({
     # with it, the game included. There is no reading of this that makes it a
     # worthwhile thing to close.
     "wineserver",
+    # The pen tablet's driver is input to the game, as the keyboard is: never
+    # closed, and never moved off the cores the game runs on.
+    "OpenTabletDriver.Daemon", "OpenTabletDrive", "otd-daemon",
 })
 PROTECTED_PREFIXES = ("systemd-", "xdg-desktop-portal", "xdg-document-portal", "xdg-permission-store")
 
@@ -84,6 +100,7 @@ DEFAULTS = {
     "enable": False,
     "killOnMemory": True,
     "freezeOnCpu": True,
+    "pinBackground": True,
     "raiseOomScores": True,
     "memoryFloor": 0.08,
     "memoryPressure": 20.0,
@@ -105,6 +122,34 @@ DEFAULTS = {
 
 def log(message):
     print(message, flush=True)
+
+
+def cpu_list(text):
+    """The processors a kernel list names, "4-11" or "0,2,4-7", as a set."""
+    found = set()
+    for part in text.strip().split(","):
+        if not part:
+            continue
+        start, _, end = part.partition("-")
+        try:
+            found.update(range(int(start), int(end or start) + 1))
+        except ValueError:
+            return set()
+    return found
+
+
+def efficiency_cores():
+    """
+    The efficiency cores, on a processor that has both kinds, or None.
+
+    The kernel lists each kind as a device of its own. A processor with one
+    kind has neither file, or only one, and nothing is moved on it.
+    """
+    performance = cpu_list((read_text("/sys/devices/cpu_core/cpus") or b"").decode("ascii", "replace"))
+    efficient = cpu_list((read_text("/sys/devices/cpu_atom/cpus") or b"").decode("ascii", "replace"))
+    if not performance or not efficient:
+        return None
+    return efficient
 
 
 def read_text(path):
@@ -167,11 +212,15 @@ class Group:
     is right, and the whole group is refused.
     """
 
-    __slots__ = ("root", "pids", "cpu", "rss_kb", "eligible", "holds_game", "holds_focus",
-                 "on_screen", "has_window", "age")
+    __slots__ = ("root", "heaviest", "same_program", "pids", "cpu", "rss_kb", "eligible", "holds_game",
+                 "holds_focus", "on_screen", "has_window", "age")
 
     def __init__(self, root):
         self.root = root
+        # The member holding the most memory, which is what the group is named
+        # after when it is another program than the root: see label.
+        self.heaviest = root
+        self.same_program = True
         self.pids = []
         self.cpu = 0
         self.rss_kb = 0
@@ -187,7 +236,20 @@ class Group:
 
     @property
     def label(self):
-        return self.root.label
+        """
+        What the group is called in front of a person: the process that holds
+        most of its memory, with the root beside it, when that process is
+        another program than the root. Named after the root alone, a
+        development server started from a terminal was announced as "Closed
+        bash" after thirteen gigabytes of node were taken back, which said
+        nothing about what had been closed. A browser's tab processes are the
+        browser, and it stays named as one.
+        """
+        main = self.heaviest.label
+        root = self.root.label
+        if self.heaviest is self.root or self.same_program or main == root:
+            return root
+        return "%s (from %s)" % (main, root)
 
 
 class Guard:
@@ -212,6 +274,10 @@ class Guard:
         self.cooldown_until = 0.0
 
         self.frozen = {}
+        # pid -> {"start", "allowed", "label"}: moved onto the efficiency
+        # cores, with the processors it was allowed before.
+        self.pinned = {}
+        self.efficient = efficiency_cores()
         self.oom_saved = {}
         self.pending_kill = None
         self.stopping = False
@@ -267,6 +333,7 @@ class Guard:
     def stand_down(self):
         self.cancel_pending_kill()
         self.thaw_all()
+        self.unpin_all()
         self.restore_oom()
 
     def shell_alive(self):
@@ -345,11 +412,16 @@ class Guard:
         raw = read_text("/proc/%d/cmdline" % pid)
         if raw:
             first = raw.split(b"\0")[0].decode("utf-8", "replace")
-            if first:
+            # A program that rewrites its own title puts its arguments into
+            # the first one, an Electron app as "app.asar --enable-sandbox
+            # ...", and a name cut from that is a piece of a command line. Its
+            # executable says what it is. A windows path keeps its spaces.
+            if first and not (" " in first and "\\" not in first):
                 name = os.path.basename(first)
         if not name:
             try:
-                name = os.path.basename(os.readlink("/proc/%d/exe" % pid))
+                # A program updated while it runs is still the program.
+                name = os.path.basename(os.readlink("/proc/%d/exe" % pid)).removesuffix(" (deleted)")
             except OSError:
                 name = ""
         if len(self.names_cache) > 4096:
@@ -514,6 +586,8 @@ class Guard:
                     continue
                 group.pids.append(pid)
                 group.rss_kb += member.rss_kb
+                if member.rss_kb > group.heaviest.rss_kb:
+                    group.heaviest = member
                 group.cpu += member.cpu
                 if pid in protected:
                     group.eligible = False
@@ -527,8 +601,27 @@ class Guard:
                     group.has_window = True
             if group.holds_game:
                 group.eligible = False
+            if group.heaviest is not group.root:
+                group.same_program = self.executable_path(group.root) == self.executable_path(group.heaviest)
             groups.append(group)
         return groups
+
+    def executable_path(self, proc):
+        """
+        The file a process is running, which tells a program's own helpers
+        from another program it started. Read for the two processes a group is
+        named from, and once each while they live.
+        """
+        key = ("path", proc.pid, proc.starttime)
+        cached = self.names_cache.get(key)
+        if cached is not None:
+            return cached
+        try:
+            path = os.readlink("/proc/%d/exe" % proc.pid).removesuffix(" (deleted)")
+        except OSError:
+            path = proc.exe or proc.comm
+        self.names_cache[key] = path
+        return path
 
     # ------------------------------------------------------------ measures
 
@@ -873,6 +966,116 @@ class Guard:
                 "label": entry.get("label", "?"),
             }
 
+    # -------------------------------------------------------------- cores
+
+    @staticmethod
+    def set_allowed(pid, cpus):
+        """
+        Lets every thread of a process run on these processors only.
+
+        Per thread, since that is what the kernel keeps: setting it for the
+        process id alone moves its first thread and leaves the rest. Threads
+        and children started afterwards take it from the thread starting them.
+        """
+        moved = 0
+        try:
+            tasks = os.listdir("/proc/%d/task" % pid)
+        except OSError:
+            return 0
+        for task in tasks:
+            try:
+                os.sched_setaffinity(int(task), cpus)
+                moved += 1
+            except (OSError, ValueError):
+                pass
+        return moved
+
+    def pin_background(self, groups, procs):
+        """
+        Moves whatever is not the game and not the session onto the
+        efficiency cores, once per process. What was already kept off them,
+        by whoever started it, is left where it was put.
+        """
+        if not self.efficient:
+            return
+        # Forgotten once gone, or the record grows with every command run.
+        gone = [pid for pid, entry in self.pinned.items()
+                if procs.get(pid) is None or procs[pid].starttime != entry["start"]]
+        for pid in gone:
+            del self.pinned[pid]
+        uptime = self.uptime()
+        moved = {}
+        for group in groups:
+            if not group.eligible or group.holds_game:
+                continue
+            for pid in group.pids:
+                current = procs.get(pid)
+                if current is None or pid in self.pinned:
+                    continue
+                # Not before it has lived a moment. The shell runs a short
+                # command every second or so, and moving each was a line in
+                # the journal per second for nothing: one that lives on is
+                # moved on a later tick.
+                if self.age_of(current, uptime) < PIN_AFTER:
+                    continue
+                start = current.starttime
+                try:
+                    allowed = os.sched_getaffinity(pid)
+                except OSError:
+                    continue
+                target = allowed & self.efficient
+                if not target or target == allowed:
+                    continue
+                if self.config["dryRun"]:
+                    log("[guard] would move %d (%s) to the efficiency cores" % (pid, current.label))
+                    continue
+                if self.set_allowed(pid, target):
+                    self.pinned[pid] = {"start": start, "allowed": sorted(allowed), "label": group.label}
+                    moved[group.label] = moved.get(group.label, 0) + 1
+        if moved or gone:
+            self.write_pinned()
+        if moved:
+            log("[guard] moved to the efficiency cores: " + ", ".join(
+                "%s (%d)" % (label, count) for label, count in sorted(moved.items())))
+
+    def unpin_all(self):
+        if not self.pinned:
+            return
+        for pid, entry in list(self.pinned.items()):
+            current = self.read_one(pid)
+            # Only the process that was moved, not another that has its id now.
+            if current is not None and current.starttime == entry["start"]:
+                self.set_allowed(pid, set(entry["allowed"]))
+        log("[guard] let %d processes back onto every core" % len(self.pinned))
+        self.pinned.clear()
+        self.write_pinned()
+
+    def write_pinned(self):
+        payload = {str(pid): entry for pid, entry in self.pinned.items()}
+        try:
+            os.makedirs(RUNTIME_DIR, mode=0o700, exist_ok=True)
+            tmp = PINNED_PATH + ".new"
+            with open(tmp, "w") as handle:
+                json.dump(payload, handle)
+            os.replace(tmp, PINNED_PATH)
+        except OSError as error:
+            log("[guard] could not record what was moved: %s" % error)
+
+    def load_pinned(self):
+        raw = read_text(PINNED_PATH)
+        if not raw:
+            return
+        try:
+            payload = json.loads(raw)
+        except ValueError:
+            return
+        for pid, entry in payload.items():
+            try:
+                self.pinned[int(pid)] = {"start": int(entry["start"]), "allowed": [int(cpu) for cpu in entry["allowed"]],
+                                         "label": entry.get("label", "?")}
+            except (KeyError, TypeError, ValueError):
+                continue
+
     # ---------------------------------------------------------------- oom
 
     def apply_oom(self, groups):
@@ -949,6 +1152,10 @@ class Guard:
 
         if self.config["raiseOomScores"]:
             self.apply_oom(groups)
+        if self.config["pinBackground"]:
+            self.pin_background(groups, procs)
+        elif self.pinned:
+            self.unpin_all()
 
         elapsed = None
         if self.prev_sample is not None:
@@ -1118,6 +1325,8 @@ class Guard:
         if self.frozen:
             log("[guard] a previous run left %d groups stopped, starting them" % len(self.frozen))
             self.thaw_all(announce=False)
+        self.load_pinned()
+        self.unpin_all()
 
         signal.signal(signal.SIGTERM, self.on_stop)
         signal.signal(signal.SIGINT, self.on_stop)
@@ -1181,13 +1390,16 @@ def report():
 
 def thaw_only():
     """
-    Starts whatever a previous run left stopped, and nothing else.
+    Starts whatever a previous run left stopped, lets back onto every core
+    whatever it moved, and nothing else.
 
     Run by the unit after the process is gone, however it went. A guard that was
     killed outright cannot put anything back itself, and a stopped process has
     no way of noticing that the reason it was stopped no longer exists.
     """
     guard = Guard()
+    guard.load_pinned()
+    guard.unpin_all()
     guard.load_frozen()
     if not guard.frozen:
         return

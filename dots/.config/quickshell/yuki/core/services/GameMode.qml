@@ -616,6 +616,7 @@ Singleton {
         "enable": Config.options.gameMode.guard.enable,
         "killOnMemory": Config.options.gameMode.guard.killOnMemory,
         "freezeOnCpu": Config.options.gameMode.guard.freezeOnCpu,
+        "pinBackground": Config.options.gameMode.guard.pinBackground,
         "raiseOomScores": Config.options.gameMode.guard.raiseOomScores,
         "memoryFloor": Config.options.gameMode.guard.memoryFloor,
         "memoryPressure": Config.options.gameMode.guard.memoryPressure,
