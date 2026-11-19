@@ -87,7 +87,19 @@ build() {
     -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
     -DINSTALL_QML_PREFIX=lib/qt6/qml
 
-  cmake --build build
+  # As many compilers at once as memory allows, not only as the cores do. Ninja
+  # runs one more than there are threads, and with Qt's headers each takes up to
+  # a gigabyte or two, so a laptop with twelve threads ran out of memory halfway
+  # and took the terminal down with it. Two gigabytes of what is available per
+  # job, at least one, at most one per thread. CMAKE_BUILD_PARALLEL_LEVEL, when
+  # set, is taken as it is. Run under makepkg's errexit, hence ifs.
+  local available jobs threads
+  available=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
+  threads=$(nproc)
+  jobs=$(( available / (2 * 1024 * 1024) ))
+  if (( jobs < 1 )); then jobs=1; fi
+  if (( jobs > threads )); then jobs=$threads; fi
+  cmake --build build -j "${CMAKE_BUILD_PARALLEL_LEVEL:-$jobs}"
 }
 
 package() {
