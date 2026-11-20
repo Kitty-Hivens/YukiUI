@@ -1,12 +1,12 @@
 -- Compositor rules of Blueberry.
 
--- Qt programs keep the KDE platform theme's own file dialog, which suits this
--- desktop, rather than the portal another environment sends them to. 0 rather
--- than unset: the theme reads it as a number, once, as a program starts.
--- Listed for uwsm to hand on to the user's services, where programs started
--- from the shell take their environment from: as the session starts, and
--- again when the shell switches to here.
-hl.env("PLASMA_INTEGRATION_USE_PORTAL", "0")
+-- Qt programs pick files through the portal, the shell's own picker, as
+-- everything else here does. The KDE platform theme's own dialog was kept for
+-- them at first, and turned out the worse of the two in use. The theme reads
+-- this once, as a program starts. Listed for uwsm to hand on to the user's
+-- services, where programs started from the shell take their environment
+-- from: as the session starts, and again when the shell switches to here.
+hl.env("PLASMA_INTEGRATION_USE_PORTAL", "1")
 hl.env("UWSM_FINALIZE_VARNAMES", "PLASMA_INTEGRATION_USE_PORTAL")
 
 -- A desktop of overlapping windows, not a tiling one: everything opens floating.
