@@ -102,28 +102,36 @@ Singleton {
         }
         stdout: StdioCollector {
             onStreamFinished: {
-                let fresh = {};
+                let clients = [];
                 try {
-                    for (const client of JSON.parse(text))
-                        fresh[client.address] = { at: client.at, size: client.size };
+                    clients = JSON.parse(text);
                 } catch (error) {
-                    fresh = {};
+                    clients = [];
                 }
                 const queue = root.minimizeQueue;
                 root.minimizeQueue = [];
                 for (const addresses of queue)
-                    root.minimizeNow(addresses, fresh);
+                    root.minimizeNow(addresses, clients);
             }
         }
     }
 
-    function minimizeNow(addresses, fresh) {
+    function minimizeNow(addresses, clients) {
         // Only a window on an ordinary workspace has somewhere to be put back.
-        // With where each stands now, which is also where its picture sets off from.
-        const windows = addresses.filter(address => root.usable(address))
+        // With where each stands now, which is also where its picture sets off
+        // from, and from the bottom up, the order their pictures are drawn in.
+        const order = clients.map(client => client.address);
+        const moving = addresses.filter(address => root.usable(address));
+        const windows = moving
             .map(address => HyprlandData.windowByAddress[address])
             .filter(win => win && win.workspace.id >= 1)
-            .map(win => Object.assign({}, win, fresh[win.address] ?? {}));
+            .map(win => {
+                const fresh = clients.find(client => client.address === win.address);
+                return Object.assign({}, win, fresh ? { at: fresh.at, size: fresh.size } : {}, {
+                    coveredBy: root.coveringOf(win, clients, moving)
+                });
+            })
+            .sort((a, b) => order.indexOf(a.address) - order.indexOf(b.address));
         if (windows.length === 0)
             return;
         let lua = "";
@@ -150,6 +158,27 @@ Singleton {
                 : "if hl.plugin.minimize and hl.plugin.minimize.reset_focus then hl.plugin.minimize.reset_focus() end";
         }
         root.move(windows, lua, "minimize");
+    }
+
+    /**
+     * What stands over a window and stays where it is, as {x, y, w, h} in the
+     * compositor's coordinates: the windows of its workspace drawn after it,
+     * other than the ones going with it. Hyprland draws tiled windows first,
+     * floating ones over them and a fullscreen one over both, each kind in the
+     * order of its window list, which raising a window changes. Pinned windows
+     * are over everything on their screen, and left to whoever draws.
+     */
+    function coveringOf(win, clients, moving): var {
+        const index = clients.findIndex(client => client.address === win.address);
+        if (index < 0)
+            return [];
+        const rank = client => client.fullscreen > 0 ? 2 : client.floating ? 1 : 0;
+        const own = rank(clients[index]);
+        return clients
+            .filter((client, at) => client.workspace.id === win.workspace.id && client.mapped && !client.hidden
+                && !client.pinned && !moving.includes(client.address)
+                && (rank(client) > own || (rank(client) === own && at > index)))
+            .map(client => ({ x: client.at[0], y: client.at[1], w: client.size[0], h: client.size[1] }));
     }
 
     /** The window of a workspace that had focus most recently, other than the ones named. */

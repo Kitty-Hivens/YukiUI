@@ -65,6 +65,14 @@ Scope {
         return { screen: monitor.name, x: at[0] - monitor.x, y: at[1] - monitor.y, w: win.size[0], h: win.size[1] };
     }
 
+    /** Places in the compositor's coordinates, moved into those of a screen. */
+    function onScreen(rects, monitorId: int): var {
+        const monitor = HyprlandData.monitors.find(candidate => candidate.id === monitorId);
+        if (!monitor)
+            return [];
+        return rects.map(rect => ({ x: rect.x - monitor.x, y: rect.y - monitor.y, w: rect.w, h: rect.h }));
+    }
+
     function buttonOf(screen: string, appId: string, address: string): var {
         const dock = ExStates.dockWindows.find(candidate => candidate.screen?.name === screen);
         return dock ? dock.buttonRect(appId, address) : null;
@@ -111,6 +119,8 @@ Scope {
                 screen: place.screen,
                 window: place,
                 button: button,
+                // A window coming back comes up in front, over all of these.
+                covering: kind === "minimize" ? root.onScreen(win.coveredBy ?? [], win.monitor) : [],
                 toplevel: toplevel,
                 icon: AppSearch.iconFor(appId),
                 batch: batch
@@ -206,183 +216,198 @@ Scope {
 
                     readonly property var pinned: root.pinnedOn(screenScope.modelData.name)
 
-                    Item {
-                        id: left
-
-                        anchors.fill: parent
-                        visible: false
-                        layer.enabled: overlay.pinned.length > 0
-
-                        Repeater {
-                            model: overlay.pinned
-                            Rectangle {
-                                required property var modelData
-                                x: modelData.x
-                                y: modelData.y
-                                width: modelData.w
-                                height: modelData.h
-                                radius: root.rounding
-                            }
-                        }
-                    }
-
-                    Item {
-                        anchors.fill: parent
-                        layer.enabled: overlay.pinned.length > 0
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskInverted: true
-                            maskSource: left
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
+                    // From the bottom up, each flight on a stage of its own,
+                    // which leaves out the screen's pinned windows and the
+                    // windows standing over the one it pictures: those stay in
+                    // sight over the picture, as they stood over the window.
+                    // Drawn over them, a window minimised from under others
+                    // came forward first, and only then flew off.
+                    Repeater {
+                        model: ScriptModel {
+                            values: overlay.mine
+                            objectProp: "id"
                         }
 
-                        Repeater {
-                            model: ScriptModel {
-                                values: overlay.mine
-                                objectProp: "id"
+                        Item {
+                            id: stage
+
+                            required property var modelData
+                            readonly property var leftOut: [...overlay.pinned, ...stage.modelData.covering]
+
+                            anchors.fill: parent
+
+                            Item {
+                                id: left
+
+                                anchors.fill: parent
+                                visible: false
+                                layer.enabled: stage.leftOut.length > 0
+
+                                Repeater {
+                                    model: stage.leftOut
+                                    Rectangle {
+                                        required property var modelData
+                                        x: modelData.x
+                                        y: modelData.y
+                                        width: modelData.w
+                                        height: modelData.h
+                                        radius: root.rounding
+                                    }
+                                }
                             }
 
                             Item {
-                                id: flight
-
-                                required property var modelData
-                                readonly property bool leaving: flight.modelData.kind === "minimize"
-                                readonly property var win: flight.modelData.window
-                                readonly property var button: flight.modelData.button
-                                // The picture keeps the window's shape all the way, only
-                                // smaller, so it fits into the button rather than being
-                                // squashed to its square.
-                                readonly property real small: Math.min(flight.button.w / flight.win.w, flight.button.h / flight.win.h) * 0.7
-                                /** Set off: with its picture, or without once waiting for one is over. */
-                                property bool started: false
-
-                                /** 0 where the window stands, 1 in the button. */
-                                property real travel: flight.leaving ? 0 : 1
-
-                                x: flight.win.x + (flight.button.x + flight.button.w / 2 - flight.win.x - flight.win.w / 2) * flight.travel
-                                y: flight.win.y + (flight.button.y + flight.button.h / 2 - flight.win.y - flight.win.h / 2) * flight.travel
-                                width: flight.win.w
-                                height: flight.win.h
-                                scale: 1 + (flight.small - 1) * flight.travel
-                                opacity: 1 - Math.pow(flight.travel, 3)
-                                // Nothing shows before it sets off. A window coming
-                                // back would otherwise sit in the button as a dot.
-                                visible: flight.leaving || flight.started
-
-                                function setOff() {
-                                    if (flight.started)
-                                        return;
-                                    flight.started = true;
-                                    fly.start();
+                                anchors.fill: parent
+                                layer.enabled: stage.leftOut.length > 0
+                                layer.effect: MultiEffect {
+                                    maskEnabled: true
+                                    maskInverted: true
+                                    maskSource: left
+                                    maskThresholdMin: 0.5
+                                    maskSpreadAtMin: 1.0
                                 }
 
-                                NumberAnimation {
-                                    id: fly
-                                    target: flight
-                                    property: "travel"
-                                    to: flight.leaving ? 1 : 0
-                                    duration: root.duration
-                                    easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: flight.leaving ? ExLooks.motion.exit : ExLooks.motion.enter
-                                    onFinished: {
-                                        if (flight.leaving) {
-                                            root.land(flight.modelData);
-                                        } else {
-                                            root.ready(flight.modelData);
-                                            settle.start();
+                                Item {
+                                    id: flight
+
+                                    readonly property var modelData: stage.modelData
+                                    readonly property bool leaving: flight.modelData.kind === "minimize"
+                                    readonly property var win: flight.modelData.window
+                                    readonly property var button: flight.modelData.button
+                                    // The picture keeps the window's shape all the way, only
+                                    // smaller, so it fits into the button rather than being
+                                    // squashed to its square.
+                                    readonly property real small: Math.min(flight.button.w / flight.win.w, flight.button.h / flight.win.h) * 0.7
+                                    /** Set off: with its picture, or without once waiting for one is over. */
+                                    property bool started: false
+
+                                    /** 0 where the window stands, 1 in the button. */
+                                    property real travel: flight.leaving ? 0 : 1
+
+                                    x: flight.win.x + (flight.button.x + flight.button.w / 2 - flight.win.x - flight.win.w / 2) * flight.travel
+                                    y: flight.win.y + (flight.button.y + flight.button.h / 2 - flight.win.y - flight.win.h / 2) * flight.travel
+                                    width: flight.win.w
+                                    height: flight.win.h
+                                    scale: 1 + (flight.small - 1) * flight.travel
+                                    opacity: 1 - Math.pow(flight.travel, 3)
+                                    // Nothing shows before it sets off. A window coming
+                                    // back would otherwise sit in the button as a dot.
+                                    visible: flight.leaving || flight.started
+
+                                    function setOff() {
+                                        if (flight.started)
+                                            return;
+                                        flight.started = true;
+                                        fly.start();
+                                    }
+
+                                    NumberAnimation {
+                                        id: fly
+                                        target: flight
+                                        property: "travel"
+                                        to: flight.leaving ? 1 : 0
+                                        duration: root.duration
+                                        easing.type: Easing.BezierSpline
+                                        easing.bezierCurve: flight.leaving ? ExLooks.motion.exit : ExLooks.motion.enter
+                                        onFinished: {
+                                            if (flight.leaving) {
+                                                root.land(flight.modelData);
+                                            } else {
+                                                root.ready(flight.modelData);
+                                                settle.start();
+                                            }
                                         }
                                     }
-                                }
 
-                                // The window is asked back when the picture arrives and
-                                // takes a moment to show, so the picture stays over it
-                                // until it has.
-                                Timer {
-                                    id: settle
-                                    interval: 150
-                                    onTriggered: root.land(flight.modelData)
-                                }
-
-                                ScreencopyView {
-                                    id: shot
-
-                                    anchors.fill: parent
-                                    captureSource: flight.modelData.toplevel
-                                    live: false
-                                    paintCursor: false
-                                    onHasContentChanged: {
-                                        if (!shot.hasContent)
-                                            return;
-                                        if (flight.leaving)
-                                            shown.start();
-                                        else
-                                            flight.setOff();
+                                    // The window is asked back when the picture arrives and
+                                    // takes a moment to show, so the picture stays over it
+                                    // until it has.
+                                    Timer {
+                                        id: settle
+                                        interval: 150
+                                        onTriggered: root.land(flight.modelData)
                                     }
-                                }
 
-                                // Leaving: the window is let go once its picture is on
-                                // screen over it, two frames after it arrived, and a
-                                // moment later the picture sets off, so it does not
-                                // leave the window behind in plain sight.
-                                Timer {
-                                    id: shown
-                                    interval: 34
-                                    onTriggered: root.ready(flight.modelData)
-                                }
-                                Connections {
-                                    target: root
-                                    function onReleased(batchId) {
-                                        if (batchId === flight.modelData.batch.id && flight.leaving)
-                                            startDelay.start();
-                                    }
-                                }
-                                Timer {
-                                    id: startDelay
-                                    interval: 40
-                                    onTriggered: flight.setOff()
-                                }
+                                    ScreencopyView {
+                                        id: shot
 
-                                // A picture that does not come in time: a window
-                                // leaving goes without one, and one coming back
-                                // flies out as its application's icon on a card.
-                                Timer {
-                                    interval: 200
-                                    running: true
-                                    onTriggered: {
-                                        if (shot.hasContent)
-                                            return;
-                                        if (flight.leaving) {
-                                            root.ready(flight.modelData);
-                                            root.land(flight.modelData);
-                                        } else {
-                                            flight.setOff();
+                                        anchors.fill: parent
+                                        captureSource: flight.modelData.toplevel
+                                        live: false
+                                        paintCursor: false
+                                        onHasContentChanged: {
+                                            if (!shot.hasContent)
+                                                return;
+                                            if (flight.leaving)
+                                                shown.start();
+                                            else
+                                                flight.setOff();
                                         }
                                     }
-                                }
-                                // However the flight goes wrong, it comes down: left in
-                                // the air, its picture stayed over the screen for good,
-                                // over the window come back, which then looked as if it
-                                // had stopped drawing. The window itself is moved on a
-                                // deadline of its own in Minimize.
-                                Timer {
-                                    interval: root.duration + 2000
-                                    running: true
-                                    onTriggered: root.land(flight.modelData)
-                                }
 
-                                Rectangle {
-                                    anchors.fill: parent
-                                    visible: !flight.leaving && !shot.hasContent
-                                    radius: ExLooks.radius.tile / Math.max(0.05, flight.scale)
-                                    color: ExLooks.colors.surface
-                                    border.width: 1
-                                    border.color: ExLooks.colors.hairline
+                                    // Leaving: the window is let go once its picture is on
+                                    // screen over it, two frames after it arrived, and a
+                                    // moment later the picture sets off, so it does not
+                                    // leave the window behind in plain sight.
+                                    Timer {
+                                        id: shown
+                                        interval: 34
+                                        onTriggered: root.ready(flight.modelData)
+                                    }
+                                    Connections {
+                                        target: root
+                                        function onReleased(batchId) {
+                                            if (batchId === flight.modelData.batch.id && flight.leaving)
+                                                startDelay.start();
+                                        }
+                                    }
+                                    Timer {
+                                        id: startDelay
+                                        interval: 40
+                                        onTriggered: flight.setOff()
+                                    }
 
-                                    IconImage {
-                                        anchors.centerIn: parent
-                                        implicitSize: Math.min(parent.width, parent.height) * 0.3
-                                        source: flight.modelData.icon ?? ""
+                                    // A picture that does not come in time: a window
+                                    // leaving goes without one, and one coming back
+                                    // flies out as its application's icon on a card.
+                                    Timer {
+                                        interval: 200
+                                        running: true
+                                        onTriggered: {
+                                            if (shot.hasContent)
+                                                return;
+                                            if (flight.leaving) {
+                                                root.ready(flight.modelData);
+                                                root.land(flight.modelData);
+                                            } else {
+                                                flight.setOff();
+                                            }
+                                        }
+                                    }
+                                    // However the flight goes wrong, it comes down: left in
+                                    // the air, its picture stayed over the screen for good,
+                                    // over the window come back, which then looked as if it
+                                    // had stopped drawing. The window itself is moved on a
+                                    // deadline of its own in Minimize.
+                                    Timer {
+                                        interval: root.duration + 2000
+                                        running: true
+                                        onTriggered: root.land(flight.modelData)
+                                    }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        visible: !flight.leaving && !shot.hasContent
+                                        radius: ExLooks.radius.tile / Math.max(0.05, flight.scale)
+                                        color: ExLooks.colors.surface
+                                        border.width: 1
+                                        border.color: ExLooks.colors.hairline
+
+                                        IconImage {
+                                            anchors.centerIn: parent
+                                            implicitSize: Math.min(parent.width, parent.height) * 0.3
+                                            source: flight.modelData.icon ?? ""
+                                        }
                                     }
                                 }
                             }
