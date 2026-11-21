@@ -271,12 +271,7 @@ ColumnLayout {
                                     anchors.centerIn: parent
                                     implicitSize: 22
                                     opacity: app.muted ? 0.35 : 1
-                                    source: {
-                                        const own = StreamApps.iconFor(app.modelData);
-                                        if (AppSearch.iconExists(own))
-                                            return Quickshell.iconPath(own, "image-missing");
-                                        return Quickshell.iconPath(AppSearch.guessIcon(app.modelData?.properties["application.icon-name"] ?? app.modelData?.properties["node.name"] ?? ""), "image-missing");
-                                    }
+                                    source: StreamApps.iconSourceFor(app.modelData)
                                 }
                             }
                             ExSlider {

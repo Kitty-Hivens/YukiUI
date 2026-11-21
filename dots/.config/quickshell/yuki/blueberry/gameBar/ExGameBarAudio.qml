@@ -181,12 +181,7 @@ ColumnLayout {
                                 node: app.modelData
                                 device: false
                                 maximum: 1.5
-                                icon: {
-                                    const own = StreamApps.iconFor(app.modelData);
-                                    if (AppSearch.iconExists(own))
-                                        return Quickshell.iconPath(own, "image-missing");
-                                    return Quickshell.iconPath(AppSearch.guessIcon(app.modelData?.properties["application.icon-name"] ?? app.modelData?.properties["node.name"] ?? ""), "image-missing");
-                                }
+                                icon: StreamApps.iconSourceFor(app.modelData)
                             }
                         }
                     }

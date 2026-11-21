@@ -144,6 +144,47 @@ Singleton {
         return "";
     }
 
+    /**
+     * The icon of the window the stream's process shows, found as the dock
+     * finds a window's: the game Steam started it as, or the icon the window
+     * gave itself. As an image source, or "" when the process has no window
+     * or nothing better than a guess. A game run through Proton has neither a
+     * desktop entry nor a theme icon under the name it plays sound as, its
+     * .exe, and showed the icon for a missing one.
+     */
+    function windowIconFor(node): string {
+        const pid = Number(node?.properties?.["application.process.id"] ?? 0);
+        if (!(pid > 0))
+            return "";
+        const client = HyprlandData.windowList.find(candidate => candidate.pid === pid);
+        if (!client)
+            return "";
+        if (DesktopEntries.byId(client.class))
+            return Quickshell.iconPath(AppSearch.iconNameFor(client.class), "image-missing");
+        const steam = WindowIcons.steamAppOf(client.class);
+        if (steam && AppSearch.iconExists(`steam_icon_${steam}`))
+            return Quickshell.iconPath(`steam_icon_${steam}`);
+        const own = WindowIcons.nameOf(client.class);
+        if (own && AppSearch.iconExists(own))
+            return Quickshell.iconPath(own);
+        return WindowIcons.pictureOf(client.class);
+    }
+
+    /**
+     * The icon to show for a stream, as an image source, best first: the
+     * desktop entry of the program, the window it shows, and then a guess
+     * from what the stream calls itself.
+     */
+    function iconSourceFor(node): string {
+        const own = root.iconFor(node);
+        if (AppSearch.iconExists(own))
+            return Quickshell.iconPath(own, "image-missing");
+        const fromWindow = root.windowIconFor(node);
+        if (fromWindow.length > 0)
+            return fromWindow;
+        return Quickshell.iconPath(AppSearch.guessIcon(node?.properties["application.icon-name"] ?? node?.properties["node.name"] ?? ""), "image-missing");
+    }
+
     Process {
         id: resolveProc
         stdout: StdioCollector {

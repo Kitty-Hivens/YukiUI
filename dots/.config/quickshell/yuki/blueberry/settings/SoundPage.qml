@@ -140,12 +140,7 @@ ColumnLayout {
 
         Layout.fillWidth: true
         leads: false
-        iconSource: {
-            const own = StreamApps.iconFor(stream.node);
-            if (AppSearch.iconExists(own))
-                return Quickshell.iconPath(own, "image-missing");
-            return Quickshell.iconPath(AppSearch.guessIcon(stream.node?.properties["application.icon-name"] ?? stream.node?.properties["node.name"] ?? ""), "image-missing");
-        }
+        iconSource: StreamApps.iconSourceFor(stream.node)
         text: Audio.appNodeDisplayName(stream.node)
         description: Audio.appNodeContext(stream.node)
 
