@@ -1038,6 +1038,63 @@ class Guard:
             log("[guard] moved to the efficiency cores: " + ", ".join(
                 "%s (%d)" % (label, count) for label, count in sorted(moved.items())))
 
+    def release_game(self, game_tree, procs):
+        """
+        Gives the game every core back where it has fewer than it should.
+
+        What was moved before it became part of the game is put back where it
+        was: game mode left on with no game moved the Steam client, and a game
+        Steam started afterwards was then the Steam client's child. And what
+        the game is made of that is allowed the efficiency cores and nothing
+        else is let onto every core, since a child takes the cores its parent
+        was allowed: that game was born kept off the fast cores, all hundred of
+        its threads. Exactly the efficiency cores is what this program sets and
+        nothing else does, so a narrower set somebody chose, a build kept on
+        the fast cores alone say, is left as it is.
+        """
+        if not self.efficient or not game_tree or self.config["dryRun"]:
+            return
+        released = set()
+        for pid in [pid for pid in self.pinned if pid in game_tree]:
+            entry = self.pinned.pop(pid)
+            current = procs.get(pid)
+            if current is not None and current.starttime == entry["start"]:
+                self.set_allowed(pid, set(entry["allowed"]))
+            released.add(entry["label"])
+        if released:
+            self.write_pinned()
+        every = cpu_list((read_text("/sys/devices/system/cpu/online") or b"").decode("ascii", "replace"))
+        widened = 0
+        if every and every != self.efficient:
+            for pid in game_tree:
+                try:
+                    allowed = os.sched_getaffinity(pid)
+                except OSError:
+                    continue
+                if allowed == self.efficient and self.set_allowed_where(pid, self.efficient, every):
+                    widened += 1
+        if released:
+            log("[guard] part of the game now, back on its own cores: " + ", ".join(sorted(released)))
+        if widened:
+            log("[guard] let %d processes of the game back onto every core" % widened)
+
+    @staticmethod
+    def set_allowed_where(pid, only, cpus):
+        """Like set_allowed, but only the threads allowed exactly `only` now."""
+        moved = 0
+        try:
+            tasks = os.listdir("/proc/%d/task" % pid)
+        except OSError:
+            return 0
+        for task in tasks:
+            try:
+                if os.sched_getaffinity(int(task)) == only:
+                    os.sched_setaffinity(int(task), cpus)
+                    moved += 1
+            except (OSError, ValueError):
+                pass
+        return moved
+
     def unpin_all(self):
         if not self.pinned:
             return
@@ -1153,6 +1210,7 @@ class Guard:
         if self.config["raiseOomScores"]:
             self.apply_oom(groups)
         if self.config["pinBackground"]:
+            self.release_game(game_tree, procs)
             self.pin_background(groups, procs)
         elif self.pinned:
             self.unpin_all()

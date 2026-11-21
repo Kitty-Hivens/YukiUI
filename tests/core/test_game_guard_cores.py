@@ -108,3 +108,78 @@ def test_a_process_only_just_started_is_left_alone(record, sleeper, monkeypatch)
     group, procs = group_of(guard, sleeper)
     guard.pin_background([group], procs)
     assert os.sched_getaffinity(sleeper) == before
+
+
+def online():
+    return guard_module.cpu_list(Path("/sys/devices/system/cpu/online").read_text())
+
+
+@pytest.fixture
+def child_on():
+    """A process started with only the given processors allowed, as a child of a moved parent is."""
+    started = []
+
+    def start(cpus):
+        process = subprocess.Popen(["sleep", "60"], preexec_fn=lambda: os.sched_setaffinity(0, cpus))
+        started.append(process)
+        return process.pid
+
+    yield start
+    for process in started:
+        process.kill()
+        process.wait()
+
+
+def test_a_program_moved_before_it_became_part_of_the_game_gets_its_cores_back(record, sleeper):
+    # Game mode on with no game moves the Steam client, which then starts the game.
+    before = os.sched_getaffinity(sleeper)
+    if len(before) < 2:
+        pytest.skip("one processor, nothing to move between")
+    guard = guard_module.Guard()
+    guard.efficient = {max(before)}
+    group, procs = group_of(guard, sleeper)
+    guard.pin_background([group], procs)
+    assert os.sched_getaffinity(sleeper) == guard.efficient
+
+    guard.release_game({sleeper}, procs)
+    assert os.sched_getaffinity(sleeper) == before
+    assert guard.pinned == {}
+    assert str(sleeper) not in record.read_text()
+
+
+def test_the_game_born_on_the_efficiency_cores_is_let_onto_every_core(record, child_on):
+    every = online()
+    if len(every) < 2:
+        pytest.skip("one processor, nothing to move between")
+    guard = guard_module.Guard()
+    guard.efficient = {max(every)}
+    game = child_on(guard.efficient)
+    assert os.sched_getaffinity(game) == guard.efficient
+
+    guard.release_game({game}, {game: guard.read_one(game)})
+    assert os.sched_getaffinity(game) == every
+
+
+def test_a_narrower_set_somebody_else_chose_is_left_as_it_is(record, child_on):
+    every = online()
+    if len(every) < 3:
+        pytest.skip("too few processors to tell the sets apart")
+    guard = guard_module.Guard()
+    guard.efficient = {max(every)}
+    chosen = {min(every)}
+    game = child_on(chosen)
+
+    guard.release_game({game}, {game: guard.read_one(game)})
+    assert os.sched_getaffinity(game) == chosen
+
+
+def test_a_rehearsal_gives_nothing_back(record, child_on):
+    every = online()
+    if len(every) < 2:
+        pytest.skip("one processor, nothing to move between")
+    guard = guard_module.Guard()
+    guard.config["dryRun"] = True
+    guard.efficient = {max(every)}
+    game = child_on(guard.efficient)
+    guard.release_game({game}, {game: guard.read_one(game)})
+    assert os.sched_getaffinity(game) == guard.efficient
