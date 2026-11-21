@@ -32,7 +32,7 @@ Item {
     function launch(entry) {
         if (!entry)
             return;
-        entry.execute();
+        AppLaunch.run(entry);
         ExStates.launcherOpen = false;
     }
 

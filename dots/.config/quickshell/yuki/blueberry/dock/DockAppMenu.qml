@@ -18,11 +18,11 @@ ExPopup {
     readonly property var items: {
         const list = [];
         for (const action of root.desktopEntry?.actions ?? [])
-            list.push({ key: `action:${action.name}`, text: action.name, glyph: "", run: () => action.execute() });
+            list.push({ key: `action:${action.name}`, text: action.name, glyph: "", run: () => AppLaunch.runAction(root.desktopEntry, action) });
         if (list.length > 0)
             list.push({ key: "separator:actions", separator: true });
         if (root.desktopEntry)
-            list.push({ key: "launch", text: root.desktopEntry.name, glyph: "open_in_new", run: () => root.desktopEntry.execute() });
+            list.push({ key: "launch", text: root.desktopEntry.name, glyph: "open_in_new", run: () => AppLaunch.run(root.desktopEntry) });
         if (root.entry)
             list.push({
                 key: "pin",

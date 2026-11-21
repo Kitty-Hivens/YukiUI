@@ -3,6 +3,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Widgets
 
+import qs.core.services
 import qs.blueberry
 import qs.blueberry.looks
 
@@ -21,7 +22,7 @@ AbstractButton {
     hoverEnabled: true
 
     onClicked: {
-        root.desktopEntry?.execute();
+        AppLaunch.run(root.desktopEntry);
         ExStates.launcherOpen = false;
     }
 

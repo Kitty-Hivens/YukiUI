@@ -58,7 +58,13 @@ Scope {
     ExSurfaces {}
 
     // Copies are kept from the start, whether or not the history is ever opened.
-    Component.onCompleted: ExClipboardHistory.load()
+    // Which applications ask for the second graphics card is read as it comes
+    // up as well: read on the first launch, it answered after that launch had
+    // gone to the card that drives the screen.
+    Component.onCompleted: {
+        ExClipboardHistory.load();
+        AppLaunch.load();
+    }
 
     /**
      * Called as another environment takes this one's place. What this desktop

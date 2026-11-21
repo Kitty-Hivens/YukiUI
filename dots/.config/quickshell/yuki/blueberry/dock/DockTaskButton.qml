@@ -52,7 +52,7 @@ Item {
         if (root.soleWindow)
             TaskbarApps.toggleWindow(root.soleWindow);
         else if (!root.running)
-            TaskbarApps.launch(root.entry.appId);
+            AppLaunch.run(AppSearch.entryFor(root.entry.appId));
         else if (root.windows.length === 1)
             TaskbarApps.toggleWindow(root.windows[0]);
         else
