@@ -189,7 +189,21 @@ local SHARED_CLASSES = { ["org.quickshell"] = true }
 -- in another mode kept it a third of a larger one. By key, as below.
 local NOT_REMEMBERED = { ["org.quickshell\tBlueberry Welcome"] = true }
 
--- key -> { class, title, monitor, x, y, w, h }, positions relative to the monitor.
+-- A window closed this many seconds or less after it opened is not
+-- remembered: a splash screen closes before its application's main window
+-- opens, and was taken for the last window of that application, so every
+-- later launch put the splash where it had once been. A global, so the test
+-- bench can shorten it.
+YUKI_GEOMETRY_MIN_LIFE = 10
+-- address -> when the window opened, by os.time. Emptied by a reload, after
+-- which a window already open counts as one that has lived long enough.
+YUKI_OPENED = {}
+
+-- key -> { class, title, monitor, x, y, w, h, centered }, positions relative
+-- to the monitor. A window that stood in the middle of the work area is
+-- remembered as centred and comes back in the middle of whatever screen it
+-- opens on: kept in pixels alone, one centred on a 1920x1080 screen came back
+-- off centre once that screen ran at 2560x1440.
 -- Read afresh from the file on every load: the table outlives a reload, and
 -- one left by an older version of this file is in a shape this one does not
 -- read.
@@ -222,9 +236,16 @@ local function readGeometry()
         return
     end
     for line in file:lines() do
-        -- class, title, monitor, x, y, w, h. A file written before titles were
+        -- class, title, monitor, x, y, w, h, and "centered" after them for a
+        -- window that stood in the middle. A file written before titles were
         -- kept has no title field.
-        local class, title, monitor, x, y, w, h = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t(%-?%d+)\t(%-?%d+)\t(%d+)\t(%d+)$")
+        local centered = false
+        local class, title, monitor, x, y, w, h = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t(%-?%d+)\t(%-?%d+)\t(%d+)\t(%d+)\tcentered$")
+        if class then
+            centered = true
+        else
+            class, title, monitor, x, y, w, h = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t(%-?%d+)\t(%-?%d+)\t(%d+)\t(%d+)$")
+        end
         if not class then
             class, monitor, x, y, w, h = line:match("^([^\t]+)\t([^\t]*)\t(%-?%d+)\t(%-?%d+)\t(%d+)\t(%d+)$")
             title = ""
@@ -232,7 +253,7 @@ local function readGeometry()
         -- One remembered by class alone for a shared class cannot be told
         -- apart from the others and is dropped.
         if class and not (SHARED_CLASSES[class] and title == "") and not NOT_REMEMBERED[keyOf(class, title)] then
-            YUKI_GEOMETRY[keyOf(class, title)] = { class = class, title = title, monitor = monitor, x = tonumber(x), y = tonumber(y), w = tonumber(w), h = tonumber(h) }
+            YUKI_GEOMETRY[keyOf(class, title)] = { class = class, title = title, monitor = monitor, x = tonumber(x), y = tonumber(y), w = tonumber(w), h = tonumber(h), centered = centered }
         end
     end
     file:close()
@@ -251,7 +272,8 @@ local function writeGeometry()
         return
     end
     for _, g in pairs(YUKI_GEOMETRY) do
-        file:write(string.format("%s\t%s\t%s\t%d\t%d\t%d\t%d\n", g.class, g.title or "", g.monitor or "", g.x, g.y, g.w, g.h))
+        file:write(string.format("%s\t%s\t%s\t%d\t%d\t%d\t%d%s\n", g.class, g.title or "", g.monitor or "", g.x, g.y, g.w, g.h,
+            g.centered and "\tcentered" or ""))
     end
     file:close()
     os.rename(geometryPath .. ".tmp", geometryPath)
@@ -282,6 +304,10 @@ local function arm(key)
     -- Written without spaces, which part x from y.
     local w = string.format("min(%d,monitor_w)", g.w)
     local h = string.format("min(%d,monitor_h)", g.h)
+    if g.centered then
+        YUKI_GEOMETRY_RULES[key] = hl.window_rule({ match = match, size = w .. " " .. h, center = true })
+        return
+    end
     YUKI_GEOMETRY_RULES[key] = hl.window_rule({
         match = match,
         size = w .. " " .. h,
@@ -308,6 +334,22 @@ end
 -- Tabs and line breaks would break the file, and no real class has them.
 local function usable(text)
     return text and #text > 0 and not text:find("[\t\n]")
+end
+
+-- The part of a monitor windows are placed in, in global coordinates and
+-- logical pixels: the monitor less what the dock and other panels reserve.
+local function workAreaOf(m)
+    local scale = m.scale or 1
+    local turned = (m.transform or 0) % 2 == 1
+    local width = (turned and m.height or m.width) / scale
+    local height = (turned and m.width or m.height) / scale
+    local r = type(m.reserved) == "table" and m.reserved or {}
+    return {
+        x = m.x + (r.left or 0),
+        y = m.y + (r.top or 0),
+        w = width - (r.left or 0) - (r.right or 0),
+        h = height - (r.top or 0) - (r.bottom or 0),
+    }
 end
 
 local function usableWindow(w)
@@ -339,7 +381,12 @@ function YUKI_PLACE_REMEMBERED(address)
             local height = math.min(g.h, m.height)
             local target = "address:" .. address
             hl.dispatch(hl.dsp.window.resize({ window = target, x = width, y = height }))
-            hl.dispatch(hl.dsp.window.move({ window = target, x = m.x + math.max(0, math.min(g.x, m.width - width)), y = m.y + math.max(0, math.min(g.y, m.height - height)) }))
+            if g.centered then
+                local area = workAreaOf(m)
+                hl.dispatch(hl.dsp.window.move({ window = target, x = math.floor(area.x + (area.w - width) / 2), y = math.floor(area.y + (area.h - height) / 2) }))
+            else
+                hl.dispatch(hl.dsp.window.move({ window = target, x = m.x + math.max(0, math.min(g.x, m.width - width)), y = m.y + math.max(0, math.min(g.y, m.height - height)) }))
+            end
             return true
         end
     end
@@ -351,6 +398,7 @@ end
 -- remembered for one before is dropped as it opens. A window rule cannot tell
 -- the two kinds apart: its xwayland match is not acted on.
 hl.on("window.open", function(w)
+    YUKI_OPENED[w.address] = os.time()
     if usableWindow(w) then
         local key = windowKey(w)
         disarm(key)
@@ -369,18 +417,22 @@ local function coversWorkArea(w)
     if not m or not w.size then
         return false
     end
-    local scale = m.scale or 1
-    local turned = (m.transform or 0) % 2 == 1
-    local width = (turned and m.height or m.width) / scale
-    local height = (turned and m.width or m.height) / scale
-    local r = type(m.reserved) == "table" and m.reserved or {}
-    return w.size.x >= width - (r.left or 0) - (r.right or 0) - 8
-        and w.size.y >= height - (r.top or 0) - (r.bottom or 0) - 8
+    local area = workAreaOf(m)
+    return w.size.x >= area.w - 8 and w.size.y >= area.h - 8
+end
+
+-- Whether a window stands in the middle of the work area, give or take the
+-- rounding of an odd size.
+local function centeredIn(area, at, size)
+    return math.abs(at.x + size.x / 2 - (area.x + area.w / 2)) <= 4
+        and math.abs(at.y + size.y / 2 - (area.y + area.h / 2)) <= 4
 end
 
 hl.on("window.close", function(w)
     local placed = YUKI_PLACED[w.address]
     YUKI_PLACED[w.address] = nil
+    local opened = YUKI_OPENED[w.address]
+    YUKI_OPENED[w.address] = nil
     if not usableWindow(w) or w.xwayland then
         return
     end
@@ -388,12 +440,14 @@ hl.on("window.close", function(w)
     if openCount(key, w.address) > 0 then
         return
     end
+    -- What was remembered before is kept, and armed again below.
+    local shortLived = opened ~= nil and os.time() - opened <= YUKI_GEOMETRY_MIN_LIFE
     -- One told it is maximised, or as large as the work area, that the shell
     -- did not report as placed is the size of the screen and not where it
     -- stood, so what was remembered before is kept. Remembered, it opened as
     -- large as the screen again next time, as an ordinary window.
     local maximized = not placed and (w.fullscreen_client ~= 0 or coversWorkArea(w))
-    if w.floating and w.fullscreen == 0 and not maximized and w.monitor and w.at and w.size then
+    if not shortLived and w.floating and w.fullscreen == 0 and not maximized and w.monitor and w.at and w.size then
         local m = w.monitor
         local at = placed and { x = placed.x, y = placed.y } or w.at
         local size = placed and { x = placed.w, y = placed.h } or w.size
@@ -409,6 +463,7 @@ hl.on("window.close", function(w)
             y = math.max(0, math.min(at.y - m.y, m.height - height)),
             w = width,
             h = height,
+            centered = centeredIn(workAreaOf(m), at, size),
         }
         writeGeometry()
     end

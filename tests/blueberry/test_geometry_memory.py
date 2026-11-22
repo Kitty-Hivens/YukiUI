@@ -3,9 +3,23 @@
 A Wayland application cannot place its own window, so the compositor rules
 remember where the last window of each one stood. An X11 application places
 itself, and is left to do so.
+
+A window closed within seconds of opening is not remembered, so that a splash
+screen is not taken for its application's last window. The tests here close
+their windows sooner than that, so the rules are told to remember any window,
+and the test of the limit sets a short one of its own.
 """
 
+import time
+
+import pytest
+
 from bench.bench import wait_until
+
+
+@pytest.fixture(autouse=True)
+def any_lifetime(desk):
+    desk.bench.eval("YUKI_GEOMETRY_MIN_LIFE = -1")
 
 
 def move(desk, window, x, y, w, h):
@@ -87,3 +101,51 @@ def test_another_shell_window_is_still_remembered(desk):
     wait_until(lambda: desk.bench.geometry_file.exists() and any(line.startswith("org.quickshell\tBlueberry Settings\t")
                                                                    for line in desk.bench.geometry_file.read_text().splitlines()),
                what="the settings window to be remembered")
+
+
+def test_a_window_closed_soon_after_it_opened_is_not_remembered(desk):
+    # A splash screen closes before its application's main window opens, and
+    # was taken for the last window of that application.
+    desk.bench.eval("YUKI_GEOMETRY_MIN_LIFE = 2")
+    name = desk.name("memory")
+    splash = desk.wayland(wm_class=name)
+    move(desk, splash, 300, 200, 300, 300)
+    splash.close()
+    time.sleep(0.5)
+    assert name not in desk.bench.remembered()
+
+    window = desk.wayland(wm_class=name)
+    move(desk, window, 200, 120, 640, 400)
+    time.sleep(3.2)
+    window.close()
+    assert remembered(desk, name)[2:6] == ["200", "120", "640", "400"]
+
+
+def centred(desk, w, h):
+    ax, ay, aw, ah = desk.bench.work_area
+    return ax + (aw - w) // 2, ay + (ah - h) // 2
+
+
+def test_a_centred_window_is_remembered_centred(desk):
+    name = desk.name("memory")
+    window = desk.wayland(wm_class=name)
+    x, y = centred(desk, 600, 400)
+    move(desk, window, x, y, 600, 400)
+    window.close()
+    assert remembered(desk, name)[-1] == "centered"
+
+    again = desk.wayland(wm_class=name)
+    again.wait(lambda c: (*c["at"], *c["size"]) == (x, y, 600, 400), "back in the middle")
+
+
+def test_a_centred_window_comes_back_in_the_middle_of_another_screen(desk):
+    # Remembered while the screen ran in another mode, where the middle was
+    # elsewhere: the place written down is not where it opens.
+    name = desk.name("memory")
+    desk.bench.geometry_file.parent.mkdir(parents=True, exist_ok=True)
+    desk.bench.geometry_file.write_text(f"{name}\t\tBENCH\t100\t60\t300\t300\tcentered\n")
+    desk.bench.reload()
+
+    window = desk.wayland(wm_class=name)
+    x, y = centred(desk, 300, 300)
+    window.wait(lambda c: (*c["at"], *c["size"]) == (x, y, 300, 300), f"in the middle at {x},{y}")
