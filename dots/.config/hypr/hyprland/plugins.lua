@@ -23,7 +23,10 @@ local dir = "/usr/lib/yuki-hyprland-plugins/"
 -- _NET_WM_ICON, for the dock to show an application it has no entry for.
 -- pen-lock: a pen tablet moves the cursor of a game holding the pointer
 -- locked, which a game under Wine does whenever it is fullscreen.
-local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons", "pen-lock" }
+-- scanout-feedback: a fullscreen game drawing into a subsurface, as one under
+-- Wine does, is offered buffers that can go straight to the screen, so it is
+-- scanned out directly instead of drawn again by the compositor.
+local plugins = { "minimize", "layer-refocus", "press-report", "drag-report", "capture-report", "border-resize", "window-icons", "pen-lock", "scanout-feedback" }
 
 for _, name in ipairs(plugins) do
     local path = dir .. name .. ".so"
