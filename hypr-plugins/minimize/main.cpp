@@ -40,7 +40,10 @@
 // and sends the window its state. Tiled means nothing to X11 and is left out.
 // A GTK window told it is not maximised draws a margin for a shadow of its own,
 // which Hyprland then lines up with neither its border nor its corners, so the
-// shell leaves Wayland windows as Hyprland has them.
+// shell leaves Wayland windows as Hyprland has them. All but those whose class
+// ends as hl.plugin.minimize.literal_class_suffix(suffix) says, Wine's: told the truth
+// instead, maximised only while they hold the fixed size tag, since Wine asks
+// back to be maximised whenever it is told it is.
 //
 // A window an environment holds at a size of its own keeps it. On Windows a
 // maximised window fills its place until it is put back, and its edges cannot
@@ -156,6 +159,9 @@ namespace {
     CFunctionHook*      dragBeginHook = nullptr;
 
     SP<Config::Values::CStringValue> fixedSizeTag;
+    /** Set by hl.plugin.minimize.literal_class_suffix, empty for none. */
+    std::string                      literalClassSuffix;
+    bool                             literalSaidThisReload = false;
 
     using DragBegin = void (*)(Layout::Supplementary::CDragStateController*, SP<Layout::ITarget>, eMouseBindMode, std::optional<Layout::eRectCorner>, bool);
 
@@ -275,10 +281,21 @@ namespace {
 
     // A request to be minimised, maximised or put back, as the window's
     // backend hands it on, Wayland and X11 alike, one request at a time.
+    SP<CXDGToplevelResource> literalToplevel(const PHLWINDOW& window);
+
     CHyprSignalListener listenTo(const PHLWINDOW& window) {
         const PHLWINDOWREF ref = window;
         return window->backend().m_events.stateRequest.listen([ref](Desktop::View::SBackendStateRequest request) {
-            heard(ref, request.minimized.value_or(false), request.maximized);
+            // Hyprland hands on a Wayland window's request to be maximised or
+            // put back as the opposite of its own maximise, which here is never
+            // on, so both arrive as "maximise". A window told the truth means
+            // what it asks, and what it asked is still on its toplevel while
+            // the request is handed on.
+            auto maximize = request.maximized;
+            if (maximize.has_value())
+                if (const auto toplevel = literalToplevel(ref.lock()); toplevel && toplevel->m_state.requestsMaximize.has_value())
+                    maximize = toplevel->m_state.requestsMaximize;
+            heard(ref, request.minimized.value_or(false), maximize);
         });
     }
 
@@ -570,10 +587,44 @@ namespace {
         xcb_flush(connection);
     }
 
+    // The toplevel of a Wayland window whose class ends as the environment
+    // names through literal_class_suffix, compared without case, or null for
+    // any other window.
+    SP<CXDGToplevelResource> literalToplevel(const PHLWINDOW& window) {
+        const auto& suffix = literalClassSuffix;
+        auto*      wayland = window ? dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend()) : nullptr;
+        if (suffix.empty() || !wayland)
+            return nullptr;
+        const auto& id = window->metadata().appID();
+        if (id.size() < suffix.size() ||
+            !std::equal(suffix.rbegin(), suffix.rend(), id.rbegin(), [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b)); }))
+            return nullptr;
+        const auto xdg = wayland->m_resource.lock();
+        return xdg ? xdg->m_toplevel.lock() : nullptr;
+    }
+
+    // Tells such a window it is maximised only while the environment holds it
+    // maximised, by the fixed size tag, and tiled all the while. Hyprland tells
+    // every Wayland window it is maximised as it maps, and Wine takes that
+    // literally: it asks back to be maximised, once as a window opens and
+    // again and again while one is fullscreen. A shell that answers requests
+    // to maximise maximised a splash screen with it. Said as the window opens,
+    // before the configure Hyprland sends with it goes out, and again whenever
+    // its fullscreen state or its tags change.
+    void tellLiteral(const PHLWINDOW& window) {
+        const auto toplevel = literalToplevel(window);
+        if (!toplevel)
+            return;
+        const auto tag       = fixedSizeTag ? fixedSizeTag->value() : std::string{};
+        const bool maximized = !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
+        setXdgState(toplevel, maximized, true);
+    }
+
     void refresh(const PHLWINDOW& window) {
         if (!window || !window->mapped())
             return;
         followMaximize(window);
+        tellLiteral(window);
         publish(window);
     }
 
@@ -687,6 +738,19 @@ namespace {
         }
     }
 
+    // hl.plugin.minimize.literal_class_suffix(".exe"), or with nothing to say
+    // none. Said by the environment in its compositor rules, and taken back by
+    // a reload of the rules that no longer says it. A window already open is
+    // told the truth at once; one let go of is left as it was told last.
+    int literalSuffix(lua_State* state) {
+        literalClassSuffix    = lua_isnoneornil(state, 1) ? std::string{} : std::string{luaL_checkstring(state, 1)};
+        literalSaidThisReload = true;
+        for (const auto& window : Desktop::windowState()->windows())
+            if (window && window->mapped())
+                tellLiteral(window);
+        return 0;
+    }
+
     int setWindowState(lua_State* state) {
         const std::string address   = luaL_checkstring(state, 1);
         const bool        maximized = lua_toboolean(state, 2);
@@ -773,6 +837,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     createListener = Event::bus()->m_events.window.create.listen([](const PHLWINDOW& window) { watch(window); });
     openListener   = Event::bus()->m_events.window.open.listen([](const PHLWINDOW& window) {
         watch(window);
+        tellLiteral(window);
         announceInitial(window);
         honourOwnState(window);
         refresh(window);
@@ -782,18 +847,24 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     fullscreenListener = Event::bus()->m_events.window.fullscreen.listen([](const PHLWINDOW& window) { refresh(window); });
     // A tag given or taken, the fixed size tag among them.
     rulesListener     = Event::bus()->m_events.window.updateRules.listen([](const PHLWINDOW& window) { refresh(window); });
-    preReloadListener = Event::bus()->m_events.config.preReload.listen([] { saidThisReload = false; });
+    preReloadListener = Event::bus()->m_events.config.preReload.listen([] {
+        saidThisReload        = false;
+        literalSaidThisReload = false;
+    });
     reloadedListener  = Event::bus()->m_events.config.reloaded.listen([] {
         if (!saidThisReload && policy) {
             policy.reset();
             refreshAll();
         }
+        if (!literalSaidThisReload && !literalClassSuffix.empty())
+            literalClassSuffix.clear();
     });
 
     HyprlandAPI::addLuaFunction(handle, "minimize", "reset_focus", resetFocus);
     HyprlandAPI::addLuaFunction(handle, "minimize", "set_window_state", setWindowState);
     HyprlandAPI::addLuaFunction(handle, "minimize", "should_float", shouldFloat);
     HyprlandAPI::addLuaFunction(handle, "minimize", "allowed_actions", allowedActions);
+    HyprlandAPI::addLuaFunction(handle, "minimize", "literal_class_suffix", literalSuffix);
 
     fixedSizeTag = makeShared<Config::Values::CStringValue>("plugin:minimize:fixed_size_tag", "Windows with this tag are not resized", "");
     if (!HyprlandAPI::addConfigValueV2(handle, fixedSizeTag))
@@ -853,7 +924,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the layer arrangement, X11 applications may see a stale work area", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
     writeWorkArea();
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.10"};
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.11"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

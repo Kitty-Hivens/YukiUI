@@ -86,23 +86,31 @@ Scope {
     readonly property real gap: Config.options.blueberry.dock.style !== "attached" ? ExLooks.dock.floatingGap : 0
 
     /**
+     * Whether a window is told the truth about being maximised, and its own
+     * requests taken at their word: an X11 window, which Hyprland never tells,
+     * and a Wine one, which the minimize plugin tells only while it holds the
+     * "maximized" tag, by the class suffix the compositor rules name to it.
+     * Any other Wayland window is left as Hyprland has it, told it is
+     * maximised and tiled whatever its size: only then does a GTK window leave
+     * out the margin it draws for its own shadow, which the compositor lined
+     * up with neither its border nor its corners. Its maximise button, showing
+     * "restore", is read as a toggle instead.
+     */
+    function literal(client): bool {
+        return (client?.xwayland ?? false) || /\.exe$/i.test(client?.class ?? "");
+    }
+
+    /**
      * Lua marking a window by its placement: "maximized", "snapped" for the
      * halves and quarters, or neither, which is how a shell started anew
      * knows it, and the tags the compositor rules draw it by. Against the
      * edges, with no gap, "square" takes its round corners off, and a
-     * maximised one is "bare" as well, with no border or shadow. For an X11
-     * window, whether it is maximised, which
-     * Hyprland never tells one, so it draws itself to match and its own
-     * maximise button means what it shows. It is sent before the window is
-     * resized, which is what carries it to the window.
-     *
-     * A Wayland window is left as Hyprland has it, told it is maximised and
-     * tiled whatever its size: only then does a GTK window leave out the
-     * margin it draws for its own shadow, which the compositor lined up with
-     * neither its border nor its corners. Its maximise button, showing
-     * "restore", is read as a toggle instead.
+     * maximised one is "bare" as well, with no border or shadow. For a window
+     * told the truth, `literal`, whether it is maximised, so it draws itself
+     * to match and its own maximise button means what it shows. It is sent
+     * before the window is resized, which is what carries it to the window.
      */
-    function marksFor(address: string, zone: string, x11: bool): string {
+    function marksFor(address: string, zone: string, literal: bool): string {
         const target = `window = "address:${address}"`;
         const maximized = zone === "maximized";
         const snapped = zone.length > 0 && !maximized;
@@ -111,7 +119,7 @@ Scope {
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${snapped ? "+" : "-"}snapped", ${target} })) `
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${flush ? "+" : "-"}square", ${target} })) `
             + `hl.dispatch(hl.dsp.window.tag({ tag = "${flush && maximized ? "+" : "-"}bare", ${target} })) `
-            + (x11 ? `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end ` : "");
+            + (literal ? `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${address}", ${maximized}, true) end ` : "");
     }
 
     // A shell started anew learns what the one before it placed from the
@@ -199,7 +207,7 @@ Scope {
         if (!root.placed[address])
             return;
         root.setPlaced(address, null);
-        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", HyprlandData.windowByAddress[address]?.xwayland ?? false) + root.placedLua(address, null)]);
+        Quickshell.execDetached(["hyprctl", "eval", root.marksFor(address, "", root.literal(HyprlandData.windowByAddress[address])) + root.placedLua(address, null)]);
     }
     /**
      * Lets go of every window, as this environment gives way to another: the
@@ -497,10 +505,10 @@ Scope {
 
         // An application's own request to be maximised or put back. A Wayland
         // window always believes it is maximised, so whichever it asks for
-        // is the press of its maximise button, and toggles. An X11 window is
-        // told the truth and is taken at its word.
+        // is the press of its maximise button, and toggles. One told the
+        // truth is taken at its word.
         if (wanted === "asked:1" || wanted === "asked:0")
-            wanted = client.xwayland ? (wanted === "asked:1" ? "maximized" : "restore") : "toggle";
+            wanted = root.literal(client) ? (wanted === "asked:1" ? "maximized" : "restore") : "toggle";
 
         if (wanted === "toggle")
             wanted = entry?.zone === "maximized" || (!entry && root.markedMaximized(client)) ? "restore" : "maximized";
@@ -508,7 +516,7 @@ Scope {
         if (wanted === "adopt") {
             // A Wayland window an older shell told it was not maximised is
             // told so again, as Hyprland tells every one.
-            let asHyprland = client.xwayland ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
+            let asHyprland = root.literal(client) ? "" : `if hl.plugin.minimize and hl.plugin.minimize.set_window_state then hl.plugin.minimize.set_window_state("${client.address}", true, true) end `;
             // One an older shell marked as maximised with Hyprland's fullscreen
             // state has its states in step again, or its own request for
             // fullscreen stays with the application alone. Only that mark:
@@ -525,7 +533,7 @@ Scope {
                 before = root.centred(area);
             }
             if (!wanted)
-                return asHyprland + root.marksFor(client.address, "", client.xwayland);
+                return asHyprland + root.marksFor(client.address, "", root.literal(client));
             return asHyprland + root.answer({ address: client.address, wanted: wanted, before: before, stay: true }, clients, monitors);
         }
 
@@ -551,7 +559,7 @@ Scope {
             // Known only for a window placed here since the shell started. One
             // placed before is given a size of its own, centred.
             const back = entry?.before ?? root.centred(area);
-            return root.marksFor(client.address, "", client.xwayland) + root.placedLua(client.address, null)
+            return root.marksFor(client.address, "", root.literal(client)) + root.placedLua(client.address, null)
                 + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${back.size[0]}, y = ${back.size[1]} })) `
                 + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${back.at[0]}, y = ${back.at[1]} })) `;
         }
@@ -566,12 +574,12 @@ Scope {
         // again that already fits is not touched.
         const fits = client.at[0] === rect.x && client.at[1] === rect.y && client.size[0] === rect.w && client.size[1] === rect.h;
         if (job.stay || (wanted === "refit" && fits))
-            return root.marksFor(client.address, zone, client.xwayland) + root.placedLua(client.address, placement);
+            return root.marksFor(client.address, zone, root.literal(client)) + root.placedLua(client.address, placement);
         // Hyprland's own fullscreen state is left alone. Set to anything,
         // its two halves stop following each other, and the window's own
         // request for fullscreen, F11 in a browser, then reached only the
         // application, which hid its tool bars inside a maximised frame.
-        return root.marksFor(client.address, zone, client.xwayland) + root.placedLua(client.address, placement)
+        return root.marksFor(client.address, zone, root.literal(client)) + root.placedLua(client.address, placement)
             + `hl.dispatch(hl.dsp.window.resize({ ${target}, x = ${rect.w}, y = ${rect.h} })) `
             + `hl.dispatch(hl.dsp.window.move({ ${target}, x = ${rect.x}, y = ${rect.y} })) `;
     }

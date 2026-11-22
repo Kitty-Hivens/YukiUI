@@ -65,6 +65,16 @@ if hl.plugin.border_resize then
     hl.config({ plugin = { border_resize = { fixed_size_tag = "maximized" } } })
 end
 
+-- A Wine window is told it is maximised only while the shell has it maximised.
+-- Hyprland tells every Wayland window it is maximised, so that a GTK window
+-- leaves out the margin it draws for a shadow, and Wine, which draws no such
+-- thing, takes it literally and asks back to be maximised: a splash screen
+-- came up filling the screen, and a fullscreen game asked dozens of times a
+-- second. Told the truth, its requests are taken at their word by the shell.
+if hl.plugin.minimize and hl.plugin.minimize.literal_class_suffix then
+    hl.plugin.minimize.literal_class_suffix(".exe")
+end
+
 -- Blur behind the dock, as its settings ask. The shell calls this as it
 -- starts, whenever the setting changes and after every reload, which builds
 -- the rules anew. A pixel at or below the given opacity is not blurred, which
