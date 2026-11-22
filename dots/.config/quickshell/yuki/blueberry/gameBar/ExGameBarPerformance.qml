@@ -54,8 +54,8 @@ ColumnLayout {
         return ExLooks.colors.accent;
     }
 
-    // The card is read every second, the rest at the interval the settings give.
-    readonly property real slowInterval: Config.options?.resources?.updateInterval ?? 3000
+    // Every reading comes at the interval the settings give.
+    readonly property real slowInterval: ResourceUsage.updateInterval
 
     readonly property var readings: {
         const list = [{
@@ -79,7 +79,7 @@ ColumnLayout {
                 detail: ResourceUsage.gpuKind === "engines" && ResourceUsage.gpuClock > 0
                     ? Translation.tr("At %1 of %2 MHz").arg(Math.round(ResourceUsage.gpuClock)).arg(Math.round(ResourceUsage.gpuMaxClock)) : "",
                 history: ResourceUsage.gpuUsageHistory,
-                interval: 1000
+                interval: root.slowInterval
             });
         list.push({
             key: "ram",

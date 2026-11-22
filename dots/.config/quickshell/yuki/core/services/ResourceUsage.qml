@@ -42,17 +42,25 @@ Singleton {
     property real storageUsed: 0
     readonly property real storageUsedPercentage: storageTotal > 0 ? storageUsed / storageTotal : 0
 
-    // The graphics card, read only while someone is looking: a card that has
-    // gone to sleep is woken by being asked. A card that says how busy it is
-    // gives that. Intel's say only how fast they run, and run at their
-    // fastest under almost any load, so a clock read against its top showed a
-    // card a fifth busy as full and red. For those the kernel's accounts of
-    // each program's time on each engine are added up instead, as
-    // intel_gpu_top and gputop do, and the clock is kept beside it. A card
-    // that says neither is not shown at all.
+    // The graphics card. The one that drives the screen is read all the time,
+    // at the interval and with the history the processor and memory have, so
+    // its graph is there and as even as theirs when it is opened: it is awake
+    // anyway. Any other card is read only while someone is looking, since a
+    // card that has gone to sleep is woken by being asked, and a discrete one
+    // woken every few seconds drains the battery.
+    //
+    // A card that says how busy it is gives that. Intel's say only how fast
+    // they run, and run at their fastest under almost any load, so a clock
+    // read against its top showed a card a fifth busy as full and red. For
+    // those the kernel's accounts of each program's time on each engine are
+    // added up instead, as intel_gpu_top and gputop do, and the clock is kept
+    // beside it. A card that says neither is not shown at all.
     property int gpuWatchers: 0
     /** "busy", "engines", or empty for a card that says neither. */
     property string gpuKind: ""
+    /** Whether the card drives the screen, and so is read whether or not anyone looks. */
+    property bool gpuDrivesScreen: false
+    readonly property bool gpuReading: root.gpuKind.length > 0 && (root.gpuDrivesScreen || root.gpuWatchers > 0)
     /** How busy the card is, from 0 to 1. */
     property real gpuUsage: 0
     /** Its clock in MHz, and its fastest, for a card read by its engines. */
@@ -62,10 +70,12 @@ Singleton {
     property list<real> gpuUsageHistory: []
     property string gpuReadingPath: ""
     // Unread for a while is not a flat line, so the history starts over.
-    onGpuWatchersChanged: {
-        if (root.gpuWatchers === 0)
+    onGpuReadingChanged: {
+        if (!root.gpuReading)
             root.gpuUsageHistory = [];
     }
+    /** How often everything but storage is read, in milliseconds. */
+    readonly property int updateInterval: Config.options?.resources?.updateInterval ?? 3000
 
     readonly property string maxAvailableMemoryString: root.ready ? root.kbToGbString(root.memoryTotal) : ""
     readonly property string maxAvailableSwapString: root.swapTotal > 0 ? root.kbToGbString(root.swapTotal) : ""
@@ -159,7 +169,7 @@ Singleton {
             }
 
             root.updateHistories()
-            interval = root.cpuReady ? (Config.options?.resources?.updateInterval ?? 3000) : 400
+            interval = root.cpuReady ? root.updateInterval : 400
         }
     }
 
@@ -197,22 +207,26 @@ Singleton {
         }
     }
 
-    // Which file says it, found once: busy per cent where the driver keeps
-    // one, as amdgpu does, and the actual clock where it keeps only that, as
-    // xe and i915 do, which are then read by their engines.
+    // Which file says it, found once as the shell starts: busy per cent where
+    // the driver keeps one, as amdgpu does, and the actual clock where it keeps
+    // only that, as xe and i915 do, which are then read by their engines. Last
+    // on the line, whether the card is the one the screen came up on. Looking
+    // only checks that the files are there and reads what does not wake a card.
+    property bool gpuSearched: false
     Process {
         id: findGpuProc
-        running: root.gpuWatchers > 0 && root.gpuKind.length === 0
+        running: !root.gpuSearched
         command: ["sh", "-c", 'for card in /sys/class/drm/card[0-9] /sys/class/drm/card[0-9][0-9]; do '
-            + 'd="$card/device"; '
-            + 'if [ -r "$d/gpu_busy_percent" ]; then echo "busy $d/gpu_busy_percent"; exit; fi; '
-            + 'f="$d/tile0/gt0/freq0"; if [ -r "$f/act_freq" ]; then echo "clock $f/act_freq $(cat "$f/rp0_freq")"; exit; fi; '
-            + 'if [ -r "$card/gt_act_freq_mhz" ]; then echo "clock $card/gt_act_freq_mhz $(cat "$card/gt_RP0_freq_mhz")"; exit; fi; '
+            + 'd="$card/device"; vga=$(cat "$d/boot_vga" 2>/dev/null || echo 0); '
+            + 'if [ -r "$d/gpu_busy_percent" ]; then echo "busy $d/gpu_busy_percent 0 $vga"; exit; fi; '
+            + 'f="$d/tile0/gt0/freq0"; if [ -r "$f/act_freq" ]; then echo "clock $f/act_freq $(cat "$f/rp0_freq") $vga"; exit; fi; '
+            + 'if [ -r "$card/gt_act_freq_mhz" ]; then echo "clock $card/gt_act_freq_mhz $(cat "$card/gt_RP0_freq_mhz") $vga"; exit; fi; '
             + 'done']
         stdout: StdioCollector {
             id: gpuFound
             onStreamFinished: {
                 const fields = gpuFound.text.trim().split(/\s+/);
+                root.gpuDrivesScreen = fields[3] === "1";
                 if (fields[0] === "busy" && fields[1]) {
                     root.gpuKind = "busy";
                     root.gpuReadingPath = fields[1];
@@ -221,6 +235,7 @@ Singleton {
                     root.gpuMaxClock = Number(fields[2]);
                     root.gpuClockPath = fields[1];
                 }
+                root.gpuSearched = true;
             }
         }
     }
@@ -230,10 +245,10 @@ Singleton {
         blockLoading: true
     }
     Timer {
-        interval: 1000
+        interval: root.updateInterval
         repeat: true
         triggeredOnStart: true
-        running: root.gpuWatchers > 0 && root.gpuKind === "busy"
+        running: root.gpuReading && root.gpuKind === "busy"
         onTriggered: {
             gpuReading.reload();
             const value = Number(gpuReading.text().trim());
@@ -245,7 +260,8 @@ Singleton {
     }
 
     // The engines, added up by a helper that keeps the previous accounts and
-    // says one share a second for as long as it runs.
+    // says one share an interval for as long as it runs: the share of the
+    // whole interval, so a burst between two readings is not lost.
     FileView {
         id: gpuClockReading
         path: root.gpuClockPath
@@ -253,8 +269,8 @@ Singleton {
     }
     Process {
         id: gpuEngines
-        running: root.gpuWatchers > 0 && root.gpuKind === "engines"
-        command: ["python3", "-I", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/system/gpu_busy.py"))]
+        running: root.gpuReading && root.gpuKind === "engines"
+        command: ["python3", "-I", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/system/gpu_busy.py")), String(root.updateInterval / 1000)]
         stdout: SplitParser {
             onRead: line => {
                 const share = Number(line.trim().split(/\s+/)[0]);

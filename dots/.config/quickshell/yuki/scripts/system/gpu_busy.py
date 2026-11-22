@@ -7,14 +7,17 @@ kernel does keep is how long each program had each engine, in the fdinfo of
 every open DRM file, which is what intel_gpu_top and nvtop read. Added up over
 every program, an engine's share of a second is how busy it was.
 
-Prints one line a second, the busiest engine's share from 0 to 1 with the
-engine's name, or "none" while no program's accounts can be read:
+    gpu_busy.py [SECONDS]
+
+Prints one line every SECONDS, one by default, the busiest engine's share of
+that whole span from 0 to 1 with the engine's name, or "none" while no
+program's accounts can be read:
 
     0.213 rcs
 
 Runs until its output is closed. Only the open DRM files found are read each
-second; the processes are searched for new ones every few seconds, since a
-walk of all of /proc each second is work the reading would then show.
+time; the processes are searched for new ones every few seconds at most, since
+a walk of all of /proc each second is work the reading would then show.
 
 xe counts in cycles of the card's own clock, beside the cycles that passed:
 drm-cycles-<engine> against drm-total-cycles-<engine>. i915 counts nanoseconds
@@ -27,8 +30,7 @@ import os
 import sys
 import time
 
-INTERVAL = 1.0
-RESCAN_EVERY = 5
+RESCAN_SECONDS = 5
 
 
 def drm_files():
@@ -112,15 +114,17 @@ def shares(before, after, seconds):
 
 
 def main():
+    interval = float(sys.argv[1]) if len(sys.argv) > 1 else 1.0
+    interval = min(60.0, max(0.2, interval))
     files = drm_files()
+    scanned = time.monotonic()
     before = read_accounts(files)
-    then = time.monotonic()
-    tick = 0
+    then = scanned
     while True:
-        time.sleep(INTERVAL)
-        tick += 1
-        if tick % RESCAN_EVERY == 0:
+        time.sleep(interval)
+        if time.monotonic() - scanned >= RESCAN_SECONDS:
             files = drm_files()
+            scanned = time.monotonic()
         after = read_accounts(files)
         now = time.monotonic()
         busiest = max(shares(before, after, now - then).items(), key=lambda item: item[1], default=None)
