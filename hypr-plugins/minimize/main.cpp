@@ -813,7 +813,11 @@ namespace {
             entry->minimize = false;
             entry->maximize.reset();
         }
-        if (minimize)
+        // Wine asks again, as a window is shown, for the state its Windows
+        // window is in, and one shown again from the notification area is
+        // still minimised then: it went straight back to the dock. A window
+        // told the truth is not minimised before it has been seen.
+        if (minimize && !literalToplevel(window))
             announce(window);
         if (maximize.value_or(false))
             announceMaximize(window, true);

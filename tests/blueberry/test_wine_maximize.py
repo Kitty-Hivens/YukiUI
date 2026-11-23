@@ -12,6 +12,8 @@ The window here is a GTK one given a Wine-like class: what is tested is what
 it is told and how its requests are answered, which is the same for both.
 """
 
+import time
+
 from blueberry.test_maximize import area, believes, is_maximized
 
 
@@ -49,3 +51,24 @@ def test_an_ordinary_window_is_still_told_it_is_maximised(desk):
     window.wait_state(lambda s: "maximized" in believes(s), "it is maximised, so it draws no shadow")
     x, y, w, h = area(desk)
     assert tuple(window.client()["size"]) != (w, h)
+
+
+def test_a_minimise_asked_before_an_ordinary_window_shows_is_acted_on(desk):
+    # The request reaches the compositor before the window does, and an
+    # application asking it so is minimised as it opens.
+    from bench.windows import IconWindow
+    window = IconWindow(desk.bench, desk.name("early"), minimized=True)
+    desk.windows.append(window)
+    window.wait(lambda c: c["workspace"]["name"].startswith("special:min-"), "minimised as it asked")
+
+
+def test_a_minimise_asked_before_a_wine_window_shows_is_not_acted_on(desk):
+    # Shown again from the notification area, a Windows window is still
+    # minimised, and Wine asks for that as the window comes back: osu went
+    # straight to the dock from its tray icon and came back out of fullscreen.
+    from bench.windows import IconWindow
+    window = IconWindow(desk.bench, desk.name("wine") + ".exe", minimized=True)
+    desk.windows.append(window)
+    for _ in range(6):
+        time.sleep(0.5)
+        assert not window.client()["workspace"]["name"].startswith("special:"), "the Wine window was minimised"

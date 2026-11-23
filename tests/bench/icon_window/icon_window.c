@@ -3,11 +3,13 @@
  * the tests. Toolkits that do this, SDL3 among them, may give it before the
  * window is first shown, so this one can too.
  *
- *     icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early]
+ *     icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized]
  *
  * name gives the icon a name from the theme, colour a picture of that colour,
  * N pixels square (48 unless said). early gives the icon before the window is
- * shown, after it otherwise. Answers in a line of JSON each, as the other
+ * shown, after it otherwise. minimized asks to be minimised once configured and
+ * before the window is shown, as Wine does for a window shown again from the
+ * notification area, its Windows window still minimised then. Answers in a line of JSON each, as the other
  * clients of the bench do: {"ready": true} once shown with its icon given,
  * then one answer to each command it takes one a line on stdin:
  *
@@ -123,10 +125,10 @@ static void give_icon(struct xdg_toplevel *toplevel) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "usage: icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early]\n");
+        fprintf(stderr, "usage: icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized]\n");
         return 2;
     }
-    int early = 0;
+    int early = 0, minimized = 0;
     for (int i = 2; i < argc; i++) {
         if (strncmp(argv[i], "name=", 5) == 0)
             icon_name = argv[i] + 5;
@@ -136,6 +138,8 @@ int main(int argc, char **argv) {
             icon_side = atoi(argv[i] + 5);
         else if (strcmp(argv[i], "early") == 0)
             early = 1;
+        else if (strcmp(argv[i], "minimized") == 0)
+            minimized = 1;
     }
 
     struct wl_display *display = wl_display_connect(NULL);
@@ -166,6 +170,8 @@ int main(int argc, char **argv) {
     wl_surface_commit(surface);
     while (!configured && wl_display_dispatch(display) != -1) {
     }
+    if (minimized)
+        xdg_toplevel_set_minimized(toplevel);
     wl_surface_attach(surface, solid_buffer(300, 200, 0xffffff), 0, 0);
     wl_surface_commit(surface);
     wl_display_roundtrip(display);

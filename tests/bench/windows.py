@@ -131,7 +131,8 @@ class IconWindow(Window):
 
     kind = "wayland"
 
-    def __init__(self, bench: Bench, wm_class: str, name: str = "", colour: str = "", size: int = 48, early: bool = False):
+    def __init__(self, bench: Bench, wm_class: str, name: str = "", colour: str = "", size: int = 48, early: bool = False,
+                 minimized: bool = False):
         argv = [str(bench.icon_window_client), wm_class]
         if name:
             argv.append(f"name={name}")
@@ -139,6 +140,8 @@ class IconWindow(Window):
             argv += [f"colour={colour}", f"size={size}"]
         if early:
             argv.append("early")
+        if minimized:
+            argv.append("minimized")
         super().__init__(bench, wm_class, argv)
 
     def close(self):
