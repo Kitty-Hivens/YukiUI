@@ -205,9 +205,9 @@ Tips:
 
 
 # Actual packages
-## illogical-impulse-quickshell
-- Meta package depending on the official repo `quickshell` (no build).
-- Also pulls extra dependencies (mainly Qt things) needed by the illogical-impulse Quickshell config. The repo `quickshell` brings its own core deps (qt6-base, qt6-declarative, mesa, libdrm, etc).
+## yuki-quickshell
+- Quickshell built from the YukiUI fork (`Kitty-Hivens/quickshell`, branch `yuki`), for the fixes listed at the top of its PKGBUILD. Called `illogical-impulse-quickshell` before, which it replaces.
+- Also pulls extra dependencies (mainly Qt things) needed by the shell's config.
 
 Extra dependencies.
 - `qt6-5compat`

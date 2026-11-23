@@ -18,16 +18,21 @@
 # And a process the shell starts goes with the shell. Upstream stops it only when the
 # shell exits cleanly, so a shell that crashed or was killed left its helpers running
 # for the rest of the session, a gamemode request among them, holding gamemode on.
+#
+# And a tray item is told where it was clicked, and asked for a context menu of its
+# own: upstream sends every activation the top left corner of the screen and has no
+# call for ContextMenu, so a program drawing its own tray menu, one under Wine through
+# the tray bridge, could not be opened by a right click.
 
 groups=(illogical-impulse)
 _pkgname=quickshell
-pkgname=illogical-impulse-quickshell
+pkgname=yuki-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
 pkgver=0.3.2
-pkgrel=3
-_commit='8c0c80d1b4b496dd8877e00077ec471d9e282051'
-pkgdesc='Quickshell built from the fork carrying the polkit session, DBusMenu and child process fixes, plus extra Qt deps'
+pkgrel=4
+_commit='870168ee93371812835fc75a37c5e379de975f84'
+pkgdesc='Quickshell built from the fork carrying the polkit session, DBusMenu, child process and tray click fixes, plus extra Qt deps'
 arch=(x86_64 aarch64)
 url='https://github.com/Kitty-Hivens/quickshell'
 license=('LGPL-3.0-only')
@@ -70,8 +75,10 @@ makedepends=(
   'wayland'
   'wayland-protocols'
 )
-provides=("$_pkgname")
-conflicts=("$_pkgname" "$_pkgname-git")
+# Called illogical-impulse-quickshell before YukiUI named its own packages.
+provides=("$_pkgname" illogical-impulse-quickshell)
+conflicts=("$_pkgname" "$_pkgname-git" illogical-impulse-quickshell)
+replaces=(illogical-impulse-quickshell)
 
 source=("$_pkgname::git+$url.git#commit=$_commit"
   quickshell-check.hook)
@@ -83,7 +90,7 @@ build() {
   cmake -GNinja -B build \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates, children die with the shell)" \
+    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates, children die with the shell, tray click points)" \
     -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
     -DINSTALL_QML_PREFIX=lib/qt6/qml
 
