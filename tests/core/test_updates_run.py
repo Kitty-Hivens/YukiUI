@@ -41,7 +41,7 @@ ShellRoot {
             return JSON.stringify({
                 updating: Updates.updating, step: Updates.updateStep, number: Updates.updateStepNumber,
                 detail: Updates.updateDetail, package: Updates.updatePackage, share: Updates.updateShare,
-                outcome: Updates.updateOutcome, failed: Updates.updateFailedStep, lines: Updates.updateLog, notes: Updates.updateNotes
+                outcome: Updates.updateOutcome, notBuilt: Updates.updateNotBuilt, failed: Updates.updateFailedStep, lines: Updates.updateLog, notes: Updates.updateNotes
             });
         }
     }
@@ -102,7 +102,7 @@ def test_its_steps_and_packages_are_followed_and_it_ends_done(run):
     shell.call("runProbe", "update")
     seen = wait_until(lambda: (s := state(shell))["step"] == "system" and s["share"] > 0 and s, what="the second step")
     assert seen["updating"] and seen["number"] == 2
-    assert seen["detail"] == "upgrading harfbuzz"
+    assert seen["detail"] == "Upgrading harfbuzz"
     assert seen["share"] == pytest.approx(3 / 40)
     log = next(arg.split(":", 1)[1] for arg in files["args"].read_text().split() if arg.startswith("StandardOutput=truncate:"))
     with open(log, "a") as handle:
@@ -119,8 +119,7 @@ def test_a_download_meter_is_not_what_it_shows(run):
                              "  % Total    % Received % Xferd  Average Speed\n"
                              "  0      0   0      0   0      0      0      0\r100    388 100    388   0      0    917      0\r100    533 100    533\n")
     shell.call("runProbe", "update")
-    seen = wait_until(lambda: (s := state(shell))["detail"].startswith("Downloading") and s, what="the download to be told")
-    assert seen["detail"] == "Downloading libtirpc-1.3.8.tar.bz2..."
+    seen = wait_until(lambda: (s := state(shell))["detail"] == "Downloading the sources" and s, what="the download to be told")
     assert seen["package"] == "lib32-libtirpc"
     assert seen["notes"] == ["Building lib32-libtirpc"]
     assert not [line for line in seen["lines"] if "533" in line or "% Total" in line], seen["lines"]
@@ -132,7 +131,7 @@ def test_a_download_meter_is_not_what_it_shows(run):
     # What pacman does afterwards is not told under the name of what was built.
     with open(log, "a") as handle:
         handle.write("(2/9) upgrading openexr\n")
-    wait_until(lambda: (s := state(shell))["detail"] == "upgrading openexr" and s["package"] == "", what="pacman's own step")
+    wait_until(lambda: (s := state(shell))["detail"] == "Upgrading openexr" and s["package"] == "", what="pacman's own step")
 
 
 def test_where_it_stopped_is_told(run):
@@ -142,6 +141,16 @@ def test_where_it_stopped_is_told(run):
     seen = wait_until(lambda: (s := state(shell))["outcome"] and s, what="the update to stop")
     assert (seen["outcome"], seen["failed"]) == ("failed", "system")
     assert "error: conflicting files" in seen["lines"]
+
+
+def test_an_aur_package_that_does_not_build_is_told_apart_from_a_failed_update(run):
+    shell, files = run
+    files["says"].write_text("@yuki step 1 1 system\n(1/2) upgrading openexr\n -> Failed to install the following packages. Manual intervention is required:\n"
+                             "lib32-rav1e - exit status 4\nlib32-imlib2 - exit status 8\n@yuki aur-failed\n@yuki done\n")
+    shell.call("runProbe", "update")
+    seen = wait_until(lambda: (s := state(shell))["outcome"] and s, what="the update to end")
+    assert seen["outcome"] == "partial"
+    assert seen["notBuilt"] == ["lib32-rav1e", "lib32-imlib2"]
 
 
 def test_a_service_gone_without_a_word_is_not_left_running(run):
@@ -171,12 +180,12 @@ def test_not_knowing_where_yukiui_came_from_the_packages_are_upgraded_all_the_sa
     assert "update-packages.sh --service --unattended --no-aur" in args
 
 
-def packages(tmp_path, *args, status=0):
+def packages(tmp_path, *args, status=0, aur_status=0):
     """The script alone, with a yay that says what it was asked and ends as told."""
     import subprocess
     bin = tmp_path / "bin"
     bin.mkdir()
-    for name, body in (("pacman", "exit 0"), ("sudo", "exit 1"), ("yay", f'echo "yay $*"; exit {status}')):
+    for name, body in (("pacman", "exit 0"), ("sudo", "exit 1"), ("yay", f'echo "yay $*"; case "$1" in -Sua) exit {aur_status};; esac; exit {status}')):
         (bin / name).write_text(f"#!/bin/sh\n{body}\n")
         (bin / name).chmod(0o755)
     script = SHELL / "scripts/system/update-packages.sh"
@@ -199,3 +208,13 @@ def test_the_package_script_fails_out_loud(tmp_path):
     assert ended.returncode != 0
     assert ended.stdout.splitlines()[-1] == "@yuki failed system"
     assert "--repo" in ended.stdout
+
+
+def test_what_the_aur_cannot_build_does_not_stop_the_update(tmp_path):
+    ended = packages(tmp_path, "--service", "--unattended", aur_status=1)
+    lines = ended.stdout.splitlines()
+    assert ended.returncode == 0
+    assert "@yuki aur-failed" in lines and lines[-1] == "@yuki done"
+    # The repositories first, then the AUR.
+    asked = [line for line in lines if line.startswith("yay")]
+    assert asked[0].startswith("yay -Syu --repo") and asked[1].startswith("yay -Sua")

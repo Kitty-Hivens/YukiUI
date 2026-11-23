@@ -102,13 +102,16 @@ Singleton {
     /** The AUR package being built, or empty. */
     property string updatePackage: ""
     property real updateShare: -1
-    /** How the last one ended: "", "done" or "failed", and where it stopped. */
+    /** How the last one ended: "", "done", "partial" or "failed", and where it stopped. */
     property string updateOutcome: ""
     property string updateFailedStep: ""
     /** Its latest lines as they came, for when it fails. */
     property var updateLog: []
     /** What has been done, in words for a person: built, upgraded, gone wrong. */
     property var updateNotes: []
+    /** AUR packages that could not be built, as yay lists them at the end. */
+    property var updateNotBuilt: []
+    property bool updateAurFailed: false
     readonly property string updateLogPath: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/yuki/update.log`
 
     /**
@@ -132,7 +135,8 @@ Singleton {
             `--setenv=PATH=${Quickshell.env("PATH")}`, "--setenv=LC_ALL=C.UTF-8", ...run];
         if (!root.takesAur)
             args.push("--no-aur");
-        startUpdate.command = args;
+        // The log of the one before is kept beside it.
+        startUpdate.command = ["bash", "-c", 'mv -f -- "$1" "$1.old" 2> /dev/null; shift; exec "$@"', "update", root.updateLogPath, ...args];
         startUpdate.running = true;
     }
 
@@ -181,6 +185,8 @@ Singleton {
         root.updateFailedStep = "";
         root.updateLog = [];
         root.updateNotes = [];
+        root.updateNotBuilt = [];
+        root.updateAurFailed = false;
         root.missing = 0;
         root.updating = true;
     }
@@ -192,6 +198,44 @@ Singleton {
         root.updateOutcome = outcome;
         root.updateFailedStep = failedStep;
         root.refreshAll();
+    }
+
+    /** What a heading says is going on, or empty for one that is not known. */
+    function stageOf(line: string): string {
+        const known = [
+            [/^:: Synchronizing package databases/, Translation.tr("Refreshing the package lists")],
+            [/^:: Starting full system upgrade/, Translation.tr("Looking for what can be upgraded")],
+            [/^:: (Retrieving|Downloading) packages/, Translation.tr("Downloading packages")],
+            [/^:: Processing package changes/, Translation.tr("Upgrading packages")],
+            [/^:: Running post-transaction hooks/, Translation.tr("Finishing up")],
+            [/^==> Retrieving sources/, Translation.tr("Getting the sources")],
+            [/^\s+-> Downloading/, Translation.tr("Downloading the sources")],
+            [/^==> Validating/, Translation.tr("Checking the files")],
+            [/^==> Extracting/, Translation.tr("Unpacking the sources")],
+            [/^==> Starting prepare/, Translation.tr("Preparing")],
+            [/^==> Starting build/, Translation.tr("Compiling")],
+            [/^==> Starting check/, Translation.tr("Testing the build")],
+            [/^==> Starting package|^==> Creating package/, Translation.tr("Packing")],
+            [/^==> Installing (missing dependencies|package)/, Translation.tr("Installing what it needs")]
+        ];
+        return known.find(entry => entry[0].test(line))?.[1] ?? "";
+    }
+
+    /** What pacman does to a package, or empty for what it is no work on one. */
+    function doingOf(verb: string, name: string): string {
+        switch (verb) {
+        case "upgrading":
+            return Translation.tr("Upgrading %1").arg(name);
+        case "installing":
+            return Translation.tr("Installing %1").arg(name);
+        case "reinstalling":
+            return Translation.tr("Reinstalling %1").arg(name);
+        case "downgrading":
+            return Translation.tr("Downgrading %1").arg(name);
+        case "removing":
+            return Translation.tr("Removing %1").arg(name);
+        }
+        return "";
     }
 
     function note(text) {
@@ -214,8 +258,10 @@ Singleton {
                 root.updateStep = parts[4] ?? "";
                 root.updateDetail = "";
                 root.updateShare = -1;
+            } else if (parts[1] === "aur-failed") {
+                root.updateAurFailed = true;
             } else if (parts[1] === "done") {
-                root.end("done", "");
+                root.end(root.updateAurFailed ? "partial" : "done", "");
             } else if (parts[1] === "failed") {
                 root.end("failed", parts[2] ?? "");
             }
@@ -224,8 +270,13 @@ Singleton {
         if (line.trim().length === 0 || /^[\s\d.:kMGT%-]+$/.test(line) || /^\s*(% Total|Dload\b)/.test(line))
             return;
         root.updateLog = [...root.updateLog, line].slice(-400);
-        // The headings makepkg, yay and pacman give what they do, for the line
-        // on show. What a build prints in between says nothing to a person.
+        // yay's list at the end, "name - exit status 4".
+        const notBuilt = line.match(/^(\S+) - exit status \d+$/);
+        if (notBuilt)
+            root.updateNotBuilt = [...root.updateNotBuilt, notBuilt[1]];
+        // The headings makepkg, yay and pacman give what they do, in words for
+        // the line on show. What a build prints in between says nothing to a
+        // person, and a heading that is not known leaves what stood there.
         const built = line.match(/^==> Making package: (\S+)/);
         if (built) {
             root.updatePackage = built[1];
@@ -235,18 +286,18 @@ Singleton {
             root.updatePackage = "";
         if (/^(error:|==> ERROR)/i.test(line))
             root.note(line.replace(/^==> /, ""));
-        const heading = line.match(/^(?:==>|\s*->|::)\s+(.*)$/);
-        if (heading)
-            root.updateDetail = heading[1];
-        // Pacman counts packages as "(3/40) upgrading ...", and a build its
-        // steps as "[ 12%]" or "[34/300]".
-        const counted = line.match(/^\s*\(\s*(\d+)\/(\d+)\)\s*(.*)$/);
+        const stage = root.stageOf(line);
+        if (stage.length > 0)
+            root.updateDetail = stage;
+        const counted = line.match(/^\s*\(\s*(\d+)\/(\d+)\)\s*(\S+)\s+(\S+)/);
         if (counted) {
             // Pacman's own work, no longer the package just built.
-            root.updatePackage = "";
-            root.updateDetail = counted[3];
-            if (/^(upgrading|installing|reinstalling|removing|downgrading) /.test(counted[3]))
-                root.note(counted[3]);
+            const words = root.doingOf(counted[3], counted[4]);
+            if (words.length > 0) {
+                root.updatePackage = "";
+                root.updateDetail = words;
+                root.note(words);
+            }
         }
         const step = line.match(/^\[\s*(\d+)\/(\d+)\]/);
         const percent = line.match(/^\[\s*(\d+)%\]/);
@@ -254,7 +305,7 @@ Singleton {
             root.updateShare = Math.min(1, Number(step[1]) / Number(step[2]));
         else if (percent)
             root.updateShare = Math.min(1, Number(percent[1]) / 100);
-        else if (heading)
+        else if (stage.length > 0)
             root.updateShare = -1;
         if (counted && Number(counted[2]) > 0)
             root.updateShare = Math.min(1, Number(counted[1]) / Number(counted[2]));

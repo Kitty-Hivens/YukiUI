@@ -30,6 +30,8 @@ ColumnLayout {
         return Qt.locale().toString(when, Config.options.time.format);
     }
 
+    readonly property bool troubled: Updates.updateOutcome === "failed" || Updates.updateOutcome === "partial"
+
     /** The step the update is in, in words. */
     readonly property string stepName: ({
         "shell": "YukiUI",
@@ -60,9 +62,11 @@ ColumnLayout {
         busy: Updates.updating
         glyph: Updates.updating ? "progress_activity"
             : Updates.updateOutcome === "failed" ? "error"
+            : Updates.updateOutcome === "partial" ? "info"
             : Updates.failed && !Updates.shellAvailable ? "cloud_off" : "system_update_alt"
         text: Updates.updating ? Translation.tr("Updating")
             : Updates.updateOutcome === "failed" ? Translation.tr("The update stopped")
+            : Updates.updateOutcome === "partial" ? Translation.tr("Not everything was updated")
             : root.checking ? Translation.tr("Checking...")
             : root.pending ? Translation.tr("Updates are ready")
             : root.neverChecked ? Translation.tr("Not checked yet")
@@ -71,7 +75,9 @@ ColumnLayout {
             if (Updates.updating)
                 return Updates.updateSteps > 1 ? Translation.tr("Step %1 of %2: %3").arg(Math.max(1, Updates.updateStepNumber)).arg(Updates.updateSteps).arg(root.stepName) : root.stepName;
             if (Updates.updateOutcome === "failed")
-                return Translation.tr("In: %1").arg(root.failedName);
+                return Translation.tr("Stopped at: %1").arg(root.failedName);
+            if (Updates.updateOutcome === "partial")
+                return Translation.tr("Could not build: %1").arg(Updates.updateNotBuilt.join(", "));
             const parts = [];
             if (Updates.shellPending)
                 parts.push(Translation.tr("YukiUI: %1 changes").arg(Updates.shellBehind));
@@ -91,7 +97,7 @@ ColumnLayout {
             onClicked: Updates.refreshAll()
         }
         ExButton {
-            visible: Updates.updateOutcome === "failed" && !Updates.updating
+            visible: (Updates.updateOutcome === "failed" || Updates.updateOutcome === "partial") && !Updates.updating
             anchors.verticalCenter: parent.verticalCenter
             kind: "control"
             text: Translation.tr("Open in terminal")
@@ -101,7 +107,7 @@ ColumnLayout {
             visible: root.pending && !Updates.updating
             anchors.verticalCenter: parent.verticalCenter
             kind: "accent"
-            text: Updates.updateOutcome === "failed" ? Translation.tr("Try again") : Translation.tr("Update")
+            text: Updates.updateOutcome === "failed" || Updates.updateOutcome === "partial" ? Translation.tr("Try again") : Translation.tr("Update")
             onClicked: Updates.update()
         }
     }
@@ -165,10 +171,10 @@ ColumnLayout {
                 id: output
 
                 Layout.fillWidth: true
-                visible: Updates.updateNotes.length > 0 || (Updates.updateOutcome === "failed" && Updates.updateLog.length > 0)
-                expanded: Updates.updateOutcome === "failed"
+                visible: Updates.updateNotes.length > 0 || (root.troubled && Updates.updateLog.length > 0)
+                expanded: root.troubled
                 glyph: Updates.updateOutcome === "done" ? "check_circle" : "terminal"
-                text: Updates.updateOutcome === "failed" ? Translation.tr("What it said")
+                text: root.troubled ? Translation.tr("What went wrong")
                     : Updates.updateOutcome === "done" ? Translation.tr("The update is done") : Translation.tr("Details of the update")
 
                 ExText {
@@ -176,9 +182,9 @@ ColumnLayout {
                     Layout.margins: ExLooks.settings.rowPadding
                     Layout.leftMargin: 2 * ExLooks.settings.rowPadding + ExLooks.settings.rowChip
                     // In words, and as the program said it where it stopped.
-                    text: (!output.expanded ? [] : Updates.updateOutcome === "failed" ? Updates.updateLog.slice(-20) : Updates.updateNotes.slice(-12)).join("\n")
+                    text: (!output.expanded ? [] : root.troubled ? Updates.updateLog.slice(-20) : Updates.updateNotes.slice(-12)).join("\n")
                     font.pixelSize: ExLooks.settings.small
-                    font.family: Updates.updateOutcome === "failed" ? "monospace" : ExLooks.font.family
+                    font.family: root.troubled ? "monospace" : ExLooks.font.family
                     wrapMode: Text.WrapAnywhere
                     dim: true
                 }

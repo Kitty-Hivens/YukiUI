@@ -46,12 +46,25 @@ if command -v yay > /dev/null 2>&1; then
   if [[ "$unattended" == true ]]; then
     quiet=(--noconfirm --answerclean None --answerdiff None --answeredit None --answerupgrade None --removemake --sudo "$root")
   fi
-  if [[ "$aur" != true ]]; then quiet+=(--repo); fi
-  yay -Syu "${quiet[@]}"
+  if [[ "$unattended" == true ]]; then
+    # The repositories first, and what the AUR cannot build after them: one
+    # package that does not build is no reason to leave the rest as it was, or
+    # to stop what the update does next. yay names those it could not build.
+    yay -Syu --repo "${quiet[@]}" || exit
+    if [[ "$aur" == true ]] && ! yay -Sua "${quiet[@]}"; then echo "@yuki aur-failed"; fi
+  else
+    if [[ "$aur" != true ]]; then quiet+=(--repo); fi
+    yay -Syu "${quiet[@]}"
+  fi
 elif command -v paru > /dev/null 2>&1; then
-  if [[ "$unattended" == true ]]; then quiet=(--noconfirm --skipreview --removemake --sudo "$root"); fi
-  if [[ "$aur" != true ]]; then quiet+=(--repo); fi
-  paru -Syu "${quiet[@]}"
+  if [[ "$unattended" == true ]]; then
+    quiet=(--noconfirm --skipreview --removemake --sudo "$root")
+    paru -Syu --repo "${quiet[@]}" || exit
+    if [[ "$aur" == true ]] && ! paru -Sua "${quiet[@]}"; then echo "@yuki aur-failed"; fi
+  else
+    if [[ "$aur" != true ]]; then quiet+=(--repo); fi
+    paru -Syu "${quiet[@]}"
+  fi
 elif [[ "$unattended" == true ]]; then
   "$root" pacman -Syu --noconfirm
 else
