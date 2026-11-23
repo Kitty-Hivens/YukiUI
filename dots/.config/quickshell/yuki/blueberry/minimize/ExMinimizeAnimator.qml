@@ -83,16 +83,16 @@ Scope {
         return (toplevel?.appId || win.class || "").toLowerCase();
     }
 
-    function minimize(windows, go) {
-        root.launch("minimize", windows, go);
+    function minimize(windows, go, landed) {
+        root.launch("minimize", windows, go, landed);
     }
 
-    function restore(windows, go) {
-        root.launch("restore", windows, go);
+    function restore(windows, go, landed) {
+        root.launch("restore", windows, go, landed);
     }
 
-    function launch(kind: string, windows, go) {
-        const batch = { id: root.nextBatch++, left: 0, go: go, released: false };
+    function launch(kind: string, windows, go, landed) {
+        const batch = { id: root.nextBatch++, left: 0, go: go, landed: landed, released: false };
         const added = [];
         for (const win of windows) {
             const toplevel = root.toplevelOf(win.address);
@@ -115,6 +115,7 @@ Scope {
             batch.left++;
             added.push({
                 id: root.nextId++,
+                address: win.address,
                 kind: kind,
                 screen: place.screen,
                 window: place,
@@ -126,8 +127,15 @@ Scope {
                 batch: batch
             });
         }
-        if (added.length === 0) {
+        // What is not drawn has arrived as soon as it is moved.
+        batch.go = () => {
             go();
+            for (const win of windows)
+                if (!added.some(flight => flight.address === win.address))
+                    landed?.(win.address);
+        };
+        if (added.length === 0) {
+            batch.go();
             return;
         }
         root.flights = [...root.flights, ...added];
@@ -146,6 +154,7 @@ Scope {
 
     function land(flight) {
         root.flights = root.flights.filter(other => other.id !== flight.id);
+        flight.batch.landed?.(flight.address);
     }
 
     /** The pinned windows on a screen, where they stand in its coordinates: what the overlay leaves out. */
@@ -289,7 +298,10 @@ Scope {
                                     width: flight.win.w
                                     height: flight.win.h
                                     scale: 1 + (flight.small - 1) * flight.travel
-                                    opacity: 1 - Math.pow(flight.travel, 3)
+                                    opacity: (1 - Math.pow(flight.travel, 3)) * flight.fade
+
+                                    /** Gone down to nothing over the window come back. */
+                                    property real fade: 1
                                     // Nothing shows before it sets off. A window coming
                                     // back would otherwise sit in the button as a dot.
                                     visible: flight.leaving || flight.started
@@ -321,27 +333,50 @@ Scope {
 
                                     // The window is asked back when the picture arrives and
                                     // takes a moment to show, so the picture stays over it
-                                    // until it has.
+                                    // until it has, and then fades. It was taken of a window
+                                    // without focus, which the compositor dims and which the
+                                    // application draws in its inactive colours, and cut off
+                                    // at once the window come back was a step brighter.
                                     Timer {
                                         id: settle
-                                        interval: 150
-                                        onTriggered: root.land(flight.modelData)
+                                        interval: 100
+                                        onTriggered: fadeOut.start()
+                                    }
+                                    NumberAnimation {
+                                        id: fadeOut
+                                        target: flight
+                                        property: "fade"
+                                        to: 0
+                                        duration: 180
+                                        onFinished: root.land(flight.modelData)
                                     }
 
-                                    ScreencopyView {
-                                        id: shot
-
+                                    // With the corners the window has, and drawn smaller from
+                                    // a mipmap: a picture taken as it is, scaled down, came
+                                    // out square and jagged, and changed as it landed.
+                                    ClippingRectangle {
                                         anchors.fill: parent
-                                        captureSource: flight.modelData.toplevel
-                                        live: false
-                                        paintCursor: false
-                                        onHasContentChanged: {
-                                            if (!shot.hasContent)
-                                                return;
-                                            if (flight.leaving)
-                                                shown.start();
-                                            else
-                                                flight.setOff();
+                                        radius: root.rounding
+                                        color: "transparent"
+
+                                        ScreencopyView {
+                                            id: shot
+
+                                            anchors.fill: parent
+                                            captureSource: flight.modelData.toplevel
+                                            live: false
+                                            paintCursor: false
+                                            layer.enabled: true
+                                            layer.mipmap: true
+                                            layer.smooth: true
+                                            onHasContentChanged: {
+                                                if (!shot.hasContent)
+                                                    return;
+                                                if (flight.leaving)
+                                                    shown.start();
+                                                else
+                                                    flight.setOff();
+                                            }
                                         }
                                     }
 

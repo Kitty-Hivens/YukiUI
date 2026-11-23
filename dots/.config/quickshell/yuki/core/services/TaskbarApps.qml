@@ -225,7 +225,11 @@ Singleton {
      */
     function toggleWindow(toplevel) {
         const address = root.addressOf(toplevel);
-        if (root.isMinimized(toplevel))
+        // In the air it is neither in front nor minimised yet, and the click
+        // asks for it to turn round.
+        if (Minimize.busy(address))
+            Minimize.toggle(address);
+        else if (root.isMinimized(toplevel))
             Minimize.restore(address);
         else if (toplevel.activated && Minimize.enabled)
             Minimize.minimize(address);
@@ -235,10 +239,15 @@ Singleton {
 
     /** Brings a window to the front, putting it back first if it was minimised. */
     function bringUp(toplevel) {
-        if (root.isMinimized(toplevel))
-            Minimize.restore(root.addressOf(toplevel));
-        else
+        const address = root.addressOf(toplevel);
+        if (Minimize.busy(address)) {
+            if (Minimize.heading(address) === "minimize")
+                Minimize.restore(address);
+        } else if (root.isMinimized(toplevel)) {
+            Minimize.restore(address);
+        } else {
             root.focusWindow(toplevel);
+        }
     }
 
     /** Brings up the window after the one in front. */

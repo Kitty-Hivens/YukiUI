@@ -32,8 +32,9 @@ Singleton {
      * Shows windows going into the dock and coming back out of it, or null for
      * none. Handed the windows and the function that moves them, which it has
      * to call exactly once: when minimising, as soon as it has a picture of
-     * them to show, and when restoring, once they have arrived. Set through a
-     * `Binding` like `enabled`.
+     * them to show, and when restoring, once they have arrived. Handed with
+     * them is a function to call with the address of each once nothing of it
+     * is in the air any more. Set through a `Binding` like `enabled`.
      */
     property var animator: null
 
@@ -69,6 +70,93 @@ Singleton {
         return /^0x[0-9a-f]+$/.test(address);
     }
 
+    /**
+     * Windows on their way out of sight or back, by address:
+     * { kind, wanted, landed, until, landBy }. The compositor has a window
+     * where it was until its picture has flown, so what the window list says
+     * about one in the air is not what the next click means. Asked again
+     * while it flies, a window was sent off a second time, and its picture
+     * hung over the window already come back.
+     */
+    property var moving: ({})
+
+    /** Whether a window is on its way. */
+    function busy(address: string): bool {
+        return root.moving[address] !== undefined;
+    }
+
+    /** "minimize" or "restore": what a window is, or is becoming. */
+    function heading(address: string): string {
+        const flight = root.moving[address];
+        if (flight)
+            return flight.wanted ?? flight.kind;
+        return root.isMinimized(address) ? "minimize" : "restore";
+    }
+
+    /**
+     * The windows that set off now. One already on its way is left to arrive,
+     * and turned round then if that is what was asked meanwhile.
+     */
+    function setOff(addresses, kind: string): var {
+        const next = Object.assign({}, root.moving);
+        const free = [];
+        for (const address of addresses) {
+            if (next[address]) {
+                next[address] = Object.assign({}, next[address], { wanted: next[address].kind === kind ? null : kind });
+            } else {
+                next[address] = { kind: kind, wanted: null, landed: false, until: Date.now() + 3000, landBy: 0 };
+                free.push(address);
+            }
+        }
+        root.moving = next;
+        return free;
+    }
+
+    /** A window that turned out not to go anywhere. */
+    function stay(addresses) {
+        const next = Object.assign({}, root.moving);
+        for (const address of addresses)
+            delete next[address];
+        root.moving = next;
+    }
+
+    function landed(address: string) {
+        if (!root.moving[address])
+            return;
+        const next = Object.assign({}, root.moving);
+        next[address] = Object.assign({}, next[address], { landed: true });
+        root.moving = next;
+        root.arrive();
+    }
+
+    /** Lets go of the windows that have arrived, and sends back those wanted elsewhere. */
+    function arrive() {
+        const now = Date.now();
+        const next = Object.assign({}, root.moving);
+        const turned = [];
+        for (const address in next) {
+            const flight = next[address];
+            const done = flight.landed && root.isMinimized(address) === (flight.kind === "minimize");
+            if (!done && now < flight.until)
+                continue;
+            delete next[address];
+            if (flight.wanted)
+                turned.push({ address: address, kind: flight.wanted });
+        }
+        if (Object.keys(next).length !== Object.keys(root.moving).length)
+            root.moving = next;
+        for (const turn of turned)
+            Qt.callLater(() => turn.kind === "minimize" ? root.minimize(turn.address) : root.restore(turn.address));
+    }
+
+    Connections {
+        target: HyprlandData
+        function onWindowListChanged() {
+            if (Object.keys(root.moving).length > 0)
+                root.arrive();
+        }
+    }
+
     function minimize(address: string) {
         root.minimizeMany([address]);
     }
@@ -83,7 +171,10 @@ Singleton {
             return;
         // Where a floating window stands is read fresh: moving one raises no
         // event, so the window list can still hold where it stood before.
-        root.minimizeQueue = [...root.minimizeQueue, addresses];
+        const free = root.setOff(addresses, "minimize");
+        if (free.length === 0)
+            return;
+        root.minimizeQueue = [...root.minimizeQueue, free];
         if (!geometry.running)
             geometry.running = true;
     }
@@ -130,6 +221,7 @@ Singleton {
             .filter(win => win && win.workspace.id >= 1)
             .map(win => Object.assign({}, win, { coveredBy: root.coveringOf(win, clients, moving) }))
             .sort((a, b) => order.indexOf(a.address) - order.indexOf(b.address));
+        root.stay(addresses.filter(address => !windows.some(win => win.address === address)));
         if (windows.length === 0)
             return;
         let lua = "";
@@ -194,9 +286,10 @@ Singleton {
     function restoreMany(addresses) {
         if (!root.enabled)
             return;
-        const windows = addresses.filter(address => root.usable(address))
-            .map(address => HyprlandData.windowByAddress[address])
+        const free = root.setOff(addresses.filter(address => root.usable(address)), "restore");
+        const windows = free.map(address => HyprlandData.windowByAddress[address])
             .filter(win => root.originOf(win) > 0);
+        root.stay(free.filter(address => !windows.some(win => win.address === address)));
         if (windows.length === 0)
             return;
         const front = windows.reduce((best, win) => win.focusHistoryID >= 0 && (best.focusHistoryID < 0 || win.focusHistoryID < best.focusHistoryID) ? win : best);
@@ -247,6 +340,8 @@ Singleton {
     function move(windows, lua: string, kind: string) {
         if (!root.animator) {
             root.run(lua);
+            for (const win of windows)
+                root.landed(win.address);
             return;
         }
         // The animator draws the going and the coming, so the compositor must
@@ -266,10 +361,16 @@ Singleton {
             root.pendingMoves = root.pendingMoves.filter(other => other !== pending);
             root.run(lua);
             entry.at = Date.now() + 700;
+            // An animator that never says so counts as done by then.
+            const next = Object.assign({}, root.moving);
+            for (const win of windows)
+                if (next[win.address])
+                    next[win.address] = Object.assign({}, next[win.address], { landBy: Date.now() + 700 });
+            root.moving = next;
         };
         root.pendingMoves = [...root.pendingMoves, pending];
         try {
-            root.animator[kind](windows, pending.go);
+            root.animator[kind](windows, pending.go, address => root.landed(address));
         } catch (error) {
             console.warn("[Minimize] animator failed, moving without it:", error);
             pending.go();
@@ -282,9 +383,13 @@ Singleton {
     Timer {
         interval: 250
         repeat: true
-        running: root.pendingMoves.length > 0 || root.unquiet.length > 0
+        running: root.pendingMoves.length > 0 || root.unquiet.length > 0 || Object.keys(root.moving).length > 0
         onTriggered: {
             const now = Date.now();
+            for (const address in root.moving)
+                if (!root.moving[address].landed && root.moving[address].landBy > 0 && root.moving[address].landBy <= now)
+                    root.landed(address);
+            root.arrive();
             for (const pending of root.pendingMoves)
                 if (pending.deadline <= now)
                     pending.go();
@@ -359,7 +464,7 @@ Singleton {
     }
 
     function toggle(address: string) {
-        if (root.isMinimized(address))
+        if (root.heading(address) === "minimize")
             root.restore(address);
         else
             root.minimize(address);
