@@ -117,12 +117,16 @@ Singleton {
     }
 
     /**
-     * The icon to show for a window class, best first: the theme's icon for a
-     * desktop entry of that name, the icon Steam installed for the game a
-     * window belongs to, the icon a window gave itself, a name from the theme
-     * or a picture, and then the guesses. A window's own icon comes after an
-     * entry's, so applications with one look alike in the theme, and before
-     * the guesses, which named Minecraft after an icon no theme here has.
+     * The icon to show for a window class, best first: the theme's icon for
+     * the desktop entry the class belongs to, found as `entryFor` finds the one
+     * the dock launches, the icon Steam installed for the game a window belongs
+     * to, the icon a window gave itself, a name from the theme or a picture,
+     * and then the guesses. A window's own icon comes after an entry's, so
+     * applications with one look alike in the theme, and before the guesses,
+     * which named Minecraft after an icon no theme here has. An entry named
+     * otherwise than the class, which declares the class it starts windows
+     * under instead, was found for the menu and not for the icon, and a Java
+     * window gave the dock Java's own.
      */
     function iconFor(appClass) {
         const icon = root.iconNameFor(appClass);
@@ -135,7 +139,7 @@ Singleton {
      * take an icon by name and a picture by its url, Kirigami's among them.
      */
     function iconNameFor(appClass) {
-        const entry = DesktopEntries.byId(appClass);
+        const entry = root.entryFor(appClass);
         if (entry)
             return entry.icon;
         const steam = WindowIcons.steamAppOf(appClass);

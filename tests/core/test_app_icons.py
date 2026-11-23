@@ -7,8 +7,10 @@ names nothing installed.
 
 Now a window of a class no entry is named for shows, best first, the icon Steam
 installed for the game its process says it is, then the icon the window gave
-itself through the window-icons plugin. An application with an entry of its
-own name still shows the theme's icon for it.
+itself through the window-icons plugin. An application with an entry still
+shows the theme's icon for it, an entry found by the class it says it starts
+windows under included: Nexira's, named dev.hivens.nexira, was found for its
+menu but not for its icon, and its Java window gave the dock Java's own.
 
 Steam's part is played by a data folder of the test's own: a game's icon and
 its desktop entry under Steam's names, and the game's id in the window's
@@ -89,6 +91,9 @@ def shell(bench, tmp_path):
     applications.mkdir()
     (applications / "Bench Game.desktop").write_text(
         f"[Desktop Entry]\nName=Bench Game\nType=Application\nExec=steam steam://rungameid/{GAME}\nIcon=steam_icon_{GAME}\n")
+    Image.new("RGBA", (48, 48), (0, 200, 0, 255)).save(icon / "bench_launcher_icon.png")
+    (applications / "dev.bench.launcher.desktop").write_text(
+        "[Desktop Entry]\nName=Bench Launcher\nType=Application\nExec=true\nIcon=bench_launcher_icon\nStartupWMClass=BenchLauncher\n")
     import os
     dirs = f"{data}:{os.environ.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share')}"
     shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("appIcons", "ready"), env={"XDG_DATA_DIRS": dirs})
@@ -162,3 +167,14 @@ def test_a_steam_game_shows_its_steam_icon_and_entry(shell, windows):
     assert found
     assert shell.call("appIcons", "entryName", window.wm_class.lower()) == "Bench Game"
     assert shell.call("appIcons", "iconNameFor", window.wm_class.lower()) == f"steam_icon_{GAME}"
+
+
+def test_an_entry_found_by_its_startup_class_gives_the_icon_not_the_window(shell, windows):
+    # Named otherwise than its windows' class, which it declares instead, and
+    # the window gives an icon of its own, as Java gives every window its own.
+    window = windows("BenchLauncher", own=("icon",))
+    wait_until(lambda: shell.call("appIcons", "entryName", "benchlauncher") == "Bench Launcher", what="the entry, by its startup class")
+    found = wait_until(lambda: (lambda path: path if "bench_launcher_icon" in path else None)(icon(shell, window.wm_class.lower())),
+                       what=f"the entry's icon, last {icon(shell, window.wm_class.lower())}")
+    assert "yuki-window-icons" not in found
+    assert shell.call("appIcons", "iconNameFor", "benchlauncher") == "bench_launcher_icon"

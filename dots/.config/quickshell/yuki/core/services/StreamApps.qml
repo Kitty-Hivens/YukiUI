@@ -159,7 +159,7 @@ Singleton {
         const client = HyprlandData.windowList.find(candidate => candidate.pid === pid);
         if (!client)
             return "";
-        if (DesktopEntries.byId(client.class))
+        if (AppSearch.entryFor(client.class))
             return Quickshell.iconPath(AppSearch.iconNameFor(client.class), "image-missing");
         const steam = WindowIcons.steamAppOf(client.class);
         if (steam && AppSearch.iconExists(`steam_icon_${steam}`))
