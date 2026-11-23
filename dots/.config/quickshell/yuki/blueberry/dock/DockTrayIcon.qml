@@ -1,5 +1,6 @@
 import QtQuick
 import Qt5Compat.GraphicalEffects
+import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 
@@ -8,6 +9,11 @@ import qs.blueberry.looks
 // One tray icon. A left click does what the application asks of it, or opens
 // its menu when the menu is all it has, the middle button its second action,
 // and a right click its menu. Pulled with the left button, it is carried.
+//
+// An application is told where it was clicked, and one that offers no menu on
+// the bus, as a program under Wine does, is asked to show its own on a right
+// click, as the specification has a tray do. Both need yuki's Quickshell, and
+// without it the icon behaves as it did.
 Item {
     id: root
 
@@ -77,12 +83,53 @@ Item {
             if (event.button === Qt.RightButton) {
                 if (root.item.hasMenu)
                     root.menuRequested(root);
+                else if (root.takesPoint)
+                    root.atPointer((x, y) => root.item?.contextMenu(x, y));
             } else if (event.button === Qt.MiddleButton) {
-                root.item.secondaryActivate();
+                if (root.takesPoint)
+                    root.atPointer((x, y) => root.item?.secondaryActivate(x, y));
+                else
+                    root.item.secondaryActivate();
             } else if (root.item.onlyMenu && root.item.hasMenu) {
                 root.menuRequested(root);
+            } else if (root.takesPoint) {
+                root.atPointer((x, y) => root.item?.activate(x, y));
             } else {
                 root.item.activate();
+            }
+        }
+    }
+
+    /** Whether this Quickshell tells an item where it was clicked and has the context menu call. */
+    readonly property bool takesPoint: typeof root.item?.contextMenu === "function"
+
+    /**
+     * Calls `then(x, y)` with where the pointer is, in the compositor's
+     * coordinates, which X11 and Wine programs share and open their windows and
+     * menus at. Asked as the click happens: the icon may stand in the dock or in
+     * the overflow's popup, and the pointer is on it either way.
+     */
+    function atPointer(then) {
+        pointer.then = then;
+        pointer.running = true;
+    }
+
+    Process {
+        id: pointer
+
+        property var then: null
+
+        command: ["hyprctl", "cursorpos", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let at = { x: 0, y: 0 };
+                try {
+                    at = JSON.parse(text);
+                } catch (error) {}
+                const then = pointer.then;
+                pointer.then = null;
+                if (then)
+                    then(Math.round(at.x ?? 0), Math.round(at.y ?? 0));
             }
         }
     }
