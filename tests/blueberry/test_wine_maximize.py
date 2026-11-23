@@ -72,3 +72,14 @@ def test_a_minimise_asked_before_a_wine_window_shows_is_not_acted_on(desk):
     for _ in range(6):
         time.sleep(0.5)
         assert not window.client()["workspace"]["name"].startswith("special:"), "the Wine window was minimised"
+
+
+def test_a_wine_window_as_large_as_the_screen_is_not_maximised_as_it_opens(desk):
+    # A Windows game between fullscreen and not, as osu is for a moment as it
+    # comes back from the tray, was maximised by the rule for applications
+    # that size themselves to the screen without saying so.
+    x, y, w, h = area(desk)
+    window = desk.wayland(wm_class=desk.name("wine") + ".exe", width=w, height=h + 40)
+    for _ in range(5):
+        time.sleep(0.5)
+        assert "maximized" not in window.client()["tags"], "the Wine window was maximised"

@@ -120,17 +120,15 @@ Singleton {
         // Only a window on an ordinary workspace has somewhere to be put back.
         // With where each stands now, which is also where its picture sets off
         // from, and from the bottom up, the order their pictures are drawn in.
+        // Each window as the compositor has it now, by preference: the shared
+        // list is a read behind, and a window asking to be minimised as it
+        // opens was not in it yet, so the request was lost.
         const order = clients.map(client => client.address);
         const moving = addresses.filter(address => root.usable(address));
         const windows = moving
-            .map(address => HyprlandData.windowByAddress[address])
+            .map(address => clients.find(client => client.address === address) ?? HyprlandData.windowByAddress[address])
             .filter(win => win && win.workspace.id >= 1)
-            .map(win => {
-                const fresh = clients.find(client => client.address === win.address);
-                return Object.assign({}, win, fresh ? { at: fresh.at, size: fresh.size } : {}, {
-                    coveredBy: root.coveringOf(win, clients, moving)
-                });
-            })
+            .map(win => Object.assign({}, win, { coveredBy: root.coveringOf(win, clients, moving) }))
             .sort((a, b) => order.indexOf(a.address) - order.indexOf(b.address));
         if (windows.length === 0)
             return;

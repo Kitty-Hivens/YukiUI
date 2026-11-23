@@ -97,7 +97,12 @@ Scope {
      * "restore", is read as a toggle instead.
      */
     function literal(client): bool {
-        return (client?.xwayland ?? false) || /\.exe$/i.test(client?.class ?? "");
+        return (client?.xwayland ?? false) || root.wine(client);
+    }
+
+    /** Whether a window is a Windows program's, which Wine names by its executable. */
+    function wine(client): bool {
+        return /\.exe$/i.test(client?.class ?? "");
     }
 
     /**
@@ -540,9 +545,12 @@ Scope {
         // An application that opens taking most of the work area is taken to
         // want to be maximised, and is, as GNOME does: Steam, say, sizes
         // itself to the screen without saying it is maximised. One that opens
-        // smaller but past the area's edge is brought inside it.
+        // smaller but past the area's edge is brought inside it. A Windows
+        // program is left as it opens: it says when it is maximised, and one
+        // as large as the screen without saying so is a game on its way to
+        // fullscreen, as osu is for a moment when it comes back from the tray.
         if (wanted === "opened") {
-            if (entry || root.decided[client.address])
+            if (entry || root.decided[client.address] || root.wine(client))
                 return "";
             if (root.bypasses(client))
                 return root.topOnScreen(client, monitor, target);
