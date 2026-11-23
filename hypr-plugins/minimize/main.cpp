@@ -140,11 +140,14 @@
 #include <hyprland/src/managers/fullscreen/FullscreenController.hpp>
 #include <hyprland/src/state/MonitorLayoutController.hpp>
 #include <hyprland/src/ipc/s2/S2.hpp>
+#include <hyprland/src/managers/eventLoop/EventLoopManager.hpp>
+#include <hyprland/src/managers/eventLoop/EventLoopTimer.hpp>
 
 // The C library, under C linkage.
 #include <lua.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <format>
 #include <string_view>
@@ -190,6 +193,19 @@ namespace {
         ToplevelRequest     unsetMaximized;
     };
     std::vector<SWatched> watched;
+
+    // A Wayland window's own handlers of its requests to be fullscreen or
+    // not, wrapped for as long as it lives.
+    struct SFullscreen {
+        PHLWINDOWREF                                     window;
+        WP<CXdgToplevel>                                 toplevel;
+        std::function<void(CXdgToplevel*, wl_resource*)> setFullscreen;
+        ToplevelRequest                                  unsetFullscreen;
+        /** A request not to be fullscreen, waiting to be seen through. */
+        SP<CEventLoopTimer>                              pending;
+    };
+    std::vector<SFullscreen> fullscreens;
+    constexpr auto           FULLSCREEN_SETTLE = std::chrono::milliseconds(100);
 
     SWatched* entryFor(const PHLWINDOW& window) {
         for (auto& entry : watched)
@@ -620,6 +636,113 @@ namespace {
         setXdgState(toplevel, maximized, true);
     }
 
+    SFullscreen* fullscreenOf(const CXdgToplevel* toplevel) {
+        for (auto& entry : fullscreens)
+            if (entry.toplevel.get() == toplevel)
+                return &entry;
+        return nullptr;
+    }
+
+    void stopWaiting(SFullscreen& entry) {
+        if (entry.pending && g_pEventLoopManager)
+            g_pEventLoopManager->removeTimer(entry.pending);
+        entry.pending.reset();
+    }
+
+    // What the window itself says is its size, by its geometry where it sets
+    // one, as large as its monitor.
+    bool coversMonitor(const PHLWINDOW& window) {
+        const auto monitor  = window->m_monitor.lock();
+        auto*      wayland  = dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend());
+        const auto xdg      = wayland ? wayland->m_resource.lock() : nullptr;
+        if (!monitor || !xdg || !xdg->m_surface)
+            return false;
+        const auto& geometry = xdg->m_current.geometry;
+        const auto  size     = geometry.w > 0 && geometry.h > 0 ? Vector2D{geometry.w, geometry.h} : xdg->m_surface->m_current.size;
+        return size.x >= monitor->m_size.x && size.y >= monitor->m_size.y;
+    }
+
+    // Wine gives up being fullscreen when its window stops covering the
+    // monitor, and asks for it back when it covers it again, but a window
+    // that does both between two acknowledged states asks for nothing: osu,
+    // coming back from the tray, is for less than a millisecond a title
+    // bar short of the screen, and its request for fullscreen had already
+    // been answered when it gave it up. It then stood there as large as the
+    // screen and not fullscreen, under the dock. A window told the truth that
+    // still covers its monitor a moment after giving fullscreen up is what
+    // Wine calls fullscreen, and is left so. One that has shrunk has given it
+    // up, only later by that moment.
+    void unsetFullscreenHeard(CXdgToplevel* resource) {
+        auto* entry = fullscreenOf(resource);
+        if (!entry)
+            return;
+        const auto window = entry->window.lock();
+        if (!window || !window->mapped() || !literalToplevel(window) || !Fullscreen::controller()->isFullscreen(window) || !g_pEventLoopManager) {
+            if (entry->unsetFullscreen)
+                entry->unsetFullscreen(resource);
+            return;
+        }
+        stopWaiting(*entry);
+        entry->pending = makeShared<CEventLoopTimer>(
+            FULLSCREEN_SETTLE,
+            [toplevel = entry->toplevel](SP<CEventLoopTimer>, void*) {
+                auto* held = fullscreenOf(toplevel.get());
+                if (!toplevel || !held)
+                    return;
+                stopWaiting(*held);
+                const auto window = held->window.lock();
+                if (window && window->mapped() && literalToplevel(window) && coversMonitor(window))
+                    return;
+                if (held->unsetFullscreen)
+                    held->unsetFullscreen(toplevel.get());
+            },
+            nullptr);
+        g_pEventLoopManager->addTimer(entry->pending);
+    }
+
+    void setFullscreenHeard(CXdgToplevel* resource, wl_resource* output) {
+        auto* entry = fullscreenOf(resource);
+        if (!entry)
+            return;
+        // Asked for again before the giving up was seen through, it is
+        // not given up.
+        stopWaiting(*entry);
+        if (entry->setFullscreen)
+            entry->setFullscreen(resource, output);
+    }
+
+    void wrapFullscreen(const PHLWINDOW& window) {
+        auto*      wayland  = dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend());
+        const auto xdg      = wayland ? wayland->m_resource.lock() : nullptr;
+        const auto toplevel = xdg ? xdg->m_toplevel.lock() : nullptr;
+        if (!toplevel || !toplevel->m_resource || fullscreenOf(toplevel->m_resource.get()))
+            return;
+        std::erase_if(fullscreens, [](const auto& entry) { return entry.toplevel.expired(); });
+        auto&       requests = toplevel->m_resource->requests;
+        SFullscreen entry;
+        entry.window            = window;
+        entry.toplevel          = toplevel->m_resource;
+        entry.setFullscreen     = std::move(requests.setFullscreen);
+        entry.unsetFullscreen   = std::move(requests.unsetFullscreen);
+        fullscreens.push_back(std::move(entry));
+        requests.setFullscreen   = [](CXdgToplevel* r, wl_resource* output) { setFullscreenHeard(r, output); };
+        requests.unsetFullscreen = [](CXdgToplevel* r) { unsetFullscreenHeard(r); };
+    }
+
+    // Hyprland's own handlers back, as the plugin goes, whose code the
+    // wrappers are. A request being waited on is let go of: it is the
+    // compositor's to answer again.
+    void unwrapFullscreen() {
+        for (auto& entry : fullscreens) {
+            stopWaiting(entry);
+            if (const auto toplevel = entry.toplevel.lock()) {
+                toplevel->requests.setFullscreen   = std::move(entry.setFullscreen);
+                toplevel->requests.unsetFullscreen = std::move(entry.unsetFullscreen);
+            }
+        }
+        fullscreens.clear();
+    }
+
     void refresh(const PHLWINDOW& window) {
         if (!window || !window->mapped())
             return;
@@ -789,6 +912,7 @@ namespace {
 
         // Entered first and listened to after, so a request heard before the
         // window is mapped has somewhere to be held.
+        wrapFullscreen(window);
         SWatched entry;
         entry.window = window;
         watched.push_back(std::move(entry));
@@ -928,7 +1052,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the layer arrangement, X11 applications may see a stale work area", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
     writeWorkArea();
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.11"};
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.12"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
@@ -950,4 +1074,5 @@ APICALL EXPORT void PLUGIN_EXIT() {
     for (auto& entry : watched)
         unwrapEarly(entry);
     watched.clear();
+    unwrapFullscreen();
 }

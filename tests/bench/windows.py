@@ -132,7 +132,7 @@ class IconWindow(Window):
     kind = "wayland"
 
     def __init__(self, bench: Bench, wm_class: str, name: str = "", colour: str = "", size: int = 48, early: bool = False,
-                 minimized: bool = False):
+                 minimized: bool = False, fullscreen: bool = False):
         argv = [str(bench.icon_window_client), wm_class]
         if name:
             argv.append(f"name={name}")
@@ -142,7 +142,14 @@ class IconWindow(Window):
             argv.append("early")
         if minimized:
             argv.append("minimized")
+        if fullscreen:
+            argv.append("fullscreen")
         super().__init__(bench, wm_class, argv)
+
+    def leave_fullscreen(self, width: int, height: int):
+        """Gives fullscreen up and is that size from then on, as the same commit."""
+        self.process.stdin.write(f"leave {width} {height}\n")
+        self.process.stdin.flush()
 
     def close(self):
         if self.process.poll() is not None:

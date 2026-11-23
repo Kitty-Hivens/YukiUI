@@ -3,18 +3,21 @@
  * the tests. Toolkits that do this, SDL3 among them, may give it before the
  * window is first shown, so this one can too.
  *
- *     icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized]
+ *     icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized] [fullscreen]
  *
  * name gives the icon a name from the theme, colour a picture of that colour,
  * N pixels square (48 unless said). early gives the icon before the window is
  * shown, after it otherwise. minimized asks to be minimised once configured and
  * before the window is shown, as Wine does for a window shown again from the
- * notification area, its Windows window still minimised then. Answers in a line of JSON each, as the other
- * clients of the bench do: {"ready": true} once shown with its icon given,
- * then one answer to each command it takes one a line on stdin:
+ * notification area, its Windows window still minimised then. fullscreen asks
+ * to be that, and is drawn at the size it is then given. Answers in a line of
+ * JSON each, as the other clients of the bench do: {"ready": true} once shown
+ * with its icon given, then one answer to each command it takes one a line on
+ * stdin:
  *
- *     unset    takes the icon back
- *     quit     ends, as does stdin closing
+ *     unset       takes the icon back
+ *     leave W H   gives fullscreen up and is W by H from then on
+ *     quit        ends, as does stdin closing
  */
 
 #define _GNU_SOURCE
@@ -36,6 +39,7 @@ static struct wl_shm *shm;
 static struct xdg_wm_base *wm_base;
 static struct xdg_toplevel_icon_manager_v1 *icon_manager;
 static int configured;
+static int given_width, given_height; /* what the compositor last asked for */
 
 static void registry_global(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
     if (strcmp(interface, wl_compositor_interface.name) == 0)
@@ -65,7 +69,10 @@ static void surface_configure(void *data, struct xdg_surface *surface, uint32_t 
 
 static const struct xdg_surface_listener surface_listener = {surface_configure};
 
-static void toplevel_configure(void *data, struct xdg_toplevel *toplevel, int32_t width, int32_t height, struct wl_array *states) {}
+static void toplevel_configure(void *data, struct xdg_toplevel *toplevel, int32_t width, int32_t height, struct wl_array *states) {
+    given_width = width;
+    given_height = height;
+}
 
 static void toplevel_close(void *data, struct xdg_toplevel *toplevel) {
     exit(0);
@@ -125,10 +132,10 @@ static void give_icon(struct xdg_toplevel *toplevel) {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "usage: icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized]\n");
+        fprintf(stderr, "usage: icon-window APP_ID [name=ICON] [colour=RRGGBB] [size=N] [early] [minimized] [fullscreen]\n");
         return 2;
     }
-    int early = 0, minimized = 0;
+    int early = 0, minimized = 0, fullscreen = 0;
     for (int i = 2; i < argc; i++) {
         if (strncmp(argv[i], "name=", 5) == 0)
             icon_name = argv[i] + 5;
@@ -140,6 +147,8 @@ int main(int argc, char **argv) {
             early = 1;
         else if (strcmp(argv[i], "minimized") == 0)
             minimized = 1;
+        else if (strcmp(argv[i], "fullscreen") == 0)
+            fullscreen = 1;
     }
 
     struct wl_display *display = wl_display_connect(NULL);
@@ -167,6 +176,8 @@ int main(int argc, char **argv) {
     xdg_toplevel_set_title(toplevel, argv[1]);
     if (early)
         give_icon(toplevel);
+    if (fullscreen)
+        xdg_toplevel_set_fullscreen(toplevel, NULL);
     wl_surface_commit(surface);
     while (!configured && wl_display_dispatch(display) != -1) {
     }
@@ -183,7 +194,19 @@ int main(int argc, char **argv) {
 
     struct pollfd fds[2] = {{.fd = wl_display_get_fd(display), .events = POLLIN}, {.fd = STDIN_FILENO, .events = POLLIN}};
     char line[64];
+    int drawn_width = 300, drawn_height = 200, kept_width = 0, kept_height = 0;
     for (;;) {
+        if (fullscreen) {
+            /* As large as it was given, or as it has decided on since. */
+            int width = kept_width ? kept_width : given_width, height = kept_height ? kept_height : given_height;
+            if (width > 0 && height > 0 && (width != drawn_width || height != drawn_height)) {
+                xdg_surface_set_window_geometry(xsurface, 0, 0, width, height);
+                wl_surface_attach(surface, solid_buffer(width, height, 0xffffff), 0, 0);
+                wl_surface_commit(surface);
+                drawn_width = width;
+                drawn_height = height;
+            }
+        }
         wl_display_flush(display);
         if (poll(fds, 2, -1) < 0)
             break;
@@ -192,6 +215,11 @@ int main(int argc, char **argv) {
         if (fds[1].revents & (POLLIN | POLLHUP)) {
             if (!fgets(line, sizeof line, stdin) || strncmp(line, "quit", 4) == 0)
                 break;
+            if (sscanf(line, "leave %d %d", &kept_width, &kept_height) == 2) {
+                xdg_toplevel_unset_fullscreen(toplevel);
+                printf("{\"ok\": \"leave\"}\n");
+                fflush(stdout);
+            }
             if (strncmp(line, "unset", 5) == 0 && icon_manager) {
                 xdg_toplevel_icon_manager_v1_set_icon(icon_manager, toplevel, NULL);
                 wl_display_roundtrip(display);
