@@ -17,6 +17,8 @@ Rectangle {
     property string subtitle: ""
     /** How it stands, as the system says. */
     property bool on: false
+    /** Something is going on: the glyph turns. */
+    property bool busy: false
     /** A switch at the far end, for a page about one thing to turn on and off. */
     property bool switchable: true
     /** Buttons at the far end, before the switch if there is one. */
@@ -48,11 +50,27 @@ Rectangle {
             }
 
             ExGlyph {
+                id: heroGlyph
+
                 anchors.centerIn: parent
                 text: root.glyph
                 size: 24
                 fill: root.on ? 1 : 0
                 color: root.on ? ExLooks.colors.accentInk : ExLooks.colors.textDim
+                // Turned, a natively rendered glyph jitters on the pixel grid.
+                renderType: root.busy ? Text.QtRendering : Text.NativeRendering
+
+                RotationAnimator on rotation {
+                    running: root.busy && heroGlyph.visible
+                    from: 0
+                    to: 360
+                    duration: 1000
+                    loops: Animation.Infinite
+                    onRunningChanged: {
+                        if (!running)
+                            heroGlyph.rotation = 0;
+                    }
+                }
             }
         }
         ColumnLayout {

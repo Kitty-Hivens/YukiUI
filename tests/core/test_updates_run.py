@@ -40,8 +40,8 @@ ShellRoot {
         function state(): string {
             return JSON.stringify({
                 updating: Updates.updating, step: Updates.updateStep, number: Updates.updateStepNumber,
-                detail: Updates.updateDetail, share: Updates.updateShare,
-                outcome: Updates.updateOutcome, failed: Updates.updateFailedStep, lines: Updates.updateLog
+                detail: Updates.updateDetail, package: Updates.updatePackage, share: Updates.updateShare,
+                outcome: Updates.updateOutcome, failed: Updates.updateFailedStep, lines: Updates.updateLog, notes: Updates.updateNotes
             });
         }
     }
@@ -102,13 +102,37 @@ def test_its_steps_and_packages_are_followed_and_it_ends_done(run):
     shell.call("runProbe", "update")
     seen = wait_until(lambda: (s := state(shell))["step"] == "system" and s["share"] > 0 and s, what="the second step")
     assert seen["updating"] and seen["number"] == 2
-    assert seen["detail"] == "(3/40) upgrading harfbuzz"
+    assert seen["detail"] == "upgrading harfbuzz"
     assert seen["share"] == pytest.approx(3 / 40)
     log = next(arg.split(":", 1)[1] for arg in files["args"].read_text().split() if arg.startswith("StandardOutput=truncate:"))
     with open(log, "a") as handle:
         handle.write("@yuki done\n")
     seen = wait_until(lambda: (s := state(shell))["outcome"] and s, what="the update to end")
     assert (seen["updating"], seen["outcome"]) == (False, "done")
+
+
+def test_a_download_meter_is_not_what_it_shows(run):
+    shell, files = run
+    files["keeps"].write_text("")
+    files["says"].write_text("@yuki step 2 4 system\n==> Making package: lib32-libtirpc 1.3.8-2 (Mon)\n==> Retrieving sources...\n"
+                             "  -> Downloading libtirpc-1.3.8.tar.bz2...\n"
+                             "  % Total    % Received % Xferd  Average Speed\n"
+                             "  0      0   0      0   0      0      0      0\r100    388 100    388   0      0    917      0\r100    533 100    533\n")
+    shell.call("runProbe", "update")
+    seen = wait_until(lambda: (s := state(shell))["detail"].startswith("Downloading") and s, what="the download to be told")
+    assert seen["detail"] == "Downloading libtirpc-1.3.8.tar.bz2..."
+    assert seen["package"] == "lib32-libtirpc"
+    assert seen["notes"] == ["Building lib32-libtirpc"]
+    assert not [line for line in seen["lines"] if "533" in line or "% Total" in line], seen["lines"]
+    # A build that counts its steps is told as a share.
+    log = next(arg.split(":", 1)[1] for arg in files["args"].read_text().split() if arg.startswith("StandardOutput=truncate:"))
+    with open(log, "a") as handle:
+        handle.write("[ 25/100] Building CXX object src/a.o\n")
+    wait_until(lambda: state(shell)["share"] == pytest.approx(0.25), what="the build's share")
+    # What pacman does afterwards is not told under the name of what was built.
+    with open(log, "a") as handle:
+        handle.write("(2/9) upgrading openexr\n")
+    wait_until(lambda: (s := state(shell))["detail"] == "upgrading openexr" and s["package"] == "", what="pacman's own step")
 
 
 def test_where_it_stopped_is_told(run):

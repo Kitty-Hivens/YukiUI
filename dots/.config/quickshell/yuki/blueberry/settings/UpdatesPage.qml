@@ -57,6 +57,7 @@ ColumnLayout {
         Layout.fillWidth: true
         switchable: false
         on: root.pending || Updates.updating
+        busy: Updates.updating
         glyph: Updates.updating ? "progress_activity"
             : Updates.updateOutcome === "failed" ? "error"
             : Updates.failed && !Updates.shellAvailable ? "cloud_off" : "system_update_alt"
@@ -68,7 +69,7 @@ ColumnLayout {
             : Translation.tr("Everything is up to date")
         subtitle: {
             if (Updates.updating)
-                return Translation.tr("Step %1 of %2: %3").arg(Math.max(1, Updates.updateStepNumber)).arg(Updates.updateSteps).arg(root.stepName);
+                return Updates.updateSteps > 1 ? Translation.tr("Step %1 of %2: %3").arg(Math.max(1, Updates.updateStepNumber)).arg(Updates.updateSteps).arg(root.stepName) : root.stepName;
             if (Updates.updateOutcome === "failed")
                 return Translation.tr("In: %1").arg(root.failedName);
             const parts = [];
@@ -105,44 +106,89 @@ ColumnLayout {
         }
     }
 
-    // What the update is doing, and what it said once it is over.
-    SettingsSection {
-        Layout.fillWidth: true
-        visible: Updates.updating || Updates.updateOutcome.length > 0
-        title: Translation.tr("Progress")
+    // What the update is doing, and what it said once it is over. It opens out
+    // of the line between its neighbours rather than pushing them apart at once.
+    Item {
+        id: progress
 
-        SettingsCard {
-            Layout.fillWidth: true
-            visible: Updates.updating
-            glyph: "downloading"
-            text: Updates.updateDetail.length > 0 ? Updates.updateDetail : Translation.tr("Starting")
-            description: Updates.shellAvailable ? Translation.tr("You can close this window. The shell reloads by itself near the end")
-                : Translation.tr("You can close this window")
-
-            SettingsMeter {
-                visible: Updates.updateShare >= 0
-                value: Updates.updateShare
+        property real shown: Updates.updating || Updates.updateOutcome.length > 0 ? 1 : 0
+        Behavior on shown {
+            NumberAnimation {
+                duration: ExLooks.motion.slow
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: ExLooks.motion.decelerate
             }
         }
-        SettingsExpander {
-            id: output
 
-            Layout.fillWidth: true
-            visible: Updates.updateLog.length > 0
-            expanded: Updates.updateOutcome === "failed"
-            glyph: "terminal"
-            text: Updates.updateOutcome === "failed" ? Translation.tr("What it said") : Translation.tr("Output")
-            description: Updates.updateOutcome === "done" ? Translation.tr("The update is done") : ""
+        Layout.fillWidth: true
+        Layout.preferredHeight: progressSection.implicitHeight * progress.shown
+        Layout.topMargin: -root.spacing * (1 - progress.shown)
+        visible: progress.shown > 0
+        opacity: progress.shown
+        clip: progress.shown < 1
 
-            ExText {
+        SettingsSection {
+            id: progressSection
+
+            width: parent.width
+            title: Translation.tr("Progress")
+
+            SettingsCard {
                 Layout.fillWidth: true
-                Layout.margins: ExLooks.settings.rowPadding
-                Layout.leftMargin: 2 * ExLooks.settings.rowPadding + ExLooks.settings.rowChip
-                text: (output.expanded ? Updates.updateLog.slice(-30) : []).join("\n")
-                font.pixelSize: ExLooks.settings.small
-                font.family: "monospace"
-                wrapMode: Text.WrapAnywhere
-                dim: true
+                visible: Updates.updating
+                glyph: "downloading"
+                text: Updates.updateDetail.length === 0 ? Translation.tr("Starting")
+                    : Updates.updatePackage.length > 0 && !Updates.updateDetail.includes(Updates.updatePackage) ? `${Updates.updatePackage}: ${Updates.updateDetail}`
+                    : Updates.updateDetail
+                description: Updates.shellAvailable ? Translation.tr("You can close this window. The shell reloads by itself near the end")
+                    : Translation.tr("You can close this window")
+
+                // How far through the packages, where it says so, and only that
+                // something goes on where it does not.
+                Item {
+                    implicitWidth: 120
+                    implicitHeight: 4
+
+                    SettingsMeter {
+                        anchors.fill: parent
+                        visible: Updates.updateShare >= 0
+                        value: Math.max(0, Updates.updateShare)
+                    }
+                    ExProgressLine {
+                        anchors.fill: parent
+                        visible: Updates.updateShare < 0
+                        running: Updates.updating && Updates.updateShare < 0
+                    }
+                }
+            }
+            SettingsExpander {
+                id: output
+
+                Layout.fillWidth: true
+                visible: Updates.updateNotes.length > 0 || (Updates.updateOutcome === "failed" && Updates.updateLog.length > 0)
+                expanded: Updates.updateOutcome === "failed"
+                glyph: Updates.updateOutcome === "done" ? "check_circle" : "terminal"
+                text: Updates.updateOutcome === "failed" ? Translation.tr("What it said")
+                    : Updates.updateOutcome === "done" ? Translation.tr("The update is done") : Translation.tr("Details of the update")
+
+                ExText {
+                    Layout.fillWidth: true
+                    Layout.margins: ExLooks.settings.rowPadding
+                    Layout.leftMargin: 2 * ExLooks.settings.rowPadding + ExLooks.settings.rowChip
+                    // In words, and as the program said it where it stopped.
+                    text: (!output.expanded ? [] : Updates.updateOutcome === "failed" ? Updates.updateLog.slice(-20) : Updates.updateNotes.slice(-12)).join("\n")
+                    font.pixelSize: ExLooks.settings.small
+                    font.family: Updates.updateOutcome === "failed" ? "monospace" : ExLooks.font.family
+                    wrapMode: Text.WrapAnywhere
+                    dim: true
+                }
+                ExButton {
+                    Layout.leftMargin: 2 * ExLooks.settings.rowPadding + ExLooks.settings.rowChip
+                    Layout.bottomMargin: ExLooks.settings.rowPadding
+                    kind: "control"
+                    text: Translation.tr("Open the whole log")
+                    onClicked: Qt.openUrlExternally(`file://${Updates.updateLogPath}`)
+                }
             }
         }
     }
