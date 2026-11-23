@@ -9,6 +9,7 @@ wakes a card that has gone to sleep.
 Reads the machine's real card: the bench runs on it.
 """
 
+import importlib.util
 import json
 
 import pytest
@@ -79,3 +80,25 @@ def test_the_card_driving_the_screen_is_read_with_nobody_looking(probe):
     # Quicker than the default, for the test not to wait half a minute.
     probe.call("gpuProbe", "setInterval", "1000")
     wait_until(lambda: state(probe)["history"] >= 3, timeout=30, what=f"readings to pile up, last {state(probe)}")
+
+
+def shares(busy_before, busy_after, passed=19_200_000):
+    """The share gpu_busy.py gives a program whose xe cycles went from one to the other in a second."""
+    spec = importlib.util.spec_from_file_location("gpu_busy", SHELL / "scripts/system/gpu_busy.py")
+    gpu_busy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gpu_busy)
+    before = {"1": {"rcs": (busy_before, 1000, 1, "cycles")}}
+    after = {"1": {"rcs": (busy_after, 1000 + passed, 1, "cycles")}}
+    return gpu_busy.shares(before, after, 1.0)
+
+
+def test_a_count_that_starts_over_is_still_a_load():
+    # The cycles xe keeps for a program fall by 2^32 as they pass it. Left
+    # out of the sum, the one program drawing made the card look idle.
+    before = 5_000_000_000
+    after = before + 13_000_000 - (1 << 32)
+    assert shares(before, after) == pytest.approx({"rcs": 13_000_000 / 19_200_000})
+
+
+def test_a_count_that_falls_for_another_reason_is_not_a_load():
+    assert shares(5_000_000_000, 4_000_000_000) == {}

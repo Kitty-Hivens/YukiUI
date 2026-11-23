@@ -32,6 +32,9 @@ import time
 
 RESCAN_SECONDS = 5
 
+# What a program's busy cycles drop by when xe's 32-bit count of them starts over.
+WRAP = 1 << 32
+
 
 def drm_files():
     """(pid, fd) of every open DRM file this user may read the accounts of."""
@@ -107,6 +110,11 @@ def shares(before, after, seconds):
                 passed = total - total_then
             else:
                 passed = seconds * 1e9
+            # A program's cycles fall by 2^32 every few minutes of a busy card
+            # (224 s at 19.2 MHz). Left out, the program, often all of the load,
+            # drew as an idle card.
+            if kind == "cycles" and spent < 0 and spent + WRAP <= passed * max(1, capacity) * 1.05:
+                spent += WRAP
             if spent < 0 or passed <= 0:
                 continue
             result[name] = result.get(name, 0.0) + spent / (passed * max(1, capacity))
