@@ -23,7 +23,9 @@ install-local-pkgbuild() {
   x pushd $location
 
   source ./PKGBUILD
-  x yay -S --sudoloop $installflags --asdeps "${depends[@]}"
+  local -a via=(--sudoloop)
+  if [[ "${PACMAN_AUTH:-sudo}" != sudo ]]; then via=(--sudo "$PACMAN_AUTH"); fi
+  x yay -S "${via[@]}" $installflags --asdeps "${depends[@]}"
   # man makepkg:
   # -A, --ignorearch: Ignore a missing or incomplete arch field in the build script.
   # -s, --syncdeps: Install missing dependencies using pacman. When build-time or run-time dependencies are not found, pacman will try to resolve them.
@@ -39,7 +41,7 @@ install-local-pkgbuild() {
   while IFS= read -r package; do
     [[ -f "$package" && "$package" != *-debug-* ]] && packages+=("$package")
   done < <(makepkg --packagelist)
-  x sudo pacman -U --noconfirm --ask 4 "${packages[@]}"
+  x "${PACMAN_AUTH:-sudo}" pacman -U --noconfirm --ask 4 "${packages[@]}"
   x popd
 }
 

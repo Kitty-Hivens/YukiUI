@@ -28,6 +28,15 @@ function setup_vt_switch_policy(){
   fi
   x sudo install -m 644 -o root -g root sdata/files/49-vt-switch.rules /etc/polkit-1/rules.d/49-vt-switch.rules
 }
+function setup_update_policy(){
+  # The password asked for when the shell updates the packages, in its own words
+  # and once for the run.
+  if [[ ! -d /usr/share/polkit-1/actions ]]; then
+    printf "${STY_YELLOW}[$0]: /usr/share/polkit-1/actions not found, skipping the update policy...${STY_RST}\n"
+    return
+  fi
+  x sudo install -m 644 -o root -g root sdata/files/org.yuki.update.policy /usr/share/polkit-1/actions/org.yuki.update.policy
+}
 function setup_yuki_portal(){
   # Registers the yuki portal backend. It carries two interfaces: the wallpaper one
   # that makes "Set as Background" in a file manager reach switchwall.sh, and the
@@ -50,6 +59,9 @@ v setup_user_group
 
 showfun setup_vt_switch_policy
 v setup_vt_switch_policy
+
+showfun setup_update_policy
+v setup_update_policy
 
 showfun setup_yuki_portal
 v setup_yuki_portal

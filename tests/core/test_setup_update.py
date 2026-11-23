@@ -21,7 +21,7 @@ import pytest
 from bench.bench import SHELL
 
 REPO = SHELL.parents[3]
-HIDDEN = {"pacman", "yay", "paru", "makepkg"}
+HIDDEN = {"pacman", "yay", "paru", "makepkg", "sudo", "pkexec"}
 FILES_STUB = 'printf "files step ran with %s\\n" "$*"\n'
 
 
@@ -41,7 +41,8 @@ def world(tmp_path):
     """The installer committed in an upstream repository, a bare remote of it, and a clone of that."""
     upstream = tmp_path / "upstream"
     upstream.mkdir()
-    listed = subprocess.run(["git", "-C", str(REPO), "ls-files", "--cached", "--others", "--exclude-standard", "-z", "setup", "sdata"],
+    listed = subprocess.run(["git", "-C", str(REPO), "ls-files", "--cached", "--others", "--exclude-standard", "-z", "setup", "sdata",
+                             "dots/.config/quickshell/yuki/scripts/system/update-packages.sh"],
                             check=True, capture_output=True).stdout.decode().split("\0")
     for name in filter(None, listed):
         source = REPO / name
@@ -209,3 +210,45 @@ def test_an_update_leaves_changes_not_committed_alone(world):
     assert (world["clone"] / "setup").read_text() == edited
     assert "not committed" in out
     assert "files step ran" not in out
+
+
+def test_unattended_says_each_step_and_how_it_ended(world):
+    result = setup(world, "--unattended")
+    out = result.stdout + result.stderr
+    assert result.returncode == 0, out
+    marks = [line for line in result.stdout.splitlines() if line.startswith("@yuki")]
+    assert marks == ["@yuki step 1 4 shell", "@yuki step 2 4 system", "@yuki step 3 4 packages", "@yuki step 4 4 files", "@yuki done"], out
+
+
+def test_unattended_goes_on_after_a_pull_and_ends_once(world):
+    push(world, "one.txt", "First change")
+    result = setup(world, "--unattended", "--no-system")
+    marks = [line for line in result.stdout.splitlines() if line.startswith("@yuki")]
+    assert marks[-1] == "@yuki done" and marks.count("@yuki done") == 1, result.stdout + result.stderr
+    assert "@yuki step 4 4 files" in marks
+
+
+def test_unattended_a_failing_step_stops_and_is_named(world):
+    # A package manager that cannot: without anybody to answer the question
+    # whether to try again, it went round for ever.
+    bin = Path(world["env"]["PATH"])
+    (bin / "pacman").write_text("#!/bin/sh\nexit 0\n")
+    (bin / "yay").write_text('#!/bin/sh\necho "yay $*"\nexit 1\n')
+    for name in ("pacman", "yay"):
+        (bin / name).chmod(0o755)
+    result = setup(world, "--unattended")
+    out = result.stdout + result.stderr
+    assert result.returncode != 0, out
+    assert "@yuki failed system" in result.stdout, out
+    assert "--noconfirm" in out and "--answerdiff None" in out, out
+    assert "@yuki done" not in result.stdout
+
+
+def test_unattended_can_leave_the_aur_alone(world):
+    bin = Path(world["env"]["PATH"])
+    (bin / "pacman").write_text("#!/bin/sh\nexit 0\n")
+    (bin / "yay").write_text('#!/bin/sh\necho "yay $*"\nexit 0\n')
+    for name in ("pacman", "yay"):
+        (bin / name).chmod(0o755)
+    result = setup(world, "--unattended", "--no-aur")
+    assert "--repo" in result.stdout, result.stdout + result.stderr

@@ -40,7 +40,9 @@ function x(){
     echo "  r = Repeat this command (DEFAULT)"
     echo "  e = Exit now"
     echo "  i = Ignore this error and continue (your setup might not work correctly)"
-    local p; read -p " [R/e/i]: " p
+    # Nobody to answer, as when the shell updates: given up rather than
+    # repeated for ever.
+    local p; read -p " [R/e/i]: " p || p=e
     case $p in
       [iI]) echo -e "${STY_BLUE}Alright, ignore and continue...${STY_RST}";cmdstatus=2;;
       [eE]) echo -e "${STY_BLUE}Alright, will exit.${STY_RST}";break;;

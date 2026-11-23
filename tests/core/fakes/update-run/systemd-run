@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Stands in for a user service: writes what the updater would say into the log
+# asked for, and is active until FAKE_ACTIVE is gone.
+printf '%s\n' "$*" >> "$FAKE_RUN_ARGS"
+[ -e "${FAKE_REFUSES:-/nonexistent}" ] && exit 1
+for arg in "$@"; do
+  case "$arg" in StandardOutput=truncate:*) log="${arg#StandardOutput=truncate:}" ;; esac
+done
+mkdir -p "$(dirname "$log")"
+: > "$log"
+: > "$FAKE_ACTIVE"
+( sleep 0.3; cat "$FAKE_SAYS" >> "$log"; [ -e "$FAKE_KEEPS" ] || rm -f "$FAKE_ACTIVE" ) > /dev/null 2>&1 &

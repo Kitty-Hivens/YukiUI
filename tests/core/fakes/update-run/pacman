@@ -1,0 +1,5 @@
+#!/bin/sh
+# Never the real one: a test that came this far by mistake must not touch the
+# person's packages.
+echo "$0 $*" >> "${FAKE_REAL:-/dev/null}"
+exit 99

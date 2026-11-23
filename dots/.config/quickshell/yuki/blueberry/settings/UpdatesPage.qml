@@ -30,6 +30,20 @@ ColumnLayout {
         return Qt.locale().toString(when, Config.options.time.format);
     }
 
+    /** The step the update is in, in words. */
+    readonly property string stepName: ({
+        "shell": "YukiUI",
+        "system": Translation.tr("System packages"),
+        "packages": Translation.tr("YukiUI's own packages"),
+        "files": Translation.tr("Files")
+    })[Updates.updateStep] ?? Translation.tr("Starting")
+    readonly property string failedName: ({
+        "shell": "YukiUI",
+        "system": Translation.tr("System packages"),
+        "packages": Translation.tr("YukiUI's own packages"),
+        "files": Translation.tr("Files")
+    })[Updates.updateFailedStep] ?? Translation.tr("Starting")
+
     /** Why YukiUI cannot be pulled now, or empty when it can. */
     readonly property string shellObstacle: Updates.shellState === "dirty" ? Translation.tr("There are changes in the repository that are not committed. Commit or stash them, and it can be pulled.")
         : Updates.shellState === "detached" ? Translation.tr("The repository is not on a branch, so there is nothing to pull into.")
@@ -42,13 +56,21 @@ ColumnLayout {
     SettingsHero {
         Layout.fillWidth: true
         switchable: false
-        on: root.pending
-        glyph: Updates.failed && !Updates.shellAvailable ? "cloud_off" : "system_update_alt"
-        text: root.checking ? Translation.tr("Checking...")
+        on: root.pending || Updates.updating
+        glyph: Updates.updating ? "progress_activity"
+            : Updates.updateOutcome === "failed" ? "error"
+            : Updates.failed && !Updates.shellAvailable ? "cloud_off" : "system_update_alt"
+        text: Updates.updating ? Translation.tr("Updating")
+            : Updates.updateOutcome === "failed" ? Translation.tr("The update stopped")
+            : root.checking ? Translation.tr("Checking...")
             : root.pending ? Translation.tr("Updates are ready")
             : root.neverChecked ? Translation.tr("Not checked yet")
             : Translation.tr("Everything is up to date")
         subtitle: {
+            if (Updates.updating)
+                return Translation.tr("Step %1 of %2: %3").arg(Math.max(1, Updates.updateStepNumber)).arg(Updates.updateSteps).arg(root.stepName);
+            if (Updates.updateOutcome === "failed")
+                return Translation.tr("In: %1").arg(root.failedName);
             const parts = [];
             if (Updates.shellPending)
                 parts.push(Translation.tr("YukiUI: %1 changes").arg(Updates.shellBehind));
@@ -60,7 +82,7 @@ ColumnLayout {
         }
 
         ExButton {
-            visible: Updates.available || Updates.shellAvailable
+            visible: (Updates.available || Updates.shellAvailable) && !Updates.updating
             anchors.verticalCenter: parent.verticalCenter
             kind: "control"
             enabled: !root.checking
@@ -68,11 +90,60 @@ ColumnLayout {
             onClicked: Updates.refreshAll()
         }
         ExButton {
-            visible: root.pending
+            visible: Updates.updateOutcome === "failed" && !Updates.updating
+            anchors.verticalCenter: parent.verticalCenter
+            kind: "control"
+            text: Translation.tr("Open in terminal")
+            onClicked: Updates.updateInTerminal()
+        }
+        ExButton {
+            visible: root.pending && !Updates.updating
             anchors.verticalCenter: parent.verticalCenter
             kind: "accent"
-            text: Translation.tr("Update")
+            text: Updates.updateOutcome === "failed" ? Translation.tr("Try again") : Translation.tr("Update")
             onClicked: Updates.update()
+        }
+    }
+
+    // What the update is doing, and what it said once it is over.
+    SettingsSection {
+        Layout.fillWidth: true
+        visible: Updates.updating || Updates.updateOutcome.length > 0
+        title: Translation.tr("Progress")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: Updates.updating
+            glyph: "downloading"
+            text: Updates.updateDetail.length > 0 ? Updates.updateDetail : Translation.tr("Starting")
+            description: Updates.shellAvailable ? Translation.tr("You can close this window. The shell reloads by itself near the end")
+                : Translation.tr("You can close this window")
+
+            SettingsMeter {
+                visible: Updates.updateShare >= 0
+                value: Updates.updateShare
+            }
+        }
+        SettingsExpander {
+            id: output
+
+            Layout.fillWidth: true
+            visible: Updates.updateLog.length > 0
+            expanded: Updates.updateOutcome === "failed"
+            glyph: "terminal"
+            text: Updates.updateOutcome === "failed" ? Translation.tr("What it said") : Translation.tr("Output")
+            description: Updates.updateOutcome === "done" ? Translation.tr("The update is done") : ""
+
+            ExText {
+                Layout.fillWidth: true
+                Layout.margins: ExLooks.settings.rowPadding
+                Layout.leftMargin: 2 * ExLooks.settings.rowPadding + ExLooks.settings.rowChip
+                text: (output.expanded ? Updates.updateLog.slice(-30) : []).join("\n")
+                font.pixelSize: ExLooks.settings.small
+                font.family: "monospace"
+                wrapMode: Text.WrapAnywhere
+                dim: true
+            }
         }
     }
 
@@ -173,6 +244,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     flat: true
                     text: modelData.name
+                    description: modelData.aur ? "AUR" : ""
 
                     ExText {
                         text: `${modelData.from} → ${modelData.to}`
@@ -197,6 +269,17 @@ ColumnLayout {
             ExSwitch {
                 checked: root.options.enableCheck
                 onToggled: Config.options.updates.enableCheck = checked
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "handyman"
+            text: Translation.tr("AUR packages")
+            description: Translation.tr("Counted and upgraded with the rest. The AUR is told their names, and they are built from scripts that other people wrote, without showing them first")
+
+            ExSwitch {
+                checked: root.options.aur
+                onToggled: Config.options.updates.aur = checked
             }
         }
         SettingsCard {

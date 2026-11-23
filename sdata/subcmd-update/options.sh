@@ -14,12 +14,19 @@ Options:
                     Fetches from the remote, which is the one part that goes
                     over the network.
       --no-system   Leave the system's packages alone
+      --no-aur      Upgrade the repositories' packages and not the AUR's
+      --unattended  Ask nothing, and print a line for each step as the shell
+                    reads them. AUR packages are built without their scripts
+                    being shown. A conflict stops the run. Root is sudo where
+                    it needs no password, and polkit's prompt otherwise.
       --files       Copy the files again even when nothing was pulled
 "
 }
 
 UPDATE_CHECK=false
 UPDATE_SYSTEM=true
+UPDATE_AUR=true
+UPDATE_UNATTENDED=false
 UPDATE_FILES=false
 # Set by the run itself after a pull, which starts the new version of this
 # script on what was there before it. Not for typing by hand.
@@ -28,7 +35,7 @@ UPDATE_CONTINUE_FROM=""
 # `man getopt` to see more
 para=$(getopt \
   -o h \
-  -l help,check,no-system,files,continue-from: \
+  -l help,check,no-system,no-aur,unattended,files,continue-from: \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 eval set -- "$para"
@@ -37,6 +44,8 @@ while true ; do
     -h|--help) showhelp;exit;;
     --check) UPDATE_CHECK=true;shift;;
     --no-system) UPDATE_SYSTEM=false;shift;;
+    --no-aur) UPDATE_AUR=false;shift;;
+    --unattended) UPDATE_UNATTENDED=true;shift;;
     --files) UPDATE_FILES=true;shift;;
     --continue-from) UPDATE_CONTINUE_FROM="$2";shift 2;;
     --) shift;break ;;

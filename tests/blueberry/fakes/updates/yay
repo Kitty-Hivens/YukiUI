@@ -1,0 +1,5 @@
+#!/bin/sh
+# Answers `yay -Qua` from FAKE_AUR, and as the real one does ends in 1 with none.
+[ "$1" = "-Qua" ] || exit 2
+[ -s "${FAKE_AUR:-/nonexistent}" ] || exit 1
+cat "$FAKE_AUR"

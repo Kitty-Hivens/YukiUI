@@ -16,9 +16,13 @@ Singleton {
     /** The checker is installed. Whether it runs by itself is the config's say. */
     property bool available: false
     property alias checking: checkUpdatesProc.running
-    property int count: 0
-    /** What can be updated, as { name, from, to }. */
-    property var packages: []
+    readonly property int count: root.packages.length
+    /** What can be updated, as { name, from, to, aur }. */
+    readonly property var packages: [...root.repoPackages, ...(root.takesAur ? root.aurPackages : [])]
+    property var repoPackages: []
+    /** Those of the AUR, which checkupdates does not know of. */
+    property var aurPackages: []
+    readonly property bool takesAur: Config.ready && Config.options.updates.aur
     /** The last check got no answer, so the figures are those of the one before. */
     property bool failed: false
     /** When a check last got an answer, or null. */
@@ -67,6 +71,8 @@ Singleton {
         if (!available) return;
         print("[Updates] Checking for system updates")
         checkUpdatesProc.running = true;
+        if (root.takesAur)
+            checkAurProc.running = true;
     }
     function refreshShell() {
         if (!root.shellAvailable || checkShellProc.running)
@@ -81,9 +87,30 @@ Singleton {
     }
 
     /**
-     * Updates everything there is to update, in a terminal, where whatever
-     * asks for a password or a choice can be answered. A command named in the
-     * config is run instead, as it always was.
+     * The update as it runs. It is a service of its own rather than a process
+     * of the shell: its last step copies the shell's files, which reloads the
+     * shell, and would have ended the update with it. What is known of it is
+     * read from its log, so it is found again after that reload.
+     */
+    property bool updating: false
+    /** Which step it is in, as the updater names it, and of how many. */
+    property string updateStep: ""
+    property int updateStepNumber: 0
+    property int updateSteps: 4
+    /** What it said last, and how far through the packages it is, 0 to 1, or -1. */
+    property string updateDetail: ""
+    property real updateShare: -1
+    /** How the last one ended: "", "done" or "failed", and where it stopped. */
+    property string updateOutcome: ""
+    property string updateFailedStep: ""
+    /** Its latest lines. */
+    property var updateLog: []
+    readonly property string updateLogPath: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/yuki/update.log`
+
+    /**
+     * Updates everything there is to update, by itself. A command named in the
+     * config is run instead, as it always was. Not known where YukiUI came
+     * from, the packages alone are upgraded.
      */
     function update() {
         const custom = Config.options.apps.update;
@@ -91,6 +118,22 @@ Singleton {
             Quickshell.execDetached(["bash", "-c", custom]);
             return;
         }
+        if (root.updating)
+            return;
+        const run = root.shellAvailable ? [`${root.repository}/setup`, "update", "--unattended"]
+            : ["bash", FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/system/update-packages.sh")), "--service", "--unattended"];
+        const args = ["systemd-run", "--user", "--unit=yuki-update", "--collect", "--quiet",
+            "-p", "Type=exec", "-p", "StandardInput=null",
+            "-p", `StandardOutput=truncate:${root.updateLogPath}`, "-p", `StandardError=append:${root.updateLogPath}`,
+            `--setenv=PATH=${Quickshell.env("PATH")}`, ...run];
+        if (!root.takesAur)
+            args.push("--no-aur");
+        startUpdate.command = args;
+        startUpdate.running = true;
+    }
+
+    /** The update in a terminal, where whatever asks can be answered. */
+    function updateInTerminal() {
         const terminal = Config.options.apps.terminal;
         const command = root.shellAvailable
             ? `'${StringUtils.shellSingleQuoteEscape(root.repository)}/setup' update`
@@ -113,11 +156,110 @@ Singleton {
         }
         root.failed = false;
         root.lastChecked = new Date();
-        root.packages = status === 2 ? [] : lines.map(line => {
+        root.repoPackages = status === 2 ? [] : root.entriesOf(lines, false);
+    }
+
+    /** Lines as the checkers print them, "name old -> new". */
+    function entriesOf(lines, aur: bool): var {
+        return lines.map(line => {
             const parts = line.trim().split(/\s+/);
-            return { name: parts[0] ?? "", from: parts[1] ?? "", to: parts[3] ?? "" };
-        }).filter(entry => entry.name.length > 0);
-        root.count = root.packages.length;
+            return { name: parts[0] ?? "", from: parts[1] ?? "", to: parts[3] ?? "", aur: aur };
+        }).filter(entry => entry.name.length > 0 && entry.to.length > 0);
+    }
+
+    function begin() {
+        root.updateStep = "";
+        root.updateStepNumber = 0;
+        root.updateDetail = "";
+        root.updateShare = -1;
+        root.updateOutcome = "";
+        root.updateFailedStep = "";
+        root.updateLog = [];
+        root.missing = 0;
+        root.updating = true;
+    }
+
+    function end(outcome: string, failedStep: string) {
+        if (!root.updating)
+            return;
+        root.updating = false;
+        root.updateOutcome = outcome;
+        root.updateFailedStep = failedStep;
+        root.refreshAll();
+    }
+
+    /** One line of the updater's log. */
+    function takeLine(raw) {
+        const line = raw.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "").replace(/\r/g, "").replace(/\s+$/, "");
+        if (line.startsWith("@yuki ")) {
+            const parts = line.split(" ");
+            if (parts[1] === "step") {
+                root.updateStepNumber = parseInt(parts[2]) || 0;
+                root.updateSteps = parseInt(parts[3]) || 4;
+                root.updateStep = parts[4] ?? "";
+                root.updateDetail = "";
+                root.updateShare = -1;
+            } else if (parts[1] === "done") {
+                root.end("done", "");
+            } else if (parts[1] === "failed") {
+                root.end("failed", parts[2] ?? "");
+            }
+            return;
+        }
+        if (line.trim().length === 0)
+            return;
+        root.updateLog = [...root.updateLog, line].slice(-400);
+        root.updateDetail = line.trim();
+        // Pacman counts packages as "(3/40) upgrading ...".
+        const counted = line.match(/^\s*\((\d+)\/(\d+)\)/);
+        if (counted && Number(counted[2]) > 0)
+            root.updateShare = Math.min(1, Number(counted[1]) / Number(counted[2]));
+    }
+
+    Process {
+        id: startUpdate
+        onExited: exitCode => {
+            if (exitCode === 0)
+                root.begin();
+        }
+    }
+    // Still running from before the shell was reloaded, perhaps by it.
+    Process {
+        id: findUpdate
+        running: true
+        command: ["systemctl", "--user", "is-active", "--quiet", "yuki-update.service"]
+        onExited: exitCode => {
+            if (exitCode === 0 && !root.updating)
+                root.begin();
+        }
+    }
+    Process {
+        running: root.updating
+        command: ["tail", "-n", "+1", "-F", root.updateLogPath]
+        stdout: SplitParser {
+            onRead: line => root.takeLine(line)
+        }
+    }
+    // Ended without saying so, killed say: not left as if it were going on.
+    property int missing: 0
+    Timer {
+        interval: 3000
+        repeat: true
+        running: root.updating
+        onTriggered: checkAlive.running = true
+    }
+    Process {
+        id: checkAlive
+        command: ["systemctl", "--user", "is-active", "--quiet", "yuki-update.service"]
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                root.missing = 0;
+                return;
+            }
+            root.missing++;
+            if (root.missing >= 2)
+                root.end("failed", root.updateStep);
+        }
     }
 
     /** What `setup update --check` said: a key and its value a line, tab between. */
@@ -168,6 +310,17 @@ Singleton {
             root.available = (exitCode === 0);
             if (root.checksByItself)
                 root.refresh();
+        }
+    }
+
+    // yay, when it is there, with the AUR packages that have moved on: ends in
+    // 1 with none, as it does with the network down, so an empty answer counts
+    // as none.
+    Process {
+        id: checkAurProc
+        command: ["bash", "-c", "command -v yay > /dev/null && yay -Qua 2> /dev/null; true"]
+        stdout: StdioCollector {
+            onStreamFinished: root.aurPackages = root.entriesOf(text.trim().split("\n"), true)
         }
     }
 

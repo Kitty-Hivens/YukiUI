@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>YukiUI</vendor>
+  <!-- pkexec pacman, for the updater. Pacman may be run by an administrator
+       in any case, so nothing more is let in than before: the password is
+       asked for, once for the run, and remembered for a few minutes. -->
+  <action id="org.yuki.update.pacman">
+    <description>Update the system's packages</description>
+    <message>Updating the system needs an administrator's password</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/pacman</annotate>
+  </action>
+</policyconfig>

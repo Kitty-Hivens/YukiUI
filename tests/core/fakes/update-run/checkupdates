@@ -1,0 +1,3 @@
+#!/bin/sh
+# None: the check after a run must not ask the mirrors.
+exit 2

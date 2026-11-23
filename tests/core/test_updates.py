@@ -43,6 +43,7 @@ def updates(bench, tmp_path, monkeypatch):
     answer = tmp_path / "updates"
     monkeypatch.setenv("PATH", f"{FAKES}:{os.environ['PATH']}")
     monkeypatch.setenv("FAKE_UPDATES", str(answer))
+    monkeypatch.setenv("FAKE_AUR", str(tmp_path / "aur"))
     answer.write_text("linux 7.2.14-1 -> 7.2.15-1\nkitty 0.40-1 -> 0.41-1\n")
     shell = Shell(bench, probe=PROBE, source=SOURCE, ready=("updatesProbe", "ready"))
     try:
@@ -68,7 +69,7 @@ def test_the_checker_is_taken_at_its_word(updates):
     wait_until(lambda: state(shell)["checked"], what="the first check")
     seen = state(shell)
     assert seen["count"] == 2 and not seen["failed"]
-    assert seen["packages"][0] == {"name": "linux", "from": "7.2.14-1", "to": "7.2.15-1"}
+    assert seen["packages"][0] == {"name": "linux", "from": "7.2.14-1", "to": "7.2.15-1", "aur": False}
 
     # Nothing to update is an answer, not a failure.
     answer.write_text("")
@@ -82,3 +83,16 @@ def test_the_checker_is_taken_at_its_word(updates):
     seen = check(shell)
     assert seen["failed"], "a check that got no answer read as an answer"
     assert seen["count"] == 1, "a check that got no answer changed the count"
+
+
+def test_aur_packages_are_counted_with_the_rest(updates, tmp_path):
+    shell, answer = updates
+    wait_until(lambda: state(shell)["checked"], what="the first check")
+    (tmp_path / "aur").write_text("dxvk-bin 3.1.0-1 -> 3.1.1-1\n")
+    check(shell)
+    seen = wait_until(lambda: (s := state(shell))["count"] == 3 and s, what="the AUR package to be counted")
+    assert seen["packages"][-1] == {"name": "dxvk-bin", "from": "3.1.0-1", "to": "3.1.1-1", "aur": True}
+    # None waiting is an answer too.
+    (tmp_path / "aur").write_text("")
+    check(shell)
+    wait_until(lambda: state(shell)["count"] == 2, what="the AUR package to be gone")

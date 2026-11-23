@@ -56,8 +56,26 @@ function update_status(){
   return 0
 }
 
+# A heading, and in an unattended run the line the shell reads the step from:
+# "@yuki step <number> <of> <key>".
+UPDATE_STEP=""
 function update_heading(){
   printf "\n${STY_CYAN}${STY_BOLD}%s${STY_RST}\n" "$1"
+  if [[ "$UPDATE_UNATTENDED" == true && -n "${2:-}" ]]; then
+    UPDATE_STEP="$3"
+    printf '@yuki step %s %s %s\n' "$2" 4 "$3"
+  fi
+}
+
+# How the run ended, said as it ends, whatever ended it. The run that pulls
+# leaves the rest to a new one in its place, which says it itself.
+function update_ending(){
+  local status=$?
+  if (( status == 0 )); then
+    printf '@yuki done\n'
+  else
+    printf '@yuki failed %s\n' "${UPDATE_STEP:-start}"
+  fi
 }
 
 # Pulls when there is something to pull and nothing in the way, and then sets
@@ -107,18 +125,10 @@ function update_system(){
     printf "Left alone, as asked.\n"
     return 0
   fi
-  if ! command -v pacman > /dev/null 2>&1; then
-    printf "${STY_YELLOW}This is not an Arch system. Update its packages the way your distribution does.${STY_RST}\n"
-    return 0
-  fi
-  # yay and paru take the AUR along with the repositories.
-  if command -v yay > /dev/null 2>&1; then
-    x yay -Syu
-  elif command -v paru > /dev/null 2>&1; then
-    x paru -Syu
-  else
-    x sudo pacman -Syu
-  fi
+  local -a args=()
+  if [[ "$UPDATE_UNATTENDED" == true ]]; then args+=(--unattended); fi
+  if [[ "$UPDATE_AUR" != true ]]; then args+=(--no-aur); fi
+  x bash "$REPO_ROOT/dots/.config/quickshell/yuki/scripts/system/update-packages.sh" "${args[@]}"
 }
 
 # The packages built from this repository: each one whose PKGBUILD builds
@@ -151,7 +161,16 @@ function update_local_packages(){
     printf "${STY_YELLOW}Run ./setup install-deps to install it along with them.${STY_RST}\n"
     return 0
   fi
-  export PACMAN_AUTH="${PACMAN_AUTH:-sudo}"
+  if [[ "$UPDATE_UNATTENDED" == true ]]; then
+    # sudo where it asks for no password, and polkit's prompt otherwise.
+    if command -v sudo > /dev/null 2>&1 && sudo -n true > /dev/null 2>&1; then
+      export PACMAN_AUTH="${PACMAN_AUTH:-sudo}"
+    else
+      export PACMAN_AUTH="${PACMAN_AUTH:-pkexec}"
+    fi
+  else
+    export PACMAN_AUTH="${PACMAN_AUTH:-sudo}"
+  fi
   for dir in "${stale[@]}"; do
     printf "${STY_BLUE}Building %s${STY_RST}\n" "$(local_pkgbuild_name "$dir")"
     install-local-pkgbuild "$dir" "--needed --noconfirm"
@@ -183,25 +202,28 @@ if [[ "$UPDATE_CHECK" == true ]]; then
 fi
 
 ask=false
+if [[ "$UPDATE_UNATTENDED" == true ]]; then trap update_ending EXIT; fi
 
 if [[ -z "$UPDATE_CONTINUE_FROM" ]]; then
-  update_heading "1/4  YukiUI"
+  update_heading "1/4  YukiUI" 1 shell
   update_pull
   if [[ -n "$UPDATE_PULLED_FROM" ]]; then
     printf "${STY_BLUE}Pulled. Going on with the new version of the updater.${STY_RST}\n"
     continue_args=(--continue-from "$UPDATE_PULLED_FROM")
     if [[ "$UPDATE_SYSTEM" != true ]]; then continue_args+=(--no-system); fi
+    if [[ "$UPDATE_AUR" != true ]]; then continue_args+=(--no-aur); fi
+    if [[ "$UPDATE_UNATTENDED" == true ]]; then continue_args+=(--unattended); fi
     exec "$REPO_ROOT/setup" update "${continue_args[@]}"
   fi
 fi
 
-update_heading "2/4  System packages"
+update_heading "2/4  System packages" 2 system
 update_system
 
-update_heading "3/4  Packages built from this repository"
+update_heading "3/4  Packages built from this repository" 3 packages
 update_local_packages "$UPDATE_CONTINUE_FROM"
 
-update_heading "4/4  Files"
+update_heading "4/4  Files" 4 files
 if [[ -n "$UPDATE_CONTINUE_FROM" || "$UPDATE_FILES" == true ]]; then
   update_files
 else

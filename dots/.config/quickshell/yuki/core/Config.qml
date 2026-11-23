@@ -866,6 +866,9 @@ Singleton {
                 // well, on the same schedule. That fetch goes to the repository's
                 // remote, GitHub for a clone of it.
                 property bool checkShell: true
+                // Whether AUR packages are counted and upgraded as well. Counting
+                // them asks the AUR with the names of those installed.
+                property bool aur: true
                 property int checkInterval: 120 // minutes
                 property int adviseUpdateThreshold: 75 // packages
                 property int stronglyAdviseUpdateThreshold: 200 // packages

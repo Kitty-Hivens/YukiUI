@@ -1,0 +1,6 @@
+#!/bin/sh
+# Only what the shell asks of the updater's service.
+case "$*" in
+  *is-active*) [ -e "$FAKE_ACTIVE" ] ;;
+  *) exit 0 ;;
+esac
