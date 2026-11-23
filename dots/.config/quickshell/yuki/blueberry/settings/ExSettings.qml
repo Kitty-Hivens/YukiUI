@@ -59,6 +59,10 @@ Item {
     property int historyIndex: -1
 
     function show(place) {
+        // What is on show, or coming, is not built and brought in again.
+        const at = root.pending;
+        if (at && at.category === place.category && at.page === place.page && at.searching === root.searching)
+            return;
         root.entrance = root.entranceTo(place);
         root.categoryKey = place.category;
         root.pageKey = place.page;

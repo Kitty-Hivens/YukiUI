@@ -41,6 +41,12 @@ ShellRoot {
         function here(): string {
             return settings.categoryKey;
         }
+        function shown(): string {
+            return settings.shownCategory;
+        }
+        function front(): int {
+            return settings.front;
+        }
     }
 }
 """
@@ -86,6 +92,27 @@ def test_side_buttons_go_back_and_forward_in_settings(bench, desk, settings, bac
     press(pointer, x, y, forward)
     time.sleep(0.3)
     assert settings.call("settingsProbe", "here") == "time"
+    assert not settings.errors()
+
+
+def test_the_section_on_show_is_not_brought_in_again(bench, settings):
+    # Opened again, the page on show was built anew and slid in as if it were
+    # another.
+    wait_until(lambda: any(c["title"] == "benchSettings" for c in bench.clients()), what="the settings window")
+    settings.call("settingsProbe", "open", "system")
+    wait_until(lambda: settings.call("settingsProbe", "shown") == "system", what="the system section")
+    time.sleep(0.5)
+    front = settings.call("settingsProbe", "front")
+
+    for _ in range(3):
+        settings.call("settingsProbe", "open", "system")
+        time.sleep(0.4)
+        assert settings.call("settingsProbe", "front") == front, "the page was built again"
+
+    settings.call("settingsProbe", "open", "apps")
+    wait_until(lambda: settings.call("settingsProbe", "shown") == "apps", what="another section")
+    settings.call("settingsProbe", "open", "system")
+    wait_until(lambda: settings.call("settingsProbe", "shown") == "system", what="back to the section")
     assert not settings.errors()
 
 
