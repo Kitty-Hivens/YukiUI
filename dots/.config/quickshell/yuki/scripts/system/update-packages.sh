@@ -44,7 +44,7 @@ fi
 quiet=()
 if command -v yay > /dev/null 2>&1; then
   if [[ "$unattended" == true ]]; then
-    quiet=(--noconfirm --answerclean None --answerdiff None --answeredit None --answerupgrade None --removemake --sudo "$root")
+    quiet=(--noconfirm --answerclean None --answerdiff None --answeredit None --answerupgrade None --sudo "$root")
   fi
   if [[ "$unattended" == true ]]; then
     # The repositories first, and what the AUR cannot build after them: one
@@ -58,7 +58,7 @@ if command -v yay > /dev/null 2>&1; then
   fi
 elif command -v paru > /dev/null 2>&1; then
   if [[ "$unattended" == true ]]; then
-    quiet=(--noconfirm --skipreview --removemake --sudo "$root")
+    quiet=(--noconfirm --skipreview --sudo "$root")
     paru -Syu --repo "${quiet[@]}" || exit
     if [[ "$aur" == true ]] && ! paru -Sua "${quiet[@]}"; then echo "@yuki aur-failed"; fi
   else
