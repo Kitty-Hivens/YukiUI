@@ -438,7 +438,42 @@ local function centeredIn(area, at, size)
         and math.abs(at.y + size.y / 2 - (area.y + area.h / 2)) <= 4
 end
 
+-- Whether another window stands over part of a floating one: one later in the
+-- list Hyprland draws them in, or a pinned one, or one fullscreen on its
+-- workspace. Global, so the tests can ask.
+function YUKI_COVERED(address)
+    local windows = hl.get_windows()
+    local w
+    for _, candidate in ipairs(windows) do
+        if candidate.address == address then
+            w = candidate
+        end
+    end
+    if not w or not w.floating or not w.workspace or not w.at or not w.size then
+        return false
+    end
+    local past = false
+    for _, o in ipairs(windows) do
+        if o.address == address then
+            past = true
+        elseif o.workspace and o.workspace.id == w.workspace.id and o.at and o.size
+            and (o.fullscreen ~= 0 or o.pinned or (o.floating and past))
+            and o.at.x < w.at.x + w.size.x and w.at.x < o.at.x + o.size.x
+            and o.at.y < w.at.y + w.size.y and w.at.y < o.at.y + o.size.y then
+            return true
+        end
+    end
+    return false
+end
+
 hl.on("window.close", function(w)
+    -- Hyprland draws windows going away after every floating one, whatever
+    -- stood over them, so one closed from under others faded over them. This
+    -- runs before the picture of it is taken, and it takes none of a window
+    -- that is not to be animated.
+    if YUKI_COVERED(w.address) then
+        hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. w.address, prop = "no_anim", value = "1" }))
+    end
     local placed = YUKI_PLACED[w.address]
     YUKI_PLACED[w.address] = nil
     local opened = YUKI_OPENED[w.address]
