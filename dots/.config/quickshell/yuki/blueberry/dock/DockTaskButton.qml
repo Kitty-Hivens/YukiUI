@@ -6,21 +6,19 @@ import qs.core
 import qs.core.services
 import qs.blueberry.looks
 
-// One application on the dock. Its windows are the ones it has on the
-// workspace on screen, minimised ones included.
+// One application on the dock, or one window of it.
 Item {
     id: root
 
     required property var entry
-    required property int workspaceId
+    /** The windows it stands for, minimised ones included. */
+    required property var windows
     required property string edge
     /** What the application announces for its button: a count, progress, a request for attention. */
     property var status: null
     readonly property bool showsProgress: root.status?.progressVisible ?? false
     readonly property bool showsCount: (root.status?.countVisible ?? false) && (root.status?.count ?? 0) > 0
 
-    /** Which of the application's windows this dock shows, or null for those on the workspace. */
-    property var showsWindow: null
     /**
      * The one window this button stands for, its title beside the icon, when
      * the dock gives each window a button of its own. Null for a button that
@@ -28,11 +26,6 @@ Item {
      */
     property var soleWindow: null
     readonly property bool labelled: root.soleWindow !== null && !root.vertical
-    // The entry is gone for a moment before the button is, while the dock lets go of it.
-    readonly property var windows: !root.entry ? []
-        : root.soleWindow ? [root.soleWindow]
-        : root.showsWindow ? root.entry.toplevels.filter(toplevel => root.showsWindow(toplevel))
-        : TaskbarApps.windowsOn(root.entry, root.workspaceId)
     readonly property bool running: windows.length > 0
     // A window minimised last keeps its activated flag once focus is let go of,
     // since nothing takes it over, so being out of sight has to rule it out.

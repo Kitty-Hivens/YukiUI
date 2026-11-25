@@ -62,7 +62,27 @@ Singleton {
     // Internals
 
     function updateWindowList() {
-        getClients.running = true;
+        // Asked for while one reading is under way, it is read once more after
+        // it: that reading may have been answered before what is asked about.
+        if (getClients.running)
+            getClients.again = true;
+        else
+            getClients.running = true;
+    }
+
+    /**
+     * Puts a window on the workspace it has just gone to, as the event names
+     * it. The workspace on screen changes with an event of its own, and the
+     * list is read some milliseconds after both, so in between a window taken
+     * along to another workspace was on neither.
+     */
+    function noteMove(address: string, workspace: string) {
+        const win = root.windowByAddress[address];
+        if (!win || !/^[0-9]+$/.test(workspace) || win.workspace.id === Number(workspace))
+            return;
+        const moved = Object.assign({}, win, { workspace: { id: Number(workspace), name: root.workspaceById[workspace]?.name ?? workspace } });
+        root.windowList = root.windowList.map(other => other === win ? moved : other);
+        root.windowByAddress = Object.assign({}, root.windowByAddress, { [address]: moved });
     }
 
     function updateLayers() {
@@ -155,6 +175,10 @@ Singleton {
                 // Any other client event reads the list now, which answers whatever
                 // titles were waiting on as well.
                 titleSettleTimer.stop();
+                if (name === "movewindowv2") {
+                    const [address, workspace] = event.data.split(",");
+                    root.noteMove(`0x${address}`, workspace);
+                }
                 root.updateWindowList();
                 if (["openwindow", "closewindow", "movewindow", "movewindowv2"].includes(name))
                     root.updateWorkspaces();
@@ -176,7 +200,17 @@ Singleton {
 
     Process {
         id: getClients
+
+        /** Asked for again while it was running. */
+        property bool again: false
+
         command: ["hyprctl", "clients", "-j"]
+        onRunningChanged: {
+            if (getClients.running || !getClients.again)
+                return;
+            getClients.again = false;
+            getClients.running = true;
+        }
         stdout: StdioCollector {
             id: clientsCollector
             onStreamFinished: {

@@ -438,8 +438,12 @@ Scope {
             readonly property bool labelled: !window.vertical && window.combine !== "always"
                 && (window.combine === "never" || window.labelledLength <= dock.screenLength - dock.endLength - 2 * dock.padding)
 
-            /** One per button, keyed so a button keeps its place as the list changes. */
-            readonly property var buttons: {
+            /**
+             * What the buttons are to be, worked out again whenever anything
+             * they are read from changes. Keyed so a button keeps its place as
+             * the list changes.
+             */
+            readonly property var wantedButtons: {
                 const list = [];
                 for (const app of window.appList) {
                     if (!window.labelled || app.windows.length === 0) {
@@ -450,6 +454,50 @@ Scope {
                         list.push(Object.assign({}, app, { key: `${app.appId}|${TaskbarApps.addressOf(toplevel)}`, window: toplevel, windows: [toplevel] }));
                 }
                 return list;
+            }
+
+            /**
+             * The buttons drawn. The workspace on screen and where each window
+             * is are told apart, one after the other, and a window taken along
+             * to another workspace is for a moment on neither, or on the one
+             * left behind: its button went and came back, and the row moved
+             * over and back with it. So buttons whose windows are still open
+             * go a moment later, all in one step, and not at all when by then
+             * the list is what it was.
+             */
+            property var buttons: []
+            property bool built: false
+            onWantedButtonsChanged: window.takeButtons()
+
+            function sameButtons(one: var, other: var): bool {
+                return one.length === other.length && one.every((button, i) => button.key === other[i].key && button.entry === other[i].entry
+                    && button.pinned === other[i].pinned && button.window === other[i].window && button.windows.length === other[i].windows.length
+                    && button.windows.every((toplevel, at) => toplevel === other[i].windows[at]));
+            }
+
+            function takeButtons() {
+                if (!window.built)
+                    return;
+                if (window.sameButtons(window.wantedButtons, window.buttons)) {
+                    buttonsLater.stop();
+                    return;
+                }
+                const open = ToplevelManager.toplevels.values;
+                const windowsOf = buttons => buttons.reduce((all, button) => all.concat(Array.from(button.windows)), []);
+                const wanted = windowsOf(window.wantedButtons);
+                const gone = windowsOf(window.buttons).filter(toplevel => !wanted.includes(toplevel));
+                if (gone.length > 0 && gone.every(toplevel => open.includes(toplevel))) {
+                    if (!buttonsLater.running)
+                        buttonsLater.start();
+                    return;
+                }
+                buttonsLater.stop();
+                window.buttons = window.wantedButtons;
+            }
+            Timer {
+                id: buttonsLater
+                interval: 24
+                onTriggered: window.buttons = window.wantedButtons
             }
 
             function showsWindow(toplevel): bool {
@@ -621,6 +669,8 @@ Scope {
             }
 
             Component.onCompleted: {
+                window.built = true;
+                window.takeButtons();
                 root.docks = [...root.docks, window];
                 ExStates.dockWindows = [...ExStates.dockWindows, window];
             }
@@ -976,8 +1026,7 @@ Scope {
                             soleWindow: button?.window ?? null
                             reach: Math.max(0, (ExLooks.dock.thickness - ExLooks.dock.cell) / 2)
                             status: launcherEntries.stateFor(button?.appId ?? "")
-                            workspaceId: window.workspaceId
-                            showsWindow: toplevel => window.showsWindow(toplevel)
+                            windows: button?.windows ?? []
                             edge: window.edge
                             onGroupRequested: {
                                 window.closePopups(windowList);
