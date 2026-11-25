@@ -135,6 +135,8 @@ hl.bind("Print", hl.dsp.global("quickshell:snipOpen"), { description = "Utilitie
 -- The frozen screens come up as they are, at once, as on Windows. Faded and
 -- grown in as any other layer, the screen seemed to jump.
 hl.layer_rule({ match = { namespace = "^(quickshell:snip)$" }, no_anim = true })
+-- The list of keys comes in by itself too.
+hl.layer_rule({ match = { namespace = "^(quickshell:shortcuts)$" }, no_anim = true })
 -- The game bar fades in by itself, the bar and its widgets in place, as on
 -- Windows, rather than growing in as one layer. The game is blurred behind its
 -- glass and only dimmed around it: the glass is more opaque than the

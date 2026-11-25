@@ -20,6 +20,7 @@ import qs.blueberry.polkit
 import qs.blueberry.regionSelect
 import qs.blueberry.screenShare
 import qs.blueberry.screenSnip
+import qs.blueberry.shortcuts
 import qs.blueberry.surfaces
 import qs.blueberry.switcher
 import qs.blueberry.windows
@@ -100,4 +101,5 @@ Scope {
     PanelLoader { component: ExScreenSnip {} }
     PanelLoader { component: ExFilePicker {} }
     PanelLoader { component: ExGameBar {} }
+    PanelLoader { component: ExShortcuts {} }
 }

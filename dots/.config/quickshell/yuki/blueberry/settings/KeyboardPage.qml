@@ -103,6 +103,16 @@ ColumnLayout {
         Layout.fillWidth: true
         title: Translation.tr("Keys")
 
+        // Drawn by the shell, over everything, as by its key.
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "keyboard_keys"
+            text: Translation.tr("Keys and mouse")
+            description: Translation.tr("What there is to know, also by Super and /")
+            leads: true
+            visible: root.shell !== undefined && root.shell !== null
+            onClicked: root.shell.call("cheatsheet", "open", [])
+        }
         SettingsCard {
             Layout.fillWidth: true
             glyph: "swap_horiz"

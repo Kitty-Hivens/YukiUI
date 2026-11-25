@@ -33,6 +33,7 @@ WelcomeStep {
             KeyRow { keys: ["Super", "I"]; text: Translation.tr("Settings") }
             KeyRow { keys: ["Super", "E"]; text: Translation.tr("Files") }
             KeyRow { keys: ["Super", "Enter"]; text: Translation.tr("Terminal") }
+            KeyRow { keys: ["Super", "/"]; text: Translation.tr("All the keys, any time") }
         }
         SettingsSection {
             Layout.fillWidth: true
@@ -46,6 +47,7 @@ WelcomeStep {
             KeyRow { keys: ["Super", "Shift", "S"]; text: Translation.tr("Snip the screen") }
             KeyRow { keys: ["Super", "G"]; text: Translation.tr("Game bar") }
             KeyRow { keys: ["Super", "L"]; text: Translation.tr("Lock") }
+            KeyRow { keys: ["Ctrl", "Alt", "Del"]; text: Translation.tr("Leave or shut down") }
         }
     }
 
@@ -63,56 +65,11 @@ WelcomeStep {
             Repeater {
                 model: keyRow.keys
 
-                Keycap {}
-            }
-        }
-    }
+                ExKeycap {
+                    required property string modelData
 
-    // A key as it stands on the keyboard: a face over a deeper edge.
-    component Keycap: Item {
-        id: cap
-
-        required property string modelData
-        readonly property bool arrows: cap.modelData === "arrows"
-
-        implicitWidth: Math.max(28, (cap.arrows ? arrowRow.implicitWidth : label.implicitWidth) + 16)
-        implicitHeight: 28
-
-        Rectangle {
-            anchors.fill: parent
-            radius: 7
-            color: ExLooks.colors.border
-        }
-        Rectangle {
-            width: parent.width
-            height: parent.height - 2
-            radius: 7
-            color: ExLooks.settings.sunken
-            border.width: 1
-            border.color: ExLooks.colors.border
-
-            ExText {
-                id: label
-                anchors.centerIn: parent
-                visible: !cap.arrows
-                text: cap.modelData
-                font.pixelSize: ExLooks.settings.small
-                font.weight: ExLooks.font.weightTitle
-            }
-            Row {
-                id: arrowRow
-                anchors.centerIn: parent
-                visible: cap.arrows
-                spacing: -2
-
-                Repeater {
-                    model: ["arrow_left_alt", "arrow_upward_alt", "arrow_downward_alt", "arrow_right_alt"]
-
-                    ExGlyph {
-                        required property string modelData
-                        text: modelData
-                        size: 16
-                    }
+                    text: modelData === "arrows" ? "" : modelData
+                    glyphs: modelData === "arrows" ? ["arrow_left_alt", "arrow_upward_alt", "arrow_downward_alt", "arrow_right_alt"] : []
                 }
             }
         }
