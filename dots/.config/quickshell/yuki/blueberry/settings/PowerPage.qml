@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import Quickshell.Services.UPower
 
 import qs.core
@@ -32,6 +34,40 @@ ColumnLayout {
     }
 
     Component.onCompleted: Hypridle.refresh()
+
+    // The power saving of the PCI Express links, the kernel's ASPM policy, as
+    // it stands now: the one in brackets of those it offers. Nothing is shown
+    // where the kernel has no such thing, or nothing to change it with is
+    // installed.
+    readonly property string pciePolicy: (pcieFile.text().match(/\[(\w+)\]/) ?? [])[1] ?? ""
+    readonly property bool pcieOffered: root.pciePolicy.length > 0 && pcieHelper.installed
+    /** Why the last change did not go through, or empty. */
+    property string pcieProblem: ""
+
+    FileView {
+        id: pcieFile
+        path: "/sys/module/pcie_aspm/parameters/policy"
+        blockLoading: true
+        printErrors: false
+    }
+    Process {
+        id: pcieHelper
+        property bool installed: false
+        running: true
+        command: ["test", "-x", "/usr/lib/yuki/yuki-pcie"]
+        onExited: exitCode => pcieHelper.installed = exitCode === 0
+    }
+    Process {
+        id: pcieSetter
+        property string wanted: ""
+        command: ["bash", "-c", 'if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then sudo -n /usr/lib/yuki/yuki-pcie set "$1"; else pkexec /usr/lib/yuki/yuki-pcie set "$1"; fi', "pcie", pcieSetter.wanted]
+        onExited: exitCode => {
+            pcieFile.reload();
+            // 126 and 127 are the prompt dismissed, which is no problem.
+            root.pcieProblem = exitCode === 0 || exitCode === 126 || exitCode === 127 ? ""
+                : Translation.tr("The firmware of this machine does not let it be changed");
+        }
+    }
 
     spacing: ExLooks.settings.groupGap
 
@@ -79,6 +115,28 @@ ColumnLayout {
                     return list;
                 }
                 onPicked: profile => PowerProfiles.profile = profile
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: root.pcieOffered
+            glyph: "memory"
+            text: Translation.tr("PCI Express power saving")
+            description: root.pcieProblem.length > 0 ? root.pcieProblem
+                : Translation.tr("Turn it off if a disk or a card stalls as it wakes. Uses more battery")
+
+            SettingsChoice {
+                enabled: !pcieSetter.running
+                value: root.pciePolicy === "powersupersave" ? "powersave" : root.pciePolicy
+                options: [
+                    { value: "default", text: Translation.tr("Automatic") },
+                    { value: "powersave", text: Translation.tr("On") },
+                    { value: "performance", text: Translation.tr("Off") }
+                ]
+                onPicked: policy => {
+                    pcieSetter.wanted = policy;
+                    pcieSetter.running = true;
+                }
             }
         }
     }

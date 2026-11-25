@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>YukiUI</vendor>
+  <!-- The settings' own choice of the PCI Express power saving. The helper
+       takes one of four names and nothing else. -->
+  <action id="org.yuki.pcie.set">
+    <description>Change the power saving of the PCI Express links</description>
+    <message>Changing the power saving of PCI Express needs an administrator's password</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/yuki/yuki-pcie</annotate>
+  </action>
+</policyconfig>
