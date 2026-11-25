@@ -15,7 +15,7 @@
 # action for it comes with the package.
 
 pkgname=yuki-hyprland-plugins
-pkgver=1.32
+pkgver=1.33
 pkgrel=1
 pkgdesc='Hyprland plugins for YukiUI, rebuilt on every Hyprland upgrade'
 arch=(any)

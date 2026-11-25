@@ -83,3 +83,51 @@ def test_a_fullscreen_spoof_outlives_a_shell_restart(desk):
     desk.shell.restart()
     time.sleep(1.0)
     assert window.client()["fullscreenClient"] == spoofed
+
+
+def leave_as_chromium_does(window):
+    # Told it is maximised whatever its size, it asks for that again in the
+    # same breath as it leaves fullscreen.
+    window.command("unfullscreen")
+    window.command("maximize")
+
+
+def test_a_maximized_window_asking_to_be_so_as_it_leaves_fullscreen_stays_so(desk):
+    window = desk.wayland()
+    desk.toggle_maximized(window)
+    window.wait(lambda c: is_maximized(desk, c), "maximised")
+    window.command("fullscreen")
+    window.wait(lambda c: is_fullscreen(desk, c), "fullscreen over the whole screen")
+
+    leave_as_chromium_does(window)
+    window.wait(lambda c: c["fullscreen"] == 0, "out of fullscreen")
+    time.sleep(0.8)
+    assert is_maximized(desk, window.client()), window.client()
+
+
+def test_an_ordinary_window_asking_to_be_maximized_as_it_leaves_fullscreen_goes_back(desk):
+    window = desk.wayland()
+    before = window.rect
+    window.command("fullscreen")
+    window.wait(lambda c: is_fullscreen(desk, c), "fullscreen over the whole screen")
+
+    leave_as_chromium_does(window)
+    window.wait(lambda c: c["fullscreen"] == 0, "out of fullscreen")
+    time.sleep(0.8)
+    client = window.client()
+    assert (*client["at"], *client["size"]) == before and not client["tags"], client
+
+
+def test_a_window_asking_to_be_maximized_later_is(desk):
+    window = desk.wayland()
+    window.command("fullscreen")
+    window.wait(lambda c: is_fullscreen(desk, c), "fullscreen over the whole screen")
+    window.command("unfullscreen")
+    window.wait(lambda c: c["fullscreen"] == 0, "out of fullscreen")
+    time.sleep(0.5)
+    window.command("maximize")
+    window.wait(lambda c: is_maximized(desk, c), "maximised as it asked")
+    # Asked again, as a program restoring its window does, it stays so.
+    window.command("maximize")
+    time.sleep(0.8)
+    assert is_maximized(desk, window.client()), window.client()

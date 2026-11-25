@@ -16,7 +16,11 @@
 // not raised over floating windows, so a family that maximises by itself
 // suppresses that with a window rule and takes the request from here. A
 // window rule leaves the request on the surface for every listener, this one
-// included.
+// included. A window told it is maximised whatever its size asks for nothing
+// by asking to be maximised as it leaves fullscreen, which is how Chromium
+// goes back to what it believes it was, or while it is maximised already.
+// Neither is announced: every request of such a window is answered as a
+// press of its maximise button, and it was put back instead.
 //
 // A request made before the window is mapped, as an application that
 // remembers being maximised makes it, is held and announced as the window
@@ -191,8 +195,11 @@ namespace {
         WP<CXdgToplevel>    toplevel;
         ToplevelRequest     setMaximized;
         ToplevelRequest     unsetMaximized;
+        /** When it last stopped being fullscreen. */
+        std::optional<std::chrono::steady_clock::time_point> leftFullscreen;
     };
     std::vector<SWatched> watched;
+    constexpr auto        LEAVES_FULLSCREEN_FOR = std::chrono::milliseconds(300);
 
     // A Wayland window's own handlers of its requests to be fullscreen or
     // not, wrapped for as long as it lives.
@@ -299,6 +306,26 @@ namespace {
     // backend hands it on, Wayland and X11 alike, one request at a time.
     SP<CXDGToplevelResource> literalToplevel(const PHLWINDOW& window);
 
+    bool taggedFixedSize(const PHLWINDOW& window) {
+        const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
+        return !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
+    }
+
+    // Whether a Wayland window that is always told it is maximised asks to be,
+    // and so for nothing new: on its way out of fullscreen, going back to what
+    // it believes it was, or already as it asks to be.
+    bool asksForNothing(const PHLWINDOW& window) {
+        auto*      wayland  = window ? dynamic_cast<Desktop::View::CWaylandBackend*>(&window->backend()) : nullptr;
+        const auto xdg      = wayland ? wayland->m_resource.lock() : nullptr;
+        const auto toplevel = xdg ? xdg->m_toplevel.lock() : nullptr;
+        if (!toplevel || !toplevel->m_state.requestsMaximize.value_or(false) || literalToplevel(window))
+            return false;
+        if (Fullscreen::controller()->isFullscreen(window) || taggedFixedSize(window))
+            return true;
+        const auto* entry = entryFor(window);
+        return entry && entry->leftFullscreen && std::chrono::steady_clock::now() - *entry->leftFullscreen < LEAVES_FULLSCREEN_FOR;
+    }
+
     CHyprSignalListener listenTo(const PHLWINDOW& window) {
         const PHLWINDOWREF ref = window;
         return window->backend().m_events.stateRequest.listen([ref](Desktop::View::SBackendStateRequest request) {
@@ -311,6 +338,8 @@ namespace {
             if (maximize.has_value())
                 if (const auto toplevel = literalToplevel(ref.lock()); toplevel && toplevel->m_state.requestsMaximize.has_value())
                     maximize = toplevel->m_state.requestsMaximize;
+            if (maximize.has_value() && asksForNothing(ref.lock()))
+                maximize.reset();
             heard(ref, request.minimized.value_or(false), maximize);
         });
     }
@@ -475,8 +504,7 @@ namespace {
     bool held(const PHLWINDOW& window) {
         if (Fullscreen::controller()->isFullscreen(window))
             return true;
-        const auto tag = fixedSizeTag ? fixedSizeTag->value() : std::string{};
-        return !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
+        return taggedFixedSize(window);
     }
 
     void sendMaximized(const SP<CXWaylandSurface>& surface, bool maximized) {
@@ -631,9 +659,7 @@ namespace {
         const auto toplevel = literalToplevel(window);
         if (!toplevel)
             return;
-        const auto tag       = fixedSizeTag ? fixedSizeTag->value() : std::string{};
-        const bool maximized = !tag.empty() && window->m_ruleApplicator && window->m_ruleApplicator->m_tagKeeper.isTagged(tag);
-        setXdgState(toplevel, maximized, true);
+        setXdgState(toplevel, taggedFixedSize(window), true);
     }
 
     SFullscreen* fullscreenOf(const CXdgToplevel* toplevel) {
@@ -972,7 +998,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
     });
     activeListener     = Event::bus()->m_events.window.active.listen([](const PHLWINDOW& window, Desktop::eFocusReason) { coverWithFullscreen(window); });
     floatingListener   = Event::bus()->m_events.window.floating.listen([](const PHLWINDOW& window) { refresh(window); });
-    fullscreenListener = Event::bus()->m_events.window.fullscreen.listen([](const PHLWINDOW& window) { refresh(window); });
+    fullscreenListener = Event::bus()->m_events.window.fullscreen.listen([](const PHLWINDOW& window) {
+        if (auto* entry = window ? entryFor(window) : nullptr; entry && !Fullscreen::controller()->isFullscreen(window))
+            entry->leftFullscreen = std::chrono::steady_clock::now();
+        refresh(window);
+    });
     // A tag given or taken, the fixed size tag among them.
     rulesListener     = Event::bus()->m_events.window.updateRules.listen([](const PHLWINDOW& window) { refresh(window); });
     preReloadListener = Event::bus()->m_events.config.preReload.listen([] {
@@ -1052,7 +1082,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE h) {
         HyprlandAPI::addNotification(handle, "[minimize] could not hook the layer arrangement, X11 applications may see a stale work area", CHyprColor{1.0, 0.6, 0.2, 1.0}, 5000);
     writeWorkArea();
 
-    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.12"};
+    return {"minimize", "Passes on requests to be minimised or maximised, keeps windows an environment holds from being resized, says whether a window would float, tells windows whether they are maximised or tiled and what may be done with them, keeps the X11 work area current, and lets go of focus for the shell's minimising", "yuki", "1.13"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
