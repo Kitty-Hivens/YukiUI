@@ -5,6 +5,7 @@ import Quickshell.Io
 
 import qs.core
 import qs.core.services
+import qs.blueberry
 import qs.blueberry.looks
 
 // Where a window is put as Windows puts it: maximised, or snapped to half of
@@ -674,6 +675,13 @@ Scope {
             refitLater.restart();
         }
         function onAutoHideChanged() {
+            refitLater.restart();
+        }
+    }
+    // Put away by its key, the dock gives its room to the windows, and takes it back.
+    Connections {
+        target: ExStates
+        function onDockPutAwayChanged() {
             refitLater.restart();
         }
     }

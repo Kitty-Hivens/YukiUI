@@ -529,8 +529,17 @@ Scope {
                 if (window.underFullscreen)
                     window.closePopups(null);
             }
-            // Hidden on its own, it keeps no room from the windows.
-            exclusiveZone: window.autoHide ? 0 : ExLooks.dock.thickness + gap
+            // Hidden on its own or put away, it keeps no room from the windows.
+            exclusiveZone: window.autoHide || window.putAway ? 0 : ExLooks.dock.thickness + gap
+
+            // Put away by its key, Super+J, it is out of sight until the key is
+            // pressed again: the edge does not bring it back as it does a dock
+            // that hides on its own.
+            readonly property bool putAway: ExStates.dockPutAway
+            onPutAwayChanged: {
+                if (window.putAway)
+                    window.closePopups(null);
+            }
 
             // Out of the way until the pointer reaches the edge, as Windows'
             // "automatically hide the taskbar". It stays while the pointer is
@@ -542,7 +551,7 @@ Scope {
                 || ExStates.launcherOpen || root.phase !== "" || dragArea.Drag.active || window.holdingKeys || root.carriedId.length > 0
             property bool revealed: !window.autoHide
             /** From in place (0) to out of sight past the edge (1). */
-            property real hidden: window.revealed ? 0 : 1
+            property real hidden: window.revealed && !window.putAway ? 0 : 1
             Behavior on hidden {
                 NumberAnimation { duration: ExLooks.motion.normal; easing.type: Easing.BezierSpline; easing.bezierCurve: ExLooks.motion.standard }
             }
@@ -661,10 +670,10 @@ Scope {
             // Only the dock itself takes the pointer. The shadow around a floating
             // one, and the empty stretch beside an island, let clicks through.
             mask: Region {
-                item: window.autoHide && !window.revealed ? edgeStrip : dock
+                item: window.putAway ? null : window.autoHide && !window.revealed ? edgeStrip : dock
 
                 Region {
-                    item: window.autoHide ? edgeStrip : null
+                    item: window.autoHide && !window.putAway ? edgeStrip : null
                 }
             }
 
@@ -754,6 +763,9 @@ Scope {
              * window flies into when it is minimised.
              */
             function buttonRect(appId: string, address: string): var {
+                // Out of sight, there is nothing to fly into.
+                if (window.putAway)
+                    return null;
                 // The button of that very window when windows have their own,
                 // else the application's.
                 let found = null;
@@ -1291,6 +1303,39 @@ Scope {
         function onCloseRequested() {
             for (const dock of root.docks)
                 dock.closeClipboard();
+        }
+    }
+
+    // Super+J, the key the shared binds give the bar in every environment.
+    GlobalShortcut {
+        name: "barToggle"
+        description: "Puts the dock away or brings it back"
+        onPressed: ExStates.dockPutAway = !ExStates.dockPutAway
+    }
+    GlobalShortcut {
+        name: "barOpen"
+        description: "Brings the dock back"
+        onPressed: ExStates.dockPutAway = false
+    }
+    GlobalShortcut {
+        name: "barClose"
+        description: "Puts the dock away"
+        onPressed: ExStates.dockPutAway = true
+    }
+    IpcHandler {
+        target: "bar"
+
+        function toggle(): void {
+            ExStates.dockPutAway = !ExStates.dockPutAway;
+        }
+        function open(): void {
+            ExStates.dockPutAway = false;
+        }
+        function close(): void {
+            ExStates.dockPutAway = true;
+        }
+        function isOpen(): bool {
+            return !ExStates.dockPutAway;
         }
     }
 

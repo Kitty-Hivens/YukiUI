@@ -10,6 +10,8 @@ Singleton {
     property bool launcherOpen: false
     property bool sessionOpen: false
     property bool shortcutsOpen: false
+    /** The dock put away by its key until the key is pressed again, as ii's bar. Not kept across a restart. */
+    property bool dockPutAway: false
     /** How many notification centers are open. There is one per dock, so one
      *  per screen, and only one flyout is open across the docks, so more than
      *  one only for the moment one hands over to the next. */

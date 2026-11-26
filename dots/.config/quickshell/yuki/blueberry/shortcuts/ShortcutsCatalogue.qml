@@ -142,7 +142,8 @@ QtObject {
                 { text: Translation.tr("Open or minimize an application"), caps: [{ mouse: "left" }] },
                 { text: Translation.tr("The application's menu"), caps: [{ mouse: "right" }] },
                 { text: Translation.tr("Clock: notifications and the calendar"), caps: [{ mouse: "left" }] },
-                { text: Translation.tr("Icons: quick settings"), caps: [{ mouse: "left" }] }
+                { text: Translation.tr("Icons: quick settings"), caps: [{ mouse: "left" }] },
+                { text: Translation.tr("Put the dock away"), binds: ["Shell: Toggle bar"] }
             ]
         },
         {
