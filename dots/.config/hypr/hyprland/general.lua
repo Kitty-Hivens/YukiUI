@@ -83,6 +83,13 @@ hl.config({
         smart_resizing = false
         -- precise_mouse_move = true,
     },
+    -- On a 10 bit screen Hyprland composes in a half float buffer of its own by
+    -- default, twice the bytes of a pixel and one more pass, which on Iris Xe made
+    -- a composed frame at 2560x1440 cost 2.0 ms instead of 1.2. It is there for
+    -- HDR and wide gamut. In the screen's own format a frame costs what 8 bit does.
+    render = {
+        use_fp16 = 0
+    },
 })
 -- Curves
 hl.curve("expressiveFastSpatial", {
