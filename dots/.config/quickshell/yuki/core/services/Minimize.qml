@@ -234,10 +234,11 @@ Singleton {
             // Hyprland moves no pinned window to a special workspace, so a
             // picture in picture stayed where it was however it was minimised.
             // It is unpinned on the way out and pinned again on the way back.
-            if (win.pinned) {
-                root.rememberPin(win.address);
+            // Written down either way: a window that came back some other way
+            // and is minimised again unpinned must not be pinned on its return.
+            root.rememberPin(win.address, win.pinned === true);
+            if (win.pinned)
                 lua += `hl.dispatch(hl.dsp.window.pin({ action = "off", window = "address:${win.address}" })) `;
-            }
             lua += `hl.dispatch(hl.dsp.window.move({ workspace = "${root.prefix}${win.workspace.id}", follow = false, window = "address:${win.address}" })) `;
         }
         // A window moved out of sight keeps keyboard focus, so typing would go
@@ -306,11 +307,18 @@ Singleton {
         // keep their order, and focus has to land after the windows are back.
         for (const win of windows) {
             lua += `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `;
+            // Pinning puts a window on the workspace its screen shows, which
+            // is a special one while that is open: pinned then, it went with
+            // it and was gone once it closed. So it is put back on its own
+            // workspace once pinned, which Hyprland does for a pinned window
+            // as long as the workspace is not a special one.
+            if (root.wasPinned(win.address))
+                lua += `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) `
+                    + `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `;
+            // Placed after pinning, which may place it anew.
             const at = root.placeOf(win.address);
             if (at)
                 lua += `hl.dispatch(hl.dsp.window.move({ window = "address:${win.address}", x = ${at[0]}, y = ${at[1]} })) `;
-            if (root.wasPinned(win.address))
-                lua += `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) `;
         }
         root.move(windows, lua + `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", ${target} }))`, "restore");
         root.forget(windows.map(win => win.address));
@@ -347,9 +355,15 @@ Singleton {
      */
     property var pins: ({})
 
-    function rememberPin(address: string) {
-        root.pins = Object.assign({}, root.pins, { [address]: true });
+    function rememberPin(address: string, pinned: bool) {
+        const next = Object.assign({}, root.pins);
+        if (pinned)
+            next[address] = true;
+        else
+            delete next[address];
+        root.pins = next;
     }
+
 
     function wasPinned(address: string): bool {
         return root.pins[address] === true;
@@ -489,7 +503,7 @@ Singleton {
     function releaseAll() {
         const lua = root.minimizedWindows.filter(win => root.usable(win.address))
             .map(win => `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `
-                + (root.wasPinned(win.address) ? `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) ` : ""))
+                + (root.wasPinned(win.address) ? `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) ` : ""))
             .join("");
         if (lua.length > 0)
             root.run(lua);

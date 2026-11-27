@@ -72,3 +72,25 @@ def test_a_pinned_window_is_minimised_and_comes_back_pinned(desk):
 
     desk.shell.call("minimize", "toggle", window.address)
     window.wait(lambda c: c["workspace"].get("id") == workspace and c["pinned"], "brought back pinned")
+
+
+def test_a_pinned_window_brought_back_under_a_special_workspace_stays_on_its_own(desk):
+    # Pinning puts a window on the workspace its screen shows, a special one
+    # while it is open, and the picture in picture went with it.
+    window = desk.wayland()
+    workspace = window.client()["workspace"]["id"]
+    desk.bench.eval(f'hl.dispatch(hl.dsp.window.float({{ action = "enable", window = "address:{window.address}" }})) '
+                    f'hl.dispatch(hl.dsp.window.pin({{ action = "on", window = "address:{window.address}" }}))')
+    window.wait(lambda c: c["pinned"], "pinned")
+    desk.shell.call("minimize", "toggle", window.address)
+    window.wait(lambda c: c["workspace"]["name"] == f"special:min-{workspace}", "minimised")
+    try:
+        desk.bench.eval('hl.dispatch(hl.dsp.workspace.toggle_special("benchscratch"))')
+        time.sleep(0.5)
+        desk.shell.call("minimize", "toggle", window.address)
+        window.wait(lambda c: c["workspace"].get("id") == workspace and c["pinned"], "back on its own workspace, pinned")
+    finally:
+        desk.bench.eval('hl.dispatch(hl.dsp.workspace.toggle_special("benchscratch"))')
+    time.sleep(0.5)
+    client = window.client()
+    assert client["workspace"].get("id") == workspace and client["pinned"], client
