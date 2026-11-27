@@ -231,6 +231,13 @@ Singleton {
             // back higher each time. Where it stood is kept, to put it back there.
             if (win.floating)
                 root.remember(win.address, win.at);
+            // Hyprland moves no pinned window to a special workspace, so a
+            // picture in picture stayed where it was however it was minimised.
+            // It is unpinned on the way out and pinned again on the way back.
+            if (win.pinned) {
+                root.rememberPin(win.address);
+                lua += `hl.dispatch(hl.dsp.window.pin({ action = "off", window = "address:${win.address}" })) `;
+            }
             lua += `hl.dispatch(hl.dsp.window.move({ workspace = "${root.prefix}${win.workspace.id}", follow = false, window = "address:${win.address}" })) `;
         }
         // A window moved out of sight keeps keyboard focus, so typing would go
@@ -302,6 +309,8 @@ Singleton {
             const at = root.placeOf(win.address);
             if (at)
                 lua += `hl.dispatch(hl.dsp.window.move({ window = "address:${win.address}", x = ${at[0]}, y = ${at[1]} })) `;
+            if (root.wasPinned(win.address))
+                lua += `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) `;
         }
         root.move(windows, lua + `hl.dispatch(hl.dsp.focus({ ${target} })) hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", ${target} }))`, "restore");
         root.forget(windows.map(win => win.address));
@@ -322,9 +331,37 @@ Singleton {
 
     function forget(addresses) {
         const next = Object.assign({}, root.places);
-        for (const address of addresses)
+        const pins = Object.assign({}, root.pins);
+        for (const address of addresses) {
             delete next[address];
+            delete pins[address];
+        }
         root.places = next;
+        root.pins = pins;
+    }
+
+    /**
+     * The minimised windows that were pinned, by address, to pin again as they
+     * come back. Kept in memory as the places are: after a restart of the
+     * shell such a window comes back unpinned.
+     */
+    property var pins: ({})
+
+    function rememberPin(address: string) {
+        root.pins = Object.assign({}, root.pins, { [address]: true });
+    }
+
+    function wasPinned(address: string): bool {
+        return root.pins[address] === true;
+    }
+
+    /**
+     * Whether a window goes out of sight and comes back without flying: one
+     * pinned over everything, a picture in picture, which is out of the way
+     * of what it floats over and gone in an instant.
+     */
+    function goesQuietly(win, kind: string): bool {
+        return kind === "minimize" ? win.pinned === true : root.wasPinned(win.address);
     }
 
     /** Where a minimised floating window stood before, as [x, y], or null. */
@@ -338,7 +375,9 @@ Singleton {
     property var pendingMoves: []
 
     function move(windows, lua: string, kind: string) {
-        if (!root.animator) {
+        const flying = windows.filter(win => !root.goesQuietly(win, kind));
+        const quiet = windows.filter(win => root.goesQuietly(win, kind));
+        if (!root.animator && quiet.length === 0) {
             root.run(lua);
             for (const win of windows)
                 root.landed(win.address);
@@ -348,11 +387,19 @@ Singleton {
         // not animate the window as well: it would slide or fade it on top of
         // the picture flying into the dock, one movement twice. Its own
         // animations are switched off for the move and given back afterwards,
-        // to whatever the window rules say, once the window has settled.
+        // to whatever the window rules say, once the window has settled. A
+        // window going quietly is not animated by either.
         const props = value => windows.map(win => `hl.dispatch(hl.dsp.window.set_prop({ window = "address:${win.address}", prop = "no_anim", value = "${value}" })) `).join("");
         lua = props("1") + lua;
         root.unquiet = [...root.unquiet, { lua: props("unset"), at: 0 }];
         const entry = root.unquiet[root.unquiet.length - 1];
+        if (!root.animator || flying.length === 0) {
+            root.run(lua);
+            entry.at = Date.now() + 700;
+            for (const win of windows)
+                root.landed(win.address);
+            return;
+        }
         const pending = { done: false, deadline: Date.now() + 1500, go: null };
         pending.go = () => {
             if (pending.done)
@@ -361,6 +408,8 @@ Singleton {
             root.pendingMoves = root.pendingMoves.filter(other => other !== pending);
             root.run(lua);
             entry.at = Date.now() + 700;
+            for (const win of quiet)
+                root.landed(win.address);
             // An animator that never says so counts as done by then.
             const next = Object.assign({}, root.moving);
             for (const win of windows)
@@ -370,7 +419,7 @@ Singleton {
         };
         root.pendingMoves = [...root.pendingMoves, pending];
         try {
-            root.animator[kind](windows, pending.go, address => root.landed(address));
+            root.animator[kind](flying, pending.go, address => root.landed(address));
         } catch (error) {
             console.warn("[Minimize] animator failed, moving without it:", error);
             pending.go();
@@ -439,11 +488,13 @@ Singleton {
      */
     function releaseAll() {
         const lua = root.minimizedWindows.filter(win => root.usable(win.address))
-            .map(win => `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `)
+            .map(win => `hl.dispatch(hl.dsp.window.move({ workspace = ${root.originOf(win)}, follow = false, window = "address:${win.address}" })) `
+                + (root.wasPinned(win.address) ? `hl.dispatch(hl.dsp.window.pin({ action = "on", window = "address:${win.address}" })) ` : ""))
             .join("");
         if (lua.length > 0)
             root.run(lua);
         root.places = ({});
+        root.pins = ({});
         root.desktopShown = ({});
     }
 

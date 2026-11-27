@@ -55,3 +55,20 @@ def test_the_window_focus_passes_to_comes_up_in_front(desk):
     pointer.click(600, 300)
     time.sleep(0.3)
     assert desk.active() == below.address, "the window given focus stayed behind another"
+
+
+def test_a_pinned_window_is_minimised_and_comes_back_pinned(desk):
+    # A picture in picture, pinned over everything. Hyprland moves no pinned
+    # window to a special workspace, so it is unpinned on the way out and
+    # pinned again on the way back.
+    window = desk.wayland()
+    workspace = window.client()["workspace"]["id"]
+    desk.bench.eval(f'hl.dispatch(hl.dsp.window.float({{ action = "enable", window = "address:{window.address}" }})) '
+                    f'hl.dispatch(hl.dsp.window.pin({{ action = "on", window = "address:{window.address}" }}))')
+    window.wait(lambda c: c["pinned"], "pinned")
+
+    desk.shell.call("minimize", "toggle", window.address)
+    window.wait(lambda c: c["workspace"]["name"] == f"special:min-{workspace}", "minimised")
+
+    desk.shell.call("minimize", "toggle", window.address)
+    window.wait(lambda c: c["workspace"].get("id") == workspace and c["pinned"], "brought back pinned")
