@@ -23,6 +23,12 @@
 # own: upstream sends every activation the top left corner of the screen and has no
 # call for ContextMenu, so a program drawing its own tray menu, one under Wine through
 # the tray bridge, could not be opened by a right click.
+#
+# And a live picture of a window that closes under it no longer takes the shell
+# down. Hyprland makes no frame for a window already gone by the time the capture
+# request arrives, and the shell's request to destroy that frame was a protocol
+# error that ended its connection. A frame not answered yet is let go only once a
+# roundtrip has shown whether it exists.
 
 groups=(illogical-impulse)
 _pkgname=quickshell
@@ -30,9 +36,9 @@ pkgname=yuki-quickshell
 # epoch, because this supersedes the meta package that was versioned 1.0
 epoch=1
 pkgver=0.3.2
-pkgrel=4
-_commit='870168ee93371812835fc75a37c5e379de975f84'
-pkgdesc='Quickshell built from the fork carrying the polkit session, DBusMenu, child process and tray click fixes, plus extra Qt deps'
+pkgrel=5
+_commit='b046e88520845ce14bd53ccd361cf1fe52c8d850'
+pkgdesc='Quickshell built from the fork carrying the polkit session, DBusMenu, child process, tray click and window capture fixes, plus extra Qt deps'
 arch=(x86_64 aarch64)
 url='https://github.com/Kitty-Hivens/quickshell'
 license=('LGPL-3.0-only')
@@ -90,7 +96,7 @@ build() {
   cmake -GNinja -B build \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates, children die with the shell, tray click points)" \
+    -DDISTRIBUTOR="YukiUI (patched: polkit agent registration, dbusmenu partial updates, children die with the shell, tray click points, window capture)" \
     -DDISTRIBUTOR_DEBUGINFO_AVAILABLE=NO \
     -DINSTALL_QML_PREFIX=lib/qt6/qml
 
