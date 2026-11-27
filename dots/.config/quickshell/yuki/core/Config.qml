@@ -303,6 +303,10 @@ Singleton {
             }
 
             property JsonObject apps: JsonObject {
+                // Desktop entry ids started on the second graphics card whatever
+                // the entry asks, and ones kept off it whatever the entry asks.
+                property list<string> secondGpu: []
+                property list<string> firstGpu: []
                 // Empty means the shell's own bluetooth settings. A command named
                 // here still wins, which is how overskride or blueman comes back.
                 property string bluetooth: ""
@@ -669,6 +673,9 @@ Singleton {
                 // had no ceiling and is rewritten whole on every new one, so
                 // left alone it grows for as long as nobody clears it.
                 property int keep: 200
+                // Applications whose notifications are turned away, by desktop
+                // entry id. Neither shown nor kept.
+                property list<string> blockedApps: []
                 // Named the way the two places that read it have named it since
                 // the rename that never reached this file: the switch wrote to a
                 // key that did not exist, so it threw instead of writing, and the

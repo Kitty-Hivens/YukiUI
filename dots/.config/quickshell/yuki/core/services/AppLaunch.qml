@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.core.functions
 
 /**
@@ -30,9 +31,23 @@ Singleton {
 
     function load() {}
 
-    /** Whether an entry will be started on the second card. */
+    /** Whether an entry asks for the second card itself. */
+    function asksForSecondGpu(entry): bool {
+        return !!entry && root.preferring[entry.id] === true;
+    }
+
+    /**
+     * Whether an entry will be started on the second card: as the settings say
+     * for it, and otherwise as the entry asks.
+     */
     function onSecondGpu(entry): bool {
-        return root.hasSecondGpu && !!entry && root.preferring[entry.id] === true;
+        if (!root.hasSecondGpu || !entry)
+            return false;
+        if ((Config.options?.apps.firstGpu ?? []).includes(entry.id))
+            return false;
+        if ((Config.options?.apps.secondGpu ?? []).includes(entry.id))
+            return true;
+        return root.asksForSecondGpu(entry);
     }
 
     function run(entry) {

@@ -228,6 +228,9 @@ Singleton {
         persistenceSupported: true
 
         onNotification: (notification) => {
+            // Left untracked, the server lets it go at once: not shown, not kept.
+            if (root.blocked(notification))
+                return;
             notification.tracked = true
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,
@@ -260,6 +263,25 @@ Singleton {
             // console.log(notifToString(newNotifObject));
             notifFileView.setText(stringifyList(root.list));
         }
+    }
+
+    /**
+     * Whether the application a notification comes from has had its
+     * notifications turned off, by desktop entry id. Known by the entry the
+     * sender names, and, from one that names none, by its application name
+     * as the launcher would find an entry for it.
+     */
+    function blocked(notification): bool {
+        const list = Config?.options.notifications.blockedApps ?? [];
+        if (list.length === 0)
+            return false;
+        const plain = id => (id ?? "").toLowerCase().replace(/\.desktop$/, "");
+        const ids = list.map(plain);
+        const named = plain(notification.desktopEntry);
+        if (named.length > 0)
+            return ids.includes(named);
+        const entry = AppSearch.entryFor(notification.appName);
+        return !!entry && ids.includes(plain(entry.id));
     }
 
     /**

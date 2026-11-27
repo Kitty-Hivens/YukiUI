@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 
 import qs.core.services
 
@@ -78,6 +79,7 @@ QtObject {
             name: Translation.tr("Apps"),
             glyph: "apps",
             pages: [
+                { key: "installed", name: Translation.tr("Installed apps"), glyph: "apps", description: Translation.tr("Start, notifications, uninstall"), keywords: "applications programs uninstall remove autostart startup notifications graphics card gpu", component: "InstalledAppsPage.qml" },
                 { key: "defaults", name: Translation.tr("Default applications"), glyph: "star", description: Translation.tr("What opens links and files"), keywords: "browser mime open with file types", component: "DefaultAppsPage.qml" },
                 { key: "extensions", name: Translation.tr("Extensions"), glyph: "extension", description: Translation.tr("Plugins of the shell"), keywords: "plugins", component: "ExtensionsPage.qml" },
                 // The ones installed plugins bring, each drawn by the plugin itself.
@@ -126,7 +128,28 @@ QtObject {
     }
 
     function page(key: string): var {
+        if (key.startsWith("app:"))
+            return root.appPage(key);
         return root.pages.find(page => page.key === key) ?? null;
+    }
+
+    /**
+     * The page of one application, "app:" and its desktop entry id, with
+     * "|uninstall" after it to open on the question of removing it. Made on
+     * asking rather than listed: there is one for every application.
+     */
+    function appPage(key: string): var {
+        const id = key.slice(4).split("|")[0];
+        const entry = DesktopEntries.byId(id);
+        return {
+            key: key,
+            category: "apps",
+            name: entry?.name ?? id,
+            glyph: "apps",
+            description: "",
+            keywords: "",
+            component: "AppPage.qml"
+        };
     }
 
     /** Pages whose name, description or keywords hold every word typed. */

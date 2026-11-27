@@ -20,6 +20,7 @@ PROBE = SHELL / "benchNotificationProbe.qml"
 SOURCE = """import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.core.services
 import qs.blueberry.notifications
 
@@ -86,6 +87,13 @@ ShellRoot {
         function count(): int {
             return Notifications.list.length;
         }
+        // Only once the configuration has been read: set before that, the file read over it.
+        function block(id: string): bool {
+            if (!Config.ready)
+                return false;
+            Config.options.notifications.blockedApps = id.length > 0 ? [id] : [];
+            return true;
+        }
         function shown(): string {
             return slot.item ? JSON.stringify({ summary: slot.item.shown.summary, body: slot.item.shown.body }) : "";
         }
@@ -103,6 +111,10 @@ def notifications(bench):
         shell.start()
         yield shell
     finally:
+        try:
+            shell.call("notificationProbe", "block", "")
+        except Exception:
+            pass
         shell.stop()
         shell.remove_probe()
 
@@ -177,3 +189,16 @@ def test_pictures_from_elsewhere_are_not_fetched(notifications, listener):
     time.sleep(1.5)
     assert listener.requests == []
     assert shell.call("notificationProbe", "shown") == '{"summary":"Message","body":"Hi  there"}'
+
+
+def test_an_application_turned_away_is_neither_shown_nor_kept(notifications):
+    # Turned away by its desktop entry, as its page in the settings does it.
+    shell = notifications
+    wait_until(lambda: shell.call("notificationProbe", "block", "bench-blocked") == "true", what="the application to be turned away")
+    subprocess.run(["notify-send", "-t", "600000", "--hint=string:desktop-entry:bench-blocked", "Unwanted", "Not here"],
+                   env=shell.environment(), check=True)
+    time.sleep(1)
+    assert shell.call("notificationProbe", "count") == "0"
+    notify(shell, "Wanted", "From another application")
+    wait_until(lambda: shell.call("notificationProbe", "count") == "1", what="another application's notification to arrive")
+    assert '"summary":"Wanted"' in shell.call("notificationProbe", "shown")
