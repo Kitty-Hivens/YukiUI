@@ -240,3 +240,19 @@ def test_a_window_put_back_is_not_maximised_again_by_its_opening_check(desk, lat
     assert (*client["at"], *client["size"]) == before
     time.sleep(1)
     assert not window.client()["tags"], "not maximised again by the check"
+
+
+def test_a_pinned_window_asking_to_be_maximised_stays_as_it_is(desk):
+    # Firefox's picture in picture asks to be maximised whenever the video in
+    # it changes. Pinned over everything, it is left at its size.
+    window = desk.wayland()
+    desk.bench.eval(f'hl.dispatch(hl.dsp.window.float({{ action = "enable", window = "address:{window.address}" }})) '
+                    f'hl.dispatch(hl.dsp.window.pin({{ action = "on", window = "address:{window.address}" }}))')
+    client = window.wait(lambda c: c["pinned"], "pinned")
+    size = client["size"]
+    # As the maximise button of a window that believes it is maximised asks.
+    window.command("unmaximize")
+    time.sleep(1.5)
+    client = window.client()
+    assert not is_maximized(desk, client)
+    assert client["size"] == size

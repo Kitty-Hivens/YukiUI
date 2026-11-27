@@ -513,6 +513,11 @@ Scope {
         // window always believes it is maximised, so whichever it asks for
         // is the press of its maximise button, and toggles. One told the
         // truth is taken at its word.
+        // Not from a window pinned over everything: Firefox's picture in
+        // picture asks to be maximised whenever the video in it changes, and
+        // filled the screen over everything else.
+        if ((wanted === "asked:1" || wanted === "asked:0") && client.pinned)
+            return "";
         if (wanted === "asked:1" || wanted === "asked:0")
             wanted = root.literal(client) ? (wanted === "asked:1" ? "maximized" : "restore") : "toggle";
 
