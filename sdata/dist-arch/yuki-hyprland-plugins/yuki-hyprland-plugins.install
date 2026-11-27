@@ -20,6 +20,8 @@ post_upgrade() {
 
 # The built files belong to no package, since they are made on this machine.
 post_remove() {
+    # What the build gave Hyprland, taken back with the package.
+    setcap -r /usr/bin/Hyprland 2>/dev/null
     rm -f /usr/lib/yuki-hyprland-plugins/*.so /usr/lib/yuki-hyprland-plugins/.*.so.new
     rmdir --ignore-fail-on-non-empty /usr/lib/yuki-hyprland-plugins 2>/dev/null
     rm -f /usr/lib/yuki/yuki-* /usr/lib/yuki/.yuki-*.new

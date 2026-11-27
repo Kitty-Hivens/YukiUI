@@ -71,4 +71,21 @@ for built in "$out"/*.so; do
     fi
 done
 
+# Hyprland asks the driver for a context of high priority, so that what it
+# draws goes ahead of a game's work, and the driver grants that only to a
+# process holding CAP_SYS_NICE. Without it a frame the compositor composes
+# waited behind a game drawing with no limit, and a notification over osu made
+# the screen and the game stutter. pacman puts a new binary down without the
+# capability, so it is given again here, which runs after every upgrade of
+# hyprland. What Hyprland starts does not get it: a file capability is not
+# passed on to the programs a process runs.
+if [ -x /usr/bin/Hyprland ] && command -v setcap > /dev/null; then
+    if setcap cap_sys_nice+ep /usr/bin/Hyprland; then
+        echo "yuki-hyprland-plugins: Hyprland may ask for a GPU context of high priority"
+    else
+        echo "yuki-hyprland-plugins: could not give Hyprland CAP_SYS_NICE" >&2
+        status=1
+    fi
+fi
+
 exit $status
