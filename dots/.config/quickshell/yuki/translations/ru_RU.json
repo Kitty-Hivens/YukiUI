@@ -1786,8 +1786,19 @@
   "Taken off": "Удалено",
   "The application asks for the second card": "Приложение само просит вторую карту",
   "This application is not installed any more": "Это приложение больше не установлено",
-  "This card": "Эта карта",
+  "This card": "Встроенная",
   "Turned away: neither shown nor kept": "Отклоняются: не показываются и не хранятся",
   "Uninstall": "Удалить",
-  "Use this one": "Выбрать его"
+  "Use this one": "Выбрать его",
+  "This application is not installed": "Это приложение не установлено",
+  "Not installed": "Не установлено",
+  "Taking it off...": "Удаляем...",
+  "Came with the system, so it is not taken off from here": "Пришло вместе с системой, поэтому отсюда не удаляется",
+  "Your own copy of its entry is used": "Используется ваша копия его ярлыка",
+  "Use the installed one": "Вернуть установленный",
+  "Packages that go with it: %1": "Пакеты, которые удалятся вместе с ним: %1",
+  "Applications that go with it: %1": "Приложения, которые удалятся вместе с ним: %1",
+  "Your own copy of its entry goes to the trash": "Ваша копия его ярлыка уйдёт в корзину",
+  "Delete its data as well": "Удалить и его данные",
+  "Turned away": "Отклоняются"
 }

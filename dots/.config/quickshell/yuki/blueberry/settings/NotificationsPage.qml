@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 import qs.core
 import qs.core.services
@@ -71,6 +72,36 @@ ColumnLayout {
                 text: Translation.tr("Clear all")
                 enabled: (root.shell?.notificationCount ?? 0) > 0
                 onClicked: root.shell.clearNotifications()
+            }
+        }
+    }
+
+    // The applications whose notifications are turned away, from their own
+    // pages, each to be let through again here.
+    SettingsSection {
+        Layout.fillWidth: true
+        title: Translation.tr("Turned away")
+        visible: (Config.options.notifications.blockedApps ?? []).length > 0
+
+        Repeater {
+            model: [...(Config.options.notifications.blockedApps ?? [])]
+
+            SettingsCard {
+                id: blockedRow
+
+                required property string modelData
+                readonly property var entry: DesktopEntries.byId(blockedRow.modelData)
+
+                Layout.fillWidth: true
+                iconSource: Quickshell.iconPath(blockedRow.entry?.icon ?? "", "application-x-executable")
+                text: blockedRow.entry?.name ?? blockedRow.modelData
+                description: blockedRow.entry ? "" : Translation.tr("Not installed")
+
+                ExButton {
+                    kind: "control"
+                    text: Translation.tr("Allow")
+                    onClicked: Config.options.notifications.blockedApps = Config.options.notifications.blockedApps.filter(id => id !== blockedRow.modelData)
+                }
             }
         }
     }

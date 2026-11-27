@@ -26,24 +26,37 @@ ColumnLayout {
 
     /** Taken once as the page is built: the window's key moves on before this page goes. */
     property string appId: ""
-    property bool askRemoval: false
     readonly property var entry: root.appId.length > 0 ? DesktopEntries.byId(root.appId) : null
 
     /** What the helper said of it: origin, package, autostart, kinds of files. Null until read. */
     property var details: null
     /** Held back by the window until what it says has been read. */
     readonly property bool ready: root.details !== null
-    readonly property string summary: root.entry ? (root.entry.genericName || root.entry.comment || "") : Translation.tr("This application is not installed any more")
+    readonly property string summary: root.entry ? (root.entry.genericName || root.entry.comment || "") : Translation.tr("This application is not installed")
 
     readonly property string helper: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/apps/app-info.py"))
 
     Component.onCompleted: {
-        const key = root.settings?.pageKey ?? "";
-        const parts = key.slice(4).split("|");
-        root.appId = parts[0];
-        root.askRemoval = parts[1] === "uninstall";
+        root.appId = (root.settings?.pageKey ?? "").slice(4);
+        // Opened on the question of taking it off, from the launcher's menu.
+        // Taken once, so going back to the page later does not ask again.
+        const ask = root.settings?.ask ?? null;
+        if (ask && ask.page === `app:${root.appId}` && ask.what === "uninstall") {
+            root.confirming = true;
+            root.settings.ask = null;
+        }
         root.read();
-        DefaultApps.load();
+    }
+
+    // Asked again while on show, after Cancel say.
+    Connections {
+        target: root.settings ?? null
+        function onAsked(page, what) {
+            if (page === `app:${root.appId}` && what === "uninstall") {
+                root.confirming = true;
+                root.settings.ask = null;
+            }
+        }
     }
 
     function read() {
@@ -59,8 +72,13 @@ ColumnLayout {
                 try {
                     root.details = JSON.parse(text);
                 } catch (error) {
-                    root.details = { origin: "none", removes: [], mimeTypes: [], autostart: false };
+                    root.details = { origin: "none", removes: [], mimeTypes: [], alsoApps: [], autostart: false };
                 }
+                // The kinds of files it opens, and which it opens by default,
+                // are read for an application that opens any: reading them
+                // goes over every installed entry.
+                if ((root.details.mimeTypes ?? []).length > 0)
+                    DefaultApps.load();
             }
         }
     }
@@ -91,16 +109,20 @@ ColumnLayout {
 
     /** The groups of file kinds it can open, from the defaults the desktop keeps. */
     readonly property string fileId: `${root.appId}.desktop`
-    readonly property var openGroups: DefaultApps.groups.filter(group => group.candidates.some(candidate => candidate.id === root.fileId))
+    readonly property var openGroups: (root.details?.mimeTypes ?? []).length === 0 ? []
+        : DefaultApps.groups.filter(group => group.candidates.some(candidate => candidate.id === root.fileId))
 
     readonly property string origin: root.details?.origin ?? "none"
+    readonly property bool installed: (root.details?.path ?? "").length > 0
     /** What needs it, when something else does and it cannot go. */
     readonly property string blocked: root.details?.blocked ?? ""
-    readonly property bool removable: root.origin === "pacman" || root.origin === "flatpak" || root.origin === "steam" || root.origin === "user"
+    readonly property bool removable: root.installed && (root.origin === "pacman" || root.origin === "flatpak" || root.origin === "steam" || root.origin === "user")
     readonly property string originText: {
         const d = root.details;
         if (!d)
             return "";
+        if (!root.installed)
+            return Translation.tr("Not installed");
         const extra = [d.version, d.size].filter(part => (part ?? "").length > 0).join(", ");
         if (root.origin === "pacman")
             return Translation.tr("Package %1").arg(d.package) + (extra.length > 0 ? `, ${extra}` : "");
@@ -113,41 +135,30 @@ ColumnLayout {
         return Translation.tr("Installed with the system");
     }
 
-    // Taking it off, asked first. Root's part runs through sudo when it lets
-    // itself be used without a password and through the password prompt
-    // otherwise, as the power page does.
-    property bool confirming: root.askRemoval
-    property string removalProblem: ""
-    Process {
-        id: remover
-        onExited: exitCode => {
-            // 126 and 127 are the prompt dismissed, which is no problem.
-            if (exitCode === 0) {
+    // Taking it off, asked first, and done by a service that outlives the
+    // page: going back in the middle of it does not stop it halfway.
+    property bool confirming: false
+    property bool deleteData: false
+    readonly property bool removing: AppRemoval.removing === root.appId
+    readonly property string removalProblem: AppRemoval.problemFor === root.appId ? AppRemoval.problem : ""
+    Connections {
+        target: AppRemoval
+        function onFinished(id, ok) {
+            if (id !== root.appId)
+                return;
+            if (ok)
                 root.confirming = false;
-                root.removalProblem = "";
-                root.read();
-            } else if (exitCode !== 126 && exitCode !== 127) {
-                root.removalProblem = Translation.tr("It could not be taken off, status %1").arg(exitCode);
-            }
+            root.read();
         }
     }
     function remove() {
-        const d = root.details;
-        root.removalProblem = "";
-        if (root.origin === "pacman")
-            remover.command = ["bash", "-c", 'if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then sudo -n pacman -Rs --noconfirm "$1"; else pkexec pacman -Rs --noconfirm "$1"; fi', "remove", d.package];
-        else if (root.origin === "flatpak")
-            remover.command = ["flatpak", "uninstall", `--${d.installation ?? "system"}`, "-y", "--noninteractive", d.package];
-        else if (root.origin === "steam")
-            remover.command = ["steam", `steam://uninstall/${d.package}`];
-        else if (root.origin === "user")
-            remover.command = ["gio", "trash", d.path];
-        else
-            return;
-        remover.running = true;
-        // Steam asks on its own, in its own window.
-        if (root.origin === "steam")
+        if (root.origin === "steam") {
+            // Steam asks on its own, in its own window.
+            AppRemoval.removeFromSteam(root.details.package);
             root.confirming = false;
+            return;
+        }
+        AppRemoval.remove(root.details, root.deleteData);
     }
 
     spacing: ExLooks.settings.groupGap
@@ -162,48 +173,94 @@ ColumnLayout {
             Layout.fillWidth: true
             iconSource: Quickshell.iconPath(root.entry?.icon ?? "", "application-x-executable")
             text: root.details === null ? (root.entry?.name ?? root.appId) : root.originText
-            description: root.removalProblem.length > 0 ? root.removalProblem
+            description: root.removing ? Translation.tr("Taking it off...")
+                : root.removalProblem.length > 0 ? root.removalProblem
                 : root.blocked.length > 0 ? Translation.tr("Cannot be taken off: %1 needs it").arg(root.blocked)
-                : root.entry === null ? Translation.tr("Taken off")
+                : root.confirming && root.installed && !root.removable ? Translation.tr("Came with the system, so it is not taken off from here")
                 : ""
 
             ExButton {
                 kind: "accent"
                 text: Translation.tr("Open")
-                visible: root.entry !== null
+                visible: root.entry !== null && root.installed
                 onClicked: AppLaunch.run(root.entry)
             }
             ExButton {
-                // Kept, greyed, for what cannot go, so the reason above reads as
-                // the answer to it.
-                visible: root.removable && root.entry !== null && !(root.confirming && root.blocked.length === 0)
+                // Kept, greyed, for what cannot go, so the reason beside it
+                // reads as the answer to it.
+                visible: root.removable && !(root.confirming && root.blocked.length === 0)
                 kind: "control"
                 text: root.origin === "user" ? Translation.tr("Remove from the list") : Translation.tr("Uninstall")
-                enabled: root.blocked.length === 0 && !remover.running
+                enabled: root.blocked.length === 0 && !AppRemoval.busy
                 onClicked: root.confirming = true
+            }
+        }
+        // The user's own copy of the entry, shown in place of the installed one.
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: root.installed && (root.details?.override ?? "").length > 0
+            glyph: "edit_note"
+            text: Translation.tr("Your own copy of its entry is used")
+            description: root.details?.override ?? ""
+
+            ExButton {
+                kind: "control"
+                text: Translation.tr("Use the installed one")
+                onClicked: {
+                    AppRemoval.resetOverride(root.details.override);
+                    resetLater.restart();
+                }
+            }
+            Timer {
+                id: resetLater
+                interval: 400
+                onTriggered: root.read()
             }
         }
         // The question, with what goes with it. Not asked of what cannot go.
         SettingsCard {
             Layout.fillWidth: true
-            visible: root.confirming && root.removable && root.entry !== null && root.blocked.length === 0
+            visible: root.confirming && root.removable && root.blocked.length === 0
             glyph: "delete"
             text: root.origin === "user" ? Translation.tr("Move its entry to the trash?")
                 : root.origin === "steam" ? Translation.tr("Steam asks for itself before it takes the game off")
                 : Translation.tr("Take %1 off?").arg(root.entry?.name ?? root.appId)
-            description: (root.details?.removes ?? []).length > 1 ? Translation.tr("Goes with it: %1").arg(root.details.removes.join(", ")) : ""
+            description: {
+                const parts = [];
+                const removes = (root.details?.removes ?? []).filter(name => name !== root.details.package);
+                if (removes.length > 0)
+                    parts.push(Translation.tr("Packages that go with it: %1").arg(removes.join(", ")));
+                const apps = root.details?.alsoApps ?? [];
+                if (apps.length > 0)
+                    parts.push(Translation.tr("Applications that go with it: %1").arg(apps.join(", ")));
+                if ((root.details?.override ?? "").length > 0)
+                    parts.push(Translation.tr("Your own copy of its entry goes to the trash"));
+                return parts.join("\n");
+            }
 
             ExButton {
                 kind: "control"
                 text: Translation.tr("Cancel")
-                enabled: !remover.running
+                enabled: !root.removing
                 onClicked: root.confirming = false
             }
             ExButton {
                 kind: "accent"
                 text: root.origin === "user" ? Translation.tr("Move to trash") : Translation.tr("Uninstall")
-                enabled: !remover.running
+                enabled: !AppRemoval.busy
                 onClicked: root.remove()
+            }
+        }
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: root.confirming && root.origin === "flatpak" && (root.details?.hasData ?? false)
+            glyph: "folder_delete"
+            text: Translation.tr("Delete its data as well")
+            description: root.details?.dataFolder ?? ""
+
+            ExSwitch {
+                checked: root.deleteData
+                onToggled: root.deleteData = checked
             }
         }
     }
@@ -211,7 +268,7 @@ ColumnLayout {
     SettingsSection {
         Layout.fillWidth: true
         title: Translation.tr("Starting")
-        visible: root.entry !== null
+        visible: root.entry !== null && root.installed
 
         SettingsCard {
             Layout.fillWidth: true
@@ -282,7 +339,7 @@ ColumnLayout {
     SettingsSection {
         Layout.fillWidth: true
         title: Translation.tr("Notifications")
-        visible: root.entry !== null
+        visible: root.entry !== null && root.installed
 
         SettingsCard {
             Layout.fillWidth: true

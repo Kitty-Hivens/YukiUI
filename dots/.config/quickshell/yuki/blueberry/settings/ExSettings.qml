@@ -247,7 +247,19 @@ Item {
         }
     }
 
-    function open(key: string) {
+    /**
+     * What a page was asked to do as it was opened, as { page, what }, or
+     * null: the question of taking an application off, "app:<id>|uninstall".
+     * Kept apart from the page's key, so going back to the page later does not
+     * ask again, and said as well when the page is on show already.
+     */
+    property var ask: null
+    signal asked(string page, string what)
+
+    function open(request: string) {
+        const parts = request.split("|");
+        const key = parts[0];
+        const what = parts[1] ?? "";
         search.text = "";
         const page = catalogue.page(key);
         root.awaitedPage = key.length > 0 && !page && !catalogue.category(key) ? key : "";
@@ -260,6 +272,10 @@ Item {
             root.historyIndex = root.history.length - 1;
         }
         root.show(place);
+        if (what.length > 0) {
+            root.ask = { page: key, what: what };
+            root.asked(key, what);
+        }
     }
 
     /** Back a page, or out of a search first. */
