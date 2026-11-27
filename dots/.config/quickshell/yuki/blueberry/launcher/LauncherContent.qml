@@ -10,24 +10,87 @@ import qs.blueberry
 import qs.blueberry.looks
 
 // Search at the top. With nothing typed, the pinned applications and then all
-// of them by name, as a grid. With something typed, what matches, as a list:
-// Enter starts the highlighted one, the arrows move the highlight, the menu key
-// opens its menu, Escape closes. A right click on any application opens its
-// menu.
+// of them by name, as a grid. With something typed, what matches, as a list.
+// The keyboard stays with the search field throughout: the arrows move the pick,
+// in the grid or the list, Enter starts it, the menu key opens its menu, and
+// Escape clears what was typed, then closes. A right click on any application
+// opens its menu.
 Item {
     id: root
 
     readonly property string query: search.text.trim()
     readonly property var results: root.query.length > 0 ? AppSearch.fuzzyQuery(root.query) : []
-    readonly property var pinned: (Config.options?.launcher.pinnedApps ?? [])
-        .map(id => DesktopEntries.byId(id))
-        .filter(entry => entry)
+    // Read again as applications come and go, not only as the pins change:
+    // kept built, the launcher is no longer made anew to catch up.
+    readonly property var pinned: {
+        AppSearch.list;
+        return (Config.options?.launcher.pinnedApps ?? [])
+            .map(id => DesktopEntries.byId(id))
+            .filter(entry => entry);
+    }
     readonly property var everything: [...AppSearch.list]
         .filter(entry => !entry.noDisplay)
         .sort((a, b) => a.name.localeCompare(b.name))
 
+    /**
+     * The application picked with the arrows with nothing typed: the pinned
+     * ones first, then the grid, as one run. -1 before an arrow is pressed.
+     */
+    property int pick: -1
+    readonly property int columns: Math.max(1, Math.floor(appGrid.width / appGrid.cellWidth))
+    readonly property int total: root.pinned.length + root.everything.length
+
+    function picked() {
+        if (root.pick < 0)
+            return null;
+        return root.pick < root.pinned.length ? root.pinned[root.pick] : root.everything[root.pick - root.pinned.length] ?? null;
+    }
+
+    /** Moves the pick on the grid by a step, in rows of the grid within each part. */
+    function movePick(dx: int, dy: int) {
+        if (root.total === 0)
+            return;
+        if (root.pick < 0) {
+            root.pick = 0;
+        } else if (dx !== 0) {
+            root.pick = Math.max(0, Math.min(root.total - 1, root.pick + dx));
+        } else {
+            const pins = root.pinned.length;
+            const inPins = root.pick < pins;
+            const column = (inPins ? root.pick : root.pick - pins) % root.columns;
+            if (dy > 0) {
+                const next = root.pick + root.columns;
+                // Off the bottom of the pinned rows into the grid's first row.
+                root.pick = inPins && next >= pins ? Math.min(root.total - 1, pins + column) : Math.min(root.total - 1, next);
+            } else {
+                const previous = root.pick - root.columns;
+                if (!inPins && previous < pins && pins > 0) {
+                    // Up from the grid's first row into the last pinned row.
+                    const lastRow = Math.floor((pins - 1) / root.columns) * root.columns;
+                    root.pick = Math.min(pins - 1, lastRow + column);
+                } else {
+                    root.pick = Math.max(0, previous);
+                }
+            }
+        }
+        if (root.pick < root.pinned.length)
+            appGrid.positionViewAtBeginning();
+        else
+            appGrid.positionViewAtIndex(root.pick - root.pinned.length, GridView.Contain);
+    }
+
+    /** The item standing for the pick, to open its menu at. */
+    function pickedItem(): Item {
+        if (root.pick < 0)
+            return null;
+        if (root.pick < root.pinned.length)
+            return pinnedTiles.itemAt(root.pick);
+        return appGrid.itemAtIndex(root.pick - root.pinned.length);
+    }
+
     function reset() {
         root.dismissMenu();
+        root.pick = -1;
         search.text = "";
         appGrid.positionViewAtBeginning();
         search.input.forceActiveFocus();
@@ -65,27 +128,56 @@ Item {
             Layout.fillWidth: true
             glyph: "search"
             placeholder: Translation.tr("Search apps")
-            onTextChanged: resultList.currentIndex = 0
+            onTextChanged: {
+                resultList.currentIndex = 0;
+                root.pick = -1;
+            }
 
             input.Keys.onPressed: event => {
+                const searching = root.query.length > 0;
+                const menuKey = event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier));
                 if (event.key === Qt.Key_Escape) {
-                    ExStates.launcherOpen = false;
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.launch(root.results[resultList.currentIndex]);
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Down) {
-                    resultList.incrementCurrentIndex();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Up) {
-                    resultList.decrementCurrentIndex();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-                    const row = resultList.currentItem;
-                    if (row)
-                        root.openMenu(row.modelData, row, Qt.point(ExLooks.spacing.xl, row.height));
-                    event.accepted = true;
+                    // What was typed goes first, then the launcher.
+                    if (search.text.length > 0)
+                        search.text = "";
+                    else
+                        ExStates.launcherOpen = false;
+                } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+                    // Nowhere else to go: the field keeps the keyboard.
+                } else if (searching) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                        root.launch(root.results[resultList.currentIndex]);
+                    else if (event.key === Qt.Key_Down)
+                        resultList.incrementCurrentIndex();
+                    else if (event.key === Qt.Key_Up)
+                        resultList.decrementCurrentIndex();
+                    else if (menuKey) {
+                        const row = resultList.currentItem;
+                        if (row)
+                            root.openMenu(row.modelData, row, Qt.point(ExLooks.spacing.xl, row.height));
+                    } else
+                        return;
+                } else {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                        root.launch(root.picked());
+                    else if (event.key === Qt.Key_Down)
+                        root.movePick(0, 1);
+                    else if (event.key === Qt.Key_Up)
+                        root.movePick(0, -1);
+                    // Left and right move the pick only once one is picked:
+                    // before that they move the cursor in the field as usual.
+                    else if (event.key === Qt.Key_Right && root.pick >= 0)
+                        root.movePick(1, 0);
+                    else if (event.key === Qt.Key_Left && root.pick >= 0)
+                        root.movePick(-1, 0);
+                    else if (menuKey) {
+                        const tile = root.pickedItem();
+                        if (tile)
+                            root.openMenu(root.picked(), tile, Qt.point(tile.width / 2, tile.height / 2));
+                    } else
+                        return;
                 }
+                event.accepted = true;
             }
         }
 
@@ -119,13 +211,16 @@ Item {
                 }
                 Grid {
                     visible: root.pinned.length > 0
-                    columns: Math.max(1, Math.floor(appGrid.width / appGrid.cellWidth))
+                    columns: root.columns
                     Repeater {
+                        id: pinnedTiles
                         model: root.pinned
                         LauncherTile {
                             id: pinnedTile
                             required property var modelData
+                            required property int index
                             desktopEntry: modelData
+                            current: root.pick === pinnedTile.index
                             onMenuRequested: at => root.openMenu(pinnedTile.desktopEntry, pinnedTile, at)
                         }
                     }
@@ -140,7 +235,9 @@ Item {
             delegate: LauncherTile {
                 id: tile
                 required property var modelData
+                required property int index
                 desktopEntry: modelData
+                current: root.pick === root.pinned.length + tile.index
                 onMenuRequested: at => root.openMenu(tile.desktopEntry, tile, at)
             }
         }
@@ -172,6 +269,7 @@ Item {
                 width: ListView.view.width
                 implicitHeight: 52
                 hoverEnabled: true
+                focusPolicy: Qt.NoFocus
                 onClicked: root.launch(row.modelData)
 
                 background: Rectangle {

@@ -12,6 +12,8 @@ AbstractButton {
     id: root
 
     required property var desktopEntry
+    /** Picked with the arrow keys, which the search field keeps hold of. */
+    property bool current: false
 
     /** A right click, with where it landed in the tile. */
     signal menuRequested(point at)
@@ -25,6 +27,10 @@ AbstractButton {
     implicitWidth: 96
     implicitHeight: 92
     hoverEnabled: true
+    // The keyboard stays with the search field, which moves the pick: taken
+    // by Tab, a tile kept it, and Escape and typing no longer reached the
+    // field until the launcher was opened again.
+    focusPolicy: Qt.NoFocus
 
     onClicked: {
         AppLaunch.run(root.desktopEntry);
@@ -33,7 +39,7 @@ AbstractButton {
 
     background: Rectangle {
         radius: ExLooks.radius.control
-        color: "transparent"
+        color: root.current ? ExLooks.colors.tonal : "transparent"
 
         ExStateLayer {
             ink: ExLooks.colors.text
@@ -66,7 +72,7 @@ AbstractButton {
     // The name in full, which two lines under the icon often cut, and what the
     // application is.
     ExTooltip {
-        visible: root.hovered && !root.down && !ExStates.launcherMenuOpen
+        visible: root.hovered && !root.down && !ExStates.launcherMenuOpen && ExStates.launcherOpen
         title: root.desktopEntry?.name ?? ""
         detail: root.desktopEntry?.comment || root.desktopEntry?.genericName || ""
     }

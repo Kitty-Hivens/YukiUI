@@ -73,6 +73,17 @@ Scope {
             loader.active = false;
     }
 
+    // Parked on the screen in focus as the focus moves, while closed: a layer
+    // moved to another screen is made anew, which is what being kept ready
+    // spares, and it is paid here rather than on the press of Super.
+    Connections {
+        target: Hyprland
+        function onFocusedMonitorChanged() {
+            if (!ExStates.launcherOpen && (loader.item?.parked ?? false))
+                root.targetScreen = root.focusedScreen();
+        }
+    }
+
     LaunchWatch {}
 
     // Time for the compositor to have let go of the focus before the launcher
@@ -95,8 +106,10 @@ Scope {
         id: loader
         active: false
         // Built ahead, it is built a little at a time, so the shell does not
-        // stop for it. Opened before that is done, it shows once it is.
-        asynchronous: true
+        // stop for it. Asked for, by Super before it was built ahead or with
+        // it not kept, it is built in one go: a little at a time, the keys
+        // typed meanwhile had no window to go to.
+        asynchronous: !ExStates.launcherOpen
         // Closed again before it was built, a quick second press of Super, it
         // never shows its way out, which is what unloads it, so it goes here.
         onLoaded: {
@@ -111,8 +124,16 @@ Scope {
             readonly property bool vertical: edge === "left" || edge === "right"
             readonly property bool centered: Config.options.blueberry.dock.alignment !== "start"
             readonly property real shadowRoom: 32
+            /** The dock stands at its edge now, rather than being put away or hidden until the pointer comes. */
+            readonly property bool dockShown: !ExStates.dockPutAway && !Config.options.blueberry.dock.autoHide
             // What the dock takes up at its edge, which the panel stands clear of.
-            readonly property real dockRoom: ExLooks.dock.thickness + (Config.options.blueberry.dock.style !== "attached" ? ExLooks.dock.floatingGap : 0)
+            readonly property real dockRoom: panel.dockShown ? ExLooks.dock.thickness + (Config.options.blueberry.dock.style !== "attached" ? ExLooks.dock.floatingGap : 0) : 0
+            /**
+             * Out from behind the dock, when there is one along the edge to come
+             * out from behind. An island dock is only as long as what it holds,
+             * and the panel came out of a line over bare desktop past its ends.
+             */
+            readonly property bool fromBehindDock: panel.dockShown && Config.options.blueberry.dock.style !== "island"
             /**
              * Closed and done showing the way out. The window is then a point,
              * since a parked window the size of the screen is a layer the
@@ -147,9 +168,15 @@ Scope {
                 id: wholeWindow
                 item: beside
             }
+            // The panel where it is in sight: sliding behind the dock, the part
+            // cut off took the clicks meant for the dock under it.
             Region {
                 id: panelOnly
-                item: surface
+                item: track
+                Region {
+                    item: surface
+                    intersection: Intersection.Intersect
+                }
             }
             Region {
                 id: nothing
@@ -181,12 +208,12 @@ Scope {
             Item {
                 id: track
 
-                readonly property real cut: panel.dockRoom
+                readonly property real cut: panel.fromBehindDock ? panel.dockRoom : 0
                 x: panel.edge === "left" ? track.cut : 0
                 y: panel.edge === "top" ? track.cut : 0
                 width: panel.width - (panel.vertical ? track.cut : 0)
                 height: panel.height - (panel.vertical ? 0 : track.cut)
-                clip: true
+                clip: panel.fromBehindDock
 
                 ExFlyoutSurface {
                     id: surface
@@ -195,7 +222,10 @@ Scope {
                     edge: panel.edge
                     // Out from behind the dock, the whole of it at once, and
                     // back in the same way. Far enough to start out of sight.
-                    entry: panel.edge
+                    // Without a dock to come from behind, it rises a little
+                    // from the edge as the dock's menus do.
+                    entry: panel.fromBehindDock ? panel.edge : ""
+                    travel: ExLooks.spacing.s
                     entryTravel: (panel.vertical ? width : height) + panel.shadowRoom
                     // Against the dock, along it where the dock gathers its icons.
                     restX: (panel.vertical ? (panel.edge === "left" ? panel.dockRoom + panel.shadowRoom : panel.width - width - panel.dockRoom - panel.shadowRoom)
