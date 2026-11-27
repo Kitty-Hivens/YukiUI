@@ -50,9 +50,13 @@ Singleton {
         return root.asksForSecondGpu(entry);
     }
 
+    /** An application was just started, by its entry's id. */
+    signal launched(string id)
+
     function run(entry) {
         if (!entry)
             return;
+        root.launched(entry.id);
         if (!root.onSecondGpu(entry)) {
             entry.execute();
             return;
@@ -68,6 +72,7 @@ Singleton {
     function runAction(entry, action) {
         if (!action)
             return;
+        root.launched(entry?.id ?? "");
         if (!root.onSecondGpu(entry)) {
             action.execute();
             return;

@@ -73,6 +73,8 @@ Scope {
             loader.active = false;
     }
 
+    LaunchWatch {}
+
     // Time for the compositor to have let go of the focus before the launcher
     // lets go of the keyboard, and for that to land before focus is handed on.
     Timer {
