@@ -175,40 +175,58 @@ Scope {
                 onCleared: ExStates.launcherOpen = false
             }
 
-            ExFlyoutSurface {
-                id: surface
+            // The panel slides out from behind the dock, so everything on the
+            // dock's side of the dock's inner edge is cut off. It never passes
+            // over the dock, and the dock stands in front of it on the way.
+            Item {
+                id: track
 
-                open: ExStates.launcherOpen
-                edge: panel.edge
-                // Against the dock, along it where the dock gathers its icons.
-                restX: panel.vertical ? (panel.edge === "left" ? panel.dockRoom + panel.shadowRoom : panel.width - width - panel.dockRoom - panel.shadowRoom)
-                    : (panel.centered ? (panel.width - width) / 2 : panel.shadowRoom)
-                restY: panel.vertical ? (panel.height - height) / 2
-                    : (panel.edge === "top" ? panel.dockRoom + panel.shadowRoom : panel.height - height - panel.dockRoom - panel.shadowRoom)
-                width: content.implicitWidth
-                height: content.implicitHeight
-                elevation: 2
-                // Unloaded once the way out has been shown, not before, and
-                // only when it is not kept.
-                onProgressChanged: {
-                    if (progress === 0 && !ExStates.launcherOpen && !root.keepReady)
-                        loader.active = false;
-                }
+                readonly property real cut: panel.dockRoom
+                x: panel.edge === "left" ? track.cut : 0
+                y: panel.edge === "top" ? track.cut : 0
+                width: panel.width - (panel.vertical ? track.cut : 0)
+                height: panel.height - (panel.vertical ? 0 : track.cut)
+                clip: true
 
-                LauncherContent {
-                    id: content
-                    anchors.fill: parent
-                    Component.onCompleted: content.reset()
+                ExFlyoutSurface {
+                    id: surface
 
-                    // Opened again while still on its way out, it is the same
-                    // panel and still holds the last search.
-                    Connections {
-                        target: ExStates
-                        function onLauncherOpenChanged() {
-                            if (ExStates.launcherOpen)
-                                content.reset();
-                            else
-                                content.dismissMenu();
+                    open: ExStates.launcherOpen
+                    edge: panel.edge
+                    // Out from behind the dock, the whole of it at once, and
+                    // back in the same way. Far enough to start out of sight.
+                    entry: panel.edge
+                    entryTravel: (panel.vertical ? width : height) + panel.shadowRoom
+                    // Against the dock, along it where the dock gathers its icons.
+                    restX: (panel.vertical ? (panel.edge === "left" ? panel.dockRoom + panel.shadowRoom : panel.width - width - panel.dockRoom - panel.shadowRoom)
+                        : (panel.centered ? (panel.width - width) / 2 : panel.shadowRoom)) - track.x
+                    restY: (panel.vertical ? (panel.height - height) / 2
+                        : (panel.edge === "top" ? panel.dockRoom + panel.shadowRoom : panel.height - height - panel.dockRoom - panel.shadowRoom)) - track.y
+                    width: content.implicitWidth
+                    height: content.implicitHeight
+                    elevation: 2
+                    // Unloaded once the way out has been shown, not before, and
+                    // only when it is not kept.
+                    onProgressChanged: {
+                        if (progress === 0 && !ExStates.launcherOpen && !root.keepReady)
+                            loader.active = false;
+                    }
+
+                    LauncherContent {
+                        id: content
+                        anchors.fill: parent
+                        Component.onCompleted: content.reset()
+
+                        // Opened again while still on its way out, it is the same
+                        // panel and still holds the last search.
+                        Connections {
+                            target: ExStates
+                            function onLauncherOpenChanged() {
+                                if (ExStates.launcherOpen)
+                                    content.reset();
+                                else
+                                    content.dismissMenu();
+                            }
                         }
                     }
                 }
