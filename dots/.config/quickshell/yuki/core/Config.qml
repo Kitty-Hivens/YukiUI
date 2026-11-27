@@ -907,6 +907,11 @@ Singleton {
             }
 
             property JsonObject blueberry: JsonObject {
+                // The panels that are slow to build, the launcher first, are built
+                // ahead and only put away when closed, and the shell is held in
+                // memory more firmly. Opening them is then immediate, after a game
+                // too, at the cost of the memory they keep.
+                property bool keepReady: true
                 property JsonObject dock: JsonObject {
                     property string edge: "bottom" // "bottom", "top", "left" or "right"
                     // "attached" runs the whole edge and touches it, "floating" runs the

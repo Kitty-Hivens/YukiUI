@@ -13,6 +13,13 @@ import qs.blueberry.looks
 // The launcher: a panel of its own over the dock, on the screen in focus. A
 // window rather than a popup of the dock, because it has to take the keyboard
 // to be typed into, and a popup that takes no grab never gets it.
+//
+// With keepReady it is built a moment after the shell comes up and is never
+// taken down again: closed, its window is parked, a point in a corner that
+// takes no pointer and holds no keyboard, with nothing drawn on it. Built on
+// each opening it took a tenth of a second when warm and several seconds when
+// it was the first thing opened after a game, the window itself included,
+// which the compositor makes anew each time one is shown.
 Scope {
     id: root
 
@@ -20,6 +27,13 @@ Scope {
 
     /** Holds the keyboard. Let go a moment after closing when the focus has to be made safe first. */
     property bool holdingKeys: false
+
+    readonly property bool keepReady: Config.ready && Config.options.blueberry.keepReady
+
+    function focusedScreen(): var {
+        const focused = Hyprland.focusedMonitor?.name ?? "";
+        return Quickshell.screens.find(screen => screen.name === focused) ?? Quickshell.screens[0];
+    }
 
     Connections {
         target: ExStates
@@ -35,10 +49,28 @@ Scope {
             letGo.stop();
             handOver.stop();
             root.holdingKeys = true;
-            const focused = Hyprland.focusedMonitor?.name ?? "";
-            root.targetScreen = Quickshell.screens.find(screen => screen.name === focused) ?? Quickshell.screens[0];
+            root.targetScreen = root.focusedScreen();
             loader.active = true;
         }
+    }
+
+    // Built ahead once the shell has settled, so the first opening is as quick
+    // as the others. Not at once: the shell has enough to build as it starts.
+    Timer {
+        id: buildAhead
+        interval: 3000
+        running: root.keepReady && !loader.active
+        onTriggered: {
+            if (!root.targetScreen)
+                root.targetScreen = root.focusedScreen();
+            loader.active = true;
+        }
+    }
+
+    // Switched off while it sits parked, it goes now rather than on the next close.
+    onKeepReadyChanged: {
+        if (!root.keepReady && !ExStates.launcherOpen && (loader.item?.parked ?? false))
+            loader.active = false;
     }
 
     // Time for the compositor to have let go of the focus before the launcher
@@ -60,6 +92,15 @@ Scope {
     Loader {
         id: loader
         active: false
+        // Built ahead, it is built a little at a time, so the shell does not
+        // stop for it. Opened before that is done, it shows once it is.
+        asynchronous: true
+        // Closed again before it was built, a quick second press of Super, it
+        // never shows its way out, which is what unloads it, so it goes here.
+        onLoaded: {
+            if (!ExStates.launcherOpen && !root.keepReady)
+                loader.active = false;
+        }
 
         sourceComponent: PanelWindow {
             id: panel
@@ -70,6 +111,13 @@ Scope {
             readonly property real shadowRoom: 32
             // What the dock takes up at its edge, which the panel stands clear of.
             readonly property real dockRoom: ExLooks.dock.thickness + (Config.options.blueberry.dock.style !== "attached" ? ExLooks.dock.floatingGap : 0)
+            /**
+             * Closed and done showing the way out. The window is then a point,
+             * since a parked window the size of the screen is a layer the
+             * compositor blends, and blurs, over everything whenever anything
+             * under it changes.
+             */
+            readonly property bool parked: !ExStates.launcherOpen && surface.progress === 0
 
             screen: root.targetScreen
             color: "transparent"
@@ -85,11 +133,13 @@ Scope {
             // itself and closes. On the way out only the panel takes the pointer.
             anchors {
                 top: true
-                bottom: true
                 left: true
-                right: true
+                bottom: !panel.parked
+                right: !panel.parked
             }
-            mask: ExStates.launcherOpen ? wholeWindow : panelOnly
+            implicitWidth: 1
+            implicitHeight: 1
+            mask: ExStates.launcherOpen ? wholeWindow : panel.parked ? nothing : panelOnly
 
             Region {
                 id: wholeWindow
@@ -98,6 +148,13 @@ Scope {
             Region {
                 id: panelOnly
                 item: surface
+            }
+            Region {
+                id: nothing
+                item: nothingItem
+            }
+            Item {
+                id: nothingItem
             }
 
             MouseArea {
@@ -129,9 +186,10 @@ Scope {
                 width: content.implicitWidth
                 height: content.implicitHeight
                 elevation: 2
-                // Unloaded once the way out has been shown, not before.
+                // Unloaded once the way out has been shown, not before, and
+                // only when it is not kept.
                 onProgressChanged: {
-                    if (progress === 0 && !ExStates.launcherOpen)
+                    if (progress === 0 && !ExStates.launcherOpen && !root.keepReady)
                         loader.active = false;
                 }
 
@@ -147,6 +205,8 @@ Scope {
                         function onLauncherOpenChanged() {
                             if (ExStates.launcherOpen)
                                 content.reset();
+                            else
+                                content.dismissMenu();
                         }
                     }
                 }

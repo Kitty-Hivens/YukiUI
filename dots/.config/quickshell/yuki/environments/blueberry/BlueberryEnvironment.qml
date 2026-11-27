@@ -57,6 +57,7 @@ Scope {
     }
 
     ExSurfaces {}
+    ExResidency {}
 
     // Copies are kept from the start, whether or not the history is ever opened.
     // Which applications ask for the second graphics card is read as it comes

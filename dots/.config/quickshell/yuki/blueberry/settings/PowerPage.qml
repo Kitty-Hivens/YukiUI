@@ -217,6 +217,23 @@ ColumnLayout {
 
     SettingsSection {
         Layout.fillWidth: true
+        title: Translation.tr("The shell")
+
+        SettingsCard {
+            Layout.fillWidth: true
+            glyph: "rocket_launch"
+            text: Translation.tr("Keep the shell ready")
+            description: Translation.tr("Panels open at once, after a game too. Keeps more of the shell in memory")
+
+            ExSwitch {
+                checked: Config.options.blueberry.keepReady
+                onToggled: Config.options.blueberry.keepReady = checked
+            }
+        }
+    }
+
+    SettingsSection {
+        Layout.fillWidth: true
         title: Translation.tr("Battery levels")
         visible: root.hasBattery
 

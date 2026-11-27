@@ -8,6 +8,8 @@ Singleton {
     id: root
 
     property bool launcherOpen: false
+    /** An application's menu is open in the launcher, which keeps the tooltips down. */
+    property bool launcherMenuOpen: false
     property bool sessionOpen: false
     property bool shortcutsOpen: false
     /** The dock put away by its key until the key is pressed again, as ii's bar. Not kept across a restart. */

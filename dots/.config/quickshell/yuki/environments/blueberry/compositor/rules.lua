@@ -137,6 +137,11 @@ hl.bind("Print", hl.dsp.global("quickshell:snipOpen"), { description = "Utilitie
 hl.layer_rule({ match = { namespace = "^(quickshell:snip)$" }, no_anim = true })
 -- The list of keys comes in by itself too.
 hl.layer_rule({ match = { namespace = "^(quickshell:shortcuts)$" }, no_anim = true })
+-- So does the launcher, out of the dock. Kept ready, its layer stays mapped as
+-- a point in the corner of the screen while closed and takes the whole screen
+-- as it opens, and the compositor grew it out of that corner, the panel
+-- drawn small near the middle of the screen first.
+hl.layer_rule({ match = { namespace = "^(quickshell:launcher)$" }, no_anim = true })
 -- The game bar fades in by itself, the bar and its widgets in place, as on
 -- Windows, rather than growing in as one layer. The game is blurred behind its
 -- glass and only dimmed around it: the glass is more opaque than the
