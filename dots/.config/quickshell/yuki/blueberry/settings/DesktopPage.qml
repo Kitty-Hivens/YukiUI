@@ -82,7 +82,7 @@ ColumnLayout {
             ExButton {
                 kind: "control"
                 text: Translation.tr("Open")
-                onClicked: Quickshell.execDetached(["xdg-open", root.folderPath])
+                onClicked: AppLaunch.start(["xdg-open", root.folderPath], "", ({}), "open")
             }
         }
     }

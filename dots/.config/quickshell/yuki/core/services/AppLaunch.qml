@@ -19,6 +19,11 @@ import qs.core.functions
  * worked out by scripts/apps/second-gpu.py, as the shell starts and whenever
  * the installed applications change. On a machine with one card nothing asks
  * and every entry starts as before.
+ *
+ * Each application gets a systemd scope of its own in app-graphical.slice, as
+ * uwsm gives the ones it starts. Started straight from the shell, they ran in
+ * the shell's own scope: the memory protected for the shell was shared with a
+ * browser and a game, and taking the shell's scope down took them with it.
  */
 Singleton {
     id: root
@@ -57,15 +62,7 @@ Singleton {
         if (!entry)
             return;
         root.launched(entry.id);
-        if (!root.onSecondGpu(entry)) {
-            entry.execute();
-            return;
-        }
-        Quickshell.execDetached({
-            command: entry.command,
-            workingDirectory: entry.workingDirectory,
-            environment: root.environment
-        });
+        root.start(entry.command, entry.workingDirectory, root.onSecondGpu(entry) ? root.environment : ({}), entry.id);
     }
 
     /** One of an entry's actions, on the card the entry itself is started on. */
@@ -73,15 +70,40 @@ Singleton {
         if (!action)
             return;
         root.launched(entry?.id ?? "");
-        if (!root.onSecondGpu(entry)) {
-            action.execute();
+        root.start(action.command, entry?.workingDirectory ?? "", root.onSecondGpu(entry) ? root.environment : ({}), entry?.id ?? "");
+    }
+
+    /**
+     * Starts a program the way an application is started, in a scope of its
+     * own: a file or a folder opened from the desktop goes through here too,
+     * since what opens it is an application. Named after what is started.
+     */
+    function start(command, workingDirectory: string, environment, name: string) {
+        if (!command || command.length === 0)
             return;
-        }
+        const argv = root.scoped ? ["systemd-run", "--user", "--scope", "--quiet", "--collect", "--slice=app-graphical.slice", `--unit=${root.unitFor(name)}`, "--", ...command] : [...command];
         Quickshell.execDetached({
-            command: action.command,
-            workingDirectory: entry.workingDirectory,
-            environment: root.environment
+            command: argv,
+            workingDirectory: workingDirectory ?? "",
+            environment: environment ?? ({})
         });
+    }
+
+    /** A unit name as systemd's desktop launchers make them: app-<launcher>-<id>-<random>.scope. */
+    function unitFor(name: string): string {
+        const id = ((name ?? "").length > 0 ? name : "app").replace(/[^A-Za-z0-9_.]/g, "_").slice(0, 80);
+        return `app-yuki-${id}-${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}.scope`;
+    }
+
+    /**
+     * Whether a user manager is there to put scopes in. Without one, on a
+     * session not started by systemd, programs start as they did before.
+     */
+    property bool scoped: false
+    Process {
+        running: true
+        command: ["sh", "-c", "command -v systemd-run > /dev/null && systemctl --user show-environment > /dev/null 2>&1"]
+        onExited: exitCode => root.scoped = exitCode === 0
     }
 
     function refresh() {

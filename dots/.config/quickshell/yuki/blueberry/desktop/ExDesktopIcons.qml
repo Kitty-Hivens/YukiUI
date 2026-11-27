@@ -498,9 +498,9 @@ Item {
         // from when the icon was made, and a launcher written over since under
         // the same name, without the bit, would have run on that.
         if (root.isRunnable(path))
-            Quickshell.execDetached(["sh", "-c", 'if [ -x "$1" ]; then exec gio launch "$1"; else exec xdg-open "$1"; fi', "yuki-desktop-open", path]);
+            AppLaunch.start(["sh", "-c", 'if [ -x "$1" ]; then exec gio launch "$1"; else exec xdg-open "$1"; fi', "yuki-desktop-open", path], "", ({}), "open");
         else
-            Quickshell.execDetached(["xdg-open", path]);
+            AppLaunch.start(["xdg-open", path], "", ({}), "open");
     }
 
     function openAll(paths) {
@@ -1392,8 +1392,8 @@ Item {
                     { text: Translation.tr("Paste"), glyph: "content_paste", shortcut: "Ctrl+V", run: () => root.paste() },
                     { text: Translation.tr("New"), glyph: "add", page: "new" },
                     { separator: true },
-                    { text: Translation.tr("Open in terminal"), glyph: "terminal", away: true, run: () => Quickshell.execDetached(["bash", "-c", `cd "$1" && exec ${Config.options.apps.terminal}`, "yuki-desktop-terminal", root.folderPath]) },
-                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", away: true, run: () => Quickshell.execDetached(["xdg-open", root.folderPath]) },
+                    { text: Translation.tr("Open in terminal"), glyph: "terminal", away: true, run: () => AppLaunch.start(["bash", "-c", `cd "$1" && exec ${Config.options.apps.terminal}`, "yuki-desktop-terminal", root.folderPath], "", ({}), "terminal") },
+                    { text: Translation.tr("Open desktop folder"), glyph: "folder_open", away: true, run: () => AppLaunch.start(["xdg-open", root.folderPath], "", ({}), "open") },
                     { separator: true },
                     { text: Translation.tr("Background"), glyph: "wallpaper", away: true, run: settings("background") },
                     { text: Translation.tr("Display settings"), glyph: "desktop_windows", away: true, run: settings("display") },
@@ -1410,7 +1410,7 @@ Item {
             if (paths.length === 1)
                 list.push({ text: Translation.tr("Rename"), glyph: "edit", shortcut: "F2", run: () => root.startRename(paths[0].split("/").pop()) });
             list.push(
-                { text: Translation.tr("Show in folder"), glyph: "folder_open", away: true, run: () => Quickshell.execDetached(["xdg-open", target.isDir ? target.path : root.folderPath]) },
+                { text: Translation.tr("Show in folder"), glyph: "folder_open", away: true, run: () => AppLaunch.start(["xdg-open", target.isDir ? target.path : root.folderPath], "", ({}), "open") },
                 { separator: true },
                 { text: Translation.tr("Cut"), glyph: "content_cut", shortcut: "Ctrl+X", run: () => root.offer(paths, true) },
                 { text: Translation.tr("Copy"), glyph: "content_copy", shortcut: "Ctrl+C", run: () => root.offer(paths, false) },

@@ -10,7 +10,8 @@ import qs.core
 // is still in memory. A game that needs the memory pushed a good part of the
 // shell out to swap, and the first thing opened after it was slow for that
 // alone, so with keepReady on the shell's own unit is given more memory that is
-// reclaimed only when nothing else is left to take.
+// reclaimed only when nothing else is left to take. Applications are started in
+// scopes of their own, see AppLaunch, so this is the shell's alone.
 Scope {
     id: root
 
@@ -46,6 +47,12 @@ Scope {
         setter.running = false;
         setter.command = ["systemctl", "--user", "set-property", "--runtime", root.unit, `MemoryLow=${root.wanted}`];
         setter.running = true;
+    }
+
+    // Another environment taking this one's place gets the shell as it was started.
+    Component.onDestruction: {
+        if (root.unit.length > 0 && root.wanted !== root.startedWith)
+            Quickshell.execDetached(["systemctl", "--user", "set-property", "--runtime", root.unit, `MemoryLow=${root.startedWith}`]);
     }
 
     Process {
