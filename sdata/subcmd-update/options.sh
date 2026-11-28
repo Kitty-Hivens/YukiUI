@@ -20,6 +20,10 @@ Options:
                     being shown. A conflict stops the run. Root is sudo where
                     it needs no password, and polkit's prompt otherwise.
       --files       Copy the files again even when nothing was pulled
+      --channel C   Follow C from now on: stable, the latest release, which is
+                    what a copy follows unless told otherwise, or main, every
+                    commit on the main branch. A copy past the latest release
+                    stays where it is on stable until a newer one comes.
 "
 }
 
@@ -28,6 +32,7 @@ UPDATE_SYSTEM=true
 UPDATE_AUR=true
 UPDATE_UNATTENDED=false
 UPDATE_FILES=false
+UPDATE_SET_CHANNEL=""
 # Set by the run itself after a pull, which starts the new version of this
 # script on what was there before it. Not for typing by hand.
 UPDATE_CONTINUE_FROM=""
@@ -35,7 +40,7 @@ UPDATE_CONTINUE_FROM=""
 # `man getopt` to see more
 para=$(getopt \
   -o h \
-  -l help,check,no-system,no-aur,unattended,files,continue-from: \
+  -l help,check,no-system,no-aur,unattended,files,channel:,continue-from: \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 eval set -- "$para"
@@ -47,6 +52,12 @@ while true ; do
     --no-aur) UPDATE_AUR=false;shift;;
     --unattended) UPDATE_UNATTENDED=true;shift;;
     --files) UPDATE_FILES=true;shift;;
+    --channel)
+      case "$2" in
+        stable|main) UPDATE_SET_CHANNEL="$2";;
+        *) echo -e "$0: --channel takes stable or main.";exit 1;;
+      esac
+      shift 2;;
     --continue-from) UPDATE_CONTINUE_FROM="$2";shift 2;;
     --) shift;break ;;
     *) echo -e "$0: Wrong parameters.";exit 1;;

@@ -11,34 +11,96 @@
 
 UPDATE_STAMP="${XDG_STATE_HOME}/yuki/updated"
 
-# How the repository stands against its remote, one fact a line, tab between a
-# key and its value. Read by the shell as well as printed for a person:
+# Releases are annotated tags named for their day, YYYY.MM.DD, with .1, .2 for
+# a second and a third on the same day. A lightweight tag of that shape, as the
+# upstream's 2026.05.11, is not a release of YukiUI.
+RELEASE_PATTERN='^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'
+
+# The channel this copy follows, kept in the repository's own git config:
+# "stable", the latest release, which is what it follows unless told otherwise,
+# or "main", every commit on the main branch.
+function update_channel(){
+  local channel
+  channel="$(git -C "$REPO_ROOT" config --get yuki.channel 2> /dev/null || true)"
+  [[ "$channel" == "main" ]] && echo main || echo stable
+}
+
+# The newest release, or nothing before the first.
+function update_latest_release(){
+  local type name
+  while read -r type name; do
+    if [[ "$type" == "tag" && "$name" =~ $RELEASE_PATTERN ]]; then
+      echo "$name"
+      return 0
+    fi
+  done < <(git -C "$REPO_ROOT" for-each-ref --sort=-v:refname --format='%(objecttype) %(refname:short)' refs/tags 2> /dev/null)
+}
+
+# The release this copy stands on, and how many commits it is past it: "<tag>
+# <count>", or " <count>" before the first release.
+function update_version(){
+  local described
+  described="$(git -C "$REPO_ROOT" describe --match '[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]*' --long 2> /dev/null || true)"
+  if [[ "$described" =~ ^(.+)-([0-9]+)-g[0-9a-f]+$ ]]; then
+    printf '%s\t%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+  else
+    printf '\t%s\n' "$(git -C "$REPO_ROOT" rev-list --count HEAD 2> /dev/null || echo 0)"
+  fi
+}
+
+# How the repository stands against what its channel follows, one fact a line,
+# tab between a key and its value. Read by the shell as well as printed for a
+# person:
 #
 #   repository  <path>
-#   branch      <name>, or empty when detached
-#   state       ok, dirty, detached, no-upstream, unreachable or diverged
-#   behind      how many commits the remote has that this does not
-#   ahead       how many this has that the remote does not
+#   channel     stable or main
+#   version     <release> <commits past it>, the release empty before the first
+#   latest      the newest release, or empty
+#   branch      <name>, or empty when detached, as a release is checked out
+#   state       ok, dirty, no-upstream, no-release, unreachable or diverged
+#   behind      how many commits the target has that this does not
+#   ahead       how many this has that the target does not
 #   commit      <short hash> <subject>, one line for each commit behind
 #
-# dirty: tracked files changed here, which a pull would have to go over.
+# The target is the latest release on the stable channel and the main branch's
+# remote on the main one. A copy already past the latest release, as one that
+# followed main, stays where it is on the stable channel until a newer release
+# comes: a channel never takes it back.
+# dirty: tracked files changed here, which a move would have to go over.
 # unreachable: the fetch failed, so the counts are those of the last fetch.
+UPDATE_TARGET=""
 function update_status(){
-  local branch state="ok" behind=0 ahead=0
+  local branch channel state="ok" behind=0 ahead=0 latest target=""
+  channel="$(update_channel)"
   printf 'repository\t%s\n' "$REPO_ROOT"
+  printf 'channel\t%s\n' "$channel"
+  # Never a prompt for a password: the shell asks with nobody to answer.
+  if ! GIT_TERMINAL_PROMPT=0 timeout 60 git -C "$REPO_ROOT" fetch --quiet --tags 2> /dev/null; then
+    state="unreachable"
+  fi
+  latest="$(update_latest_release)"
+  printf 'version\t%s\n' "$(update_version)"
+  printf 'latest\t%s\n' "$latest"
   branch="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2> /dev/null || true)"
   printf 'branch\t%s\n' "$branch"
-  if [[ -z "$branch" ]]; then
-    state="detached"
-  elif ! git -C "$REPO_ROOT" rev-parse --abbrev-ref '@{upstream}' > /dev/null 2>&1; then
-    state="no-upstream"
-  else
-    # Never a prompt for a password: the shell asks with nobody to answer.
-    if ! GIT_TERMINAL_PROMPT=0 timeout 60 git -C "$REPO_ROOT" fetch --quiet 2> /dev/null; then
-      state="unreachable"
+  if [[ "$channel" == "stable" ]]; then
+    if [[ -z "$latest" ]]; then
+      [[ "$state" == "ok" ]] && state="no-release"
+    else
+      target="$latest^{commit}"
     fi
-    behind="$(git -C "$REPO_ROOT" rev-list --count 'HEAD..@{upstream}' 2> /dev/null || echo 0)"
-    ahead="$(git -C "$REPO_ROOT" rev-list --count '@{upstream}..HEAD' 2> /dev/null || echo 0)"
+  elif git -C "$REPO_ROOT" rev-parse --verify --quiet 'main@{upstream}' > /dev/null 2>&1; then
+    target='main@{upstream}'
+  elif [[ "$state" == "ok" ]]; then
+    state="no-upstream"
+  fi
+  if [[ -n "$target" ]]; then
+    behind="$(git -C "$REPO_ROOT" rev-list --count "HEAD..$target" 2> /dev/null || echo 0)"
+    ahead="$(git -C "$REPO_ROOT" rev-list --count "$target..HEAD" 2> /dev/null || echo 0)"
+    # Past the latest release on the stable channel is where it stays.
+    if [[ "$channel" == "stable" ]] && (( behind == 0 )); then
+      ahead=0
+    fi
     if [[ "$state" == "ok" ]]; then
       if (( behind > 0 && ahead > 0 )); then
         state="diverged"
@@ -51,8 +113,9 @@ function update_status(){
   printf 'behind\t%s\n' "$behind"
   printf 'ahead\t%s\n' "$ahead"
   if (( behind > 0 )); then
-    git -C "$REPO_ROOT" log --max-count=50 --format='commit%x09%h%x09%s' 'HEAD..@{upstream}' 2> /dev/null || true
+    git -C "$REPO_ROOT" log --max-count=50 --format='commit%x09%h%x09%s' "HEAD..$target" 2> /dev/null || true
   fi
+  UPDATE_TARGET="$target"
   return 0
 }
 
@@ -88,11 +151,11 @@ function update_pull(){
   state="$(awk -F'\t' '$1 == "state" {print $2}' <<< "$status")"
   behind="$(awk -F'\t' '$1 == "behind" {print $2}' <<< "$status")"
   case "$state" in
-    detached)
-      printf "${STY_YELLOW}The repository is not on a branch, so there is nothing to pull into. Left as it is.${STY_RST}\n" >&2
+    no-release)
+      printf "${STY_YELLOW}YukiUI has no release yet to follow. Left as it is.${STY_RST}\n" >&2
       return 0 ;;
     no-upstream)
-      printf "${STY_YELLOW}The branch follows no remote branch, so there is nothing to pull. Left as it is.${STY_RST}\n" >&2
+      printf "${STY_YELLOW}The main branch follows no remote branch, so there is nothing to pull. Left as it is.${STY_RST}\n" >&2
       return 0 ;;
     unreachable)
       printf "${STY_YELLOW}The remote could not be reached. YukiUI is left as it is.${STY_RST}\n" >&2
@@ -115,7 +178,16 @@ function update_pull(){
   printf "${STY_BLUE}%s new changes:${STY_RST}\n" "$behind" >&2
   awk -F'\t' '$1 == "commit" {printf "  %s  %s\n", $2, $3}' <<< "$status" >&2
   before="$(git -C "$REPO_ROOT" rev-parse HEAD)"
-  x git -C "$REPO_ROOT" pull --ff-only
+  if [[ "$(update_channel)" == "stable" ]]; then
+    # The release itself, which leaves the repository on no branch.
+    x git -C "$REPO_ROOT" checkout --quiet --detach "$(update_latest_release)"
+  else
+    # Back on the main branch, from a release it was left on, and on with it.
+    if [[ "$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2> /dev/null || true)" != "main" ]]; then
+      x git -C "$REPO_ROOT" checkout --quiet main
+    fi
+    x git -C "$REPO_ROOT" merge --ff-only --quiet 'main@{upstream}'
+  fi
   x git -C "$REPO_ROOT" submodule update --init --recursive
   UPDATE_PULLED_FROM="$before"
 }
@@ -195,6 +267,11 @@ function update_finish(){
 }
 
 #####################################################################################
+
+# Switched to another channel first, by a person or by the shell's settings.
+if [[ -n "$UPDATE_SET_CHANNEL" ]]; then
+  git -C "$REPO_ROOT" config yuki.channel "$UPDATE_SET_CHANNEL"
+fi
 
 if [[ "$UPDATE_CHECK" == true ]]; then
   update_status
