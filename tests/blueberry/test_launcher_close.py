@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from bench.bench import SHELL, wait_until
+from bench.bench import OUTPUT, SHELL, wait_until
 from bench.shell import Shell
 
 PROBE = SHELL / "benchLauncherProbe.qml"
@@ -110,6 +110,25 @@ def test_a_kept_launcher_closed_as_it_opened_goes_back_to_its_park(bench, launch
     launcher.call("launcherProbe", "flick")
     time.sleep(0.3)
     wait_until(lambda: parked(bench), timeout=3, what="the launcher to stay parked")
+
+
+def test_a_kept_launcher_comes_back_after_the_screens_went_away(bench, launcher):
+    # The compositor closes the layers of an output that goes, and a window it
+    # closed is never shown again. Kept, the launcher would not open for good.
+    wait_until(lambda: parked(bench), timeout=8, what="the launcher to be parked")
+    try:
+        bench.eval(f'hl.monitor({{ output = "{OUTPUT}", disabled = true }})')
+        wait_until(lambda: OUTPUT not in [m["name"] for m in bench.monitors()], what="the only screen gone")
+        time.sleep(1.0)
+    finally:
+        bench.reload()
+        wait_until(lambda: [m["name"] for m in bench.monitors()] == [OUTPUT], what="the bench's screen back")
+        bench.focus_output()
+    wait_until(lambda: parked(bench), timeout=8, what="the launcher to be built again and parked")
+    launcher.call("search", "open")
+    wait_until(lambda: full_screen(bench), timeout=3, what="the launcher to take the screen")
+    launcher.call("search", "close")
+    wait_until(lambda: parked(bench), timeout=3, what="the launcher to be parked again")
 
 
 def test_a_launcher_closed_after_showing_goes(bench, unkept):

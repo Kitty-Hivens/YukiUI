@@ -54,15 +54,19 @@ Scope {
         }
     }
 
+    /** A real output to stand on, rather than the nameless stand-in Qt makes while there are none. */
+    readonly property bool hasScreen: Quickshell.screens.some(screen => screen.name.length > 0)
+
     // Built ahead once the shell has settled, so the first opening is as quick
     // as the others. Not at once: the shell has enough to build as it starts.
+    // Nor while there is no output: built on the stand-in, it is closed again
+    // as soon as a real one comes.
     Timer {
         id: buildAhead
         interval: 3000
-        running: root.keepReady && !loader.active
+        running: root.keepReady && !loader.active && root.hasScreen
         onTriggered: {
-            if (!root.targetScreen)
-                root.targetScreen = root.focusedScreen();
+            root.targetScreen = root.focusedScreen();
             loader.active = true;
         }
     }
@@ -144,6 +148,20 @@ Scope {
 
             screen: root.targetScreen
             color: "transparent"
+
+            // The compositor closes a layer whose output goes away, and a
+            // window it closed is never shown again: kept ready, the launcher
+            // stayed closed for good after the screen went dark once. Made
+            // anew instead, the next time it is asked for or built ahead.
+            onClosed: {
+                ExStates.launcherOpen = false;
+                Qt.callLater(() => {
+                    loader.active = false;
+                    // Asked for again in the meantime.
+                    if (ExStates.launcherOpen)
+                        loader.active = true;
+                });
+            }
             // Over the dock as well: a click on it, the launcher's own button
             // included, closes the launcher like any other click beside it.
             exclusionMode: ExclusionMode.Ignore
