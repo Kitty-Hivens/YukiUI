@@ -62,20 +62,37 @@ function update_version(){
 #   ahead       how many this has that the target does not
 #   commit      <short hash> <subject>, one line for each commit behind
 #
-# The target is the latest release on the stable channel and the main branch's
-# remote on the main one. A copy already past the latest release, as one that
+# The target is the latest release on the stable channel. On the main one it is
+# the remote of the branch checked out, and of the main branch when none is, as
+# after following releases: a branch of one's own is followed as it is, not
+# swapped for main. A copy already past the latest release, as one that
 # followed main, stays where it is on the stable channel until a newer release
 # comes: a channel never takes it back.
 # dirty: tracked files changed here, which a move would have to go over.
 # unreachable: the fetch failed, so the counts are those of the last fetch.
-UPDATE_TARGET=""
+function update_target(){
+  local branch
+  if [[ "$(update_channel)" == "stable" ]]; then
+    local latest
+    latest="$(update_latest_release)"
+    [[ -n "$latest" ]] && echo "$latest^{commit}"
+    return 0
+  fi
+  branch="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2> /dev/null || echo main)"
+  if git -C "$REPO_ROOT" rev-parse --verify --quiet "$branch@{upstream}" > /dev/null 2>&1; then
+    echo "$branch@{upstream}"
+  fi
+}
+
 function update_status(){
   local branch channel state="ok" behind=0 ahead=0 latest target=""
   channel="$(update_channel)"
   printf 'repository\t%s\n' "$REPO_ROOT"
   printf 'channel\t%s\n' "$channel"
   # Never a prompt for a password: the shell asks with nobody to answer.
-  if ! GIT_TERMINAL_PROMPT=0 timeout 60 git -C "$REPO_ROOT" fetch --quiet --tags 2> /dev/null; then
+  # Offline, nothing is fetched and the counts are those of the last fetch.
+  if [[ "$UPDATE_OFFLINE" != true ]] \
+    && ! GIT_TERMINAL_PROMPT=0 timeout 60 git -C "$REPO_ROOT" fetch --quiet --tags 2> /dev/null; then
     state="unreachable"
   fi
   latest="$(update_latest_release)"
@@ -83,16 +100,9 @@ function update_status(){
   printf 'latest\t%s\n' "$latest"
   branch="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2> /dev/null || true)"
   printf 'branch\t%s\n' "$branch"
-  if [[ "$channel" == "stable" ]]; then
-    if [[ -z "$latest" ]]; then
-      [[ "$state" == "ok" ]] && state="no-release"
-    else
-      target="$latest^{commit}"
-    fi
-  elif git -C "$REPO_ROOT" rev-parse --verify --quiet 'main@{upstream}' > /dev/null 2>&1; then
-    target='main@{upstream}'
-  elif [[ "$state" == "ok" ]]; then
-    state="no-upstream"
+  target="$(update_target)"
+  if [[ -z "$target" && "$state" == "ok" ]]; then
+    [[ "$channel" == "stable" ]] && state="no-release" || state="no-upstream"
   fi
   if [[ -n "$target" ]]; then
     behind="$(git -C "$REPO_ROOT" rev-list --count "HEAD..$target" 2> /dev/null || echo 0)"
@@ -115,7 +125,6 @@ function update_status(){
   if (( behind > 0 )); then
     git -C "$REPO_ROOT" log --max-count=50 --format='commit%x09%h%x09%s' "HEAD..$target" 2> /dev/null || true
   fi
-  UPDATE_TARGET="$target"
   return 0
 }
 
@@ -155,7 +164,7 @@ function update_pull(){
       printf "${STY_YELLOW}YukiUI has no release yet to follow. Left as it is.${STY_RST}\n" >&2
       return 0 ;;
     no-upstream)
-      printf "${STY_YELLOW}The main branch follows no remote branch, so there is nothing to pull. Left as it is.${STY_RST}\n" >&2
+      printf "${STY_YELLOW}This branch follows no remote branch, so there is nothing to pull. Left as it is.${STY_RST}\n" >&2
       return 0 ;;
     unreachable)
       printf "${STY_YELLOW}The remote could not be reached. YukiUI is left as it is.${STY_RST}\n" >&2
@@ -182,11 +191,12 @@ function update_pull(){
     # The release itself, which leaves the repository on no branch.
     x git -C "$REPO_ROOT" checkout --quiet --detach "$(update_latest_release)"
   else
-    # Back on the main branch, from a release it was left on, and on with it.
-    if [[ "$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2> /dev/null || true)" != "main" ]]; then
+    # Back on the main branch from a release it was left on, and on with
+    # whichever branch it is on.
+    if ! git -C "$REPO_ROOT" symbolic-ref --quiet HEAD > /dev/null 2>&1; then
       x git -C "$REPO_ROOT" checkout --quiet main
     fi
-    x git -C "$REPO_ROOT" merge --ff-only --quiet 'main@{upstream}'
+    x git -C "$REPO_ROOT" merge --ff-only --quiet '@{upstream}'
   fi
   x git -C "$REPO_ROOT" submodule update --init --recursive
   UPDATE_PULLED_FROM="$before"

@@ -7,6 +7,10 @@ copy is not touched. The system's package manager is kept off the PATH, so the
 steps that would upgrade or build packages say this is not Arch and pass, and
 the copying step is replaced in the clone by one that only says it ran: the
 real one writes into the person's session.
+
+The clone follows the main branch unless a test says otherwise. On the stable
+channel, which a copy follows when nothing is set, it follows releases:
+annotated tags named for their day.
 """
 
 from __future__ import annotations
@@ -62,6 +66,7 @@ def world(tmp_path):
     git(upstream, "branch", "-q", "--set-upstream-to=origin/main", "main")
     clone = tmp_path / "clone"
     subprocess.run(["git", "clone", "-q", str(remote), str(clone)], check=True)
+    git(clone, "config", "yuki.channel", "main")
 
     # Every program on the PATH but the package managers.
     bin = tmp_path / "bin"
@@ -98,8 +103,8 @@ def setup(world, *args: str) -> subprocess.CompletedProcess:
                           stdin=subprocess.DEVNULL, timeout=120)
 
 
-def status(world) -> dict:
-    result = setup(world, "--check")
+def status(world, *args: str) -> dict:
+    result = setup(world, "--check", *args)
     assert result.returncode == 0, result.stdout + result.stderr
     facts = {"commit": []}
     for line in result.stdout.splitlines():
@@ -150,9 +155,120 @@ def test_both_moved_on(world):
     assert (facts["state"], facts["behind"], facts["ahead"]) == ("diverged", "1", "1")
 
 
-def test_not_on_a_branch(world):
+def release(world, name: str):
+    """An annotated tag on the upstream's last commit, pushed."""
+    git(world["upstream"], "tag", "-a", name, "-m", name)
+    git(world["upstream"], "push", "-q", "origin", name)
+
+
+def stable(world):
+    git(world["clone"], "config", "--unset", "yuki.channel")
+
+
+def test_on_the_main_channel_a_copy_left_on_a_release_goes_back_to_the_branch(world):
+    push(world, "one.txt", "First change")
     git(world["clone"], "checkout", "-q", "--detach")
-    assert status(world)["state"] == "detached"
+    facts = status(world)
+    assert (facts["channel"], facts["branch"], facts["state"], facts["behind"]) == ("main", "", "ok", "1")
+    result = setup(world, "--no-system")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert git(world["clone"], "symbolic-ref", "--short", "HEAD") == "main"
+    assert git(world["clone"], "rev-parse", "HEAD") == git(world["upstream"], "rev-parse", "HEAD")
+
+
+def test_stable_is_the_channel_when_none_is_set(world):
+    stable(world)
+    facts = status(world)
+    assert (facts["channel"], facts["state"], facts["latest"]) == ("stable", "no-release", "")
+
+
+def test_stable_before_the_first_release_pulls_nothing(world):
+    stable(world)
+    push(world, "one.txt", "First change")
+    before = git(world["clone"], "rev-parse", "HEAD")
+    result = setup(world, "--no-system")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "no release yet" in result.stdout + result.stderr
+    assert git(world["clone"], "rev-parse", "HEAD") == before
+
+
+def test_a_lightweight_tag_is_no_release(world):
+    stable(world)
+    git(world["upstream"], "tag", "2026.05.11")
+    git(world["upstream"], "push", "-q", "origin", "2026.05.11")
+    facts = status(world)
+    assert (facts["state"], facts["latest"]) == ("no-release", "")
+    assert facts["version"] == "\t1"
+
+
+def test_stable_takes_the_latest_release_and_no_further(world):
+    stable(world)
+    push(world, "one.txt", "First change")
+    release(world, "2026.11.27")
+    push(world, "two.txt", "Second change")
+    release(world, "2026.11.28")
+    push(world, "three.txt", "After the release")
+    facts = status(world)
+    assert (facts["latest"], facts["state"], facts["behind"]) == ("2026.11.28", "ok", "2")
+    assert [line.split("\t")[1] for line in facts["commit"]] == ["Second change", "First change"]
+
+    result = setup(world, "--no-system")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert git(world["clone"], "describe") == "2026.11.28"
+    facts = status(world)
+    assert (facts["version"], facts["branch"], facts["behind"]) == ("2026.11.28\t0", "", "0")
+    # Again, it stays.
+    again = setup(world, "--no-system")
+    assert "up to date" in again.stdout + again.stderr
+
+
+def test_a_second_release_on_the_same_day_is_the_later(world):
+    stable(world)
+    push(world, "one.txt", "First change")
+    release(world, "2026.11.28")
+    push(world, "two.txt", "Second change")
+    release(world, "2026.11.28.1")
+    assert status(world)["latest"] == "2026.11.28.1"
+
+
+def test_stable_past_the_latest_release_stays_where_it_is(world):
+    push(world, "one.txt", "First change")
+    release(world, "2026.11.28")
+    push(world, "two.txt", "After the release")
+    assert setup(world, "--no-system").returncode == 0
+    head = git(world["clone"], "rev-parse", "HEAD")
+    facts = status(world, "--channel", "stable")
+    assert (facts["channel"], facts["version"], facts["behind"], facts["ahead"]) == ("stable", "2026.11.28\t1", "0", "0")
+    again = setup(world, "--no-system")
+    assert "up to date" in again.stdout + again.stderr
+    assert git(world["clone"], "rev-parse", "HEAD") == head
+
+
+def test_the_channel_is_kept_in_the_repository(world):
+    status(world, "--channel", "stable")
+    assert git(world["clone"], "config", "--get", "yuki.channel") == "stable"
+    assert status(world)["channel"] == "stable"
+    bad = setup(world, "--channel", "nightly", "--check")
+    assert bad.returncode != 0
+
+
+def test_offline_fetches_nothing(world):
+    push(world, "one.txt", "First change")
+    assert status(world, "--offline")["behind"] == "0"
+    assert status(world)["behind"] == "1"
+    git(world["clone"], "remote", "set-url", "origin", str(world["clone"].parent / "gone.git"))
+    facts = status(world, "--offline")
+    assert (facts["state"], facts["behind"]) == ("ok", "1")
+
+
+def test_on_the_main_channel_a_branch_of_ones_own_is_followed_as_it_is(world):
+    git(world["clone"], "checkout", "-q", "-b", "mine")
+    git(world["clone"], "push", "-q", "-u", "origin", "mine")
+    push(world, "one.txt", "On main")
+    facts = status(world)
+    assert (facts["branch"], facts["state"], facts["behind"]) == ("mine", "ok", "0")
+    assert setup(world, "--no-system").returncode == 0
+    assert git(world["clone"], "symbolic-ref", "--short", "HEAD") == "mine"
 
 
 def test_a_branch_that_follows_nothing(world):

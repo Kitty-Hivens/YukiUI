@@ -46,11 +46,22 @@ Singleton {
     /**
      * How the repository stands, as `setup update --check` says: "ok",
      * "dirty" (changes not committed there, which a pull would go over),
-     * "detached", "no-upstream", "unreachable" or "diverged", or empty before
-     * the first check.
+     * "no-release" (following releases before there is one), "no-upstream",
+     * "unreachable" or "diverged", or "detached" from an updater before the
+     * channels. Empty before the first check.
      */
     property string shellState: ""
     property var shellLastChecked: null
+    /** What it follows: "stable", the releases, or "main", every commit. Empty until read. */
+    property string shellChannel: ""
+    /** The release it stands on, empty before the first, and how many commits it is past it. */
+    property string shellRelease: ""
+    property int shellSince: 0
+    /** The newest release there is, or empty. */
+    property string shellLatest: ""
+    /** The version in a line, "2026.11.28", or "2026.11.28+3" past it, or empty when not known. */
+    readonly property string shellVersion: root.shellRelease.length === 0 ? ""
+        : root.shellSince > 0 ? `${root.shellRelease}+${root.shellSince}` : root.shellRelease
     /** There is something to pull, and nothing in the way of pulling it. */
     readonly property bool shellPending: root.shellAvailable && root.shellBehind > 0
         && (root.shellState === "ok" || root.shellState === "unreachable")
@@ -80,6 +91,14 @@ Singleton {
         print("[Updates] Checking for YukiUI updates");
         checkShellProc.running = true;
     }
+    /** What it follows from now on, "stable" or "main". Takes effect on the next update. */
+    function setChannel(channel: string) {
+        if (!root.shellAvailable || (channel !== "stable" && channel !== "main"))
+            return;
+        root.shellChannel = channel;
+        root.readShell(["--channel", channel]);
+    }
+
     /** Both, as a press of Check asks. */
     function refreshAll() {
         root.refresh();
@@ -357,14 +376,37 @@ Singleton {
         }
     }
 
-    /** What `setup update --check` said: a key and its value a line, tab between. */
-    function takeShell(text) {
+    /**
+     * What this copy is and follows, without going over the network. Once a
+     * check has been made, what the remote had then is counted again too, as
+     * it is after the channel changes.
+     */
+    function readShell(extra: var) {
+        readShellProc.running = false;
+        readShellProc.counts = root.shellState.length > 0;
+        readShellProc.command = ["bash", `${root.repository}/setup`, "update", ...extra, "--check", "--offline"];
+        readShellProc.running = true;
+    }
+
+    /**
+     * What `setup update --check` said: a key and its value a line, tab
+     * between. Without counts only what this copy is and follows is taken.
+     * Not fetched, it is no new check.
+     */
+    function takeShell(text, counts: bool, fetched: bool) {
         let state = "";
         let behind = 0;
         const commits = [];
         for (const line of text.split("\n")) {
             const parts = line.split("\t");
-            if (parts[0] === "state")
+            if (parts[0] === "channel")
+                root.shellChannel = parts[1] ?? "";
+            else if (parts[0] === "version") {
+                root.shellRelease = parts[1] ?? "";
+                root.shellSince = parseInt(parts[2]) || 0;
+            } else if (parts[0] === "latest")
+                root.shellLatest = parts[1] ?? "";
+            else if (parts[0] === "state")
                 state = parts[1] ?? "";
             else if (parts[0] === "behind")
                 behind = parseInt(parts[1]) || 0;
@@ -373,13 +415,13 @@ Singleton {
         }
         // Nothing readable came back: an old repository without the command,
         // or one that is not there any more. The last answer stands.
-        if (state.length === 0)
+        if (state.length === 0 || !counts)
             return;
         root.shellState = state;
         // A fetch that failed still counts against what was fetched before.
         root.shellBehind = behind;
         root.shellCommits = commits;
-        if (state !== "unreachable")
+        if (fetched && state !== "unreachable")
             root.shellLastChecked = new Date();
     }
 
@@ -442,8 +484,25 @@ Singleton {
         id: checkShellProc
         command: ["bash", `${root.repository}/setup`, "update", "--check"]
         stdout: StdioCollector {
-            onStreamFinished: root.takeShell(text)
+            onStreamFinished: root.takeShell(text, true, true)
         }
+    }
+
+    // What this copy is, read as the shell comes up and whenever the
+    // repository is found, without going over the network: the version is
+    // shown whether or not it checks by itself.
+    Process {
+        id: readShellProc
+        property bool counts: false
+        stdout: StdioCollector {
+            onStreamFinished: root.takeShell(text, readShellProc.counts, false)
+        }
+    }
+    // The path itself rather than shellAvailable, which is bound to it and
+    // may not have caught up yet as this runs.
+    onRepositoryChanged: {
+        if (root.repository.length > 0)
+            root.readShell([]);
     }
 
     // Written by the updater as it finishes, which is when both answers change.

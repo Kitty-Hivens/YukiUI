@@ -51,6 +51,7 @@ ColumnLayout {
         : Updates.shellState === "detached" ? Translation.tr("The repository is not on a branch, so there is nothing to pull into.")
         : Updates.shellState === "no-upstream" ? Translation.tr("The branch follows no remote branch, so there is nothing to pull.")
         : Updates.shellState === "diverged" ? Translation.tr("The branch and the remote have both moved on. Pulling would mean merging, which is left to you.")
+        : Updates.shellState === "no-release" ? Translation.tr("Choose Development to follow every change until the first release comes out.")
         : ""
 
     spacing: ExLooks.settings.groupGap
@@ -203,6 +204,28 @@ ColumnLayout {
         Layout.fillWidth: true
         title: "YukiUI"
 
+        // What this copy is and what it follows. Changed here, the channel
+        // takes effect on the next update.
+        SettingsCard {
+            Layout.fillWidth: true
+            visible: Updates.shellAvailable && Updates.shellChannel.length > 0
+            glyph: "sell"
+            text: Updates.shellVersion.length > 0 ? Translation.tr("Version %1").arg(Updates.shellVersion) : Translation.tr("No release yet")
+            description: Updates.shellChannel === "main" ? Translation.tr("Development: every change on the main branch, as it lands")
+                : Updates.shellSince > 0 ? Translation.tr("Stable: releases only. This copy is past the latest one, so it waits for the next")
+                : Translation.tr("Stable: releases only")
+
+            SettingsChoice {
+                enabled: !Updates.updating
+                value: Updates.shellChannel
+                options: [
+                    { value: "stable", text: Translation.tr("Stable") },
+                    { value: "main", text: Translation.tr("Development") }
+                ]
+                onPicked: channel => Updates.setChannel(channel)
+            }
+        }
+
         // Installed some other way, or before the installer wrote down where
         // it was installed from.
         SettingsCard {
@@ -219,7 +242,8 @@ ColumnLayout {
             Layout.fillWidth: true
             visible: Updates.shellAvailable && Updates.shellBehind > 0
             glyph: "deployed_code_update"
-            text: Translation.tr("%1 new changes").arg(Updates.shellBehind)
+            text: Updates.shellChannel === "stable" && Updates.shellLatest.length > 0 ? Translation.tr("Release %1: %2 changes").arg(Updates.shellLatest).arg(Updates.shellBehind)
+                : Translation.tr("%1 new changes").arg(Updates.shellBehind)
             description: root.shellObstacle.length > 0 ? root.shellObstacle
                 : Updates.shellState === "unreachable" ? Translation.tr("Could not reach the remote just now, so these are from the last check")
                 : Updates.repository
@@ -251,6 +275,7 @@ ColumnLayout {
             text: Updates.shellChecking ? Translation.tr("Checking...")
                 : Updates.shellState === "unreachable" ? Translation.tr("Could not reach the remote")
                 : Updates.shellState.length === 0 ? Translation.tr("Not checked yet")
+                : Updates.shellState === "no-release" ? Translation.tr("There is no release to follow yet")
                 : Translation.tr("YukiUI is up to date")
             description: root.shellObstacle.length > 0 ? root.shellObstacle
                 : Updates.shellLastChecked !== null ? `${Updates.repository}  ·  ${Translation.tr("Checked at %1").arg(root.timeOf(Updates.shellLastChecked))}`

@@ -1800,5 +1800,16 @@
   "Applications that go with it: %1": "Приложения, которые удалятся вместе с ним: %1",
   "Your own copy of its entry goes to the trash": "Ваша копия его ярлыка уйдёт в корзину",
   "Delete its data as well": "Удалить и его данные",
-  "Turned away": "Отклоняются"
+  "Turned away": "Отклоняются",
+  "Version %1": "Версия %1",
+  "No release yet": "Релизов пока нет",
+  "Development: every change on the main branch, as it lands": "Разработка: каждое изменение основной ветки, как только оно появится",
+  "Stable: releases only. This copy is past the latest one, so it waits for the next": "Стабильный: только релизы. Эта копия новее последнего, поэтому дождётся следующего",
+  "Stable: releases only": "Стабильный: только релизы",
+  "Stable": "Стабильный",
+  "Development": "Разработка",
+  "Release %1: %2 changes": "Релиз %1: изменений %2",
+  "There is no release to follow yet": "Пока не вышло ни одного релиза",
+  "Choose Development to follow every change until the first release comes out.": "Выберите «Разработку», чтобы получать каждое изменение, пока не выйдет первый релиз.",
+  "%1, development": "%1, разработка"
 }

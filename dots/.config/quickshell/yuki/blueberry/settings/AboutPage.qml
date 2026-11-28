@@ -30,6 +30,7 @@ ColumnLayout {
     readonly property var running: [
         { glyph: "deployed_code", label: Translation.tr("Distribution"), value: SystemInfo.distroName },
         { glyph: "terminal", label: Translation.tr("Kernel"), value: SystemInfo.kernel },
+        { glyph: "sell", label: "YukiUI", value: Updates.shellVersion.length === 0 ? "" : Updates.shellChannel === "main" ? Translation.tr("%1, development").arg(Updates.shellVersion) : Updates.shellVersion },
         { glyph: "layers", label: Translation.tr("Compositor"), value: [SystemInfo.desktopEnvironment, SystemInfo.compositorVersion].filter(part => part.length > 0).join(" ") },
         { glyph: "schedule", label: Translation.tr("Uptime"), value: DateTime.uptime }
     ].filter(fact => fact.value.length > 0)

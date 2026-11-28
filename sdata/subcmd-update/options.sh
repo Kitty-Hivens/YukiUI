@@ -20,6 +20,8 @@ Options:
                     being shown. A conflict stops the run. Root is sudo where
                     it needs no password, and polkit's prompt otherwise.
       --files       Copy the files again even when nothing was pulled
+      --offline     With --check, fetch nothing: what was fetched last time
+                    is what it counts against.
       --channel C   Follow C from now on: stable, the latest release, which is
                     what a copy follows unless told otherwise, or main, every
                     commit on the main branch. A copy past the latest release
@@ -33,6 +35,7 @@ UPDATE_AUR=true
 UPDATE_UNATTENDED=false
 UPDATE_FILES=false
 UPDATE_SET_CHANNEL=""
+UPDATE_OFFLINE=false
 # Set by the run itself after a pull, which starts the new version of this
 # script on what was there before it. Not for typing by hand.
 UPDATE_CONTINUE_FROM=""
@@ -40,7 +43,7 @@ UPDATE_CONTINUE_FROM=""
 # `man getopt` to see more
 para=$(getopt \
   -o h \
-  -l help,check,no-system,no-aur,unattended,files,channel:,continue-from: \
+  -l help,check,no-system,no-aur,unattended,files,offline,channel:,continue-from: \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 eval set -- "$para"
@@ -52,6 +55,7 @@ while true ; do
     --no-aur) UPDATE_AUR=false;shift;;
     --unattended) UPDATE_UNATTENDED=true;shift;;
     --files) UPDATE_FILES=true;shift;;
+    --offline) UPDATE_OFFLINE=true;shift;;
     --channel)
       case "$2" in
         stable|main) UPDATE_SET_CHANNEL="$2";;
